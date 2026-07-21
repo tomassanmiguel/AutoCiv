@@ -5,6 +5,7 @@ import Tableau from './Tableau/Tableau.jsx'
 import UIPanel from './UIPanel/UIPanel.jsx'
 import MenuOverlay from './Menu/MenuOverlay.jsx'
 import EraBanner from './Hud/EraBanner.jsx'
+import TickCounter from './Hud/TickCounter.jsx'
 import SpeedControl from './Hud/SpeedControl.jsx'
 import TransitionOverlay from './Hud/TransitionOverlay.jsx'
 import AudioController from './AudioController.jsx'
@@ -28,9 +29,10 @@ export default function GameScreen({ seed, audio, onExit }) {
       <div className="game-screen">
         <div className="tableau-window">
           <Tableau />
-          <div className="left-hud">
-            <EraBanner />
+          <div className="top-hud">
             <MenuOverlay onExit={onExit} />
+            <EraBanner />
+            <TickCounter />
             <SpeedControl />
           </div>
           <TransitionOverlay />

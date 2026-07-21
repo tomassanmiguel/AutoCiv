@@ -1,0 +1,17 @@
+.tick-counter {
+  --fw: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 44px;
+  padding: 0 0.4rem;
+}
+.tick-counter-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: #3a2c10;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(255, 248, 230, 0.5);
+}
