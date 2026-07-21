@@ -104,13 +104,13 @@ export class GameManager {
     const cfg = RESOURCE_CONFIG[type]
     let guard = 0
     while (res.value >= res.threshold && guard++ < 1000) {
+      res.value -= res.threshold // carry the overflow into the next level
       res.level += 1
       if (type === 'food') this._onFoodThreshold()
-      // Recompute the next cumulative threshold. n = global level (never resets);
-      // rubber band keeps the running level near (era number) * targetPerEra.
+      // Grow the per-level threshold. n = global level (never resets); rubber band
+      // keeps the running level near (era number) * targetPerEra.
       const expected = (this.data.era + 1) * cfg.targetPerEra
       const R = rubberBand(res.level, expected)
-      res.floor = res.threshold
       res.threshold = nextThreshold(res.threshold, cfg.X, this.data.era, res.level, R)
     }
   }

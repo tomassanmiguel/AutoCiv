@@ -1,20 +1,20 @@
 // Development-phase resource thresholds.
 //
-// Each threshold resource (progress / food / production) accumulates a cumulative
-// `value` (+= output each tick). When `value` reaches the next cumulative
-// `threshold`, its `level` (number of thresholds reached) increments. The
-// threshold sequence grows per the design formula:
+// Each threshold resource (progress / food / production) accumulates `value`
+// (+= output each tick) toward the current level's `threshold`. When it reaches
+// the threshold, `level` (# thresholds reached) increments, the overflow carries
+// over, and the threshold GROWS by a delta per the design formula:
 //
-//   T(N) = T(N-1) + X * 1.25^E * n * R
+//   threshold(N) = threshold(N-1) + X * 1.25^E * n * R
 //
-// where E = era index (0-based) and n = the GLOBAL number of thresholds reached
-// (level). n does NOT reset per era, so the delta grows monotonically and every
-// threshold is higher than the last. R is a rubber band keeping the running level
-// on pace with the era.
+// where E = era index (0-based) and n = the GLOBAL level (never resets). Because
+// the delta is always positive, each level's requirement is strictly higher than
+// the last. R is a rubber band keeping the running level on pace with the era.
 //
 // INTERPRETATION NOTES:
 //  - E is the 0-based era index (Stone = 0), so 1.25^E = 1 in the first era.
-//  - `value`, `threshold`, and n (= level) are all cumulative — nothing resets per era.
+//  - `value` RESETS each level (overflow carries); the displayed threshold is the
+//    per-level requirement, which grows monotonically. n (= level) never resets.
 //  - R uses expected = (era + 1) * targetPerEra, actual = level (thresholds reached).
 
 export const TICKS_PER_ERA = 65

@@ -120,8 +120,7 @@ function ResourceLine({ icon, label, value, output, tip }) {
 }
 
 function ResourceBar({ icon, label, res, tip }) {
-  const span = res.threshold - res.floor
-  const pct = span > 0 ? Math.min(100, ((res.value - res.floor) / span) * 100) : 0
+  const pct = res.threshold > 0 ? Math.min(100, (res.value / res.threshold) * 100) : 0
   return (
     <InfoTip title={label} text={tip}>
       <div className="res-bar-row">
@@ -129,7 +128,7 @@ function ResourceBar({ icon, label, res, tip }) {
         <span className="res-level" title="Thresholds reached">{res.level}</span>
         <div className="res-bar-track">
           <div className="res-bar-fill" style={{ width: `${pct}%` }} />
-          <span className="res-bar-label">{Math.floor(res.value - res.floor)}/{Math.ceil(span)}</span>
+          <span className="res-bar-label">{Math.floor(res.value)}/{Math.ceil(res.threshold)}</span>
         </div>
         <span className="res-delta">{fmtDelta(res.output)}/t</span>
       </div>

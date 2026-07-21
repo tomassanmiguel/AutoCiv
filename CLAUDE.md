@@ -279,20 +279,21 @@ exists; extend it as systems land.
   `paused`/`standard`(1/s)/`fast`(2/s)/`super`(3/s)/`ultra`(5/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
   add it to each threshold resource's `value`, then cross any reached thresholds.
-- **Threshold resources** (progress/food/production) accumulate a **cumulative** `value` toward a
-  **cumulative** `threshold`; each crossing bumps `level` (# thresholds reached). Formula
-  `T(N)=T(N-1)+X·1.25^E·n·R` (`resources.js`: `T0`/`X`/`targetPerEra`; **E = 0-based era; n = the
-  GLOBAL level and never resets**, so deltas grow monotonically). R rubber-bands the running level
-  toward `(era+1)·targetPerEra`. **Food** crossings add pops = **era number**; production/progress
-  do nothing yet.
+- **Threshold resources** (progress/food/production) accumulate `value` toward the current level's
+  `threshold`; on reaching it, `value` **resets** (overflow carries), `level` (# thresholds reached)
+  increments, and the **per-level threshold grows**: `threshold(N)=threshold(N-1)+X·1.25^E·n·R`
+  (`resources.js`: `T0`/`X`/`targetPerEra`; **E = 0-based era; n = the GLOBAL level, never resets**).
+  Because the delta is always positive, **each level's requirement is strictly higher than the last**.
+  R rubber-bands the running level toward `(era+1)·targetPerEra`. **Food** crossings add pops =
+  **era number**; production/progress do nothing yet.
 - **Pops** (`pops.js`): only **Citizen** for now (auto-unlocked), producing **1 progress + 1 food
   + 1 production** per pop per tick. All population is Citizens. Start = 1 (`STARTING_CITIZENS`).
 - **Phase machine:** dev ends at 65 ticks → `phase='battle'`; the UI's `TransitionOverlay` plays
   the banner and calls back `endBattle()` → `phase='transition'` → banner → `completeTransition()`
   → next era (paused). The temporary era slider calls `setEra` (instant debug jump, no banner).
-- **Interpretations** (flagged in `resources.js`): E is 0-based; value/threshold/n all cumulative
-  (nothing resets per era); R's `expected = (era+1)·targetPerEra`, actual = level; "Copper
-  Age"→Bronze; starting pops = 1.
+- **Interpretations** (flagged in `resources.js`): E is 0-based; `value` resets per level (carries
+  overflow) while the per-level threshold grows; n = global level (never resets); R's
+  `expected = (era+1)·targetPerEra`, actual = level; "Copper Age"→Bronze; starting pops = 1.
 
 ### HUD (`components/Hud`)
 - **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
@@ -315,8 +316,8 @@ exists; extend it as systems land.
   `{ value, output }`.
 - **Gold** — icon + value (left) + per-tick delta (right). `{ value, output }`.
 - **Food / Production / Progress** — threshold resources (see Game loop): icon + **level number**
-  (# thresholds reached) + **bar** (fills from the current level's `floor` to the next
-  `threshold`) + per-tick delta. Shape `{ value, output, level, n, floor, threshold }`.
+  (# thresholds reached) + **bar** (`value / threshold` toward the current level's requirement) +
+  per-tick delta. Shape `{ value, output, level, threshold }`.
 - **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
   **Buildings (7)**, **Policies (5)**, **Population (5)**. The open accordion **flex-grows to
   fill the remaining panel height**; its slots are **large full-width boxes** that divide that

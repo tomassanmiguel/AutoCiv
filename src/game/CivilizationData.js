@@ -4,14 +4,13 @@ import { POP_TYPES } from './data/pops.js'
 // Starting population (all Citizens). Tunable.
 const STARTING_CITIZENS = 1
 
-// A resource that accumulates toward growing thresholds:
-//  value  — cumulative amount (never reset)
+// A resource that accumulates toward a growing per-level threshold:
+//  value  — progress toward the current level (resets, carrying overflow, on level-up)
 //  output — per-tick delta (sum of pop outputs)
 //  level  — number of thresholds reached (also the `n` in the threshold formula)
-//  floor  — cumulative value at the start of the current level (for the bar)
-//  threshold — next cumulative value to reach
+//  threshold — amount needed for the current level (grows each level)
 function makeThresholdResource(type) {
-  return { value: 0, output: 0, level: 0, floor: 0, threshold: RESOURCE_CONFIG[type].T0 }
+  return { value: 0, output: 0, level: 0, threshold: RESOURCE_CONFIG[type].T0 }
 }
 
 /**
