@@ -8,7 +8,7 @@ import {
   POPULATION_INFO,
 } from '../../game/data/slots.js'
 import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
-import { BUILDING_DEFS } from '../../game/data/buildings.js'
+import { BUILDING_DEFS, buildingEffect } from '../../game/data/buildings.js'
 import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
@@ -82,12 +82,13 @@ function unitSlots(civ, era, hpBonus) {
       }
     })
 }
-function buildingSlots(civ) {
+function buildingSlots(civ, era) {
   return BUILDING_CATEGORIES.map((cat, index) => {
     const occ = civ.buildings[index]
     if (!occ) return { index, kind: 'empty', silhouette: cat.silhouette, name: cat.label, tip: cat.description }
     const def = BUILDING_DEFS[occ.key]
-    return { index, kind: 'item', silhouette: cat.silhouette, name: def.name, sub: cat.label, line: def.effect, tip: def.effect }
+    const eff = buildingEffect(def, occ.level, era) // current era/level value
+    return { index, kind: 'item', silhouette: cat.silhouette, name: def.name, sub: cat.label, line: eff, tip: eff }
   })
 }
 function policySlots(civ) {
@@ -133,7 +134,7 @@ export default function UIPanel() {
 
   const groups = [
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
-    { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ) },
+    { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era) },
     { key: 'policies', label: 'Policies', slots: policySlots(civ) },
     { key: 'population', label: 'Population', slots: populationSlots(civ) },
   ]

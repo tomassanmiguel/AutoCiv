@@ -152,7 +152,7 @@ AutoCiv/
 │   │   │   ├── resources.js   # threshold config + T(N) formula + rubber band
 │   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
 │   │   │   ├── units.js       # unit defs (Warrior/Wolf/Slinger) + stat/level helpers
-│   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp helper
+│   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp/current-effect helpers
 │   │   │   ├── policies.js    # policy defs (Burial Rites)
 │   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
@@ -381,8 +381,9 @@ exists; extend it as systems land.
   fill the remaining panel height**; **empty** slots show a centered type silhouette, while
   **filled** slots render a compact **item card** — units show name + category + **Speed/Atk/Def
   stat icons** (`/sprites/icons/{speed,attack,defense}.png`, level-scaled, incl. the Clothes HP
-  bonus); buildings/policies show name + type + effect; full descriptions (icon stats for units) on
-  hover. During an advancement **replace**, the active group's accordion force-opens
+  bonus); buildings/policies show name + type + effect. Descriptions/effects always report the
+  **current** value for the current era + level (e.g. the Pier's food), never the upgrade sequence
+  or per-level deltas. Full descriptions (icon stats for units) on hover. During an advancement **replace**, the active group's accordion force-opens
   and its candidate slots **flash red** and are clickable (`resolveReplace`). `CivilizationData`
   roster slots hold `{ key, level }` (Warrior pre-fills Melee); `pops` holds counts by type.
   - **Slot data** lives in `game/data/slots.js`: `UNIT_CATEGORIES` (9), `BUILDING_CATEGORIES`
