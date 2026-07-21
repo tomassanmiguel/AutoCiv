@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
+import { ERA_INDEX } from '../../game/data/eras.js'
 import './Tableau.css'
 
 const CELL = 96          // base tile size in content-space pixels
-const ENEMY_ROWS = 3     // rows of enemy slots above the player grid
 const FIT_PADDING = 0.92 // leave a little breathing room at full-zoom-out
+
+// Enemy slots (Battlefield tiles) sit above the player grid; hover tooltip content.
+const BATTLEFIELD_TIP = {
+  title: 'Battlefield',
+  lines: ['Enemy forces deploy here to assault your civilization.'],
+}
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const lerp = (a, b, t) => a + (b - a) * t
@@ -31,10 +37,11 @@ export default function Tableau() {
   const [tooltip, setTooltip] = useState(null)
 
   // --- Content dimensions for the current era ---
+  const enemyRows = era >= ERA_INDEX.revolution ? 4 : 3 // +1 enemy row from Revolution
   const visCols = bounds ? bounds.maxCol - bounds.minCol + 1 : 0
   const visRows = bounds ? bounds.maxRow - bounds.minRow + 1 : 0
   const contentW = visCols * CELL
-  const contentH = (ENEMY_ROWS + visRows) * CELL
+  const contentH = (enemyRows + visRows) * CELL
 
   const applyTransform = () => {
     const { scale, tx, ty } = cameraRef.current
@@ -167,12 +174,12 @@ export default function Tableau() {
     viewportRef.current.classList.add('dragging')
   }
 
-  // --- Tile tooltip ---
-  const showTooltip = (tile, e) => {
+  // --- Tooltips (tiles + battlefield) ---
+  const showTip = (content, e) => {
     if (dragRef.current) return
-    const t = tile.getTooltip()
-    setTooltip({ ...t, x: e.clientX, y: e.clientY })
+    setTooltip({ ...content, x: e.clientX, y: e.clientY })
   }
+  const showTooltip = (tile, e) => showTip(tile.getTooltip(), e)
   const moveTooltip = (e) => {
     setTooltip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t))
   }
@@ -187,9 +194,9 @@ export default function Tableau() {
         ref={contentRef}
         style={{ width: contentW, height: contentH }}
       >
-        {/* Enemy slots: 3 rows atop each visible column */}
+        {/* Enemy slots (Battlefield) atop each visible column */}
         {cols.map((c) =>
-          [0, 1, 2].map((k) => (
+          Array.from({ length: enemyRows }, (_, k) => (
             <div
               key={`enemy-${c}-${k}`}
               className="enemy-slot"
@@ -199,6 +206,9 @@ export default function Tableau() {
                 width: CELL,
                 height: CELL,
               }}
+              onMouseEnter={(e) => showTip(BATTLEFIELD_TIP, e)}
+              onMouseMove={moveTooltip}
+              onMouseLeave={() => setTooltip(null)}
             />
           )),
         )}
@@ -206,7 +216,7 @@ export default function Tableau() {
         {/* Player tiles */}
         {tiles.map((tile) => {
           const j = tile.col - bounds.minCol
-          const i = ENEMY_ROWS + (bounds.maxRow - tile.row)
+          const i = enemyRows + (bounds.maxRow - tile.row)
           return (
             <div
               key={`${tile.row},${tile.col}`}

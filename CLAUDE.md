@@ -241,8 +241,8 @@ exists; extend it as systems land.
   deep-space window; Deep Space/Exoplanet extend up into it. Cols 23–26 are far-right "Galactic"
   deep space (23–24 Early Galactic, 25 Late Galactic, 26 Utopian); cols 24–26 scatter special
   tiles per column via `COLUMN_SPECIALS` (col 24: 2 planets + 1 star; cols 25–26: + 1 singularity).
-- Above the visible columns sit **3 rows of enemy slots**, rendered with the **Battlefield tile**
-  (where enemies will appear).
+- Above the visible columns sit rows of enemy slots rendered with the **Battlefield tile**
+  (hover shows a "Battlefield" tooltip): **3 rows, growing to 4 from the Revolution era**.
 
 ### Terrain (`game/data/terrain.js`)
 - Grid cells carry a **design label**; some are concrete, some are **meta-types** resolved to
