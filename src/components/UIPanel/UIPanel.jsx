@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
+import NineSlice from '../common/NineSlice.jsx'
 import './UIPanel.css'
 
 const ICON = {
@@ -10,6 +11,12 @@ const ICON = {
   production: '/sprites/icons/production.png',
   progress: '/sprites/icons/progress.png',
 }
+
+// 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
+const FRAME = { light: '/sprites/ui/box.png', dark: '/sprites/ui/box-dark.png' }
+const FRAME_SLICE = 205 // border inset in source px (frames are 1254x1254)
+const PANEL_BORDER = 40
+const DROP_BORDER = 16
 
 // Units & Buildings have fixed per-slot categories (label + description);
 // Policies & Population are generic slots for now.
@@ -30,7 +37,7 @@ export default function UIPanel() {
   const [openGroup, setOpenGroup] = useState('units')
 
   return (
-    <aside className="ui-panel">
+    <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
       <div className="resources">
         {/* Legitimacy — the civ's HP: a big centered scalar. */}
         <div className="legitimacy">
@@ -59,7 +66,7 @@ export default function UIPanel() {
           />
         ))}
       </div>
-    </aside>
+    </NineSlice>
   )
 }
 
@@ -90,7 +97,12 @@ function ResourceBar({ icon, label, res }) {
 function Accordion({ label, categories, slots, open, onToggle }) {
   const count = categories ? categories.length : slots.length
   return (
-    <div className={`accordion ${open ? 'open' : ''}`}>
+    <NineSlice
+      className={`accordion ${open ? 'open' : ''}`}
+      src={FRAME.dark}
+      slice={FRAME_SLICE}
+      width={DROP_BORDER}
+    >
       <button className="accordion-header" onClick={onToggle}>
         <span className="accordion-caret">▸</span>
         <span className="accordion-label">{label}</span>
@@ -103,7 +115,7 @@ function Accordion({ label, categories, slots, open, onToggle }) {
           ))}
         </div>
       </div>
-    </div>
+    </NineSlice>
   )
 }
 

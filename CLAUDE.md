@@ -108,6 +108,14 @@ trailer `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
   WAVs — the served `public/music/*.ogg` copies ARE committed), and `.claude/settings.local.json`.
 - No GitHub remote is configured yet (local history only).
 
+## Working Style
+
+- **The user does visual verification — don't spin wheels in the browser preview.** Make the
+  change, sanity-check the code, commit it, and let the user confirm how it looks/plays. The
+  Claude Preview tooling is flaky here (the screenshot tab and the eval/DOM tab frequently
+  desync, and looping audio stalls screenshots), so heavy preview-driven verification wastes
+  time. A quick sanity check is fine; full sign-off is the user's.
+
 ---
 
 ## Architecture & Code
@@ -119,7 +127,7 @@ AutoCiv/
 ├── index.html                 # Vite entry; loads /src/main.jsx
 ├── public/
 │   ├── favicon.svg
-│   ├── sprites/{tiles,icons}/  # served images (normalized names)
+│   ├── sprites/{tiles,icons,ui}/ # served images (ui/ = 9-slice frames)
 │   └── music/*.ogg             # served soundtrack (transcoded)
 ├── src/
 │   ├── main.jsx               # React root
@@ -141,6 +149,7 @@ AutoCiv/
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
 │   │   └── react/GameProvider.jsx # <GameProvider> + useGame() hook
 │   └── components/
+│       ├── common/NineSlice.jsx/.css # scalable 9-slice frame (CSS border-image)
 │       ├── GameScreen.jsx/.css    # composes the in-game view
 │       ├── Tableau/Tableau.jsx/.css   # pan/zoom camera + grid + enemy slots + tooltip
 │       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions
@@ -162,6 +171,11 @@ AutoCiv/
   (`.btn`, `.btn-primary`, `.btn-ghost`) live in `App.css`.
 - **Theme:** deep space-dark surfaces with a bronze/gold "empire" accent. Display font
   `Cinzel` (serif) for titles/logos, `Inter` for body/UI.
+- **Scalable frames:** `<NineSlice src slice width fill repeat>` (`components/common`) wraps a
+  box in a frame sprite via CSS `border-image` — corners fixed, edges/center scale to any size.
+  Frame PNGs live in `public/sprites/ui/`. `slice` = border inset in SOURCE px (our `Box`
+  frames are 1254x1254, sliced at 205); `width` = rendered border thickness. Reuse it for any
+  future framed element instead of hand-rolling `border-image`.
 - **Model vs. UI:** all game logic/data lives under `src/game/` and is **framework-free**
   (plain classes, no React imports) so it stays testable. React reads it through one bridge:
   `GameManager` exposes `subscribe(fn)` + `getVersion()`; `useGame()` (in `react/GameProvider`)
@@ -238,6 +252,11 @@ exists; extend it as systems land.
 - Hovering a tile shows a tooltip from `tile.getTooltip()` (currently terrain name + coords).
 
 ### Civilization panel (`CivilizationData.js`, `components/UIPanel`)
+- **Framing:** the whole panel is wrapped in the light `Box` 9-slice frame and each dropdown in
+  the dark `Box Dark` frame, via `<NineSlice>` (see below). The frames carry a parchment fill,
+  so the panel uses a **dark-ink-on-parchment** palette (CSS vars `--ink`/`--ink-soft`/`--brass`
+  scoped to `.ui-panel`); slot rows sit on a translucent parchment inset to stay readable.
+  Panel width is 400px to fit the ornate border.
 - **Legitimacy** — the civ's "HP": a large centered scalar. **Starts at 50.** Stores
   `{ value, output }`.
 - **Gold** — icon + value (left) + per-tick delta (right). `{ value, output }`.
@@ -298,3 +317,7 @@ exists; extend it as systems land.
   flex-fill the panel height, each with a category label + description. Units cut 9→8 and
   Buildings labeled with fixed categories (`game/data/slots.js`); descriptions clamp to the
   row with full text on hover.
+- **2026-07-21** — Set up git (branch `main`, per-change commits) and added the
+  version-control + working-style notes to this file. Added the reusable `<NineSlice>`
+  (border-image) component and framed the info panel (light `Box`) and dropdowns (dark
+  `Box Dark`) with 9-slice parchment frames, restyling the panel to dark-ink-on-parchment.
