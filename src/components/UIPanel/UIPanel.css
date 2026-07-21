@@ -239,6 +239,37 @@
   max-width: 100%;
 }
 
+/* Stat icon+value trio (Speed / Atk / Def), used on cards and in tooltips. */
+.slot-card-stats {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.stat img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+/* Stats rendered inside a hover tooltip (dark background). */
+.tip-stats {
+  display: inline-flex;
+  gap: 0.6rem;
+  align-items: center;
+  vertical-align: middle;
+}
+.tip-stats .stat { color: inherit; }
+.tip-stats .stat img { width: 15px; height: 15px; }
+.stat-lv { font-size: 0.82rem; opacity: 0.85; }
+
 /* Replacement candidate: slow red flash + clickable. */
 .replace-target {
   cursor: pointer;

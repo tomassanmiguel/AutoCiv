@@ -7,7 +7,7 @@ import {
   POLICY_INFO,
   POPULATION_INFO,
 } from '../../game/data/slots.js'
-import { UNIT_DEFS, unitStatLine, unitStats } from '../../game/data/units.js'
+import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
 import { BUILDING_DEFS } from '../../game/data/buildings.js'
 import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
@@ -21,6 +21,28 @@ const ICON = {
   food: '/sprites/icons/food.png',
   production: '/sprites/icons/production.png',
   progress: '/sprites/icons/progress.png',
+}
+
+// Unit/building stat icons (Speed = cooldown, Atk = damage, Def = health).
+const STAT_ICON = {
+  speed: '/sprites/icons/speed.png',
+  atk: '/sprites/icons/attack.png',
+  def: '/sprites/icons/defense.png',
+}
+const STAT_LABEL = { speed: 'Speed', atk: 'Attack', def: 'Defense' }
+
+/** A row of stat icon+value pairs (order: Speed, Atk, Def). */
+function StatIcons({ stats, className = 'slot-card-stats' }) {
+  return (
+    <span className={className}>
+      {['speed', 'atk', 'def'].map((k) => (
+        <span key={k} className="stat">
+          <img src={STAT_ICON[k]} alt={STAT_LABEL[k]} title={STAT_LABEL[k]} />
+          {stats[k]}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 // 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
@@ -55,7 +77,7 @@ function unitSlots(civ, era, hpBonus) {
       const def = UNIT_DEFS[occ.key]
       return {
         index, kind: 'item', silhouette: cat.silhouette,
-        name: def.name, sub: cat.label, line: unitStatLine(def, occ.level, hpBonus),
+        name: def.name, sub: cat.label, stats: unitStats(def, occ.level, hpBonus),
         tip: unitTip(def, occ.level, hpBonus),
       }
     })
@@ -89,7 +111,9 @@ function unitTip(def, level, hpBonus) {
     <>
       {def.description}
       {def.ability ? <><br /><br /><strong>Ability:</strong> {def.ability}</> : null}
-      <br /><br />Speed {s.speed} · Atk {s.atk} · Def {s.def} · Lv {level}
+      <br /><br />
+      <StatIcons stats={s} className="tip-stats" />
+      <span className="stat-lv"> · Lv {level}</span>
     </>
   )
 }
@@ -216,7 +240,9 @@ function SlotRow({ slot, flashing, onReplace }) {
       <div className="slot-card-body">
         <div className="slot-card-name">{slot.name}</div>
         {slot.sub && <div className="slot-card-sub">{slot.sub}</div>}
-        {slot.line && <div className="slot-card-line">{slot.line}</div>}
+        {slot.stats
+          ? <StatIcons stats={slot.stats} />
+          : slot.line && <div className="slot-card-line">{slot.line}</div>}
       </div>
     </div>
   ) : (

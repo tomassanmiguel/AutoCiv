@@ -66,7 +66,8 @@ Core pillars:
 - `Sprites/Map Tiles/` — 14 terrain tiles (`Plains`, `Forest`, `Mountain`, `Coast`, `Ocean`,
   `Island`, `Space`, `Deep Space`, `Asteroid`, `Mars`, `Moon`, `Exohills`, `ExoPlains`,
   `Exosea`).
-- `Sprites/Icons/` — 5 resource icons (`Legitimacy`, `Gold`, `Food`, `Production`, `Progress`).
+- `Sprites/Icons/` — 8 icons: 5 resources (`Legitimacy`, `Gold`, `Food`, `Production`, `Progress`)
+  + 3 unit/building stats (`Speed`, `Attack`, `Defense`).
 
 **Served copies** are what the game actually loads, under `public/` with normalized
 lowercase-hyphen names:
@@ -378,9 +379,10 @@ exists; extend it as systems land.
 - **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
   **Buildings (7)**, **Policies (5)**, **Population (5)**. The open accordion **flex-grows to
   fill the remaining panel height**; **empty** slots show a centered type silhouette, while
-  **filled** slots render a compact **item card** — units show name + category + `Speed·Atk·Def`
-  (level-scaled, incl. the Clothes HP bonus); buildings/policies show name + type + effect; full
-  descriptions on hover. During an advancement **replace**, the active group's accordion force-opens
+  **filled** slots render a compact **item card** — units show name + category + **Speed/Atk/Def
+  stat icons** (`/sprites/icons/{speed,attack,defense}.png`, level-scaled, incl. the Clothes HP
+  bonus); buildings/policies show name + type + effect; full descriptions (icon stats for units) on
+  hover. During an advancement **replace**, the active group's accordion force-opens
   and its candidate slots **flash red** and are clickable (`resolveReplace`). `CivilizationData`
   roster slots hold `{ key, level }` (Warrior pre-fills Melee); `pops` holds counts by type.
   - **Slot data** lives in `game/data/slots.js`: `UNIT_CATEGORIES` (9), `BUILDING_CATEGORIES`
