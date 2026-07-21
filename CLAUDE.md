@@ -96,6 +96,18 @@ npm run lint     # eslint
 
 The dev server prints the localhost URL (default `http://localhost:5173`).
 
+## Version Control
+
+This project is a git repo on branch `main`. **Keep git up to date as we work: every logical
+change gets its OWN commit.** After finishing a change, stage and commit it with a clear,
+specific message before moving on — do not batch unrelated changes into one commit, and do not
+let the working tree drift far ahead of the last commit. End every commit message with the
+trailer `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+
+- Gitignored (not committed): `node_modules/`, `dist/`, the source audio `Music/` (~340 MB of
+  WAVs — the served `public/music/*.ogg` copies ARE committed), and `.claude/settings.local.json`.
+- No GitHub remote is configured yet (local history only).
+
 ---
 
 ## Architecture & Code
