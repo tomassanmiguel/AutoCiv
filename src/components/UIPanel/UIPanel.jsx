@@ -7,6 +7,7 @@ import {
   POLICY_INFO,
   POPULATION_INFO,
 } from '../../game/data/slots.js'
+import { POP_TYPES, popTooltipText } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
 import InfoTip from '../common/InfoTip.jsx'
 import './UIPanel.css'
@@ -48,6 +49,13 @@ function buildingSlots(civ) {
 function genericSlots(arr, info) {
   return arr.map((occupant) => ({ ...info, occupant }))
 }
+function populationSlots(civ) {
+  return civ.population.map((key) =>
+    key && POP_TYPES[key]
+      ? { pop: POP_TYPES[key], count: civ.pops[key] ?? 0 }
+      : { ...POPULATION_INFO },
+  )
+}
 
 /** Right-hand civilization panel: resource readouts + item dropdowns. */
 export default function UIPanel() {
@@ -61,7 +69,7 @@ export default function UIPanel() {
     { key: 'units', label: 'Units', slots: unitSlots(civ, era) },
     { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ) },
     { key: 'policies', label: 'Policies', slots: genericSlots(civ.policies, POLICY_INFO) },
-    { key: 'population', label: 'Population', slots: genericSlots(civ.population, POPULATION_INFO) },
+    { key: 'population', label: 'Population', slots: populationSlots(civ) },
   ]
 
   return (
@@ -112,14 +120,16 @@ function ResourceLine({ icon, label, value, output, tip }) {
 }
 
 function ResourceBar({ icon, label, res, tip }) {
-  const pct = res.threshold > 0 ? Math.min(100, (res.value / res.threshold) * 100) : 0
+  const span = res.threshold - res.floor
+  const pct = span > 0 ? Math.min(100, ((res.value - res.floor) / span) * 100) : 0
   return (
     <InfoTip title={label} text={tip}>
       <div className="res-bar-row">
         <img className="res-icon" src={icon} alt={label} />
+        <span className="res-level" title="Thresholds reached">{res.level}</span>
         <div className="res-bar-track">
           <div className="res-bar-fill" style={{ width: `${pct}%` }} />
-          <span className="res-bar-label">{res.value}/{res.threshold}</span>
+          <span className="res-bar-label">{Math.floor(res.value - res.floor)}/{Math.ceil(span)}</span>
         </div>
         <span className="res-delta">{fmtDelta(res.output)}/t</span>
       </div>
@@ -141,12 +151,40 @@ function Accordion({ label, slots, open, onToggle }) {
       </button>
       <div className="accordion-body">
         <div className="slot-list">
-          {slots.map((s, i) => (
-            <SlotRow key={i} silhouette={s.silhouette} label={s.label} description={s.description} occupant={s.occupant} />
-          ))}
+          {slots.map((s, i) =>
+            s.pop ? (
+              <PopCard key={i} pop={s.pop} count={s.count} />
+            ) : (
+              <SlotRow key={i} silhouette={s.silhouette} label={s.label} description={s.description} occupant={s.occupant} />
+            ),
+          )}
         </div>
       </div>
     </NineSlice>
+  )
+}
+
+/**
+ * A population pop card: name + output icons in the body, the type silhouette in
+ * the top-right, and the count of that pop type on the far right. Hovering shows
+ * a programmatic description of its per-tick output.
+ */
+function PopCard({ pop, count }) {
+  return (
+    <InfoTip className="pop-card" title={pop.name} text={popTooltipText(pop)}>
+      <img className="pop-silhouette" src={pop.silhouette} alt="" />
+      <div className="pop-main">
+        <div className="pop-name">{pop.name}</div>
+        <div className="pop-outputs">
+          {Object.entries(pop.outputs).map(([res, v]) => (
+            <span key={res} className="pop-output">
+              <img src={ICON[res]} alt={res} />+{v}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="pop-count">{count}</div>
+    </InfoTip>
   )
 }
 

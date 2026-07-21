@@ -138,24 +138,27 @@ AutoCiv/
 │   │   ├── LoadingScreen.jsx/.css  # click-to-start splash (unlocks audio)
 │   │   └── TitleScreen.jsx/.css
 │   ├── game/                  # framework-free game model + data (no React here)
-│   │   ├── GameManager.js     # ROOT: owns GameData; subscribe/version store for React
-│   │   ├── GameData.js        # { era, tableau, civilization } — full game status
+│   │   ├── GameManager.js     # ROOT: owns GameData + the tick loop / phase machine
+│   │   ├── GameData.js        # { era, phase, tick, speed, tableau, civilization }
 │   │   ├── TableauData.js     # 9x26 grid of Tiles; per-era visibility + bounds
-│   │   ├── CivilizationData.js# resources + item slot groups (UI panel data)
+│   │   ├── CivilizationData.js# resources (threshold), pops, item slot groups
 │   │   ├── Tile.js            # one tile; getTooltip()
 │   │   ├── data/
-│   │   │   ├── eras.js        # 28 eras + soundtrack (era -> track)
+│   │   │   ├── eras.js        # 28 eras + soundtrack + eraTitle()
 │   │   │   ├── map.js         # ROW/COL unlock eras + 9x26 terrain labels + COLUMN_SPECIALS
 │   │   │   ├── terrain.js     # terrain registry + seeded meta-type resolution
-│   │   │   └── slots.js       # Unit/Building slot categories (label + description)
+│   │   │   ├── slots.js       # Unit/Building slot categories (label + description)
+│   │   │   ├── resources.js   # threshold config + T(N) formula + rubber band
+│   │   │   └── pops.js        # pop types (Citizen) + output/tooltip helpers
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
 │   │   └── react/GameProvider.jsx # <GameProvider> + useGame() hook
 │   └── components/
-│       ├── common/NineSlice.jsx/.css # scalable 9-slice frame (CSS border-image)
+│       ├── common/{NineSlice,InfoTip}.jsx/.css # 9-slice frame; hover tooltip
 │       ├── GameScreen.jsx/.css    # composes the in-game view
 │       ├── Tableau/Tableau.jsx/.css   # pan/zoom camera + grid + enemy slots + tooltip
-│       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions
-│       ├── Menu/MenuOverlay.jsx/.css  # menu button + overlay + TEMP era widget
+│       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard
+│       ├── Menu/MenuOverlay.jsx/.css  # framed menu + TEMP era widget
+│       ├── Hud/{EraBanner,SpeedControl,TransitionOverlay}.jsx/.css # left HUD + banners
 │       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
 ├── Music/ · Sprites/         # SOURCE assets (originals; see Assets)
 └── .claude/launch.json       # preview server config (autociv-dev, port 5173)
@@ -268,6 +271,36 @@ exists; extend it as systems land.
   fit; it fires on every era change and is the **reusable hook for future era transitions**.
 - Hovering a tile shows a tooltip from `tile.getTooltip()` (currently just the terrain name).
 
+### Game loop (`GameManager`, `game/data/resources.js`, `game/data/pops.js`)
+- Each era runs: **development** (timer-driven ticks) → **battle** (skipped, banner only) →
+  **transition** (banner) → next era, until the last era (`won`). State on `GameData`:
+  `phase` (`development`/`battle`/`transition`), `tick` (0..65), `speed`.
+- **Development:** **65 ticks/era**, **paused by default**. A speed widget sets
+  `paused`/`standard`(1/s)/`fast`(2/s)/`super`(3/s)/`ultra`(5/s); `GameManager` runs a
+  `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
+  add it to each threshold resource's `value`, then cross any reached thresholds.
+- **Threshold resources** (progress/food/production) accumulate a **cumulative** `value` toward a
+  **cumulative** `threshold`; each crossing bumps `level` (# thresholds reached). Formula
+  `T(N)=T(N-1)+X·1.25^E·n·R` (`resources.js`: `T0`/`X`/`targetPerEra`; E = 0-based era; n resets
+  each era; R rubber-bands toward the per-era target). **Food** crossings add pops = **era number**;
+  production/progress do nothing yet. (Balance note: food currently overshoots its target/era
+  because pops feed back into food output — tune later.)
+- **Pops** (`pops.js`): only **Citizen** for now (auto-unlocked), producing **1 progress + 1 food
+  + 1 production** per pop per tick. All population is Citizens. Start = 1 (`STARTING_CITIZENS`).
+- **Phase machine:** dev ends at 65 ticks → `phase='battle'`; the UI's `TransitionOverlay` plays
+  the banner and calls back `endBattle()` → `phase='transition'` → banner → `completeTransition()`
+  → next era (paused). The temporary era slider calls `setEra` (instant debug jump, no banner).
+- **Interpretations to confirm** (flagged in `resources.js`): E is 0-based; value/threshold are
+  cumulative (never reset, only `n` resets/era); R's `expected = targetPerEra·(tick/65)`; "Copper
+  Age"→Bronze; starting pops = 1.
+
+### HUD (`components/Hud`)
+- **EraBanner** — parchment plaque (upper-left) showing `"<Era> Age"` (`eraTitle`).
+- **SpeedControl** — framed speed buttons (below the menu) with per-button tooltips.
+- **TransitionOverlay** — battle banner + era-transition banner (fade in → **slot-machine spin**
+  from the previous era to the new one → settle → fade out), driving the phase callbacks.
+- All three stack in the left-edge `.left-hud` (era banner, menu button, speed control).
+
 ### Civilization panel (`CivilizationData.js`, `components/UIPanel`)
 - **Framing:** the whole panel is wrapped in the light `Box` 9-slice frame and each dropdown in
   the dark `Box Dark` frame, via `<NineSlice>` (see below). The frames carry a parchment fill,
@@ -277,10 +310,9 @@ exists; extend it as systems land.
 - **Legitimacy** — the civ's "HP": a large centered scalar. **Starts at 50.** Stores
   `{ value, output }`.
 - **Gold** — icon + value (left) + per-tick delta (right). `{ value, output }`.
-- **Food / Production / Progress** — icon + **progress bar** (`value / threshold`) + per-tick
-  delta. `{ value, output, threshold }`. Threshold = amount to unlock the next upgrade.
-- All values/outputs currently **0** except legitimacy=50; thresholds are a **placeholder
-  (100)** so bars render — real thresholds arrive with those systems.
+- **Food / Production / Progress** — threshold resources (see Game loop): icon + **level number**
+  (# thresholds reached) + **bar** (fills from the current level's `floor` to the next
+  `threshold`) + per-tick delta. Shape `{ value, output, level, n, floor, threshold }`.
 - **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
   **Buildings (7)**, **Policies (5)**, **Population (5)**. The open accordion **flex-grows to
   fill the remaining panel height**; its slots are **large full-width boxes** that divide that
@@ -294,15 +326,18 @@ exists; extend it as systems land.
     Melee/Ranged/Cavalry from Stone; Utility + Naval from **Bronze** (the brief's "Copper Age");
     Siege from Iron; Aerial from Gilded; Astral Utility from Atomic; Astral from Lunar. Building
     categories: Progress, Production, Gold, Food, Legitimacy, Defense, Utility (not era-gated).
-  - **Hover** any slot for a tooltip (`<InfoTip>`): category name + description. Policies and
-    Population use one shared silhouette + description across their slots.
+  - **Hover** any slot for a tooltip (`<InfoTip>`): category name + description. Policies use one
+    shared silhouette + description.
+  - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + output icons
+    in the body, the type silhouette top-right, and the **count** on the far right (hover →
+    programmatic per-tick output text). Only the Citizen is unlocked for now; other slots empty.
   - `CivilizationData.units` (9) / `buildings` (7) are index-aligned to the category lists;
     `null` = empty slot.
 
 ### Menu (`components/Menu/MenuOverlay`)
-- Floating hamburger button (upper-left) opens an overlay above the tableau. Currently holds a
-  **temporary Era control** (slider + Prev/Next, tagged "temporary") that drives the viewer via
-  `GameManager.setEra`, plus **Exit to Title**.
+- Framed hamburger button (in the left HUD) opens a 9-slice-boxed overlay (light panel, dark
+  framed buttons). Holds a **temporary Era control** (slider + Prev/Next) that calls
+  `GameManager.setEra` as an **instant debug jump** (no banner), plus **Exit to Title**.
 
 ---
 
@@ -310,9 +345,11 @@ exists; extend it as systems land.
 
 - [x] Project scaffold + placeholder title screen.
 - [x] UI viewer: tableau grid + camera, enemy slots, civ panel, menu/era widget, era music.
-- [ ] Replace the temporary era widget with real development→combat era progression.
-- [ ] Populate item slots (units/buildings/policies/population) as those systems land.
-- [ ] Enemy content in the enemy slots + combat resolution.
+- [x] Development phase: tick engine, resources/thresholds, Citizen pops, speed control, era
+  banners + slot-machine transition. Battle phase is stubbed (banner only).
+- [ ] Real battle phase (enemies in the Battlefield slots + combat resolution).
+- [ ] More pop types / specialists; buildings, units, policies actually populating slots.
+- [ ] Spend gold; make production/progress do something; legitimacy loss/defeat.
 
 ---
 
@@ -367,3 +404,10 @@ exists; extend it as systems land.
   23–26 (Early/Late Galactic, Utopian) that scatter planet/star/singularity tiles per column
   (`COLUMN_SPECIALS`). Added planet/star/singularity terrains + the `Asteroid` label. Enemy
   slots now render the **Battlefield** tile instead of red squares.
+- **2026-07-21** — Battlefield-slot tooltip; enemy rows grow 3→4 from the Revolution era.
+- **2026-07-21** — Implemented the **development-phase game loop**: `GameManager` tick engine
+  (65 ticks/era, speed-controlled), cumulative threshold resources (`resources.js` formula),
+  Citizen pops (`pops.js`) producing progress/food/production, food thresholds adding pops.
+  Added the left HUD (era banner, speed widget, framed menu), the battle/era **TransitionOverlay**
+  (slot-machine era spin), resource level numbers + bar-to-next-threshold, and the Citizen
+  `PopCard`. Battle phase is a stubbed banner. Engine verified stable over all 28 eras via sim.
