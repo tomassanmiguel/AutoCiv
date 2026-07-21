@@ -16,7 +16,9 @@
   top: 0;
   left: 0;
   transform-origin: 0 0;
-  will-change: transform;
+  /* No `will-change: transform` — it promotes this to a cached layer rasterized
+     at the small content size, which the GPU then upscales when zoomed in,
+     blurring the tiles. Without it the browser re-rasterizes sharp per zoom. */
 }
 
 .tableau-tile {
