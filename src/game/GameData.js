@@ -18,6 +18,12 @@ export class GameData {
     this.speed = 'paused'
     this.won = false
 
+    // Advancement / build choices owed but not yet resolved (a progress/production
+    // threshold was crossed). While a `selection` is open the game holds paused.
+    this.pendingProgress = 0
+    this.pendingProduction = 0
+    this.selection = null // active choice overlay state machine (see GameManager)
+
     this.tableau = new TableauData(seed)
     this.civilization = new CivilizationData()
   }

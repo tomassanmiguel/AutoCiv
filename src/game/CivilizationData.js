@@ -20,8 +20,11 @@ function makeThresholdResource(type) {
  *  - legitimacy / gold: { value, output }
  *  - food / production / progress: threshold resources (see makeThresholdResource)
  *
- * Population is tracked as counts per pop type in `pops`; the population slot
- * array marks which pop types are unlocked (slot 0 = the auto-unlocked Citizen).
+ * Roster slots (units / buildings / policies) hold `{ key, level }` (level starts
+ * at 1; upgrades come later) or null. A unit/building key indexes UNIT_DEFS /
+ * BUILDING_DEFS; a multi-type item is stored in each of its category slots.
+ * `population` marks which pop types are unlocked (slot 0 = the Citizen); actual
+ * counts live in `pops`.
  */
 export class CivilizationData {
   constructor() {
@@ -32,14 +35,29 @@ export class CivilizationData {
     this.production = makeThresholdResource('production')
     this.progress = makeThresholdResource('progress')
 
-    // Population counts by type (all Citizens for now).
+    // Population counts by type (all Citizens to start).
     this.pops = { citizen: STARTING_CITIZENS }
 
+    // Roster: index-aligned to UNIT_CATEGORIES (9) / BUILDING_CATEGORIES (7) /
+    // 5 policy slots. Warrior is unlocked from the start (Melee = index 0).
     this.units = new Array(9).fill(null)
+    this.units[0] = { key: 'warrior', level: 1 }
     this.buildings = new Array(7).fill(null)
     this.policies = new Array(5).fill(null)
-    // Population slot 0 holds the auto-unlocked Citizen; the rest are empty.
+    // Population slot 0 holds the auto-unlocked Citizen; the rest are specialists.
     this.population = new Array(5).fill(null)
     this.population[0] = POP_TYPES.citizen.key
+
+    // Civilization-wide passives applied by advancements.
+    this.modifiers = { unitHpBonus: 0 }
+
+    // Advancement bookkeeping.
+    this.chosenAdvancements = new Set() // ids chosen (removed from the pool)
+    this.askBeforeReplace = true        // "are you sure" before overwriting a full slot
+
+    // Population-growth split state (see GameManager.addPops): every EVEN pop
+    // gained becomes a specialist (cycled bottom-to-top), every ODD a citizen.
+    this.growthParity = 0
+    this.specialistCursor = 0
   }
 }
