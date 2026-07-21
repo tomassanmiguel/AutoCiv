@@ -1,4 +1,4 @@
-import { GRID, ROWS, COLS } from './map.js'
+import { GRID, ROWS, COLS, COLUMN_SPECIALS } from './map.js'
 
 // ---------------------------------------------------------------------------
 // Concrete terrain registry. `key` is used internally; `name` shows in the
@@ -19,6 +19,9 @@ export const TERRAIN = {
   exohills:   { name: 'Exo Hills',  sprite: '/sprites/tiles/exohills.png',   color: '#6b4a7d' },
   exoplains:  { name: 'Exo Plains', sprite: '/sprites/tiles/exoplains.png',  color: '#7d5a8a' },
   exosea:     { name: 'Exo Sea',    sprite: '/sprites/tiles/exosea.png',     color: '#3a4a8a' },
+  planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a' },
+  star:       { name: 'Star',       sprite: '/sprites/tiles/star.png',       color: '#d8b24b' },
+  singularity:{ name: 'Singularity',sprite: '/sprites/tiles/singularity.png',color: '#1a0a2a' },
 }
 
 // Labels that count as "earth" or "moon/mars" for the Space asteroid adjacency
@@ -96,6 +99,7 @@ export function resolveTerrainGrid(seed = 1) {
     Mars: 'mars',
     Exosea: 'exosea',
     Moon: 'moon',
+    Asteroid: 'asteroid',
   }
 
   // 1) Direct concretes + base fills for region metas.
@@ -106,6 +110,7 @@ export function resolveTerrainGrid(seed = 1) {
       else if (label === 'Ocean') out.set(key(r, c), 'ocean')
       else if (label === 'Deep Space') out.set(key(r, c), 'deep_space')
       else if (label === 'Space') out.set(key(r, c), 'space')
+      else if (label === 'Galactic') out.set(key(r, c), 'deep_space')
       // Old World / New World / Exoplanet handled by pool below.
     }
   }
@@ -140,6 +145,23 @@ export function resolveTerrainGrid(seed = 1) {
   // 7) Space -> two random asteroid tiles, not adjacent to earth/moon/mars.
   const spaceCells = cellsWithLabel('Space').filter(([r, c]) => !adjacentToNonSpace(r, c))
   scatter(spaceCells, 2, 'asteroid', out, rng)
+
+  // 8) Galactic columns -> deep space with per-column special tiles scattered in
+  //    (planets / star / singularity), independently per far-right column.
+  for (const [colStr, specials] of Object.entries(COLUMN_SPECIALS)) {
+    const col = Number(colStr)
+    const cells = []
+    for (let r = 1; r <= ROWS; r++) {
+      if (GRID[r][col - 1] === 'Galactic') cells.push([r, col])
+    }
+    const pool = shuffle(cells, rng)
+    let i = 0
+    for (const [terrainKey, count] of Object.entries(specials)) {
+      for (let n = 0; n < count && i < pool.length; n++, i++) {
+        out.set(key(pool[i][0], pool[i][1]), terrainKey)
+      }
+    }
+  }
 
   return out
 }

@@ -140,12 +140,12 @@ AutoCiv/
 │   ├── game/                  # framework-free game model + data (no React here)
 │   │   ├── GameManager.js     # ROOT: owns GameData; subscribe/version store for React
 │   │   ├── GameData.js        # { era, tableau, civilization } — full game status
-│   │   ├── TableauData.js     # 8x22 grid of Tiles; per-era visibility + bounds
+│   │   ├── TableauData.js     # 9x26 grid of Tiles; per-era visibility + bounds
 │   │   ├── CivilizationData.js# resources + item slot groups (UI panel data)
 │   │   ├── Tile.js            # one tile; getTooltip()
 │   │   ├── data/
 │   │   │   ├── eras.js        # 28 eras + soundtrack (era -> track)
-│   │   │   ├── map.js         # ROW/COL unlock eras + 8x22 terrain labels (from sheet)
+│   │   │   ├── map.js         # ROW/COL unlock eras + 9x26 terrain labels + COLUMN_SPECIALS
 │   │   │   ├── terrain.js     # terrain registry + seeded meta-type resolution
 │   │   │   └── slots.js       # Unit/Building slot categories (label + description)
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
@@ -229,16 +229,20 @@ exists; extend it as systems land.
   `AudioManager` — on era change and on title↔game screen changes.
 
 ### Tableau grid (`game/data/map.js`, `TableauData.js`)
-- Grid is **8 rows × 22 columns**. Rows numbered **1 = bottom … 8 = top** (matches the design
-  sheet); columns **1 = left … 22 = right**.
+- Grid is **9 rows × 26 columns**. Rows numbered **1 = bottom … 9 = top**; columns
+  **1 = left … 26 = right**.
 - Each **row** and each **column** has an unlock era. A tile `(row, col)` is **visible when
   `currentEraIndex >= max(rowUnlockEra, colUnlockEra)`**. The unlocked set is always a
   **contiguous rectangle** growing outward from the Stone core.
 - **Stone (era 0) start:** rows 2–4 × cols 9–12 = 12 tiles. Columns unlock outward from the
-  center; rows grow up into space (Atomic/Lunar/Solar) and down to Iron. **Full 8×22 grid is
-  visible from Xenotic (era 21) onward.**
-- Above the visible columns sit **3 rows of enemy slots** (placeholder red squares; where
-  enemies will appear).
+  center; rows grow up into space (Atomic/Lunar/Solar/Invasion) and down to Iron. **Full 9×26
+  grid is visible from Utopian (era 25) onward.**
+- **Expansions:** row 9 (Invasion) is a new top row of Space with one Asteroid west of the
+  deep-space window; Deep Space/Exoplanet extend up into it. Cols 23–26 are far-right "Galactic"
+  deep space (23–24 Early Galactic, 25 Late Galactic, 26 Utopian); cols 24–26 scatter special
+  tiles per column via `COLUMN_SPECIALS` (col 24: 2 planets + 1 star; cols 25–26: + 1 singularity).
+- Above the visible columns sit **3 rows of enemy slots**, rendered with the **Battlefield tile**
+  (where enemies will appear).
 
 ### Terrain (`game/data/terrain.js`)
 - Grid cells carry a **design label**; some are concrete, some are **meta-types** resolved to
@@ -249,7 +253,8 @@ exists; extend it as systems land.
   - **Deep Space** → 2 asteroid tiles (rest deep space).
   - **Space** → 2 asteroid tiles (rest space), not adjacent to earth/moon/mars.
   - **Exoplanet** → 50/50 exoplains/exohills.
-  - Concrete labels: Coast, Mountains(→mountain), Mars, Exosea, Moon.
+  - **Galactic** → deep space with per-column specials (planet/star/singularity) from `COLUMN_SPECIALS`.
+  - Concrete labels: Coast, Mountains(→mountain), Mars, Exosea, Moon, Asteroid.
 - **Per-run randomization:** the resolution is seeded, so it is stable *within* a run.
   **`App` generates a fresh random seed in the New Game handler** (not during render) and passes
   it via `GameScreen` → `GameManager`, so the randomized regions differ every run.
@@ -357,3 +362,8 @@ exists; extend it as systems land.
 - **2026-07-21** — Added a pixel-art **LoadingScreen** click-to-start splash as the entry point.
   It captures the first gesture (so audio can autoplay), then fades into the title screen where
   the music begins. Added the `--font-pixel` (Press Start 2P) web font.
+- **2026-07-21** — Expanded the map from 8×22 to **9×26**: new top row 9 (Invasion) with an
+  Asteroid + Deep Space/Exoplanet extended up, and far-right **Galactic** deep-space columns
+  23–26 (Early/Late Galactic, Utopian) that scatter planet/star/singularity tiles per column
+  (`COLUMN_SPECIALS`). Added planet/star/singularity terrains + the `Asteroid` label. Enemy
+  slots now render the **Battlefield** tile instead of red squares.
