@@ -1,33 +1,47 @@
-// Placeholder threshold so the Food/Production/Progress bars have a denominator
-// to render against. Real per-upgrade thresholds arrive with those systems.
-const PLACEHOLDER_THRESHOLD = 100
+import { RESOURCE_CONFIG } from './data/resources.js'
+import { POP_TYPES } from './data/pops.js'
+
+// Starting population (all Citizens). Tunable.
+const STARTING_CITIZENS = 1
+
+// A resource that accumulates toward growing thresholds:
+//  value  — cumulative amount (never reset)
+//  output — per-tick delta (sum of pop outputs)
+//  level  — number of thresholds reached
+//  n      — thresholds reached this era (resets each era; used in the formula)
+//  floor  — cumulative value at the start of the current level (for the bar)
+//  threshold — next cumulative value to reach
+function makeThresholdResource(type) {
+  return { value: 0, output: 0, level: 0, n: 0, floor: 0, threshold: RESOURCE_CONFIG[type].T0 }
+}
 
 /**
  * All data backing the right-hand UI panel. Owned by GameData.
  *
  * Resource shapes:
- *  - legitimacy / gold: { value, output }   (output = per-tick delta)
- *  - food / production / progress: { value, output, threshold }
- *    (threshold = amount needed to unlock the next upgrade; shown as a bar)
+ *  - legitimacy / gold: { value, output }
+ *  - food / production / progress: threshold resources (see makeThresholdResource)
  *
- * The four slot groups are the panel's dropdowns; each entry is null (empty
- * slot) for now and will later hold an unlocked item.
+ * Population is tracked as counts per pop type in `pops`; the population slot
+ * array marks which pop types are unlocked (slot 0 = the auto-unlocked Citizen).
  */
 export class CivilizationData {
   constructor() {
     this.legitimacy = { value: 50, output: 0 } // the civ's "HP"
     this.gold = { value: 0, output: 0 }
 
-    this.food = { value: 0, output: 0, threshold: PLACEHOLDER_THRESHOLD }
-    this.production = { value: 0, output: 0, threshold: PLACEHOLDER_THRESHOLD }
-    this.progress = { value: 0, output: 0, threshold: PLACEHOLDER_THRESHOLD }
+    this.food = makeThresholdResource('food')
+    this.production = makeThresholdResource('production')
+    this.progress = makeThresholdResource('progress')
 
-    // Units/Buildings slots are indexed to match UNIT_CATEGORIES /
-    // BUILDING_CATEGORIES in data/slots.js (9 unit categories, 7 building
-    // categories). null = empty slot. (Units are era-gated in the UI.)
+    // Population counts by type (all Citizens for now).
+    this.pops = { citizen: STARTING_CITIZENS }
+
     this.units = new Array(9).fill(null)
     this.buildings = new Array(7).fill(null)
     this.policies = new Array(5).fill(null)
+    // Population slot 0 holds the auto-unlocked Citizen; the rest are empty.
     this.population = new Array(5).fill(null)
+    this.population[0] = POP_TYPES.citizen.key
   }
 }
