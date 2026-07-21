@@ -5,9 +5,9 @@ import './SpeedControl.css'
 const SPEEDS = [
   { key: 'paused', glyph: '❚❚', name: 'Pause', desc: 'Halt the simulation.' },
   { key: 'standard', glyph: '▶', name: 'Standard', desc: '1 tick per second.' },
-  { key: 'fast', glyph: '▶▶', name: 'Fast', desc: '2 ticks per second.' },
-  { key: 'super', glyph: '▶▶▶', name: 'Super', desc: '3 ticks per second.' },
-  { key: 'ultra', glyph: '⚡', name: 'Ultra', desc: '5 ticks per second.' },
+  { key: 'fast', glyph: '▶▶', name: 'Fast', desc: '3 ticks per second.' },
+  { key: 'super', glyph: '▶▶▶', name: 'Super', desc: '5 ticks per second.' },
+  { key: 'ultra', glyph: '⚡', name: 'Ultra', desc: '10 ticks per second.' },
 ]
 
 /** Speed widget (below the menu): pause + four tick speeds. */

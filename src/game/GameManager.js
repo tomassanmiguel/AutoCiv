@@ -6,7 +6,7 @@ import { POP_TYPES } from './data/pops.js'
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
 // Ticks per second for each speed setting (0 = paused).
-export const SPEED_TPS = { paused: 0, standard: 1, fast: 2, super: 3, ultra: 5 }
+export const SPEED_TPS = { paused: 0, standard: 1, fast: 3, super: 5, ultra: 10 }
 const THRESHOLD_TYPES = ['progress', 'food', 'production']
 
 /**
