@@ -127,7 +127,7 @@ AutoCiv/
 ├── index.html                 # Vite entry; loads /src/main.jsx
 ├── public/
 │   ├── favicon.svg
-│   ├── sprites/{tiles,icons,ui}/ # served images (ui/ = 9-slice frames + type silhouettes)
+│   ├── sprites/{tiles,icons,ui}/ # served images (ui/ = frames, type silhouettes, title card)
 │   └── music/*.ogg             # served soundtrack (transcoded)
 ├── src/
 │   ├── main.jsx               # React root
@@ -333,3 +333,8 @@ exists; extend it as systems land.
   instead of inline text, with the description on hover. Added a 9th unit category **Aerial**
   and made unit categories **era-gated** (`unlock` era in `slots.js`; "Copper Age" → Bronze,
   "Support" → Utility). Reordered building categories and refreshed all slot descriptions.
+- **2026-07-21** — Fixed tiles blurring on zoom (removed `will-change: transform` from the
+  tableau content). Rebuilt the title screen around the **Title Card** art (which already
+  contains the logo): dropped the old text logo/kicker/tagline/footer/starfield and placed
+  parchment-framed (`Box` 9-slice) menu buttons in the card's open sky. The card fits the
+  viewport (letterboxed) and uses `container-type: size` so the menu scales via `cq` units.
