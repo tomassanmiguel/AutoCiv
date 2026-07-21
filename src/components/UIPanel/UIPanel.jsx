@@ -7,7 +7,7 @@ import {
   POLICY_INFO,
   POPULATION_INFO,
 } from '../../game/data/slots.js'
-import { POP_TYPES, popTooltipText } from '../../game/data/pops.js'
+import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
 import InfoTip from '../common/InfoTip.jsx'
 import './UIPanel.css'
@@ -170,9 +170,16 @@ function Accordion({ label, slots, open, onToggle }) {
  * a programmatic description of its per-tick output.
  */
 function PopCard({ pop, count }) {
+  const tip = (
+    <>
+      {popTooltipText(pop)}
+      <br />
+      <br />
+      <strong>Total ({count}):</strong> {popTotalSummary(pop, count).join(', ')} per tick.
+    </>
+  )
   return (
-    <InfoTip className="pop-card" title={pop.name} text={popTooltipText(pop)}>
-      <img className="pop-silhouette" src={pop.silhouette} alt="" />
+    <InfoTip className="pop-card" title={pop.name} text={tip}>
       <div className="pop-main">
         <div className="pop-name">{pop.name}</div>
         <div className="pop-outputs">

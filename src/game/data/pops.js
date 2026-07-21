@@ -20,14 +20,21 @@ const RES_NAME = {
   legitimacy: 'Legitimacy',
 }
 
-/** ["1 Progress", "1 Food", ...] derived from a pop's outputs (reusable). */
+/** ["1 Progress", "1 Food", ...] per-pop output (reusable). */
 export function popOutputSummary(pop) {
   return Object.entries(pop.outputs)
     .filter(([, v]) => v)
     .map(([k, v]) => `${v} ${RES_NAME[k] ?? k}`)
 }
 
-/** Hover text describing what a pop produces each tick (reusable). */
+/** ["6 Progress", ...] TOTAL output for `count` of this pop (reusable). */
+export function popTotalSummary(pop, count) {
+  return Object.entries(pop.outputs)
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${v * count} ${RES_NAME[k] ?? k}`)
+}
+
+/** Hover text describing what one pop produces each tick (reusable). */
 export function popTooltipText(pop) {
   return `Produces ${popOutputSummary(pop).join(', ')} every tick.`
 }

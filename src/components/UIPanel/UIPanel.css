@@ -212,15 +212,6 @@
 }
 .pop-card:hover { border-color: var(--brass); }
 
-.pop-silhouette {
-  position: absolute;
-  top: 5px;
-  right: 7px;
-  height: 34%;
-  max-height: 28px;
-  width: auto;
-  opacity: 0.5;
-}
 .pop-main {
   flex: 1 1 auto;
   min-width: 0;
