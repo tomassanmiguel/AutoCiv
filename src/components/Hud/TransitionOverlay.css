@@ -29,7 +29,7 @@
 }
 
 .transition-text,
-.slot-text {
+.type-text {
   display: inline-block;
   font-family: var(--font-display);
   font-weight: 700;
@@ -38,16 +38,20 @@
   color: #3a2c10;
   text-shadow: 0 2px 0 rgba(255, 248, 230, 0.45);
   white-space: nowrap;
+  min-height: 1.2em; /* keep height stable while empty mid-typewriter */
 }
 
-.slot-char {
+/* Blinking typewriter caret. */
+.type-caret {
   display: inline-block;
-  min-width: 0.15em; /* keep spaces from collapsing */
+  width: 0.09em;
+  height: 0.95em;
+  margin-left: 0.06em;
+  background: #3a2c10;
+  vertical-align: -0.1em;
+  animation: caret-blink 0.9s steps(2) infinite;
 }
-.slot-char.spinning {
-  animation: slot-bob 0.11s steps(2) infinite;
-}
-@keyframes slot-bob {
-  0% { transform: translateY(-9%); }
-  100% { transform: translateY(9%); }
+@keyframes caret-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }

@@ -7,7 +7,7 @@ import { useGame } from '../../game/react/GameProvider.jsx'
 import { eraTitle } from '../../game/data/eras.js'
 import './TransitionOverlay.css'
 
-const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const STEP_MS = 70 // per-character delete/type speed
 
 /**
  * Full-screen banner shown during the battle and era-transition phases. It
@@ -15,8 +15,9 @@ const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
  * (endBattle / completeTransition) when the animation finishes.
  *
  *  - Battle phase: fade in "Battle", hold, fade out.
- *  - Transition phase: fade in showing the previous era, slot-machine spin the
- *    characters, settle on the new era, fade out.
+ *  - Transition phase: fade in showing the previous era, then a typewriter effect
+ *    that deletes the old era one character at a time and types the new one, then
+ *    holds and fades out.
  */
 export default function TransitionOverlay() {
   const game = useGame()
@@ -32,19 +33,19 @@ export default function TransitionOverlay() {
     const set = (patch) => setState((s) => ({ ...s, ...patch }))
 
     if (phase === 'battle') {
-      setState({ mode: 'battle', visible: false, text: 'Battle' })
+      setState({ mode: 'battle', visible: false })
       after(20, () => set({ visible: true }))
       after(1300, () => set({ visible: false }))
       after(1750, () => game.endBattle())
     } else if (phase === 'transition') {
       const from = eraTitle(era)
       const to = eraTitle(era + 1)
-      setState({ mode: 'era', visible: false, text: from, spinning: false })
-      after(20, () => set({ visible: true }))                    // fade in (previous era)
-      after(950, () => set({ text: to, spinning: true }))        // spin toward the new era
-      after(2450, () => set({ spinning: false }))                // settle
-      after(3150, () => set({ visible: false }))                 // fade out
-      after(3600, () => game.completeTransition())
+      const typeMs = (from.length + to.length + 1) * STEP_MS
+      setState({ mode: 'era', visible: false, typing: false, from, to })
+      after(20, () => set({ visible: true }))            // fade in (previous era)
+      after(650, () => set({ typing: true }))            // delete old + type new
+      after(650 + typeMs + 750, () => set({ visible: false }))
+      after(650 + typeMs + 1150, () => game.completeTransition())
     } else {
       setState(null)
     }
@@ -59,66 +60,46 @@ export default function TransitionOverlay() {
     <div className={`transition-overlay${state.visible ? ' visible' : ''}`}>
       <div className={`transition-banner frame-box${big ? ' big' : ''}`}>
         {state.mode === 'battle' ? (
-          <span className="transition-text">{state.text}</span>
+          <span className="transition-text">Battle</span>
         ) : (
-          <SlotText text={state.text} spinning={state.spinning} />
+          <Typewriter from={state.from} to={state.to} active={state.typing} />
         )}
       </div>
     </div>
   )
 }
 
-/** Slot-machine text: while `spinning`, scrambles characters and settles them
- *  left-to-right onto `text`. */
-function SlotText({ text, spinning }) {
-  const [display, setDisplay] = useState(text)
-  const settled = useRef(0)
-  const interval = useRef(null)
+/** Deletes `from` one char at a time, then types `to` one char at a time (when
+ *  `active`). Shows `from` until activated. */
+function Typewriter({ from, to, active }) {
+  const [text, setText] = useState(from)
   const timers = useRef([])
 
   useEffect(() => {
-    if (interval.current) clearInterval(interval.current)
     timers.current.forEach(clearTimeout)
     timers.current = []
-
-    if (!spinning) {
-      setDisplay(text)
+    if (!active) {
+      setText(from)
       return
     }
-
-    const chars = text.split('')
-    settled.current = 0
-    interval.current = setInterval(() => {
-      setDisplay(
-        chars
-          .map((c, i) => {
-            if (c === ' ') return ' '
-            return i < settled.current ? c : GLYPHS[Math.floor(Math.random() * GLYPHS.length)]
-          })
-          .join(''),
-      )
-    }, 55)
-    chars.forEach((_, i) => {
-      timers.current.push(setTimeout(() => { settled.current = i + 1 }, 250 + i * 70))
-    })
-    timers.current.push(setTimeout(() => {
-      if (interval.current) clearInterval(interval.current)
-      setDisplay(text)
-    }, 250 + chars.length * 70 + 150))
-
-    return () => {
-      if (interval.current) clearInterval(interval.current)
-      timers.current.forEach(clearTimeout)
+    let t = 0
+    for (let i = from.length - 1; i >= 0; i--) {
+      const n = i
+      timers.current.push(setTimeout(() => setText(from.slice(0, n)), t))
+      t += STEP_MS
     }
-  }, [spinning, text])
+    for (let i = 1; i <= to.length; i++) {
+      const n = i
+      timers.current.push(setTimeout(() => setText(to.slice(0, n)), t))
+      t += STEP_MS
+    }
+    return () => { timers.current.forEach(clearTimeout); timers.current = [] }
+  }, [active, from, to])
 
   return (
-    <span className="slot-text">
-      {display.split('').map((c, i) => (
-        <span key={i} className={`slot-char${spinning ? ' spinning' : ''}`}>
-          {c === ' ' ? ' ' : c}
-        </span>
-      ))}
+    <span className="type-text">
+      {text}
+      <span className="type-caret" />
     </span>
   )
 }
