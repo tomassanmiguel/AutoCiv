@@ -7,6 +7,9 @@ import {
   POLICY_INFO,
   POPULATION_INFO,
 } from '../../game/data/slots.js'
+import { UNIT_DEFS, unitStatLine, unitStats } from '../../game/data/units.js'
+import { BUILDING_DEFS } from '../../game/data/buildings.js'
+import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
 import InfoTip from '../common/InfoTip.jsx'
@@ -37,23 +40,52 @@ const RES_TIP = {
 
 const fmtDelta = (n) => (n > 0 ? `+${n}` : `${n}`)
 
-// --- Build the per-group list of slot descriptors ({ silhouette, label, description, occupant }) ---
-function unitSlots(civ, era) {
-  return UNIT_CATEGORIES
-    .map((c, i) => ({ ...c, occupant: civ.units[i] }))
-    .filter((c) => ERA_INDEX[c.unlock] <= era) // only categories unlocked this era
+// --- Build the per-group list of slot descriptors ---
+// Each descriptor: { index, cat?, occupant, kind, silhouette, name, sub, line, tip }
+function unitSlots(civ, era, hpBonus) {
+  return UNIT_CATEGORIES.map((cat, index) => ({ cat, index, occ: civ.units[index] }))
+    .filter((s) => ERA_INDEX[s.cat.unlock] <= era) // only categories unlocked this era
+    .map(({ cat, index, occ }) => {
+      if (!occ) return { index, kind: 'empty', silhouette: cat.silhouette, name: cat.label, tip: cat.description }
+      const def = UNIT_DEFS[occ.key]
+      return {
+        index, kind: 'item', silhouette: cat.silhouette,
+        name: def.name, sub: cat.label, line: unitStatLine(def, occ.level, hpBonus),
+        tip: unitTip(def, occ.level, hpBonus),
+      }
+    })
 }
 function buildingSlots(civ) {
-  return BUILDING_CATEGORIES.map((c, i) => ({ ...c, occupant: civ.buildings[i] }))
+  return BUILDING_CATEGORIES.map((cat, index) => {
+    const occ = civ.buildings[index]
+    if (!occ) return { index, kind: 'empty', silhouette: cat.silhouette, name: cat.label, tip: cat.description }
+    const def = BUILDING_DEFS[occ.key]
+    return { index, kind: 'item', silhouette: cat.silhouette, name: def.name, sub: cat.label, line: def.effect, tip: def.effect }
+  })
 }
-function genericSlots(arr, info) {
-  return arr.map((occupant) => ({ ...info, occupant }))
+function policySlots(civ) {
+  return civ.policies.map((occ, index) => {
+    if (!occ) return { index, kind: 'empty', silhouette: POLICY_INFO.silhouette, name: POLICY_INFO.label, tip: POLICY_INFO.description }
+    const def = POLICY_DEFS[occ.key]
+    return { index, kind: 'item', silhouette: POLICY_INFO.silhouette, name: def.name, sub: def.type, line: def.effect, tip: def.effect }
+  })
 }
 function populationSlots(civ) {
-  return civ.population.map((key) =>
+  return civ.population.map((key, index) =>
     key && POP_TYPES[key]
-      ? { pop: POP_TYPES[key], count: civ.pops[key] ?? 0 }
-      : { ...POPULATION_INFO },
+      ? { index, kind: 'pop', pop: POP_TYPES[key], count: civ.pops[key] ?? 0 }
+      : { index, kind: 'empty', silhouette: POPULATION_INFO.silhouette, name: POPULATION_INFO.label, tip: POPULATION_INFO.description },
+  )
+}
+
+function unitTip(def, level, hpBonus) {
+  const s = unitStats(def, level, hpBonus)
+  return (
+    <>
+      {def.description}
+      {def.ability ? <><br /><br /><strong>Ability:</strong> {def.ability}</> : null}
+      <br /><br />Speed {s.speed} · Atk {s.atk} · Def {s.def} · Lv {level}
+    </>
   )
 }
 
@@ -62,20 +94,24 @@ export default function UIPanel() {
   const game = useGame()
   const civ = game.data.civilization
   const era = game.era
-  // Accordion: at most one group open at a time.
+  const sel = game.data.selection
+  const replacing = sel && sel.type === 'progress' && sel.stage === 'replace' ? sel.pending : null
+
+  // Accordion: at most one group open at a time. Replace mode forces the relevant
+  // group open so its candidate slots are visible and pickable.
   const [openGroup, setOpenGroup] = useState('units')
+  const effectiveOpen = replacing ? replacing.group : openGroup
 
   const groups = [
-    { key: 'units', label: 'Units', slots: unitSlots(civ, era) },
+    { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
     { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ) },
-    { key: 'policies', label: 'Policies', slots: genericSlots(civ.policies, POLICY_INFO) },
+    { key: 'policies', label: 'Policies', slots: policySlots(civ) },
     { key: 'population', label: 'Population', slots: populationSlots(civ) },
   ]
 
   return (
     <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
       <div className="resources">
-        {/* Legitimacy — the civ's HP: a big centered scalar. */}
         <InfoTip title="Legitimacy" text={RES_TIP.legitimacy}>
           <div className="legitimacy">
             <img className="legit-icon" src={ICON.legitimacy} alt="Legitimacy" />
@@ -83,10 +119,7 @@ export default function UIPanel() {
           </div>
         </InfoTip>
 
-        {/* Gold — scalar on the left, per-tick delta on the right. */}
-        <ResourceLine icon={ICON.gold} label="Gold" value={civ.gold.value} output={civ.gold.output} tip={RES_TIP.gold} />
-
-        {/* Food / Production / Progress — progress bar toward threshold + delta. */}
+        <ResourceLine icon={ICON.gold} label="Gold" value={Math.floor(civ.gold.value)} output={civ.gold.output} tip={RES_TIP.gold} />
         <ResourceBar icon={ICON.food} label="Food" res={civ.food} tip={RES_TIP.food} />
         <ResourceBar icon={ICON.production} label="Production" res={civ.production} tip={RES_TIP.production} />
         <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} tip={RES_TIP.progress} />
@@ -98,8 +131,10 @@ export default function UIPanel() {
             key={g.key}
             label={g.label}
             slots={g.slots}
-            open={openGroup === g.key}
+            open={effectiveOpen === g.key}
             onToggle={() => setOpenGroup((cur) => (cur === g.key ? null : g.key))}
+            candidates={replacing && replacing.group === g.key ? replacing.candidates : null}
+            onReplace={(i) => game.resolveReplace(i)}
           />
         ))}
       </div>
@@ -136,7 +171,8 @@ function ResourceBar({ icon, label, res, tip }) {
   )
 }
 
-function Accordion({ label, slots, open, onToggle }) {
+function Accordion({ label, slots, open, onToggle, candidates, onReplace }) {
+  const candidateSet = candidates ? new Set(candidates) : null
   return (
     <NineSlice
       className={`accordion ${open ? 'open' : ''}`}
@@ -150,13 +186,12 @@ function Accordion({ label, slots, open, onToggle }) {
       </button>
       <div className="accordion-body">
         <div className="slot-list">
-          {slots.map((s, i) =>
-            s.pop ? (
-              <PopCard key={i} pop={s.pop} count={s.count} />
-            ) : (
-              <SlotRow key={i} silhouette={s.silhouette} label={s.label} description={s.description} occupant={s.occupant} />
-            ),
-          )}
+          {slots.map((s) => {
+            const flashing = candidateSet ? candidateSet.has(s.index) : false
+            return s.kind === 'pop'
+              ? <PopCard key={s.index} pop={s.pop} count={s.count} flashing={flashing} onReplace={() => onReplace(s.index)} />
+              : <SlotRow key={s.index} slot={s} flashing={flashing} onReplace={() => onReplace(s.index)} />
+          })}
         </div>
       </div>
     </NineSlice>
@@ -164,21 +199,46 @@ function Accordion({ label, slots, open, onToggle }) {
 }
 
 /**
- * A population pop card: name + output icons in the body, the type silhouette in
- * the top-right, and the count of that pop type on the far right. Hovering shows
- * a programmatic description of its per-tick output.
+ * One slot. Empty -> centered category silhouette. Filled -> a compact item card
+ * (name + type + stat/effect line) with the full description on hover. When it is
+ * a replacement candidate it flashes red and becomes clickable.
  */
-function PopCard({ pop, count }) {
-  const tip = (
-    <>
-      {popTooltipText(pop)}
-      <br />
-      <br />
-      <strong>Total ({count}):</strong> {popTotalSummary(pop, count).join(', ')} per tick.
-    </>
+function SlotRow({ slot, flashing, onReplace }) {
+  const filled = slot.kind === 'item'
+  const inner = filled ? (
+    <div className="slot-card">
+      {slot.silhouette && <img className="slot-card-sil" src={slot.silhouette} alt="" />}
+      <div className="slot-card-body">
+        <div className="slot-card-name">{slot.name}</div>
+        {slot.sub && <div className="slot-card-sub">{slot.sub}</div>}
+        {slot.line && <div className="slot-card-line">{slot.line}</div>}
+      </div>
+    </div>
+  ) : (
+    slot.silhouette && <img className="slot-silhouette" src={slot.silhouette} alt={slot.name} />
   )
+
+  if (flashing) {
+    return (
+      <div className="slot-row filled replace-target" onClick={onReplace} role="button" tabIndex={0}>
+        {inner}
+      </div>
+    )
+  }
   return (
-    <InfoTip className="pop-card" title={pop.name} text={tip}>
+    <InfoTip className={`slot-row ${filled ? 'filled' : 'empty'}`} title={slot.name} text={slot.tip}>
+      {inner}
+    </InfoTip>
+  )
+}
+
+/**
+ * A population pop card: name + per-pop output icons and the count. Hover shows
+ * per-pop and total output. A replacement candidate flashes red and is clickable.
+ */
+function PopCard({ pop, count, flashing, onReplace }) {
+  const body = (
+    <>
       <div className="pop-main">
         <div className="pop-name">{pop.name}</div>
         <div className="pop-outputs">
@@ -190,22 +250,19 @@ function PopCard({ pop, count }) {
         </div>
       </div>
       <div className="pop-count">{count}</div>
-    </InfoTip>
+    </>
   )
-}
 
-/**
- * One large, full-width slot: a centered type silhouette. Hovering shows the
- * category name + description (the occupant's once filled, otherwise the
- * category's / the group's).
- */
-function SlotRow({ silhouette, label, description, occupant }) {
-  const src = occupant?.silhouette ?? silhouette
-  const title = occupant?.name ?? label
-  const desc = occupant?.description ?? description
-  return (
-    <InfoTip className={`slot-row ${occupant ? 'filled' : 'empty'}`} title={title} text={desc}>
-      {src && <img className="slot-silhouette" src={src} alt={title} />}
-    </InfoTip>
+  if (flashing) {
+    return <div className="pop-card replace-target" onClick={onReplace} role="button" tabIndex={0}>{body}</div>
+  }
+
+  const tip = (
+    <>
+      {popTooltipText(pop)}
+      <br /><br />
+      <strong>Total ({count}):</strong> {popTotalSummary(pop, count).join(', ')} per tick.
+    </>
   )
+  return <InfoTip className="pop-card" title={pop.name} text={tip}>{body}</InfoTip>
 }

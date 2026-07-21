@@ -1,0 +1,158 @@
+/* Dim backdrop over the tableau (never covers the right panel — it's a sibling).
+   Sits BELOW the top HUD (z-index 20) so the speed control stays clickable during
+   a selection; the centered cards don't overlap the thin top strip. */
+.progress-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 42%, rgba(18, 14, 6, 0.42), rgba(4, 5, 10, 0.72));
+  backdrop-filter: blur(2px);
+  animation: progress-fade-in 0.3s ease;
+}
+/* Replace stage keeps the tableau/panel readable — lighter, non-blurred. */
+.progress-backdrop--soft {
+  background: rgba(4, 5, 10, 0.28);
+  backdrop-filter: none;
+  align-items: flex-start;
+  padding-top: 12%;
+}
+@keyframes progress-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.progress-window {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  max-width: 92%;
+}
+.progress-heading {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  color: #e6c877;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  letter-spacing: 0.03em;
+}
+
+.progress-cards {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  justify-content: center;
+}
+
+/* Light 9-slice card. Hover highlights and slightly enlarges. */
+.progress-card {
+  --fw: 26px;
+  position: relative;
+  width: 210px;
+  min-height: 240px;
+  padding: 0.4rem 0.6rem 0.7rem;
+  text-align: left;
+  color: #2f2512;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: transform 0.14s ease, filter 0.14s ease;
+}
+.progress-card:hover {
+  transform: translateY(-4px) scale(1.04);
+  filter: brightness(1.05) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.45));
+  z-index: 2;
+}
+.progress-card.not-impl { filter: grayscale(0.25); }
+.progress-card.not-impl:hover { filter: grayscale(0.1) brightness(1.03) drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4)); }
+
+.progress-card-corner {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.progress-card-corner img { max-width: 100%; max-height: 100%; opacity: 0.9; }
+.progress-card-glyph {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: #6e4f16;
+  opacity: 0.8;
+}
+
+.progress-card-era {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a6a2a;
+}
+.progress-card-name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.1;
+  color: #3a2c10;
+  padding-right: 2.6rem; /* clear the corner icon */
+  min-height: 2.4em;
+}
+.progress-card-desc {
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: #5b4626;
+}
+
+/* Shared dark-framed button used across the overlay windows. */
+.progress-btn {
+  --fw: 13px;
+  min-height: 40px;
+  padding: 0.15rem 1.1rem;
+  color: #2f2512;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.progress-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.progress-hide { align-self: center; }
+
+/* Confirm ("are you sure") window. */
+.confirm-window {
+  --fw: 30px;
+  width: 380px;
+  max-width: 90%;
+  padding: 1rem 1.4rem;
+  color: #2f2512;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  text-align: center;
+}
+.confirm-title { font-family: var(--font-display); font-size: 1.4rem; color: #3a2c10; }
+.confirm-text { font-size: 0.9rem; color: #5b4626; line-height: 1.4; }
+.confirm-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #5b4626;
+  cursor: pointer;
+}
+.confirm-check input { accent-color: #7a5410; }
+.confirm-actions { display: flex; gap: 0.8rem; justify-content: center; }
+
+/* Compact "choose which slot to replace" prompt (cards are hidden this stage). */
+.replace-prompt {
+  --fw: 24px;
+  padding: 0.8rem 1.2rem;
+  color: #2f2512;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+}
+.replace-prompt-title { font-family: var(--font-display); font-size: 1.25rem; color: #3a2c10; }
+.replace-prompt-hint { font-size: 0.82rem; color: #7a2f24; font-weight: 700; }

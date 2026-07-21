@@ -22,6 +22,7 @@
 }
 .widget-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
 .widget-glyph { font-size: 1.4rem; line-height: 1; }
+.widget-icon { width: 26px; height: 26px; }
 
 @keyframes widget-pop-in {
   from { transform: scale(0.6); opacity: 0; }

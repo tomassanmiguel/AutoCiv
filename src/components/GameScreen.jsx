@@ -8,6 +8,7 @@ import EraBanner from './Hud/EraBanner.jsx'
 import TickCounter from './Hud/TickCounter.jsx'
 import SpeedControl from './Hud/SpeedControl.jsx'
 import TransitionOverlay from './Hud/TransitionOverlay.jsx'
+import ProgressOverlay from './Progress/ProgressOverlay.jsx'
 import VictoryScreen from './Victory/VictoryScreen.jsx'
 import WidgetRail from './Widgets/WidgetRail.jsx'
 import AudioController from './AudioController.jsx'
@@ -42,6 +43,7 @@ export default function GameScreen({ seed, audio, onExit }) {
           </div>
           <WidgetRail victoryHidden={victoryHidden} onShowVictory={() => setVictoryHidden(false)} />
           <TransitionOverlay />
+          <ProgressOverlay />
           <VictoryScreen hidden={victoryHidden} onHide={() => setVictoryHidden(true)} onExit={onExit} />
         </div>
         <UIPanel />
