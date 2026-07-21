@@ -28,5 +28,6 @@ dist-ssr
 # move them to Git LFS) rather than bloating the repo.
 /Music/
 
-# Machine-local Claude Code settings (permission grants, etc.)
+# Machine-local Claude Code settings (permission grants, mode, etc.)
 .claude/settings.local.json
+.claude/settings.json
