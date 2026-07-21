@@ -33,6 +33,7 @@ export default function Tableau() {
   const cameraRef = useRef({ scale: 1, tx: 0, ty: 0 })
   const rafRef = useRef(null)
   const didMountRef = useRef(false)
+  const prevLayoutRef = useRef(null)
   const dragRef = useRef(null)
   const [tooltip, setTooltip] = useState(null)
 
@@ -99,16 +100,31 @@ export default function Tableau() {
     rafRef.current = requestAnimationFrame(frame)
   }
 
-  // On era change: first mount snaps to fit; subsequent changes animate the
-  // zoom-out reveal. Also re-fit on viewport resize.
+  // On era change: first mount snaps to fit; subsequent changes anchor the
+  // previously-visible region in place across the grid's origin shift, then
+  // animate the zoom-out reveal. Also re-fit on viewport resize.
   useEffect(() => {
+    const layout = bounds ? { minCol: bounds.minCol, maxRow: bounds.maxRow, enemyRows } : null
     if (!didMountRef.current) {
       didMountRef.current = true
       const target = fitCamera()
       if (target) { cameraRef.current = target; applyTransform() }
     } else {
+      // Unlocking tiles shifts the content origin (minCol / maxRow / enemyRows),
+      // which would teleport every existing tile the moment the era changes.
+      // Counter-translate the camera by that shift first so the current view
+      // holds still, then smoothly zoom out to the new fit.
+      const prev = prevLayoutRef.current
+      if (prev && layout) {
+        const dx = (prev.minCol - layout.minCol) * CELL
+        const dy = (layout.enemyRows - prev.enemyRows + layout.maxRow - prev.maxRow) * CELL
+        const cam = cameraRef.current
+        cameraRef.current = { scale: cam.scale, tx: cam.tx - cam.scale * dx, ty: cam.ty - cam.scale * dy }
+        applyTransform()
+      }
       revealFullTableau()
     }
+    prevLayoutRef.current = layout
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [era])
 
