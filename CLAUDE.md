@@ -127,7 +127,7 @@ AutoCiv/
 ├── index.html                 # Vite entry; loads /src/main.jsx
 ├── public/
 │   ├── favicon.svg
-│   ├── sprites/{tiles,icons,ui}/ # served images (ui/ = 9-slice frames)
+│   ├── sprites/{tiles,icons,ui}/ # served images (ui/ = 9-slice frames + type silhouettes)
 │   └── music/*.ogg             # served soundtrack (transcoded)
 ├── src/
 │   ├── main.jsx               # React root
@@ -249,7 +249,7 @@ exists; extend it as systems land.
 - Mouse-**wheel zoom** (anchored at cursor) + **drag to pan**, clamped between fit-all (most
   zoomed out) and ~2×2 tiles (most zoomed in). `revealFullTableau()` animates a zoom-out to
   fit; it fires on every era change and is the **reusable hook for future era transitions**.
-- Hovering a tile shows a tooltip from `tile.getTooltip()` (currently terrain name + coords).
+- Hovering a tile shows a tooltip from `tile.getTooltip()` (currently just the terrain name).
 
 ### Civilization panel (`CivilizationData.js`, `components/UIPanel`)
 - **Framing:** the whole panel is wrapped in the light `Box` 9-slice frame and each dropdown in
@@ -264,19 +264,23 @@ exists; extend it as systems land.
   delta. `{ value, output, threshold }`. Threshold = amount to unlock the next upgrade.
 - All values/outputs currently **0** except legitimacy=50; thresholds are a **placeholder
   (100)** so bars render — real thresholds arrive with those systems.
-- **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units (8)**,
+- **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
   **Buildings (7)**, **Policies (5)**, **Population (5)**. The open accordion **flex-grows to
-  fill the remaining panel height**; its slots are **large full-width rows** that divide that
-  space equally.
-  - **Units** and **Buildings** slots are **fixed categories** (label + description) defined in
-    `game/data/slots.js`. Unit categories (8): Melee, Ranged, Cavalry, Siege, Utility, Naval,
-    Astral, Astral Utility. Building categories (7): Food, Progress, Gold, Production,
-    Legitimacy, Utility, Defense. Each row shows the category label, an EMPTY/occupied state,
-    and a description of what it does (**placeholder text** in `slots.js` — mechanics TBD).
-    Policies/Population are generic empty slots for now.
-  - Descriptions are **line-clamped** to the row height (fuller in taller windows) with the
-    complete text available on **hover** (title attr). `CivilizationData.units/buildings` are
-    index-aligned to the category lists.
+  fill the remaining panel height**; its slots are **large full-width boxes** that divide that
+  space equally, **each showing a centered type silhouette** (no inline text).
+  - **Slot data** lives in `game/data/slots.js`: `UNIT_CATEGORIES` (9), `BUILDING_CATEGORIES`
+    (7), and `POLICY_INFO` / `POPULATION_INFO` (one silhouette + description each). Each entry
+    has a `silhouette` (path in `public/sprites/ui/`) and a `description`.
+  - **Unit categories (9, display order):** Melee, Ranged, Cavalry, Siege, Utility, Naval,
+    Aerial, Astral, Astral Utility. **Units are era-gated** by an `unlock` era id — only
+    categories unlocked at the current era show, so early eras show fewer:
+    Melee/Ranged/Cavalry from Stone; Utility + Naval from **Bronze** (the brief's "Copper Age");
+    Siege from Iron; Aerial from Gilded; Astral Utility from Atomic; Astral from Lunar. Building
+    categories: Progress, Production, Gold, Food, Legitimacy, Defense, Utility (not era-gated).
+  - **Hover** any slot for a tooltip (`<InfoTip>`): category name + description. Policies and
+    Population use one shared silhouette + description across their slots.
+  - `CivilizationData.units` (9) / `buildings` (7) are index-aligned to the category lists;
+    `null` = empty slot.
 
 ### Menu (`components/Menu/MenuOverlay`)
 - Floating hamburger button (upper-left) opens an overlay above the tableau. Currently holds a
@@ -325,3 +329,7 @@ exists; extend it as systems land.
   errors: moved the map-seed generation to `App`'s New Game handler (was calling `Math.random`
   during render — the map could regenerate on an incidental re-render), and created the
   `AudioManager` inside an effect instead of during render.
+- **2026-07-21** — Slots now show a **centered type silhouette** (from `public/sprites/ui/`)
+  instead of inline text, with the description on hover. Added a 9th unit category **Aerial**
+  and made unit categories **era-gated** (`unlock` era in `slots.js`; "Copper Age" → Bronze,
+  "Support" → Utility). Reordered building categories and refreshed all slot descriptions.

@@ -7,12 +7,12 @@ import './InfoTip.css'
  * `overflow: hidden`. Opens to the left of the cursor to stay on-screen for the
  * right-hand panel.
  */
-export default function InfoTip({ title, text, children }) {
+export default function InfoTip({ title, text, className = '', children }) {
   const [pos, setPos] = useState(null)
   const track = (e) => setPos({ x: e.clientX, y: e.clientY })
   return (
     <div
-      className="infotip-anchor"
+      className={`infotip-anchor${className ? ' ' + className : ''}`}
       onMouseEnter={track}
       onMouseMove={track}
       onMouseLeave={() => setPos(null)}

@@ -23,9 +23,9 @@ export class CivilizationData {
     this.progress = { value: 0, output: 0, threshold: PLACEHOLDER_THRESHOLD }
 
     // Units/Buildings slots are indexed to match UNIT_CATEGORIES /
-    // BUILDING_CATEGORIES in data/slots.js (8 unit categories, 7 building
-    // categories). null = empty slot.
-    this.units = new Array(8).fill(null)
+    // BUILDING_CATEGORIES in data/slots.js (9 unit categories, 7 building
+    // categories). null = empty slot. (Units are era-gated in the UI.)
+    this.units = new Array(9).fill(null)
     this.buildings = new Array(7).fill(null)
     this.policies = new Array(5).fill(null)
     this.population = new Array(5).fill(null)

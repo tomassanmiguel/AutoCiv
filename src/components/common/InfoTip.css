@@ -1,7 +1,4 @@
-.infotip-anchor {
-  display: block;
-}
-
+/* No display set here so a passed className (e.g. .slot-row) controls layout. */
 .infotip {
   position: fixed;
   z-index: 60;

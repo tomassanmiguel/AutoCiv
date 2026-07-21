@@ -152,52 +152,35 @@
   padding: 0.1rem 0.15rem 0.25rem;
 }
 
-/* Translucent parchment inset so dark text reads on either frame. */
+/* Each slot is a translucent parchment box holding a centered type silhouette. */
 .slot-row {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  padding: 0.4rem 0.6rem;
+  padding: 0.3rem;
   border-radius: 5px;
   background: rgba(250, 242, 224, 0.55);
   border: 1px solid rgba(90, 65, 25, 0.35);
   overflow: hidden;
+  cursor: default;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .slot-row.empty:hover {
   border-color: var(--brass);
-  background: rgba(250, 242, 224, 0.78);
+  background: rgba(250, 242, 224, 0.8);
 }
 .slot-row.filled { background: rgba(250, 242, 224, 0.72); }
 
-.slot-row-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex: 0 0 auto;
+.slot-silhouette {
+  max-height: 84%;
+  max-width: 62%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  opacity: 0.82;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
-.slot-cat {
-  font-weight: 700;
-  color: var(--brass);
-  font-size: 0.9rem;
-}
-.slot-state {
-  font-size: 0.6rem;
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.slot-desc {
-  color: var(--ink-soft);
-  font-size: 0.72rem;
-  line-height: 1.3;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.slot-row:hover .slot-silhouette { opacity: 1; transform: scale(1.06); }
+.slot-row.filled .slot-silhouette { opacity: 1; }

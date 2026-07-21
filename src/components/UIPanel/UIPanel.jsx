@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
-import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
+import { ERA_INDEX } from '../../game/data/eras.js'
+import {
+  UNIT_CATEGORIES,
+  BUILDING_CATEGORIES,
+  POLICY_INFO,
+  POPULATION_INFO,
+} from '../../game/data/slots.js'
 import NineSlice from '../common/NineSlice.jsx'
 import InfoTip from '../common/InfoTip.jsx'
 import './UIPanel.css'
@@ -13,6 +19,12 @@ const ICON = {
   progress: '/sprites/icons/progress.png',
 }
 
+// 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
+const FRAME = { light: '/sprites/ui/box.png', dark: '/sprites/ui/box-dark.png' }
+const FRAME_SLICE = 205 // border inset in source px (frames are 1254x1254)
+const PANEL_BORDER = 40
+const DROP_BORDER = 16
+
 // Hover descriptions for the top resource section.
 const RES_TIP = {
   legitimacy: 'A measure of the integrity of your civilization. Should this fall to zero, your civilization will collapse.',
@@ -22,29 +34,35 @@ const RES_TIP = {
   progress: 'A measure of the ingenuity of your civilization. Progress will unlock new units, buildings, policies, and specialists.',
 }
 
-// 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
-const FRAME = { light: '/sprites/ui/box.png', dark: '/sprites/ui/box-dark.png' }
-const FRAME_SLICE = 205 // border inset in source px (frames are 1254x1254)
-const PANEL_BORDER = 40
-const DROP_BORDER = 16
-
-// Units & Buildings have fixed per-slot categories (label + description);
-// Policies & Population are generic slots for now.
-const GROUPS = [
-  { key: 'units', label: 'Units', categories: UNIT_CATEGORIES },
-  { key: 'buildings', label: 'Buildings', categories: BUILDING_CATEGORIES },
-  { key: 'policies', label: 'Policies', categories: null },
-  { key: 'population', label: 'Population', categories: null },
-]
-
 const fmtDelta = (n) => (n > 0 ? `+${n}` : `${n}`)
+
+// --- Build the per-group list of slot descriptors ({ silhouette, label, description, occupant }) ---
+function unitSlots(civ, era) {
+  return UNIT_CATEGORIES
+    .map((c, i) => ({ ...c, occupant: civ.units[i] }))
+    .filter((c) => ERA_INDEX[c.unlock] <= era) // only categories unlocked this era
+}
+function buildingSlots(civ) {
+  return BUILDING_CATEGORIES.map((c, i) => ({ ...c, occupant: civ.buildings[i] }))
+}
+function genericSlots(arr, info) {
+  return arr.map((occupant) => ({ ...info, occupant }))
+}
 
 /** Right-hand civilization panel: resource readouts + item dropdowns. */
 export default function UIPanel() {
   const game = useGame()
   const civ = game.data.civilization
+  const era = game.era
   // Accordion: at most one group open at a time.
   const [openGroup, setOpenGroup] = useState('units')
+
+  const groups = [
+    { key: 'units', label: 'Units', slots: unitSlots(civ, era) },
+    { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ) },
+    { key: 'policies', label: 'Policies', slots: genericSlots(civ.policies, POLICY_INFO) },
+    { key: 'population', label: 'Population', slots: genericSlots(civ.population, POPULATION_INFO) },
+  ]
 
   return (
     <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
@@ -67,12 +85,11 @@ export default function UIPanel() {
       </div>
 
       <div className="accordions">
-        {GROUPS.map((g) => (
+        {groups.map((g) => (
           <Accordion
             key={g.key}
             label={g.label}
-            categories={g.categories}
-            slots={civ[g.key]}
+            slots={g.slots}
             open={openGroup === g.key}
             onToggle={() => setOpenGroup((cur) => (cur === g.key ? null : g.key))}
           />
@@ -110,8 +127,7 @@ function ResourceBar({ icon, label, res, tip }) {
   )
 }
 
-function Accordion({ label, categories, slots, open, onToggle }) {
-  const count = categories ? categories.length : slots.length
+function Accordion({ label, slots, open, onToggle }) {
   return (
     <NineSlice
       className={`accordion ${open ? 'open' : ''}`}
@@ -125,8 +141,8 @@ function Accordion({ label, categories, slots, open, onToggle }) {
       </button>
       <div className="accordion-body">
         <div className="slot-list">
-          {Array.from({ length: count }).map((_, i) => (
-            <SlotRow key={i} category={categories?.[i]} occupant={slots[i]} />
+          {slots.map((s, i) => (
+            <SlotRow key={i} silhouette={s.silhouette} label={s.label} description={s.description} occupant={s.occupant} />
           ))}
         </div>
       </div>
@@ -135,22 +151,17 @@ function Accordion({ label, categories, slots, open, onToggle }) {
 }
 
 /**
- * One large, full-width slot. Shows its category label and a description of what
- * it does (the occupant's description once filled, otherwise the category's).
+ * One large, full-width slot: a centered type silhouette. Hovering shows the
+ * category name + description (the occupant's once filled, otherwise the
+ * category's / the group's).
  */
-function SlotRow({ category, occupant }) {
-  const title = occupant?.name ?? category?.label ?? 'Empty slot'
-  const description = occupant?.description ?? category?.description ?? ''
-  const filled = !!occupant
+function SlotRow({ silhouette, label, description, occupant }) {
+  const src = occupant?.silhouette ?? silhouette
+  const title = occupant?.name ?? label
+  const desc = occupant?.description ?? description
   return (
-    <div className={`slot-row ${filled ? 'filled' : 'empty'}`}>
-      <div className="slot-row-head">
-        <span className="slot-cat">{title}</span>
-        <span className="slot-state">{filled ? '' : 'Empty'}</span>
-      </div>
-      {description && (
-        <p className="slot-desc" title={description}>{description}</p>
-      )}
-    </div>
+    <InfoTip className={`slot-row ${occupant ? 'filled' : 'empty'}`} title={title} text={desc}>
+      {src && <img className="slot-silhouette" src={src} alt={title} />}
+    </InfoTip>
   )
 }

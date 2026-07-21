@@ -1,42 +1,61 @@
 // Slot category metadata for the civilization panel's dropdowns.
 //
-// Each Units/Buildings slot is a fixed CATEGORY; a slot eventually holds an
-// unlocked item of that category. The `description` explains what that category
-// does. These descriptions are PLACEHOLDERS — they capture the intended role but
-// the concrete mechanics are not yet defined; refine them as those systems land.
+// Units and Buildings slots are fixed CATEGORIES; a slot eventually holds an
+// unlocked item of that category. Each carries a `silhouette` (shown centered in
+// the slot box) and a `description` (shown on hover). Unit categories also carry
+// an `unlock` era id — units are only shown once their era is reached.
+//
+// NOTE: "Copper Age" from the design brief is mapped to the Bronze era (the era
+// list has no Copper), and "Support" is treated as the Utility category.
 
 export const UNIT_CATEGORIES = [
-  { key: 'melee', label: 'Melee',
-    description: 'Front-line fighters that strike adjacent foes. Cheap and sturdy, they hold the line while your economy grows.' },
-  { key: 'ranged', label: 'Ranged',
-    description: 'Attack enemies from a distance before they close in. Fragile up close but deadly massed behind a front line.' },
-  { key: 'cavalry', label: 'Cavalry',
-    description: 'Fast, hard-hitting units that flank and reach distant lanes. Punish weak points but falter against braced defenders.' },
-  { key: 'siege', label: 'Siege',
-    description: 'Heavy units built to shatter enemy structures and fortified positions. Slow, but overwhelming against defenses.' },
-  { key: 'utility', label: 'Utility',
-    description: 'Support units that buff allies, debuff enemies, or manipulate the board rather than dealing damage directly.' },
-  { key: 'naval', label: 'Naval',
-    description: 'Sea and coastal units that dominate water lanes and project power along the shoreline.' },
-  { key: 'astral', label: 'Astral',
-    description: 'Space-age combatants for the off-world eras, waging war across orbit and deep space.' },
-  { key: 'astral_utility', label: 'Astral Utility',
-    description: 'Advanced support platforms for the space eras — shields, relays, and force multipliers for your astral fleet.' },
+  { key: 'melee', label: 'Melee', unlock: 'stone', silhouette: '/sprites/ui/melee.png',
+    description: 'Melee Units attack only when there is no unit in front of them. They are your durable and strong front line' },
+  { key: 'ranged', label: 'Ranged', unlock: 'stone', silhouette: '/sprites/ui/ranged.png',
+    description: 'Ranged Units always get to attack. They are lethal but fragile. It would be wise to put obstructions in front of them' },
+  { key: 'cavalry', label: 'Cavalry', unlock: 'stone', silhouette: '/sprites/ui/cavalry.png',
+    description: 'Cavalry Units are fast and evasive. They attack only when there is no unit in front of them. Use them to harry the opponent!' },
+  { key: 'siege', label: 'Siege', unlock: 'iron', silhouette: '/sprites/ui/siege.png',
+    description: 'Siege Units attack back to front and often have splash damage. They are especially effective for dealing with buildings' },
+  { key: 'utility', label: 'Utility', unlock: 'bronze', silhouette: '/sprites/ui/utility.png',
+    description: 'Utility Units do not attack but have helpful effects that bolster your army' },
+  { key: 'naval', label: 'Naval', unlock: 'bronze', silhouette: '/sprites/ui/boat.png',
+    description: 'Naval Units may deployed only on the high seas. They can come in melee and ranged varieties' },
+  { key: 'aerial', label: 'Aerial', unlock: 'gilded', silhouette: '/sprites/ui/aerial.png',
+    description: 'Aerial Units may be deployed anywhere on the planet. They can come in melee and ranged varieties.' },
+  { key: 'astral', label: 'Astral', unlock: 'lunar', silhouette: '/sprites/ui/astral.png',
+    description: 'Astral Units are your warriors of the great expanse. They may be deployed in space and come in melee and ranged varieties' },
+  { key: 'astral_utility', label: 'Astral Utility', unlock: 'atomic', silhouette: '/sprites/ui/astral-utility.png',
+    description: 'Astral Utility units do not attack but offer various helpful effects. They may be deployed only in space.' },
 ]
 
 export const BUILDING_CATEGORIES = [
-  { key: 'food', label: 'Food',
-    description: 'Generates Food each tick, driving population growth across your tableau.' },
-  { key: 'progress', label: 'Progress',
-    description: 'Generates Progress each tick, advancing you toward the next era and its unlocks.' },
-  { key: 'gold', label: 'Gold',
-    description: 'Generates Gold each tick — the currency you spend to deploy and upgrade.' },
-  { key: 'production', label: 'Production',
-    description: 'Generates Production each tick — the raw output used to build units and structures.' },
-  { key: 'legitimacy', label: 'Legitimacy',
-    description: "Bolsters Legitimacy, your civilization's resilience (its “HP”) against threats." },
-  { key: 'utility', label: 'Utility',
-    description: "Provides special effects and bonuses that don't map to a single resource." },
-  { key: 'defense', label: 'Defense',
-    description: 'Fortifies your tableau, protecting tiles and units during the combat phase.' },
+  { key: 'progress', label: 'Progress', silhouette: '/sprites/ui/progress.png',
+    description: 'Progress buildings help your civilization discover new advances' },
+  { key: 'production', label: 'Production', silhouette: '/sprites/ui/production.png',
+    description: 'Production buildings help your civilization create more units and buildings' },
+  { key: 'gold', label: 'Gold', silhouette: '/sprites/ui/gold.png',
+    description: 'Gold buildings help in enrich your civilization' },
+  { key: 'food', label: 'Food', silhouette: '/sprites/ui/food.png',
+    description: 'Food buildings help keep your civilization growing steadily' },
+  { key: 'legitimacy', label: 'Legitimacy', silhouette: '/sprites/ui/legitimacy.png',
+    description: 'Legitimacy buildings help eternalize your rule' },
+  { key: 'defense', label: 'Defense', silhouette: '/sprites/ui/defense.png',
+    description: 'Defense buildings keep the unwanted out' },
+  { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
+    description: 'Utility buildings offer helpful effects that boost other units or buildings' },
 ]
+
+// Policies and Population are generic slots (no per-slot category); every slot
+// shares one silhouette + description.
+export const POLICY_INFO = {
+  label: 'Policies',
+  silhouette: '/sprites/ui/policy.png',
+  description: "Policies are passive bonuses that will steer your civilization's course",
+}
+
+export const POPULATION_INFO = {
+  label: 'Population',
+  silhouette: '/sprites/ui/pop.png',
+  description: 'Population is gained whenever a food threshold is met. You gain one population, plus one for every completed era. Population is split amongst generalist citizens and focused specialists',
+}
