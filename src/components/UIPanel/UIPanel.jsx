@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import NineSlice from '../common/NineSlice.jsx'
+import InfoTip from '../common/InfoTip.jsx'
 import './UIPanel.css'
 
 const ICON = {
@@ -10,6 +11,15 @@ const ICON = {
   food: '/sprites/icons/food.png',
   production: '/sprites/icons/production.png',
   progress: '/sprites/icons/progress.png',
+}
+
+// Hover descriptions for the top resource section.
+const RES_TIP = {
+  legitimacy: 'A measure of the integrity of your civilization. Should this fall to zero, your civilization will collapse.',
+  gold: 'A measure of the wealth of your civilization. Spend gold to repair damaged units and buildings, hire mercenaries, upgrade units and buildings, or create specialists.',
+  food: 'A measure of the expansion of your civilization. Food will create new citizens and specialists to power your economy.',
+  production: 'A measure of the industry of your civilization. Production will allow you to deploy new units and buildings.',
+  progress: 'A measure of the ingenuity of your civilization. Progress will unlock new units, buildings, policies, and specialists.',
 }
 
 // 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
@@ -40,18 +50,20 @@ export default function UIPanel() {
     <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
       <div className="resources">
         {/* Legitimacy — the civ's HP: a big centered scalar. */}
-        <div className="legitimacy">
-          <img className="legit-icon" src={ICON.legitimacy} alt="Legitimacy" />
-          <span className="legit-value">{civ.legitimacy.value}</span>
-        </div>
+        <InfoTip title="Legitimacy" text={RES_TIP.legitimacy}>
+          <div className="legitimacy">
+            <img className="legit-icon" src={ICON.legitimacy} alt="Legitimacy" />
+            <span className="legit-value">{civ.legitimacy.value}</span>
+          </div>
+        </InfoTip>
 
         {/* Gold — scalar on the left, per-tick delta on the right. */}
-        <ResourceLine icon={ICON.gold} label="Gold" value={civ.gold.value} output={civ.gold.output} />
+        <ResourceLine icon={ICON.gold} label="Gold" value={civ.gold.value} output={civ.gold.output} tip={RES_TIP.gold} />
 
         {/* Food / Production / Progress — progress bar toward threshold + delta. */}
-        <ResourceBar icon={ICON.food} label="Food" res={civ.food} />
-        <ResourceBar icon={ICON.production} label="Production" res={civ.production} />
-        <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} />
+        <ResourceBar icon={ICON.food} label="Food" res={civ.food} tip={RES_TIP.food} />
+        <ResourceBar icon={ICON.production} label="Production" res={civ.production} tip={RES_TIP.production} />
+        <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} tip={RES_TIP.progress} />
       </div>
 
       <div className="accordions">
@@ -70,27 +82,31 @@ export default function UIPanel() {
   )
 }
 
-function ResourceLine({ icon, label, value, output }) {
+function ResourceLine({ icon, label, value, output, tip }) {
   return (
-    <div className="res-line">
-      <img className="res-icon" src={icon} alt={label} />
-      <span className="res-value">{value}</span>
-      <span className="res-delta">{fmtDelta(output)}/t</span>
-    </div>
+    <InfoTip title={label} text={tip}>
+      <div className="res-line">
+        <img className="res-icon" src={icon} alt={label} />
+        <span className="res-value">{value}</span>
+        <span className="res-delta">{fmtDelta(output)}/t</span>
+      </div>
+    </InfoTip>
   )
 }
 
-function ResourceBar({ icon, label, res }) {
+function ResourceBar({ icon, label, res, tip }) {
   const pct = res.threshold > 0 ? Math.min(100, (res.value / res.threshold) * 100) : 0
   return (
-    <div className="res-bar-row">
-      <img className="res-icon" src={icon} alt={label} />
-      <div className="res-bar-track" title={`${res.value} / ${res.threshold}`}>
-        <div className="res-bar-fill" style={{ width: `${pct}%` }} />
-        <span className="res-bar-label">{res.value}/{res.threshold}</span>
+    <InfoTip title={label} text={tip}>
+      <div className="res-bar-row">
+        <img className="res-icon" src={icon} alt={label} />
+        <div className="res-bar-track">
+          <div className="res-bar-fill" style={{ width: `${pct}%` }} />
+          <span className="res-bar-label">{res.value}/{res.threshold}</span>
+        </div>
+        <span className="res-delta">{fmtDelta(res.output)}/t</span>
       </div>
-      <span className="res-delta">{fmtDelta(res.output)}/t</span>
-    </div>
+    </InfoTip>
   )
 }
 
