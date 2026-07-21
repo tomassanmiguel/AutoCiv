@@ -169,9 +169,10 @@ AutoCiv/
   is a game, not a navigable website. Screen changes go through `App`'s `transitionTo`, which
   **fades to black** (a `.screen-fade` overlay) and swaps the screen mid-fade.
   - **Screen flow:** `loading` → `title` → `game`. The app starts on the **LoadingScreen**
-    splash whose only job is to collect the first user gesture (browser autoplay policy) —
-    clicking/pressing any key fades to the title screen, at which point the title music can
-    start. Pixel-art styled with the `--font-pixel` (Press Start 2P) font.
+    splash whose only job is to collect the first user gesture (browser autoplay policy). It
+    shows "Loading…" while a faux bar fills and **only allows advancing once full**; then a
+    click/keypress fades to the title screen, at which point the title music can start.
+    Pixel-art styled with the `--font-pixel` (Press Start 2P) font.
 - **Styling:** plain CSS files co-located with their component, imported at the top of the
   `.jsx`. Global design tokens (colors, fonts, radius) live as CSS variables in
   `index.css`; reuse them rather than hard-coding values. Shared button classes
