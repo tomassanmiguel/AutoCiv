@@ -122,7 +122,6 @@ function Accordion({ label, categories, slots, open, onToggle }) {
       <button className="accordion-header" onClick={onToggle}>
         <span className="accordion-caret">▸</span>
         <span className="accordion-label">{label}</span>
-        <span className="accordion-count">{count}</span>
       </button>
       <div className="accordion-body">
         <div className="slot-list">
