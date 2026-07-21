@@ -158,7 +158,7 @@ AutoCiv/
 │       ├── Tableau/Tableau.jsx/.css   # pan/zoom camera + grid + enemy slots + tooltip
 │       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard
 │       ├── Menu/MenuOverlay.jsx/.css  # framed menu + TEMP era widget
-│       ├── Hud/{EraBanner,SpeedControl,TransitionOverlay}.jsx/.css # left HUD + banners
+│       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
 │       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
 ├── Music/ · Sprites/         # SOURCE assets (originals; see Assets)
 └── .claude/launch.json       # preview server config (autociv-dev, port 5173)
@@ -281,25 +281,28 @@ exists; extend it as systems land.
   add it to each threshold resource's `value`, then cross any reached thresholds.
 - **Threshold resources** (progress/food/production) accumulate a **cumulative** `value` toward a
   **cumulative** `threshold`; each crossing bumps `level` (# thresholds reached). Formula
-  `T(N)=T(N-1)+X·1.25^E·n·R` (`resources.js`: `T0`/`X`/`targetPerEra`; E = 0-based era; n resets
-  each era; R rubber-bands toward the per-era target). **Food** crossings add pops = **era number**;
-  production/progress do nothing yet. (Balance note: food currently overshoots its target/era
-  because pops feed back into food output — tune later.)
+  `T(N)=T(N-1)+X·1.25^E·n·R` (`resources.js`: `T0`/`X`/`targetPerEra`; **E = 0-based era; n = the
+  GLOBAL level and never resets**, so deltas grow monotonically). R rubber-bands the running level
+  toward `(era+1)·targetPerEra`. **Food** crossings add pops = **era number**; production/progress
+  do nothing yet.
 - **Pops** (`pops.js`): only **Citizen** for now (auto-unlocked), producing **1 progress + 1 food
   + 1 production** per pop per tick. All population is Citizens. Start = 1 (`STARTING_CITIZENS`).
 - **Phase machine:** dev ends at 65 ticks → `phase='battle'`; the UI's `TransitionOverlay` plays
   the banner and calls back `endBattle()` → `phase='transition'` → banner → `completeTransition()`
   → next era (paused). The temporary era slider calls `setEra` (instant debug jump, no banner).
-- **Interpretations to confirm** (flagged in `resources.js`): E is 0-based; value/threshold are
-  cumulative (never reset, only `n` resets/era); R's `expected = targetPerEra·(tick/65)`; "Copper
+- **Interpretations** (flagged in `resources.js`): E is 0-based; value/threshold/n all cumulative
+  (nothing resets per era); R's `expected = (era+1)·targetPerEra`, actual = level; "Copper
   Age"→Bronze; starting pops = 1.
 
 ### HUD (`components/Hud`)
-- **EraBanner** — parchment plaque (upper-left) showing `"<Era> Age"` (`eraTitle`).
-- **SpeedControl** — framed speed buttons (below the menu) with per-button tooltips.
-- **TransitionOverlay** — battle banner + era-transition banner (fade in → **slot-machine spin**
-  from the previous era to the new one → settle → fade out), driving the phase callbacks.
-- All three stack in the left-edge `.left-hud` (era banner, menu button, speed control).
+- **Top-row HUD** (`.top-hud`, upper-left): **menu button → EraBanner (`"<Era> Age"`) → TickCounter
+  → SpeedControl**, horizontal.
+- **TickCounter** — ticks remaining in the era's development phase (counts down 65→0) in a box.
+- **SpeedControl** — framed speed buttons (`paused`/`standard`/`fast`/`super`/`ultra`) with tooltips.
+- **TransitionOverlay** — battle banner + era-transition banner (fade in → **typewriter**: delete
+  the previous age char-by-char, type the new age char-by-char → fade out), driving phase callbacks.
+- **AudioController** subscribes to the manager and crossfades the era track on any track-boundary
+  era change (loop or debug jump).
 
 ### Civilization panel (`CivilizationData.js`, `components/UIPanel`)
 - **Framing:** the whole panel is wrapped in the light `Box` 9-slice frame and each dropdown in
@@ -329,8 +332,8 @@ exists; extend it as systems land.
   - **Hover** any slot for a tooltip (`<InfoTip>`): category name + description. Policies use one
     shared silhouette + description.
   - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + output icons
-    in the body, the type silhouette top-right, and the **count** on the far right (hover →
-    programmatic per-tick output text). Only the Citizen is unlocked for now; other slots empty.
+    in the body and the **count** on the far right. Hover shows per-tick output **and the total
+    from that pop type** (`popTotalSummary`). Only the Citizen is unlocked for now.
   - `CivilizationData.units` (9) / `buildings` (7) are index-aligned to the category lists;
     `null` = empty slot.
 
@@ -346,7 +349,7 @@ exists; extend it as systems land.
 - [x] Project scaffold + placeholder title screen.
 - [x] UI viewer: tableau grid + camera, enemy slots, civ panel, menu/era widget, era music.
 - [x] Development phase: tick engine, resources/thresholds, Citizen pops, speed control, era
-  banners + slot-machine transition. Battle phase is stubbed (banner only).
+  banners + typewriter transition. Battle phase is stubbed (banner only).
 - [ ] Real battle phase (enemies in the Battlefield slots + combat resolution).
 - [ ] More pop types / specialists; buildings, units, policies actually populating slots.
 - [ ] Spend gold; make production/progress do something; legitimacy loss/defeat.
@@ -411,3 +414,8 @@ exists; extend it as systems land.
   Added the left HUD (era banner, speed widget, framed menu), the battle/era **TransitionOverlay**
   (slot-machine era spin), resource level numbers + bar-to-next-threshold, and the Citizen
   `PopCard`. Battle phase is a stubbed banner. Engine verified stable over all 28 eras via sim.
+- **2026-07-21** — Loop fixes: threshold `n` is now the global level (never resets per era) with
+  the rubber band vs `(era+1)·targetPerEra` (thresholds now strictly monotonic); music crossfades
+  reliably via a direct manager subscription; moved the speed control to a top HUD row and added a
+  ticks-remaining `TickCounter`; replaced the slot-machine era spin with a **typewriter** effect;
+  removed the pop-card silhouette and added a total-output line to its tooltip.
