@@ -1,0 +1,8 @@
+# Normalize line endings: LF in the repo, native in the working tree.
+* text=auto
+
+# Treat these as binary (no EOL munging / diffing).
+*.png binary
+*.wav binary
+*.ogg binary
+*.svg text

@@ -1,0 +1,32 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Source audio originals (~340 MB of WAVs). The game serves the transcoded
+# .ogg copies in public/music/, which ARE committed. Keep the WAVs local (or
+# move them to Git LFS) rather than bloating the repo.
+/Music/
+
+# Machine-local Claude Code settings (permission grants, etc.)
+.claude/settings.local.json

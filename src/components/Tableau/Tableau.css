@@ -1,0 +1,64 @@
+.tableau-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  background:
+    radial-gradient(1200px 800px at 50% 30%, #12162a, var(--bg)) ,
+    var(--bg);
+  user-select: none;
+}
+.tableau-viewport.dragging { cursor: grabbing; }
+
+.tableau-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.tableau-tile {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  transition: filter 0.12s ease;
+}
+/* West-facing coasts: mirror the sprite so land/water orient toward the continent. */
+.tableau-tile.flip-x { transform: scaleX(-1); }
+.tableau-tile:hover {
+  filter: brightness(1.12);
+  box-shadow: inset 0 0 0 2px var(--accent-light), 0 0 12px var(--accent-glow);
+  z-index: 2;
+}
+
+.enemy-slot {
+  position: absolute;
+  background: #b32424;
+  border: 2px solid #000;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.5);
+}
+
+.tile-tooltip {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.7rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  max-width: 220px;
+}
+.tile-tooltip-title {
+  font-weight: 600;
+  color: var(--accent-light);
+  font-size: 0.92rem;
+}
+.tile-tooltip-line {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+}

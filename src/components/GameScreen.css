@@ -1,0 +1,15 @@
+.game-screen {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* The tableau lives in its own window that fills all space left of the panel,
+   top to bottom. Positioned so the menu button can float over it. */
+.tableau-window {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
