@@ -40,6 +40,11 @@ const RES_TIP = {
 
 const fmtDelta = (n) => (n > 0 ? `+${n}` : `${n}`)
 
+// Keyboard activation for the div-based (role="button") replace-candidate slots.
+const activateKey = (e, fn) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn() }
+}
+
 // --- Build the per-group list of slot descriptors ---
 // Each descriptor: { index, cat?, occupant, kind, silhouette, name, sub, line, tip }
 function unitSlots(civ, era, hpBonus) {
@@ -219,10 +224,20 @@ function SlotRow({ slot, flashing, onReplace }) {
   )
 
   if (flashing) {
+    // Keep the tooltip (so the player can see what they'd overwrite) and support
+    // keyboard activation, while flashing + clickable.
     return (
-      <div className="slot-row filled replace-target" onClick={onReplace} role="button" tabIndex={0}>
+      <InfoTip
+        className="slot-row filled replace-target"
+        title={slot.name}
+        text={slot.tip}
+        onClick={onReplace}
+        onKeyDown={(e) => activateKey(e, onReplace)}
+        role="button"
+        tabIndex={0}
+      >
         {inner}
-      </div>
+      </InfoTip>
     )
   }
   return (
@@ -253,10 +268,6 @@ function PopCard({ pop, count, flashing, onReplace }) {
     </>
   )
 
-  if (flashing) {
-    return <div className="pop-card replace-target" onClick={onReplace} role="button" tabIndex={0}>{body}</div>
-  }
-
   const tip = (
     <>
       {popTooltipText(pop)}
@@ -264,5 +275,21 @@ function PopCard({ pop, count, flashing, onReplace }) {
       <strong>Total ({count}):</strong> {popTotalSummary(pop, count).join(', ')} per tick.
     </>
   )
+
+  if (flashing) {
+    return (
+      <InfoTip
+        className="pop-card replace-target"
+        title={pop.name}
+        text={tip}
+        onClick={onReplace}
+        onKeyDown={(e) => activateKey(e, onReplace)}
+        role="button"
+        tabIndex={0}
+      >
+        {body}
+      </InfoTip>
+    )
+  }
   return <InfoTip className="pop-card" title={pop.name} text={tip}>{body}</InfoTip>
 }
