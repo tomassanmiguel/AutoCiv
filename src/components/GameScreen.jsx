@@ -30,8 +30,8 @@ export default function GameScreen({ seed, audio, onExit }) {
         <div className="tableau-window">
           <Tableau />
           <div className="top-hud">
-            <MenuOverlay onExit={onExit} />
             <EraBanner />
+            <MenuOverlay onExit={onExit} />
             <TickCounter />
             <SpeedControl />
           </div>

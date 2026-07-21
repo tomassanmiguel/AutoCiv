@@ -295,8 +295,9 @@ exists; extend it as systems land.
   Age"→Bronze; starting pops = 1.
 
 ### HUD (`components/Hud`)
-- **Top-row HUD** (`.top-hud`, upper-left): **menu button → EraBanner (`"<Era> Age"`) → TickCounter
-  → SpeedControl**, horizontal.
+- **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
+  the tiles — `.tableau-window` is a column, HUD strip then tableau). Order: **EraBanner
+  (`"<Era> Age"`) → menu button → TickCounter → SpeedControl**, horizontal.
 - **TickCounter** — ticks remaining in the era's development phase (counts down 65→0) in a box.
 - **SpeedControl** — framed speed buttons (`paused`/`standard`/`fast`/`super`/`ultra`) with tooltips.
 - **TransitionOverlay** — battle banner + era-transition banner (fade in → **typewriter**: delete

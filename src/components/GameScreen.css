@@ -5,22 +5,28 @@
   overflow: hidden;
 }
 
-/* The tableau lives in its own window that fills all space left of the panel,
-   top to bottom. Positioned so the HUD can float over it. */
+/* The tableau window fills all space left of the panel. It's a column: the HUD
+   strip on top, the tableau below (so the HUD never overlaps the tiles). The
+   space background lives here so the strip and tableau blend. */
 .tableau-window {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 800px at 50% 30%, #12162a, var(--bg)),
+    var(--bg);
 }
 
-/* Top HUD row: menu button, era banner, tick counter, speed control. */
+/* Top HUD row (its own strip): era banner, menu button, tick counter, speed. */
 .top-hud {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
+  flex: 0 0 auto;
   z-index: 20;
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  padding: 0.85rem 1rem;
 }
