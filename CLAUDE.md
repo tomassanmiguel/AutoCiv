@@ -159,6 +159,8 @@ AutoCiv/
 │       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard
 │       ├── Menu/MenuOverlay.jsx/.css  # framed menu + TEMP era widget
 │       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
+│       ├── Victory/VictoryScreen.jsx/.css # 9-slice "Victory" popup (Hide / Return to Title)
+│       ├── Widgets/WidgetRail.jsx/.css # far-right widget rail (trophy re-summons Victory)
 │       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
 ├── Music/ · Sprites/         # SOURCE assets (originals; see Assets)
 └── .claude/launch.json       # preview server config (autociv-dev, port 5173)
@@ -269,6 +271,10 @@ exists; extend it as systems land.
 - Mouse-**wheel zoom** (anchored at cursor) + **drag to pan**, clamped between fit-all (most
   zoomed out) and ~2×2 tiles (most zoomed in). `revealFullTableau()` animates a zoom-out to
   fit; it fires on every era change and is the **reusable hook for future era transitions**.
+- **Smooth era growth:** unlocking tiles shifts the grid's content origin (`minCol`/`maxRow`/
+  enemy-row count), which would teleport every existing tile. On era change the camera is
+  **counter-translated by that shift first** (via `prevLayoutRef`) so the current view holds
+  still, then the zoom-out animates — no jolt.
 - Hovering a tile shows a tooltip from `tile.getTooltip()` (currently just the terrain name).
 
 ### Game loop (`GameManager`, `game/data/resources.js`, `game/data/pops.js`)
@@ -276,7 +282,7 @@ exists; extend it as systems land.
   **transition** (banner) → next era, until the last era (`won`). State on `GameData`:
   `phase` (`development`/`battle`/`transition`), `tick` (0..65), `speed`.
 - **Development:** **65 ticks/era**, **paused by default**. A speed widget sets
-  `paused`/`standard`(1/s)/`fast`(2/s)/`super`(3/s)/`ultra`(5/s); `GameManager` runs a
+  `paused`/`standard`(1/s)/`fast`(3/s)/`super`(5/s)/`ultra`(10/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
   add it to each threshold resource's `value`, then cross any reached thresholds.
 - **Threshold resources** (progress/food/production) accumulate `value` toward the current level's
@@ -290,7 +296,9 @@ exists; extend it as systems land.
   + 1 production** per pop per tick. All population is Citizens. Start = 1 (`STARTING_CITIZENS`).
 - **Phase machine:** dev ends at 65 ticks → `phase='battle'`; the UI's `TransitionOverlay` plays
   the banner and calls back `endBattle()` → `phase='transition'` → banner → `completeTransition()`
-  → next era (paused). The temporary era slider calls `setEra` (instant debug jump, no banner).
+  → next era (paused). Completing the **final era (Infinity)** sets `data.won = true` (no next
+  era), which shows the **Victory screen**. The temporary era slider calls `setEra` (instant debug
+  jump, no banner; resets `won`).
 - **Interpretations** (flagged in `resources.js`): E is 0-based; `value` resets per level (carries
   overflow) while the per-level threshold grows; n = global level (never resets); R's
   `expected = (era+1)·targetPerEra`, actual = level; "Copper Age"→Bronze; starting pops = 1.
@@ -305,6 +313,16 @@ exists; extend it as systems land.
   the previous age char-by-char, type the new age char-by-char → fade out), driving phase callbacks.
 - **AudioController** subscribes to the manager and crossfades the era track on any track-boundary
   era change (loop or debug jump).
+
+### Victory & widgets (`components/Victory`, `components/Widgets`)
+- **VictoryScreen** — a centered light-`Box` 9-slice popup over a dimmed tableau, shown when
+  `game.data.won` is true (final era completed). Reads **"Victory"** and offers **Hide** (tuck it
+  away so the finished map stays inspectable) and **Return to Title** (`onExit`). `hidden` state
+  lives on `GameScreen` so the popup and the rail share it.
+- **WidgetRail** — a vertical stack of framed icon buttons floating on the **right edge of the
+  tableau window** (`position: absolute`, below the HUD). It is the home for contextual widgets;
+  for now it holds only the **Victory trophy** (🏆), which appears once the game is won *and* the
+  popup has been hidden, and re-opens the popup. Add future widgets here.
 
 ### Civilization panel (`CivilizationData.js`, `components/UIPanel`)
 - **Framing:** the whole panel is wrapped in the light `Box` 9-slice frame and each dropdown in
@@ -421,3 +439,12 @@ exists; extend it as systems land.
   reliably via a direct manager subscription; moved the speed control to a top HUD row and added a
   ticks-remaining `TickCounter`; replaced the slot-machine era spin with a **typewriter** effect;
   removed the pop-card silhouette and added a total-output line to its tooltip.
+- **2026-07-21** — Smoothed the era map growth: on era change the camera is counter-translated by
+  the grid's content-origin shift (`prevLayoutRef`) before the zoom-out animates, so tiles no
+  longer teleport/jolt.
+- **2026-07-21** — Rebalanced speeds: Fast 2→**3** t/s, Super 3→**5** t/s, Ultra 5→**10** t/s
+  (`SPEED_TPS` + SpeedControl tooltips).
+- **2026-07-21** — Added the **Victory screen** (`components/Victory`): a light-`Box` 9-slice
+  "Victory" popup shown on completing the final era (`won`), with **Hide** (keeps the map
+  inspectable) and **Return to Title**. Added a far-right **WidgetRail** (`components/Widgets`)
+  whose **trophy** widget re-summons the popup after it's hidden.
