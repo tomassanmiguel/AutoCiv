@@ -7,12 +7,11 @@ const STARTING_CITIZENS = 1
 // A resource that accumulates toward growing thresholds:
 //  value  — cumulative amount (never reset)
 //  output — per-tick delta (sum of pop outputs)
-//  level  — number of thresholds reached
-//  n      — thresholds reached this era (resets each era; used in the formula)
+//  level  — number of thresholds reached (also the `n` in the threshold formula)
 //  floor  — cumulative value at the start of the current level (for the bar)
 //  threshold — next cumulative value to reach
 function makeThresholdResource(type) {
-  return { value: 0, output: 0, level: 0, n: 0, floor: 0, threshold: RESOURCE_CONFIG[type].T0 }
+  return { value: 0, output: 0, level: 0, floor: 0, threshold: RESOURCE_CONFIG[type].T0 }
 }
 
 /**

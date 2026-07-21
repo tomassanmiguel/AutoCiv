@@ -7,13 +7,15 @@
 //
 //   T(N) = T(N-1) + X * 1.25^E * n * R
 //
-// where E = era index (0-based), n = thresholds reached THIS era (resets each
-// era), and R is a "rubber band" that keeps the per-era pace near targetPerEra.
+// where E = era index (0-based) and n = the GLOBAL number of thresholds reached
+// (level). n does NOT reset per era, so the delta grows monotonically and every
+// threshold is higher than the last. R is a rubber band keeping the running level
+// on pace with the era.
 //
-// INTERPRETATION NOTES (flag if wrong):
+// INTERPRETATION NOTES:
 //  - E is the 0-based era index (Stone = 0), so 1.25^E = 1 in the first era.
-//  - `value` and `threshold` are cumulative and never reset; only `n` resets per era.
-//  - R uses expected = targetPerEra * (tickInEra / TICKS_PER_ERA) (a pace target).
+//  - `value`, `threshold`, and n (= level) are all cumulative — nothing resets per era.
+//  - R uses expected = (era + 1) * targetPerEra, actual = level (thresholds reached).
 
 export const TICKS_PER_ERA = 65
 

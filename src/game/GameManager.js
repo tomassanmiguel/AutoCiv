@@ -105,13 +105,13 @@ export class GameManager {
     let guard = 0
     while (res.value >= res.threshold && guard++ < 1000) {
       res.level += 1
-      res.n += 1
       if (type === 'food') this._onFoodThreshold()
-      // Recompute the next cumulative threshold.
-      const expected = cfg.targetPerEra * (this.data.tick / TICKS_PER_ERA)
-      const R = rubberBand(res.n, expected)
+      // Recompute the next cumulative threshold. n = global level (never resets);
+      // rubber band keeps the running level near (era number) * targetPerEra.
+      const expected = (this.data.era + 1) * cfg.targetPerEra
+      const R = rubberBand(res.level, expected)
       res.floor = res.threshold
-      res.threshold = nextThreshold(res.threshold, cfg.X, this.data.era, res.n, R)
+      res.threshold = nextThreshold(res.threshold, cfg.X, this.data.era, res.level, R)
     }
   }
 
@@ -155,7 +155,6 @@ export class GameManager {
     this.data.phase = 'development'
     this.data.tick = 0
     this.data.speed = 'paused'
-    for (const type of THRESHOLD_TYPES) this.data.civilization[type].n = 0
     this._restartTimer()
   }
 
