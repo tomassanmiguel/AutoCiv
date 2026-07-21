@@ -1,6 +1,7 @@
 // Population types. Each pop produces per-tick resource outputs; the engine
-// multiplies these by the pop count. For now only the Citizen exists and is
-// auto-unlocked; all population is allocated to Citizens.
+// multiplies these by the pop count. The Citizen is the auto-unlocked generalist;
+// the rest are specialists unlocked via advancements. Population growth and
+// slot-replacement split pops between citizens and specialists.
 
 export const POP_TYPES = {
   citizen: {
@@ -10,6 +11,26 @@ export const POP_TYPES = {
     // per-pop, per-tick resource output
     outputs: { progress: 1, food: 1, production: 1 },
   },
+  builder: {
+    key: 'builder', name: 'Builder', specialist: true,
+    silhouette: '/sprites/ui/pop.png',
+    outputs: { production: 5 },
+  },
+  farmer: {
+    key: 'farmer', name: 'Farmer', specialist: true,
+    silhouette: '/sprites/ui/pop.png',
+    outputs: { food: 5 },
+  },
+  trader: {
+    key: 'trader', name: 'Trader', specialist: true,
+    silhouette: '/sprites/ui/pop.png',
+    outputs: { gold: 5 },
+  },
+}
+
+/** True if a pop type is a (replaceable) specialist rather than the Citizen. */
+export function isSpecialist(key) {
+  return !!POP_TYPES[key]?.specialist
 }
 
 const RES_NAME = {
