@@ -30,10 +30,15 @@ export class AudioManager {
     this._ensurePlaying()
   }
 
+  /** Request a specific track by src (cross-fades from whatever is playing). */
+  playTrack(src) {
+    this.wantedSrc = src
+    this._ensurePlaying()
+  }
+
   /** Request the correct track for the given era index. */
   playForEra(eraIndex) {
-    this.wantedSrc = trackForEra(eraIndex).src
-    this._ensurePlaying()
+    this.playTrack(trackForEra(eraIndex).src)
   }
 
   setVolume(v) {

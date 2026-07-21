@@ -15,7 +15,7 @@ import './GameScreen.css'
  * World mixes, island & asteroid scatter, etc.) so each run's map differs but is
  * stable within the run.
  */
-export default function GameScreen({ seed, onExit }) {
+export default function GameScreen({ seed, audio, onExit }) {
   const manager = useMemo(() => new GameManager(seed), [seed])
 
   return (
@@ -26,7 +26,7 @@ export default function GameScreen({ seed, onExit }) {
           <MenuOverlay onExit={onExit} />
         </div>
         <UIPanel />
-        <AudioController />
+        <AudioController audio={audio} />
       </div>
     </GameProvider>
   )

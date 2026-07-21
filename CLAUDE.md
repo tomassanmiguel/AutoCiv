@@ -59,9 +59,10 @@ Core pillars:
 ## Assets
 
 **Source assets** live at the repo root and are the originals — leave them untouched:
-- `Music/` — 10 `.wav` soundtrack tracks (`AncientAutoCiv`, `ClassicalAutoCiv`,
+- `Music/` — 11 `.wav` tracks: 10 era tracks (`AncientAutoCiv`, `ClassicalAutoCiv`,
   `MedievalAutoCiv`, `AutoCivRenaissance`, `AutoCivModern`, `AutoCivDigital`,
-  `AutoCivCrisis`, `AutoCivFrontier`, `AutocivAscension`, `AutoCivFinal`).
+  `AutoCivCrisis`, `AutoCivFrontier`, `AutocivAscension`, `AutoCivFinal`) plus the
+  title-screen track `First Fire to Stars` (served as `public/music/title.ogg`).
 - `Sprites/Map Tiles/` — 14 terrain tiles (`Plains`, `Forest`, `Mountain`, `Coast`, `Ocean`,
   `Island`, `Space`, `Deep Space`, `Asteroid`, `Mars`, `Moon`, `Exohills`, `ExoPlains`,
   `Exosea`).
@@ -154,7 +155,7 @@ AutoCiv/
 │       ├── Tableau/Tableau.jsx/.css   # pan/zoom camera + grid + enemy slots + tooltip
 │       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions
 │       ├── Menu/MenuOverlay.jsx/.css  # menu button + overlay + TEMP era widget
-│       └── AudioController.jsx        # side-effect: keeps music synced to era
+│       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
 ├── Music/ · Sprites/         # SOURCE assets (originals; see Assets)
 └── .claude/launch.json       # preview server config (autociv-dev, port 5173)
 ```
@@ -164,7 +165,8 @@ AutoCiv/
   matching screen component. To add a screen: create `src/screens/<Name>.jsx` (+ `.css`),
   then add a `screen === '<name>'` branch in `App.jsx`. Screens receive navigation
   callbacks as props (e.g. `onNewGame`). We deliberately avoid `react-router` because this
-  is a game, not a navigable website.
+  is a game, not a navigable website. Screen changes go through `App`'s `transitionTo`, which
+  **fades to black** (a `.screen-fade` overlay) and swaps the screen mid-fade.
 - **Styling:** plain CSS files co-located with their component, imported at the top of the
   `.jsx`. Global design tokens (colors, fonts, radius) live as CSS variables in
   `index.css`; reuse them rather than hard-coding values. Shared button classes
@@ -189,10 +191,13 @@ AutoCiv/
   tolerate this (first pass snaps to fit, second animates the reveal).
 - `body { overflow: hidden }` — the game owns the full viewport; **no scrollbars anywhere**
   (a hard UI requirement — the panel must size everything to fit, never scroll).
-- **Audio needs a user gesture** to start (browser autoplay policy); entering via the New
-  Game click usually grants it, and `AudioController` also retries on the first
-  pointer/keydown. Set `localStorage['autociv.mute'] = '1'` to disable music (used to keep
-  automated screenshots from hanging — a looping media stream blocks network-idle capture).
+- **One session-long AudioManager, owned by `App`.** `App` creates it and plays the title
+  track on the title screen; in game, `GameScreen`'s `AudioController` drives the era track on
+  the *same* manager. Because it's shared, title↔era music **cross-fades** on the same system
+  across screen changes (never stopped between screens). It **needs a user gesture** to start
+  (autoplay policy) — `App` unlocks it on the first pointer/keydown. Set
+  `localStorage['autociv.mute'] = '1'` to disable music (used to keep automated screenshots
+  from hanging — a looping media stream blocks network-idle capture).
 - **Audio never piles up:** `AudioManager` models playback as channels with one shared fade
   loop — a new track fades in while *all* previous tracks fade out and stop, so rapid era
   changes (e.g. dragging the era slider across track boundaries) can't leave two tracks
@@ -211,10 +216,11 @@ exists; extend it as systems land.
   Lunar, Intelligence, Solar, Invasion, Exodus, Frontier, Liminite, Xenotic, Evolution,
   Early Galactic, Late Galactic, Utopian, Time, Infinity. The **era index is the canonical
   era number** used everywhere.
-- **Soundtrack:** 10 tracks, each starting at an era and playing until the next track's era:
-  Stone→ancient, Iron→classical, Early Medieval→medieval, Renaissance→renaissance,
-  Steam→modern, Silicon→digital, Invasion→crisis, Frontier→frontier, Early Galactic→ascension,
-  Time→final. Cross-faded by `AudioManager` on era change.
+- **Soundtrack:** a title track (`TITLE_TRACK`) plays on the menu, and 10 era tracks each start
+  at an era and play until the next track's era: Stone→ancient, Iron→classical, Early
+  Medieval→medieval, Renaissance→renaissance, Steam→modern, Silicon→digital, Invasion→crisis,
+  Frontier→frontier, Early Galactic→ascension, Time→final. All cross-faded by the shared
+  `AudioManager` — on era change and on title↔game screen changes.
 
 ### Tableau grid (`game/data/map.js`, `TableauData.js`)
 - Grid is **8 rows × 22 columns**. Rows numbered **1 = bottom … 8 = top** (matches the design
@@ -338,3 +344,7 @@ exists; extend it as systems land.
   contains the logo): dropped the old text logo/kicker/tagline/footer/starfield and placed
   parchment-framed (`Box` 9-slice) menu buttons in the card's open sky. The card fits the
   viewport (letterboxed) and uses `container-type: size` so the menu scales via `cq` units.
+- **2026-07-21** — Added the title-screen track (`First Fire to Stars` → `public/music/title.ogg`)
+  and moved the `AudioManager` up to `App` so it's session-long: title↔era music now cross-fades
+  on the same system across screen changes (`AudioController` just syncs the era). Added a
+  fade-to-black screen transition (`App.transitionTo` + `.screen-fade`). Trimmed dead App.css.

@@ -59,6 +59,9 @@ export const MUSIC_TRACKS = [
   { startEra: eraIndex('time'),           src: '/music/final.ogg' },
 ]
 
+// Title-screen / main-menu track (plays outside of a run).
+export const TITLE_TRACK = '/music/title.ogg'
+
 /** The track that should be playing during the given era index. */
 export function trackForEra(idx) {
   let chosen = MUSIC_TRACKS[0]
