@@ -1,29 +1,39 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { GameManager } from '../game/GameManager.js'
 import { GameProvider } from '../game/react/GameProvider.jsx'
 import Tableau from './Tableau/Tableau.jsx'
 import UIPanel from './UIPanel/UIPanel.jsx'
 import MenuOverlay from './Menu/MenuOverlay.jsx'
+import EraBanner from './Hud/EraBanner.jsx'
+import SpeedControl from './Hud/SpeedControl.jsx'
+import TransitionOverlay from './Hud/TransitionOverlay.jsx'
 import AudioController from './AudioController.jsx'
 import './GameScreen.css'
 
 /**
  * The in-game view: the tableau on the left, the civilization panel on the
- * right, a floating menu button, and the (silent) audio controller.
+ * right, a left-edge HUD (era banner + menu + speed), the era/battle transition
+ * overlay, and the (shared) audio controller.
  *
- * The `seed` (from App) drives the randomized terrain regions (Old World / New
- * World mixes, island & asteroid scatter, etc.) so each run's map differs but is
- * stable within the run.
+ * Each run gets a fresh random seed so the randomized terrain regions differ.
  */
 export default function GameScreen({ seed, audio, onExit }) {
   const manager = useMemo(() => new GameManager(seed), [seed])
+
+  // Stop the tick loop when leaving the game.
+  useEffect(() => () => manager.stop(), [manager])
 
   return (
     <GameProvider manager={manager}>
       <div className="game-screen">
         <div className="tableau-window">
           <Tableau />
-          <MenuOverlay onExit={onExit} />
+          <div className="left-hud">
+            <EraBanner />
+            <MenuOverlay onExit={onExit} />
+            <SpeedControl />
+          </div>
+          <TransitionOverlay />
         </div>
         <UIPanel />
         <AudioController audio={audio} />

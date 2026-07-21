@@ -36,6 +36,11 @@ export const ERA_COUNT = ERAS.length // 28
 // Fast lookup: era id -> index.
 export const ERA_INDEX = Object.fromEntries(ERAS.map((e, i) => [e.id, i]))
 
+/** Display title for an era index, e.g. "Stone Age". */
+export function eraTitle(idx) {
+  return `${ERAS[idx].name} Age`
+}
+
 /** Resolve an era id (e.g. 'stone') to its numeric index. */
 export function eraIndex(id) {
   const i = ERA_INDEX[id]

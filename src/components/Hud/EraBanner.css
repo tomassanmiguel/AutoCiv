@@ -1,0 +1,17 @@
+.era-banner {
+  --fw: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  padding: 0.1rem 0.8rem;
+}
+.era-banner-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+  color: #3a2c10;
+  text-shadow: 0 1px 0 rgba(255, 248, 230, 0.5);
+  white-space: nowrap;
+}

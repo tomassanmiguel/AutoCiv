@@ -1,0 +1,53 @@
+.transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 5, 10, 0.62);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.transition-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.transition-banner {
+  --fw: 44px;
+  padding: 1.2rem 2.6rem;
+  min-width: 42vw;
+  text-align: center;
+  transform: translateY(0);
+}
+.transition-banner.big {
+  --fw: 58px;
+  min-width: 56vw;
+}
+
+.transition-text,
+.slot-text {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 4rem);
+  letter-spacing: 0.02em;
+  color: #3a2c10;
+  text-shadow: 0 2px 0 rgba(255, 248, 230, 0.45);
+  white-space: nowrap;
+}
+
+.slot-char {
+  display: inline-block;
+  min-width: 0.15em; /* keep spaces from collapsing */
+}
+.slot-char.spinning {
+  animation: slot-bob 0.11s steps(2) infinite;
+}
+@keyframes slot-bob {
+  0% { transform: translateY(-9%); }
+  100% { transform: translateY(9%); }
+}

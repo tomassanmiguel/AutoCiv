@@ -6,10 +6,22 @@
 }
 
 /* The tableau lives in its own window that fills all space left of the panel,
-   top to bottom. Positioned so the menu button can float over it. */
+   top to bottom. Positioned so the HUD can float over it. */
 .tableau-window {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
+}
+
+/* Left-edge HUD stack: era banner, menu button, speed control. */
+.left-hud {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
 }

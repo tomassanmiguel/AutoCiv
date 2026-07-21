@@ -17,7 +17,7 @@ export default function MenuOverlay({ onExit }) {
   return (
     <>
       <button
-        className="menu-button"
+        className="menu-button frame-box-dark"
         onClick={() => setOpen(true)}
         aria-label="Menu"
       >
@@ -26,7 +26,7 @@ export default function MenuOverlay({ onExit }) {
 
       {open && (
         <div className="menu-backdrop" onClick={() => setOpen(false)}>
-          <div className="menu-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="menu-panel frame-box" onClick={(e) => e.stopPropagation()}>
             <div className="menu-panel-head">
               <h2>Menu</h2>
               <button className="menu-close" onClick={() => setOpen(false)} aria-label="Close">✕</button>
@@ -47,17 +47,17 @@ export default function MenuOverlay({ onExit }) {
                 onChange={(e) => game.setEra(Number(e.target.value))}
               />
               <div className="era-steppers">
-                <button className="btn btn-ghost" onClick={() => game.prevEra()} disabled={era === 0}>
+                <button className="menu-frame-btn frame-box-dark" onClick={() => game.prevEra()} disabled={era === 0}>
                   ◀ Prev
                 </button>
-                <button className="btn btn-ghost" onClick={() => game.nextEra()} disabled={era === ERA_COUNT - 1}>
+                <button className="menu-frame-btn frame-box-dark" onClick={() => game.nextEra()} disabled={era === ERA_COUNT - 1}>
                   Next ▶
                 </button>
               </div>
             </section>
 
             <section className="menu-section">
-              <button className="btn btn-ghost menu-exit" onClick={onExit}>Exit to Title</button>
+              <button className="menu-frame-btn frame-box-dark menu-exit" onClick={onExit}>Exit to Title</button>
             </section>
           </div>
         </div>

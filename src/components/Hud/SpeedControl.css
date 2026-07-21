@@ -1,0 +1,28 @@
+.speed-control {
+  display: flex;
+  gap: 0.3rem;
+}
+.speed-tip { display: inline-flex; } /* InfoTip anchor wrapping each button */
+
+.speed-btn {
+  --fw: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 30px;
+  padding: 0 0.35rem;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.speed-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+
+.speed-glyph {
+  font-size: 0.62rem;
+  line-height: 1;
+  color: #4a3a16;
+  letter-spacing: -1px;
+}
+
+/* Active speed: brighter, gold-tinted glyph + subtle glow. */
+.speed-btn.active { filter: brightness(1.12) drop-shadow(0 0 4px var(--accent-glow)); }
+.speed-btn.active .speed-glyph { color: #7a5410; font-weight: 700; }
