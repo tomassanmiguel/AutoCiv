@@ -11,11 +11,12 @@ import './GameScreen.css'
  * The in-game view: the tableau on the left, the civilization panel on the
  * right, a floating menu button, and the (silent) audio controller.
  *
- * Each run gets a fresh random seed so the randomized terrain regions (Old
- * World / New World mixes, island & asteroid scatter, etc.) differ every game.
+ * The `seed` (from App) drives the randomized terrain regions (Old World / New
+ * World mixes, island & asteroid scatter, etc.) so each run's map differs but is
+ * stable within the run.
  */
-export default function GameScreen({ onExit }) {
-  const manager = useMemo(() => new GameManager(Math.floor(Math.random() * 0xffffffff)), [])
+export default function GameScreen({ seed, onExit }) {
+  const manager = useMemo(() => new GameManager(seed), [seed])
 
   return (
     <GameProvider manager={manager}>

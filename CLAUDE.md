@@ -238,9 +238,9 @@ exists; extend it as systems land.
   - **Space** → 2 asteroid tiles (rest space), not adjacent to earth/moon/mars.
   - **Exoplanet** → 50/50 exoplains/exohills.
   - Concrete labels: Coast, Mountains(→mountain), Mars, Exosea, Moon.
-- **Per-run randomization:** the resolution is seeded, so it is stable *within* a run but
-  **`GameScreen` passes a fresh `Math.random()` seed to `GameManager` each new game**, so the
-  randomized regions differ every run.
+- **Per-run randomization:** the resolution is seeded, so it is stable *within* a run.
+  **`App` generates a fresh random seed in the New Game handler** (not during render) and passes
+  it via `GameScreen` → `GameManager`, so the randomized regions differ every run.
 - **Coast orientation:** a Coast tile whose eastern neighbor is a land label (New World / Old
   World / Mountains) is a **west coast** and gets `tile.flipX = true` (rendered `scaleX(-1)`)
   so the coastline faces the continent. See `isWestCoast()` / `LAND_LABELS` in `map.js`.
@@ -321,3 +321,7 @@ exists; extend it as systems land.
   version-control + working-style notes to this file. Added the reusable `<NineSlice>`
   (border-image) component and framed the info panel (light `Box`) and dropdowns (dark
   `Box Dark`) with 9-slice parchment frames, restyling the panel to dark-ink-on-parchment.
+- **2026-07-21** — Added `<InfoTip>` hover tooltips to the five top resources. Fixed ESLint
+  errors: moved the map-seed generation to `App`'s New Game handler (was calling `Math.random`
+  during render — the map could regenerate on an incidental re-render), and created the
+  `AudioManager` inside an effect instead of during render.

@@ -1,3 +1,7 @@
+/* This module intentionally colocates the context Provider with its useGame
+   hook; react-refresh's "only export components" rule (dev fast-refresh only,
+   not a correctness concern) does not apply cleanly here. */
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useSyncExternalStore } from 'react'
 
 const GameContext = createContext(null)

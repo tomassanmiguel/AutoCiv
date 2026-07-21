@@ -13,15 +13,24 @@ import './App.css'
  */
 export default function App() {
   const [screen, setScreen] = useState('title')
+  // Seed for the run's map. Generated here in an event handler (not during a
+  // component render) so the map is stable for the whole run and only changes
+  // when a new game is started.
+  const [seed, setSeed] = useState(0)
+
+  const startGame = () => {
+    setSeed((Math.random() * 0x100000000) >>> 0)
+    setScreen('game')
+  }
 
   return (
     <div className="app-shell">
       {screen === 'title' && (
-        <TitleScreen onNewGame={() => setScreen('game')} />
+        <TitleScreen onNewGame={startGame} />
       )}
 
       {screen === 'game' && (
-        <GameScreen onExit={() => setScreen('title')} />
+        <GameScreen seed={seed} onExit={() => setScreen('title')} />
       )}
     </div>
   )

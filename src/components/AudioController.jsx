@@ -10,14 +10,19 @@ export default function AudioController() {
   const game = useGame()
   const era = game.era
   const mgrRef = useRef(null)
-  if (!mgrRef.current) mgrRef.current = new AudioManager(0.5)
 
-  // Mount: request the current era's track and unlock on the first gesture.
+  // Create the manager once (in an effect, not during render) and stop it on
+  // unmount. Declared first so it runs before the effects below on mount.
   useEffect(() => {
-    // Escape hatch (also a future settings hook): localStorage 'autociv.mute'.
+    const mgr = (mgrRef.current ??= new AudioManager(0.5))
+    return () => mgr.stop()
+  }, [])
+
+  // Unlock playback on mount + the first user gesture (unless muted). The
+  // 'autociv.mute' localStorage flag is an escape hatch / future settings hook.
+  useEffect(() => {
     if (localStorage.getItem('autociv.mute') === '1') return
     const mgr = mgrRef.current
-    mgr.playForEra(game.era)
     mgr.enable() // best-effort; entering via a click usually grants activation
     const kick = () => mgr.enable()
     window.addEventListener('pointerdown', kick)
@@ -25,14 +30,13 @@ export default function AudioController() {
     return () => {
       window.removeEventListener('pointerdown', kick)
       window.removeEventListener('keydown', kick)
-      mgr.stop()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Era change: switch track (cross-fades internally, no-op if same track).
+  // Keep the track synced to the era (cross-fades internally; silent until
+  // enabled; no-op if the track is unchanged).
   useEffect(() => {
-    mgrRef.current.playForEra(era)
+    mgrRef.current?.playForEra(era)
   }, [era])
 
   return null
