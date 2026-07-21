@@ -105,13 +105,13 @@ export class GameManager {
     }
     civ.gold.value += civ.gold.output
 
-    // A progress threshold this tick opens a choice, which pauses the game;
-    // don't advance the tick counter until the player resolves it.
-    this._maybeOpenSelection()
-    if (this.data.selection) { this._emit(); return }
-
+    // Count the tick FIRST (resources accrue exactly once per tick), THEN — if a
+    // progress threshold crossed this tick — open the choice, which pauses the
+    // game. Resuming continues on the next tick, so no tick's output is
+    // double-counted (the pause is a genuinely free pause).
     this.data.tick += 1
-    if (this.data.tick >= TICKS_PER_ERA) this._endDevelopment()
+    if (this.data.tick >= TICKS_PER_ERA) { this._endDevelopment(); this._emit(); return }
+    this._maybeOpenSelection()
     this._emit()
   }
 
@@ -262,7 +262,10 @@ export class GameManager {
     const target = this._unlockTarget(opt.unlock)
     const empties = target.slotIndices.filter((i) => this._slotEmpty(target.group, i))
     if (empties.length > 0) {
-      for (const i of empties) this._fillSlot(target.group, i, opt.unlock)
+      // Units/buildings occupy each of their own type slots (multiFill); policies
+      // and specialists take a single slot, so only fill the first empty one.
+      const toFill = target.multiFill ? empties : [empties[0]]
+      for (const i of toFill) this._fillSlot(target.group, i, opt.unlock)
       this._markChosen(opt.id)
       this._resolveProgress()
       return
@@ -339,18 +342,22 @@ export class GameManager {
   }
 
   // --- Slot resolution helpers ---
+  // Returns { group, multiFill, slotIndices }. slotIndices are the item's target
+  // slots and (when full) the replace candidates; multiFill = fill EVERY empty
+  // target (units/buildings occupy each of their type slots) vs. just one
+  // (policies/specialists take a single slot from a generic group).
   _unlockTarget(unlock) {
     switch (unlock.kind) {
       case 'unit':
-        return { group: 'units', slotIndices: UNIT_DEFS[unlock.key].types.map((t) => catIndex(UNIT_CATEGORIES, t)) }
+        return { group: 'units', multiFill: true, slotIndices: UNIT_DEFS[unlock.key].types.map((t) => catIndex(UNIT_CATEGORIES, t)) }
       case 'building':
-        return { group: 'buildings', slotIndices: BUILDING_DEFS[unlock.key].types.map((t) => catIndex(BUILDING_CATEGORIES, t)) }
+        return { group: 'buildings', multiFill: true, slotIndices: BUILDING_DEFS[unlock.key].types.map((t) => catIndex(BUILDING_CATEGORIES, t)) }
       case 'policy':
-        return { group: 'policies', slotIndices: [0, 1, 2, 3, 4] }
+        return { group: 'policies', multiFill: false, slotIndices: [0, 1, 2, 3, 4] }
       case 'pop':
-        return { group: 'population', slotIndices: [1, 2, 3, 4] } // slot 0 = Citizen, never replaced
+        return { group: 'population', multiFill: false, slotIndices: [1, 2, 3, 4] } // slot 0 = Citizen, never replaced
       default:
-        return { group: null, slotIndices: [] }
+        return { group: null, multiFill: false, slotIndices: [] }
     }
   }
 

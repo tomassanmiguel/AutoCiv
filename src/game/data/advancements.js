@@ -56,6 +56,11 @@ for (const [eraId, names] of Object.entries(POOL)) {
  *  - 'pop'               -> key into POP_TYPES (unlocks a specialist)
  *  - 'policy'            -> key into POLICY_DEFS (fills a policy slot)
  *  - 'modifier'          -> a civilization-wide passive (applied immediately)
+ *
+ * Keyed by NAME (implementation is resolved via name, not id). INVARIANT: only add
+ * names that are UNIQUE across the pool — a few names repeat between eras (e.g.
+ * "Domestication" in Bronze and Renaissance), and implementing a repeated name
+ * would mark every pool entry with that name implemented.
  */
 export const IMPLEMENTED = {
   'Clothes':      { kind: 'modifier', key: 'clothes', description: 'Permanently gives all friendly units +5 HP.' },
