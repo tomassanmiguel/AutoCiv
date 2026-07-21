@@ -149,7 +149,11 @@ AutoCiv/
 │   │   │   ├── terrain.js     # terrain registry + seeded meta-type resolution
 │   │   │   ├── slots.js       # Unit/Building slot categories (label + description)
 │   │   │   ├── resources.js   # threshold config + T(N) formula + rubber band
-│   │   │   └── pops.js        # pop types (Citizen) + output/tooltip helpers
+│   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
+│   │   │   ├── units.js       # unit defs (Warrior/Wolf/Slinger) + stat/level helpers
+│   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp helper
+│   │   │   ├── policies.js    # policy defs (Burial Rites)
+│   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
 │   │   └── react/GameProvider.jsx # <GameProvider> + useGame() hook
 │   └── components/
@@ -159,8 +163,9 @@ AutoCiv/
 │       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard
 │       ├── Menu/MenuOverlay.jsx/.css  # framed menu + TEMP era widget
 │       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
+│       ├── Progress/ProgressOverlay.jsx/.css # advancement chooser (cards/confirm/replace)
 │       ├── Victory/VictoryScreen.jsx/.css # 9-slice "Victory" popup (Hide / Return to Title)
-│       ├── Widgets/WidgetRail.jsx/.css # far-right widget rail (trophy re-summons Victory)
+│       ├── Widgets/WidgetRail.jsx/.css # far-right widget rail (trophy/flask re-summon overlays)
 │       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
 ├── Music/ · Sprites/         # SOURCE assets (originals; see Assets)
 └── .claude/launch.json       # preview server config (autociv-dev, port 5173)
@@ -290,10 +295,15 @@ exists; extend it as systems land.
   increments, and the **per-level threshold grows**: `threshold(N)=threshold(N-1)+X·1.25^E·n·R`
   (`resources.js`: `T0`/`X`/`targetPerEra`; **E = 0-based era; n = the GLOBAL level, never resets**).
   Because the delta is always positive, **each level's requirement is strictly higher than the last**.
-  R rubber-bands the running level toward `(era+1)·targetPerEra`. **Food** crossings add pops =
-  **era number**; production/progress do nothing yet.
-- **Pops** (`pops.js`): only **Citizen** for now (auto-unlocked), producing **1 progress + 1 food
-  + 1 production** per pop per tick. All population is Citizens. Start = 1 (`STARTING_CITIZENS`).
+  R rubber-bands the running level toward `(era+1)·targetPerEra`. **Food** crossings add pops via
+  `addPops(era+1)`; **progress** crossings open an advancement selection (see below); **production**
+  crossings increment `pendingProduction` (build flow not implemented yet). **Gold** also accrues
+  per tick (`gold.value += gold.output`), driven by Trader specialists.
+- **Pops** (`pops.js`): **Citizen** (generalist: 1 progress/food/production each per tick) plus
+  unlockable **specialists** — Builder (+5 production), Farmer (+5 food), Trader (+5 gold). Start = 1
+  Citizen (`STARTING_CITIZENS`). **Growth split** (`addPops`): each new pop alternates by a running
+  `growthParity` — **EVEN → a specialist** (cycled bottom-to-top via `specialistCursor`), **ODD →
+  citizen**; with no specialists unlocked, all growth is citizens.
 - **Phase machine:** dev ends at 65 ticks → `phase='battle'`; the UI's `TransitionOverlay` plays
   the banner and calls back `endBattle()` → `phase='transition'` → banner → `completeTransition()`
   → next era (paused). Completing the **final era (Infinity)** sets `data.won = true` (no next
@@ -302,6 +312,34 @@ exists; extend it as systems land.
 - **Interpretations** (flagged in `resources.js`): E is 0-based; `value` resets per level (carries
   overflow) while the per-level threshold grows; n = global level (never resets); R's
   `expected = (era+1)·targetPerEra`, actual = level; "Copper Age"→Bronze; starting pops = 1.
+
+### Advancements / progress selection (`game/data/advancements.js`, `components/Progress`)
+- **Pool:** `advancements.js` holds all **560** advancements (28 eras × 20, verbatim names,
+  misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) lists
+  the few that currently do something and what they unlock (`kind`: `unit`/`building`/`pop`/`policy`/
+  `modifier`). Only the **Stone** subset is implemented so far (Warrior is pre-unlocked in Melee).
+- **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
+  the game **paused** (`_restartTimer` is gated on `!selection`). Multiple owed choices queue via
+  `pendingProgress`; each resolves then opens the next. Choices earned but unresolved are dropped on
+  era change (`_beginEra`/`setEra` clear `selection`+`pending`).
+- **Options:** draw up to 3 **unchosen** advancements with `eraIndex <= current era`, weighted by
+  **2^eraIndex** (so current-era options dominate). Only implemented ones are weighted; if fewer than
+  3, the rest are unimplemented **"Not Yet Implemented"** filler cards. Card = name + era + corner
+  silhouette (policy→policy icon, pop→pop icon, unit/building→the unlocked type's category
+  silhouette, modifier→defense icon, unimplemented→`?`) + description. Hover highlights + enlarges.
+- **Stages** (`selection.stage`): `choose` (3 cards + **Hide**; hidden cards restored by the rail
+  flask) → on a full-slot unlock, `confirm` (an "Are you sure?" with **don't-ask-again** →
+  `civ.askBeforeReplace`) → `replace` (chooser hidden with no re-show; the panel's candidate slots
+  **flash red** and are clickable → `resolveReplace`; **Cancel** returns to `choose`). Empty slots
+  fill immediately.
+- **Unlock rules:** unit/building fills its category slot(s) (a multi-type item fills each empty type
+  slot; only when **all** its type slots are full does it go to replace). Policies use the 5 generic
+  slots; specialists use population slots **1–4** (Citizen slot 0 is never replaced). Unlocking a
+  specialist **converts 1 citizen** to it if ≥2 citizens; **replacing** a specialist splits its pops
+  **half → new type, half → citizens** (`floor` to the new type). `modifier` (Clothes → `+5`
+  `modifiers.unitHpBonus`) applies immediately with no slot.
+- **Resume:** resolving clears the selection and resumes at `data.speed` — the speed selected before
+  (or changed during) the selection; the speed control stays clickable (backdrop sits below the HUD).
 
 ### HUD (`components/Hud`)
 - **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
@@ -320,9 +358,10 @@ exists; extend it as systems land.
   away so the finished map stays inspectable) and **Return to Title** (`onExit`). `hidden` state
   lives on `GameScreen` so the popup and the rail share it.
 - **WidgetRail** — a vertical stack of framed icon buttons floating on the **right edge of the
-  tableau window** (`position: absolute`, below the HUD). It is the home for contextual widgets;
-  for now it holds only the **Victory trophy** (🏆), which appears once the game is won *and* the
-  popup has been hidden, and re-opens the popup. Add future widgets here.
+  tableau window** (`position: absolute`, below the HUD). Home for contextual widgets: the **Victory
+  trophy** (🏆, when the game is won *and* the popup is hidden) and the **Progress flask** (the
+  progress icon, when an advancement chooser is hidden) — each re-opens its overlay. Add future
+  widgets here.
 
 ### Civilization panel (`CivilizationData.js`, `components/UIPanel`)
 - **Framing:** the whole panel is wrapped in the light `Box` 9-slice frame and each dropdown in
@@ -338,8 +377,12 @@ exists; extend it as systems land.
   per-tick delta. Shape `{ value, output, level, threshold }`.
 - **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
   **Buildings (7)**, **Policies (5)**, **Population (5)**. The open accordion **flex-grows to
-  fill the remaining panel height**; its slots are **large full-width boxes** that divide that
-  space equally, **each showing a centered type silhouette** (no inline text).
+  fill the remaining panel height**; **empty** slots show a centered type silhouette, while
+  **filled** slots render a compact **item card** — units show name + category + `Speed·Atk·Def`
+  (level-scaled, incl. the Clothes HP bonus); buildings/policies show name + type + effect; full
+  descriptions on hover. During an advancement **replace**, the active group's accordion force-opens
+  and its candidate slots **flash red** and are clickable (`resolveReplace`). `CivilizationData`
+  roster slots hold `{ key, level }` (Warrior pre-fills Melee); `pops` holds counts by type.
   - **Slot data** lives in `game/data/slots.js`: `UNIT_CATEGORIES` (9), `BUILDING_CATEGORIES`
     (7), and `POLICY_INFO` / `POPULATION_INFO` (one silhouette + description each). Each entry
     has a `silhouette` (path in `public/sprites/ui/`) and a `description`.
@@ -353,9 +396,10 @@ exists; extend it as systems land.
     shared silhouette + description.
   - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + output icons
     in the body and the **count** on the far right. Hover shows per-tick output **and the total
-    from that pop type** (`popTotalSummary`). Only the Citizen is unlocked for now.
-  - `CivilizationData.units` (9) / `buildings` (7) are index-aligned to the category lists;
-    `null` = empty slot.
+    from that pop type** (`popTotalSummary`). The Citizen starts unlocked; specialists (Builder/
+    Farmer/Trader) unlock via advancements.
+  - `CivilizationData.units` (9) / `buildings` (7) / `policies` (5) are index-aligned to the
+    category lists; `null` = empty slot, else `{ key, level }`.
 
 ### Menu (`components/Menu/MenuOverlay`)
 - Framed hamburger button (in the left HUD) opens a 9-slice-boxed overlay (light panel, dark
@@ -370,9 +414,13 @@ exists; extend it as systems land.
 - [x] UI viewer: tableau grid + camera, enemy slots, civ panel, menu/era widget, era music.
 - [x] Development phase: tick engine, resources/thresholds, Citizen pops, speed control, era
   banners + typewriter transition. Battle phase is stubbed (banner only).
-- [ ] Real battle phase (enemies in the Battlefield slots + combat resolution).
-- [ ] More pop types / specialists; buildings, units, policies actually populating slots.
-- [ ] Spend gold; make production/progress do something; legitimacy loss/defeat.
+- [x] Progress selection: threshold → paused 3-card advancement chooser (hide/re-muster, weighted
+  pool), unlock into roster slots (fill / confirm / replace), specialists + pop-growth split.
+- [ ] Production/build flow: choose a unit/building, placement mode (valid tiles flash), deploy an
+  instance onto a tile with an on-tile card; damaged appearance; slot-fill "slam" juice.
+- [ ] Real battle phase (enemies in the Battlefield slots + combat resolution) — makes unit/building
+  stats, abilities, Burial Rites, Clothes, and Pier era-food actually matter.
+- [ ] Spend gold; upgrades (levels already scale stats); legitimacy loss/defeat.
 
 ---
 
@@ -448,3 +496,11 @@ exists; extend it as systems land.
   "Victory" popup shown on completing the final era (`won`), with **Hide** (keeps the map
   inspectable) and **Return to Title**. Added a far-right **WidgetRail** (`components/Widgets`)
   whose **trophy** widget re-summons the popup after it's hidden.
+- **2026-07-21** — Implemented the **progress / advancement selection**. Added the 560-entry
+  advancement pool + `IMPLEMENTED` registry (`data/advancements.js`) and unit/building/policy/
+  specialist defs (`units.js`/`buildings.js`/`policies.js`/`pops.js`; Warrior pre-unlocked). A
+  progress threshold now pauses the game and opens a weighted 3-card chooser (`ProgressOverlay`)
+  with Hide/re-muster (rail flask), fill-or-replace into roster slots (confirm + don't-ask-again,
+  red-flashing candidate slots), specialist unlock/citizen-conversion, and the EVEN/ODD pop-growth
+  split. Filled panel slots now render item cards. Engine flows verified via a Node sim; an
+  adversarial multi-agent review pass ran over the slice. Production/build flow is next.
