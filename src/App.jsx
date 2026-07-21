@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import LoadingScreen from './screens/LoadingScreen.jsx'
 import TitleScreen from './screens/TitleScreen.jsx'
 import GameScreen from './components/GameScreen.jsx'
 import { AudioManager } from './game/audio/AudioManager.js'
@@ -14,7 +15,9 @@ const FADE_MS = 260 // keep in sync with .screen-fade transition in App.css
  * state (no URL routing — this is a game, not a navigable website).
  */
 export default function App() {
-  const [screen, setScreen] = useState('title')
+  // Start on the loading splash: it collects the first user gesture (so audio
+  // can play) and then fades into the title screen.
+  const [screen, setScreen] = useState('loading')
   const [seed, setSeed] = useState(0)
   const [fading, setFading] = useState(false)
 
@@ -56,9 +59,16 @@ export default function App() {
   const startGame = () =>
     transitionTo('game', () => setSeed((Math.random() * 0x100000000) >>> 0))
   const exitToTitle = () => transitionTo('title')
+  // The loading click is the audio-unlocking gesture; also enable directly so
+  // the title track is ready the moment we arrive there.
+  const beginFromTitle = () => {
+    if (localStorage.getItem('autociv.mute') !== '1') audio.enable()
+    transitionTo('title')
+  }
 
   return (
     <div className="app-shell">
+      {screen === 'loading' && <LoadingScreen onStart={beginFromTitle} />}
       {screen === 'title' && <TitleScreen onNewGame={startGame} />}
       {screen === 'game' && <GameScreen seed={seed} audio={audio} onExit={exitToTitle} />}
       <div className={`screen-fade${fading ? ' active' : ''}`} />

@@ -135,6 +135,7 @@ AutoCiv/
 │   ├── index.css              # global reset + CSS variables (theme tokens)
 │   ├── App.jsx / App.css      # SCREEN ROUTER (state-based) + shared .btn styles
 │   ├── screens/
+│   │   ├── LoadingScreen.jsx/.css  # click-to-start splash (unlocks audio)
 │   │   └── TitleScreen.jsx/.css
 │   ├── game/                  # framework-free game model + data (no React here)
 │   │   ├── GameManager.js     # ROOT: owns GameData; subscribe/version store for React
@@ -167,6 +168,10 @@ AutoCiv/
   callbacks as props (e.g. `onNewGame`). We deliberately avoid `react-router` because this
   is a game, not a navigable website. Screen changes go through `App`'s `transitionTo`, which
   **fades to black** (a `.screen-fade` overlay) and swaps the screen mid-fade.
+  - **Screen flow:** `loading` → `title` → `game`. The app starts on the **LoadingScreen**
+    splash whose only job is to collect the first user gesture (browser autoplay policy) —
+    clicking/pressing any key fades to the title screen, at which point the title music can
+    start. Pixel-art styled with the `--font-pixel` (Press Start 2P) font.
 - **Styling:** plain CSS files co-located with their component, imported at the top of the
   `.jsx`. Global design tokens (colors, fonts, radius) live as CSS variables in
   `index.css`; reuse them rather than hard-coding values. Shared button classes
@@ -348,3 +353,6 @@ exists; extend it as systems land.
   and moved the `AudioManager` up to `App` so it's session-long: title↔era music now cross-fades
   on the same system across screen changes (`AudioController` just syncs the era). Added a
   fade-to-black screen transition (`App.transitionTo` + `.screen-fade`). Trimmed dead App.css.
+- **2026-07-21** — Added a pixel-art **LoadingScreen** click-to-start splash as the entry point.
+  It captures the first gesture (so audio can autoplay), then fades into the title screen where
+  the music begins. Added the `--font-pixel` (Press Start 2P) web font.
