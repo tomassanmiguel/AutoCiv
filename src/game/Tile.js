@@ -32,7 +32,7 @@ export class Tile {
   getTooltip() {
     return {
       title: this.def?.name ?? this.terrain,
-      lines: [`Row ${this.row}, Col ${this.col}`],
+      lines: [],
     }
   }
 }
