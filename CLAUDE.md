@@ -158,7 +158,7 @@ AutoCiv/
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
 │   │   └── react/GameProvider.jsx # <GameProvider> + useGame() hook
 │   └── components/
-│       ├── common/{NineSlice,InfoTip}.jsx/.css # 9-slice frame; hover tooltip
+│       ├── common/{NineSlice,InfoTip,IconText}.jsx/.css # 9-slice frame; tooltip; inline-icon prose
 │       ├── GameScreen.jsx/.css    # composes the in-game view
 │       ├── Tableau/{Tableau,TileCard}.jsx/.css # camera + grid + placement mode + on-tile cards
 │       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard (+ replace/pick flash, fill juice)
@@ -196,6 +196,16 @@ AutoCiv/
   Frame PNGs live in `public/sprites/ui/`. `slice` = border inset in SOURCE px (our `Box`
   frames are 1254x1254, sliced at 205); `width` = rendered border thickness. Reuse it for any
   future framed element instead of hand-rolling `border-image`.
+- **Icons over words in prose (PERVASIVE — do this everywhere).** Gameplay descriptions,
+  effects, and tooltips must show the **icon** for a type, not the word — resources
+  (`:food:`/`:gold:`/`:production:`/`:progress:`/`:legitimacy:`), stats
+  (`:speed:`/`:attack:`/`:defense:`), and unit/building/policy/pop types
+  (`:cavalry:`/`:ranged:`/`:melee:`/`:policy:`/… — e.g. write ":cavalry: unit", not "cavalry
+  unit"). Author strings with `:token:` markup; `<IconText>` (`components/common`) swaps tokens
+  for inline icons that scale with the text. **`InfoTip` routes every string tooltip through
+  IconText automatically**, so any `text=""` prop just works; for prose rendered outside a tooltip
+  (slot lines, on-card/JSX descriptions) wrap it in `<IconText>` yourself. Token→icon map is at the
+  top of `IconText.jsx`; add new tokens there. HP is `:defense:`. Any NEW prose must follow this.
 - **Model vs. UI:** all game logic/data lives under `src/game/` and is **framework-free**
   (plain classes, no React imports) so it stays testable. React reads it through one bridge:
   `GameManager` exposes `subscribe(fn)` + `getVersion()`; `useGame()` (in `react/GameProvider`)
@@ -332,6 +342,8 @@ exists; extend it as systems land.
   3, the rest are unimplemented **"Not Yet Implemented"** filler cards. Card = name + era + corner
   silhouette (policy→policy icon, pop→pop icon, unit/building→the unlocked type's category
   silhouette, modifier→defense icon, unimplemented→`?`) + description. Hover highlights + enlarges.
+  If the era's pool is fully **exhausted** (nothing unchosen left), the owed choice is silently
+  **skipped** rather than opening a zero-card selection (no soft-lock).
 - **Stages** (`selection.stage`): `choose` (3 cards + **Hide**; hidden cards restored by the rail
   flask) → on a full-slot unlock, `confirm` (an "Are you sure?" with **don't-ask-again** →
   `civ.askBeforeReplace`) → `replace` (chooser hidden with no re-show; the panel's candidate slots
@@ -546,3 +558,14 @@ exists; extend it as systems land.
   level badge, damaged gray-out). Added terrain placement classes + `canPlaceOn`, building
   end-of-era outputs + lifetime (Pier food), and a roster slot-fill "slam" animation. Model verified
   via a Node sim (pick/place, land-only validity, replace, Pier accrual, full-era resolve).
+- **2026-07-21** — Production-slice review fixes: (1) a threshold crossing on the FINAL dev tick is
+  now presented before the era ends (was discarded); (2) an exhausted advancement pool auto-skips
+  instead of opening a zero-card soft-lock; (3) `_endDevelopment` guarded against double-accrue;
+  (4) a drag-vs-click guard so panning during placement no longer drops the unit on the wrong tile;
+  (5) placement flashes were inset box-shadows hidden behind the new `.tile-bg` layer — moved onto
+  `.tile-bg` and made bolder (this is why the Pier's coast tiles didn't visibly highlight).
+- **2026-07-21** — **Pervasive inline-icon prose** (`IconText` + `:token:` markup): gameplay
+  descriptions/effects/tooltips now render resource/stat/type **icons** instead of the words
+  (InfoTip auto-routes string tooltips through it). Tokenized the implemented content + category/
+  resource descriptions. Bolder panel replace/pick flashes; shrank on-card stat icons to stay
+  within the card frame (tooltip keeps the large readable ones).
