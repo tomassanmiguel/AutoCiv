@@ -478,8 +478,10 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 - **Repositioning** (`_combatReposition`, each step before attacks): a unit whose **own column has no
   enemies** flows one column over. **melee/cavalry** → an adjacent column that has enemies and **no
   friendly melee/cavalry** (become its front line). **ranged** → an adjacent column that has enemies
-  and friendly **cover** (a defensive building or a melee unit). Moves to an empty, unlocked,
-  terrain-valid tile; if none qualifies it stays (and an enemy-free column still yields gold). At
+  and friendly **cover** (a defensive building or a melee unit). It only steps to the tile **directly
+  beside it** (same row, one column over) if that tile is empty/unlocked/terrain-valid — a LATERAL
+  move, never a jump to a distant row (so a unit can't leap across regions); otherwise it stays (and
+  an enemy-free column still yields gold). At
   combat end each unit **shifts back** to the tile it started on (`_startCombat` records `homeRow/Col`;
   `_restoreUnitHomes` restores them in `_endCombat`/`_defeat` and disbands mercenaries). Any unit that
   changes tiles (reposition / Wolf shift / shift-back / drag) **slides** to the new cell rather than

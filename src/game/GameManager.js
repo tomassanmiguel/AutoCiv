@@ -1067,7 +1067,7 @@ export class GameManager {
           ? this._columnHasCover(targetCol, bounds)
           : !this._columnHasFriendlyFront(targetCol, bounds)
         if (!ok) continue
-        const dest = this._emptyTileInColumn(targetCol, occ, tile.row, bounds)
+        const dest = this._lateralTile(targetCol, occ, tile.row) // same row, one column over
         if (dest) { dest.occupant = occ; tile.occupant = null; moved = true; break }
       }
     }
@@ -1098,22 +1098,13 @@ export class GameManager {
     }
     return false
   }
-  // An empty, unlocked, terrain-valid tile in a column for `occ` (prefer `preferRow`).
-  _emptyTileInColumn(col, occ, preferRow, bounds) {
-    const def = UNIT_DEFS[occ.key]
-    const tryRow = (r) => {
-      if (r < bounds.minRow || r > bounds.maxRow) return null
-      const tile = this.data.tableau.tileAt(r, col)
-      if (tile && !tile.occupant && this.data.tableau.isUnlocked(r, col, this.data.era) &&
-          canPlaceOn(def.placement, tile.terrain)) return tile
-      return null
-    }
-    const hit = tryRow(preferRow)
-    if (hit) return hit
-    for (let d = 1; d <= bounds.maxRow - bounds.minRow; d++) {
-      const t = tryRow(preferRow + d) || tryRow(preferRow - d)
-      if (t) return t
-    }
+  // The tile directly beside (`col`, same `row`) if it's empty, unlocked, and valid
+  // for `occ`. A reposition is a LATERAL step — never a leap to a distant row, so a
+  // unit can't jump across regions (e.g. earth → mars) when nearby rows are full.
+  _lateralTile(col, occ, row) {
+    const tile = this.data.tableau.tileAt(row, col)
+    if (tile && !tile.occupant && this.data.tableau.isUnlocked(row, col, this.data.era) &&
+        canPlaceOn(UNIT_DEFS[occ.key].placement, tile.terrain)) return tile
     return null
   }
 
