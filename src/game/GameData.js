@@ -34,6 +34,7 @@ export class GameData {
     this.combatTime = 0 // seconds elapsed in the current battle (0..COMBAT_DURATION)
     this.combatEvents = [] // transient per-step events for UI animation (attacks/damage/deaths)
     this.combatSeq = 0 // bumps each combat step (lets the UI key/replay transient effects)
+    this.combatIntro = false // true while the "Battle" banner shows — the loop waits to start
     this.defeated = false // legitimacy hit 0 — game over (mirror of `won`)
 
     this.tableau = new TableauData(seed)

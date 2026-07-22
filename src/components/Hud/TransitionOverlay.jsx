@@ -34,11 +34,12 @@ export default function TransitionOverlay() {
     const set = (patch) => setState((s) => ({ ...s, ...patch }))
 
     if (phase === 'battle') {
-      // Brief announcement only — combat runs on the manager timer underneath.
+      // Brief announcement only — the fight is held (combatIntro) until the banner
+      // clears, then dismissCombatIntro() releases the manager's combat loop.
       setState({ mode: 'battle', visible: false })
       after(20, () => set({ visible: true }))
       after(1000, () => set({ visible: false }))
-      after(1400, () => setState(null))
+      after(1400, () => { setState(null); game.dismissCombatIntro() })
     } else if (phase === 'transition') {
       const from = eraTitle(era)
       const to = eraTitle(era + 1)

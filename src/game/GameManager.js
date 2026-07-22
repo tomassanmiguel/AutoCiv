@@ -750,12 +750,20 @@ export class GameManager {
     }
     this.data.combatTime = 0
     this.data.combatEvents = []
+    this.data.combatIntro = true // hold the fight until the "Battle" banner clears
     this.data.phase = 'battle'
     this._restartTimer()
   }
 
+  /** Called by the UI once the "Battle" announcement has cleared — the fight begins. */
+  dismissCombatIntro() {
+    if (this.data.phase !== 'battle' || !this.data.combatIntro) return
+    this.data.combatIntro = false
+    this._emit()
+  }
+
   _combatStep() {
-    if (this.data.phase !== 'battle') return
+    if (this.data.phase !== 'battle' || this.data.combatIntro) return
     const mult = SPEED_TPS[this.data.speed] || 0
     if (mult <= 0) return
     const dt = (COMBAT_INTERVAL_MS / 1000) * mult
@@ -927,6 +935,7 @@ export class GameManager {
     this.data.enemies = [] // undefeated enemies fade away
     this.data.combatTime = 0
     this.data.combatEvents = []
+    this.data.combatIntro = false
     this.data.phase = 'transition'
     this._restartTimer()
     this._emit()
@@ -968,6 +977,7 @@ export class GameManager {
     this.data.selection = null
     this.data.combatTime = 0
     this.data.combatEvents = []
+    this.data.combatIntro = false
     this.data.defeated = false
     this._generateEnemies() // fresh host, visible during development
     this._restartTimer()
