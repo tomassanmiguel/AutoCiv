@@ -215,6 +215,7 @@ export default function Tableau() {
     e.stopPropagation() // don't start a camera pan
     e.preventDefault()
     setTooltip(null)
+    movedRef.current = false // a plain click (no drag) still counts as a placement click
     // A previous drag may still be mid-snap-back; cancel its pending clear so it
     // can't unmount this drag's ghost.
     if (snapTimerRef.current) { clearTimeout(snapTimerRef.current); snapTimerRef.current = null }
@@ -229,6 +230,7 @@ export default function Tableau() {
       if (!p.active) {
         if (Math.abs(ev.clientX - p.startX) + Math.abs(ev.clientY - p.startY) <= 4) return
         p.active = true
+        movedRef.current = true // a real drag — suppress the source tile's placement click
         setRepos({ seq: p.seq, fromRow: p.fromRow, fromCol: p.fromCol, name: p.name })
       }
       const g = ghostRef.current
@@ -310,7 +312,9 @@ export default function Tableau() {
   const phase = game.data.phase
   const gold = game.data.civilization.gold.value
   const canAct = !combat && !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
-  const repositionable = canAct // units may be dragged to a valid empty tile in dev/prep
+  // Units may be repositioned in dev/prep AND while choosing a build's location
+  // (drag a unit aside to make room for the building being placed).
+  const repositionable = canAct || placing
   const prepping = phase === 'prep'
   const mercCost = prepping ? game.mercCost() : 0
   const tileAction = (tile, occ) => {
@@ -401,7 +405,7 @@ export default function Tableau() {
                   onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
                 />
               )}
-              {mercOK && (
+              {mercOK && !repos && (
                 <button
                   type="button"
                   className={`merc-btn${gold >= mercCost ? '' : ' disabled'}`}

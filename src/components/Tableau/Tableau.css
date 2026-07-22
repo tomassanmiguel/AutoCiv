@@ -58,9 +58,11 @@
   0%, 100% { box-shadow: inset 0 0 0 2px rgba(224, 80, 60, 0.6); filter: none; }
   50% { box-shadow: inset 0 0 0 5px #ff4d3a, 0 0 18px 3px rgba(255, 77, 58, 0.9); filter: brightness(1.22); }
 }
-/* During placement, let clicks fall through the card to the tile underneath. */
-.tableau-tile.place-valid .tile-card-anchor,
-.tableau-tile.place-replace .tile-card-anchor { pointer-events: none; }
+/* During placement the card stays interactive so a UNIT can be dragged aside to
+   make room; a plain click still bubbles to the tile (place/replace). The hover
+   zoom is suppressed here so the enlarged card can't hijack a neighbour's click. */
+.tableau-tile.place-valid .tile-card-anchor:hover,
+.tableau-tile.place-replace .tile-card-anchor:hover { transform: none; }
 
 /* Preparation: empty tiles where a mercenary can be hired get a soft gold ring
    and a centered Hire button. */
