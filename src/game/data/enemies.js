@@ -9,8 +9,9 @@
 import { UNIT_DEFS, unitStats, unitRole } from './units.js'
 
 // --- Tunables (calibrate by playtest) --------------------------------------------
-const BUDGET_BASE = 150     // B0: era-0 threat budget
-const BUDGET_GROWTH = 1.5   // per-era multiplier (aggressive; tune)
+const BUDGET_BASE = 40      // B0: era-0 threat budget
+const BUDGET_GROWTH = 1.25  // per-era multiplier
+const STRENGTH_VARIANCE = 0.25 // ±25% random swing on a host's budget
 const COMBAT_DURATION = 25  // matches GameManager's battle length (for the DPS term)
 const ERA_SPREAD = 5        // how many eras back the enemy pool reaches
 const OLD_DECAY = 0.75      // pick-weight multiplier per era older than the current one
@@ -80,7 +81,8 @@ export function generateHost(era, rows, columns, rng = Math.random) {
 
   const perCol = new Map(columns.map((c) => [c.col, []]))
   const placedList = [] // entry refs, for the level-up phase
-  let budget = threatBudget(era)
+  // ±STRENGTH_VARIANCE random swing on this host's budget (stable per seed).
+  let budget = threatBudget(era) * (1 - STRENGTH_VARIANCE + rng() * 2 * STRENGTH_VARIANCE)
 
   // --- Phase 1: buy bodies until the board is full or the budget runs dry. ---
   let placed = 0, guard = 0
