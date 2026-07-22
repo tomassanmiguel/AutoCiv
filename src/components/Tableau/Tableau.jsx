@@ -36,6 +36,7 @@ export default function Tableau() {
   const didMountRef = useRef(false)
   const prevLayoutRef = useRef(null)
   const dragRef = useRef(null)
+  const movedRef = useRef(false) // did the last press actually pan? (suppresses the click)
   const [tooltip, setTooltip] = useState(null)
 
   // --- Content dimensions for the current era ---
@@ -169,10 +170,13 @@ export default function Tableau() {
   // --- Drag to pan ---
   const onMouseDown = (e) => {
     setTooltip(null)
+    movedRef.current = false
     dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...cameraRef.current } }
     const onMove = (ev) => {
       const d = dragRef.current
       if (!d) return
+      // A few pixels of travel counts as a pan, not a click (drag-vs-click guard).
+      if (Math.abs(ev.clientX - d.x) + Math.abs(ev.clientY - d.y) > 4) movedRef.current = true
       cameraRef.current = clampPan({
         scale: d.cam.scale,
         tx: d.cam.tx + (ev.clientX - d.x),
@@ -256,7 +260,7 @@ export default function Tableau() {
               onMouseEnter={occ ? undefined : (e) => showTooltip(tile, e)}
               onMouseMove={occ ? undefined : moveTooltip}
               onMouseLeave={occ ? undefined : () => setTooltip(null)}
-              onClick={placeable ? () => game.placeAt(tile.row, tile.col) : undefined}
+              onClick={placeable ? () => { if (!movedRef.current) game.placeAt(tile.row, tile.col) } : undefined}
             >
               {/* Background layer holds the sprite (and the west-coast mirror) so
                   the on-tile card is never flipped/mirrored. */}
