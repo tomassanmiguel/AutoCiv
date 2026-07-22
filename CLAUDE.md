@@ -233,11 +233,13 @@ AutoCiv/
   loop — a new track fades in while *all* previous tracks fade out and stop, so rapid era
   changes (e.g. dragging the era slider across track boundaries) can't leave two tracks
   playing at once.
-- **`InfoTip` portals its tooltip to `<body>`.** The floating tooltip is `position: fixed` at the
-  cursor; it is rendered through `createPortal` so a **transformed ancestor** (e.g. the on-tile
-  `TileCard` scales 1.42× on hover) can't become its containing block and throw the position off.
-  Keep tooltips out of transformed subtrees this way; don't put `position: fixed` overlays inside
-  a `transform`ed element and expect viewport coordinates.
+- **`InfoTip` anchors to the element's bounding box and portals to `<body>`.** The floating tooltip
+  is `position: fixed`, placed just beside the hovered element's `getBoundingClientRect()` (to the
+  **left**, flipping right near the screen edge) and vertically centered on it — so it **never
+  covers** the card/slot it describes (a `GAP` of 16px also clears the on-tile card's 1.42× hover
+  growth). It renders through `createPortal` so a **transformed ancestor** can't become its
+  containing block and throw the position off. Don't put `position: fixed` overlays inside a
+  `transform`ed element and expect viewport coordinates.
 
 ---
 
@@ -493,10 +495,12 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   (# thresholds reached) + **bar** (`value / threshold` toward the current level's requirement) +
   per-tick delta. Shape `{ value, output, level, threshold }`.
 - **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
-  **Buildings (7)**, **Policies (5)**, **Population (5)**. Closed groups collapse to a **slim
-  clickable tab** (no frame) so the OPEN group — the only one with the dark `Box Dark` frame and a
-  body — **flex-grows to fill the remaining panel height** and its cards get room to fit; **empty**
-  slots show a centered type silhouette, while
+  **Buildings (7)**, **Policies (5)**, **Population (5)**. While one group is **expanded** the other
+  three are **hidden entirely** (`soloOpen`) so the open group — the only one with the dark `Box
+  Dark` frame and a body — fills the whole dropdown area and its cards get maximum room; collapse it
+  via its header to bring the **slim clickable tabs** back and pick another. (Exception: during a
+  build **pick** the closed groups stay as slim tabs so Units↔Buildings remains switchable.)
+  **empty** slots show a centered type silhouette, while
   **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
   (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
   units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,
@@ -694,3 +698,10 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   can't misplace it; (5) the civ panel now **collapses closed dropdowns to slim tabs** and shrinks the
   legitimacy header to a compact row, so the open group fills the height and its cards fit (the fill
   "slam" is gated to the just-filled slot so tab-switching doesn't replay it).
+- **2026-07-21** — Follow-ups on the above: (1) `InfoTip` now anchors to the hovered element's
+  bounding box and opens **beside** it (left, flipping right at the edge, vertically centered)
+  instead of over the cursor, so a card/slot tooltip **never covers** it; (2) while a panel dropdown
+  is expanded the other three are **hidden entirely** (collapse via the header to switch), giving
+  the open group the whole area so late-game unit cards stop getting cut off — closed groups stay as
+  slim tabs only during a build pick; (3) on-tile card names now **shrink + wrap to two lines** and
+  only ellipsize as a true last resort (no more premature truncation).
