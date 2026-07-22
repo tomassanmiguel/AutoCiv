@@ -111,6 +111,7 @@ export const IMPLEMENTED = {
 
   // --- Iron era ---
   'Steel':        { kind: 'unit', key: 'legionnaire', description: 'Unlocks the Legionnaire — a durable land :melee: unit that grows stronger the more of them you field.' },
+  'Horseback Riding': { kind: 'unit', key: 'horseman', description: 'Unlocks the Horseman — a fast land :cavalry: unit that can support any column on its landmass.' },
 }
 
 export function isImplemented(name) {

@@ -1315,6 +1315,8 @@ export class GameManager {
    *  this is exactly the same-row neighbouring column (a lateral step — never a leap to
    *  a distant row); a road bridges it to any of the network's ports. */
   _repositionDest(tile, occ, role, bounds) {
+    // Horseman-style long support: reach any column on the landmass, not just distance 1.
+    if (UNIT_DEFS[occ.key].longSupport) return this._landmassSupportDest(tile, occ, bounds)
     const cands = []
     for (const [k, d] of this._reachableWithin(tile.row, tile.col, 1)) {
       if (d !== 1) continue
@@ -1329,6 +1331,47 @@ export class GameManager {
     }
     cands.sort((a, b) => a.col - b.col || a.row - b.row)
     return cands[0] ?? null
+  }
+
+  /** Horseman "support": reposition to any empty valid tile on the SAME landmass whose
+   *  column has enemies and no friendly melee/cavalry front (nearest such gap wins). */
+  _landmassSupportDest(tile, occ, bounds) {
+    const cands = []
+    for (const key of this._landmassTiles(tile.row, tile.col)) {
+      const [r, c] = key.split(',').map(Number)
+      if (c === tile.col || c < bounds.minCol || c > bounds.maxCol) continue
+      if (!this._columnHasEnemies(c)) continue
+      const dt = this.data.tableau.tileAt(r, c)
+      if (!dt || dt.occupant || !canPlaceOn(UNIT_DEFS[occ.key].placement, dt.terrain)) continue
+      if (this._columnHasFriendlyFront(c, bounds)) continue // only plug a melee/cavalry gap
+      cands.push(dt)
+    }
+    cands.sort((a, b) => Math.abs(a.col - tile.col) - Math.abs(b.col - tile.col) || a.col - b.col || a.row - b.row)
+    return cands[0] ?? null
+  }
+
+  /** "r,c" keys of the connected land component (orthogonal, currently-visible land)
+   *  containing (sr, sc). Empty if the start tile isn't visible land. */
+  _landmassTiles(sr, sc) {
+    const t = this.data.tableau
+    const era = this.data.era
+    const isLand = (r, c) => {
+      const tile = t.tileAt(r, c)
+      return !!tile && tile.def?.place === 'land' && t.isUnlocked(r, c, era)
+    }
+    const seen = new Set()
+    if (!isLand(sr, sc)) return seen
+    seen.add(`${sr},${sc}`)
+    const stack = [[sr, sc]]
+    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+    while (stack.length) {
+      const [r, c] = stack.pop()
+      for (const [dr, dc] of NBRS) {
+        const nr = r + dr, nc = c + dc, k = `${nr},${nc}`
+        if (!seen.has(k) && isLand(nr, nc)) { seen.add(k); stack.push([nr, nc]) }
+      }
+    }
+    return seen
   }
 
   _columnHasEnemies(col) {

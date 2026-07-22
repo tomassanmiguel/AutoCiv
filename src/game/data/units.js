@@ -64,6 +64,15 @@ export const UNIT_DEFS = {
     ability: 'Gains +3 :attack: for every other Legionnaire on your tableau.',
     description: 'A disciplined :melee: soldier — the more Legionnaires you field, the harder each one hits.',
   },
+  horseman: {
+    key: 'horseman', name: 'Horseman', era: 2, types: ['cavalry'], placement: 'land',
+    cooldown: 2, atk: 7, hp: 14, upAtk: 1, upHp: 2,
+    // In combat, an idle Horseman can "support" (reposition to) any column on its
+    // landmass that lacks a melee/cavalry front — not just an adjacent one.
+    longSupport: true,
+    ability: 'Supports any column on its landmass that lacks a :melee:/:cavalry: front — galloping clear across the land to plug the gap.',
+    description: 'A swift :cavalry: rider with the range to reinforce your whole line.',
+  },
 
   // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
   bear: {
