@@ -16,7 +16,7 @@ export const BUILDING_DEFS = {
     key: 'pier', name: 'Pier', types: ['food'], placement: 'coast',
     hp: 12, upHp: 4,
     // Dynamic: the effect describes the CURRENT era/level value, not the sequence.
-    effect: (level, eraIndex) => `Produces ${pierFood(eraIndex, level)} food at the end of each era.`,
+    effect: (level, eraIndex) => `Produces ${pierFood(eraIndex, level)} :food: at the end of each era.`,
     // End-of-era economic output, at the current era/level.
     outputs: (level, eraIndex) => [{ res: 'food', amount: pierFood(eraIndex, level), per: 'era' }],
     eraFood: pierFood,

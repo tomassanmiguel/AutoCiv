@@ -10,40 +10,40 @@
 
 export const UNIT_CATEGORIES = [
   { key: 'melee', label: 'Melee', unlock: 'stone', silhouette: '/sprites/ui/melee.png',
-    description: 'Melee Units attack only when there is no unit in front of them. They are your durable and strong front line' },
+    description: ':melee: Melee Units attack only when there is no unit in front of them. They are your durable and strong front line' },
   { key: 'ranged', label: 'Ranged', unlock: 'stone', silhouette: '/sprites/ui/ranged.png',
-    description: 'Ranged Units always get to attack. They are lethal but fragile. It would be wise to put obstructions in front of them' },
+    description: ':ranged: Ranged Units always get to attack. They are lethal but fragile. It would be wise to put obstructions in front of them' },
   { key: 'cavalry', label: 'Cavalry', unlock: 'stone', silhouette: '/sprites/ui/cavalry.png',
-    description: 'Cavalry Units are fast and evasive. They attack only when there is no unit in front of them. Use them to harry the opponent!' },
+    description: ':cavalry: Cavalry Units are fast and evasive. They attack only when there is no unit in front of them. Use them to harry the opponent!' },
   { key: 'siege', label: 'Siege', unlock: 'iron', silhouette: '/sprites/ui/siege.png',
-    description: 'Siege Units attack back to front and often have splash damage. They are especially effective for dealing with buildings' },
+    description: ':siege: Siege Units attack back to front and often have splash damage. They are especially effective for dealing with buildings' },
   { key: 'utility', label: 'Utility', unlock: 'bronze', silhouette: '/sprites/ui/utility.png',
-    description: 'Utility Units do not attack but have helpful effects that bolster your army' },
+    description: ':utility: Utility Units do not attack but have helpful effects that bolster your army' },
   { key: 'naval', label: 'Naval', unlock: 'bronze', silhouette: '/sprites/ui/boat.png',
-    description: 'Naval Units may deployed only on the high seas. They can come in melee and ranged varieties' },
+    description: ':naval: Naval Units may deployed only on the high seas. They can come in :melee: and :ranged: varieties' },
   { key: 'aerial', label: 'Aerial', unlock: 'gilded', silhouette: '/sprites/ui/aerial.png',
-    description: 'Aerial Units may be deployed anywhere on the planet. They can come in melee and ranged varieties.' },
+    description: ':aerial: Aerial Units may be deployed anywhere on the planet. They can come in :melee: and :ranged: varieties.' },
   { key: 'astral', label: 'Astral', unlock: 'lunar', silhouette: '/sprites/ui/astral.png',
-    description: 'Astral Units are your warriors of the great expanse. They may be deployed in space and come in melee and ranged varieties' },
+    description: ':astral: Astral Units are your warriors of the great expanse. They may be deployed in space and come in :melee: and :ranged: varieties' },
   { key: 'astral_utility', label: 'Astral Utility', unlock: 'atomic', silhouette: '/sprites/ui/astral-utility.png',
-    description: 'Astral Utility units do not attack but offer various helpful effects. They may be deployed only in space.' },
+    description: ':astral_utility: Astral Utility units do not attack but offer various helpful effects. They may be deployed only in space.' },
 ]
 
 export const BUILDING_CATEGORIES = [
   { key: 'progress', label: 'Progress', silhouette: '/sprites/ui/progress.png',
-    description: 'Progress buildings help your civilization discover new advances' },
+    description: ':progress: Progress buildings help your civilization discover new advances' },
   { key: 'production', label: 'Production', silhouette: '/sprites/ui/production.png',
-    description: 'Production buildings help your civilization create more units and buildings' },
+    description: ':production: Production buildings help your civilization create more units and buildings' },
   { key: 'gold', label: 'Gold', silhouette: '/sprites/ui/gold.png',
-    description: 'Gold buildings help in enrich your civilization' },
+    description: ':gold: Gold buildings help in enrich your civilization' },
   { key: 'food', label: 'Food', silhouette: '/sprites/ui/food.png',
-    description: 'Food buildings help keep your civilization growing steadily' },
+    description: ':food: Food buildings help keep your civilization growing steadily' },
   { key: 'legitimacy', label: 'Legitimacy', silhouette: '/sprites/ui/legitimacy.png',
-    description: 'Legitimacy buildings help eternalize your rule' },
+    description: ':legitimacy: Legitimacy buildings help eternalize your rule' },
   { key: 'defense', label: 'Defense', silhouette: '/sprites/ui/defense.png',
-    description: 'Defense buildings keep the unwanted out' },
+    description: ':defense: Defense buildings keep the unwanted out' },
   { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
-    description: 'Utility buildings offer helpful effects that boost other units or buildings' },
+    description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
 ]
 
 // Policies and Population are generic slots (no per-slot category); every slot
@@ -51,11 +51,11 @@ export const BUILDING_CATEGORIES = [
 export const POLICY_INFO = {
   label: 'Policies',
   silhouette: '/sprites/ui/policy.png',
-  description: "Policies are passive bonuses that will steer your civilization's course",
+  description: ":policy: Policies are passive bonuses that will steer your civilization's course",
 }
 
 export const POPULATION_INFO = {
   label: 'Population',
   silhouette: '/sprites/ui/pop.png',
-  description: 'Population is gained whenever a food threshold is met. You gain one population, plus one for every completed era. Population is split amongst generalist citizens and focused specialists',
+  description: ':pop: Population is gained whenever a :food: threshold is met. You gain one population, plus one for every completed era. Population is split amongst generalist citizens and focused specialists',
 }

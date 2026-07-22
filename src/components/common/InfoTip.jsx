@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import IconText from './IconText.jsx'
 import './InfoTip.css'
 
 /**
@@ -22,7 +23,8 @@ export default function InfoTip({ title, text, className = '', children, ...rest
       {pos && (
         <div className="infotip" style={{ left: pos.x, top: pos.y }}>
           {title && <div className="infotip-title">{title}</div>}
-          <div className="infotip-body">{text}</div>
+          {/* String tooltips route through IconText so :token:s render as icons. */}
+          <div className="infotip-body">{typeof text === 'string' ? <IconText>{text}</IconText> : text}</div>
         </div>
       )}
     </div>

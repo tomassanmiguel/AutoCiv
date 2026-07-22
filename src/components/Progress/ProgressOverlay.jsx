@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERAS } from '../../game/data/eras.js'
+import IconText from '../common/IconText.jsx'
 import './ProgressOverlay.css'
 
 /**
@@ -70,7 +71,7 @@ export default function ProgressOverlay() {
               </div>
               <div className="progress-card-era">{ERAS[opt.eraIndex].name}</div>
               <div className="progress-card-name">{opt.name}</div>
-              <div className="progress-card-desc">{opt.description}</div>
+              <div className="progress-card-desc"><IconText>{opt.description}</IconText></div>
             </button>
           ))}
         </div>

@@ -2,6 +2,7 @@ import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingOutputs } from '../../game/data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import InfoTip from '../common/InfoTip.jsx'
+import IconText from '../common/IconText.jsx'
 import './TileCard.css'
 
 const STAT_ICON = {
@@ -37,9 +38,9 @@ export default function TileCard({ occupant, era, hpBonus }) {
     const type = catLabel(UNIT_CATEGORIES, def.types[0])
     const tip = (
       <>
-        {type}
-        <br />{def.description}
-        {def.ability ? <><br /><br /><strong>Ability:</strong> {def.ability}</> : null}
+        <IconText>{`:${def.types[0]}:`}</IconText> {type}
+        <br /><IconText>{def.description}</IconText>
+        {def.ability ? <><br /><br /><strong>Ability:</strong> <IconText>{def.ability}</IconText></> : null}
         <br /><br />
         <span className="tc-tip-stats">
           <IconVal src={STAT_ICON.speed}>{s.speed}</IconVal>
@@ -71,8 +72,8 @@ export default function TileCard({ occupant, era, hpBonus }) {
   const outs = buildingOutputs(def, occ.level, era)
   const tip = (
     <>
-      {type}
-      <br />{buildingEffect(def, occ.level, era)}
+      <IconText>{`:${def.types[0]}:`}</IconText> {type}
+      <br /><IconText>{buildingEffect(def, occ.level, era)}</IconText>
       <br /><br />
       <span className="tc-tip-stats">
         <IconVal src={STAT_ICON.def}>{occ.hp}/{occ.maxHp}</IconVal>
@@ -80,6 +81,7 @@ export default function TileCard({ occupant, era, hpBonus }) {
       </span>
       <span className="tc-tip-lv"> · Lv {occ.level}</span>
       <br />Total produced: {occ.lifetimeOutput ?? 0}
+      {outs[0] && <img className="itext-icon" src={RES_ICON[outs[0].res]} alt="" />}
     </>
   )
   return (

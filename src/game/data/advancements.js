@@ -63,15 +63,15 @@ for (const [eraId, names] of Object.entries(POOL)) {
  * would mark every pool entry with that name implemented.
  */
 export const IMPLEMENTED = {
-  'Clothes':      { kind: 'modifier', key: 'clothes', description: 'Permanently gives all friendly units +5 HP.' },
-  'Tools':        { kind: 'pop', key: 'builder', description: 'Unlocks the Builder specialist (+5 production per tick).' },
-  'Agriculture':  { kind: 'pop', key: 'farmer', description: 'Unlocks the Farmer specialist (+5 food per tick).' },
-  'Pack Bonding': { kind: 'unit', key: 'wolf', description: 'Unlocks the Wolf — a fast land cavalry unit.' },
-  'Mud Brick':    { kind: 'building', key: 'mud_wall', description: 'Unlocks the Mud Wall — a sturdy land defensive building.' },
-  'Burial Rites': { kind: 'policy', key: 'burial_rites', description: 'Whenever a unit dies, gain progress equal to its HP.' },
-  'Bartering':    { kind: 'pop', key: 'trader', description: 'Unlocks the Trader specialist (+5 gold per tick).' },
-  'Fishing':      { kind: 'building', key: 'pier', description: 'Unlocks the Pier — a coastal food building.' },
-  'The Sling':    { kind: 'unit', key: 'slinger', description: 'Unlocks the Slinger — a land ranged unit.' },
+  'Clothes':      { kind: 'modifier', key: 'clothes', description: 'Permanently gives all friendly units +5 :defense:.' },
+  'Tools':        { kind: 'pop', key: 'builder', description: 'Unlocks the Builder specialist (+5 :production: per tick).' },
+  'Agriculture':  { kind: 'pop', key: 'farmer', description: 'Unlocks the Farmer specialist (+5 :food: per tick).' },
+  'Pack Bonding': { kind: 'unit', key: 'wolf', description: 'Unlocks the Wolf — a fast land :cavalry: unit.' },
+  'Mud Brick':    { kind: 'building', key: 'mud_wall', description: 'Unlocks the Mud Wall — a sturdy land :defense: building.' },
+  'Burial Rites': { kind: 'policy', key: 'burial_rites', description: 'Whenever a unit dies, gain :progress: equal to its :defense:.' },
+  'Bartering':    { kind: 'pop', key: 'trader', description: 'Unlocks the Trader specialist (+5 :gold: per tick).' },
+  'Fishing':      { kind: 'building', key: 'pier', description: 'Unlocks the Pier — a coastal :food: building.' },
+  'The Sling':    { kind: 'unit', key: 'slinger', description: 'Unlocks the Slinger — a land :ranged: unit.' },
 }
 
 export function isImplemented(name) {

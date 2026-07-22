@@ -13,6 +13,7 @@ import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
 import InfoTip from '../common/InfoTip.jsx'
+import IconText from '../common/IconText.jsx'
 import './UIPanel.css'
 
 const ICON = {
@@ -54,10 +55,10 @@ const DROP_BORDER = 16
 // Hover descriptions for the top resource section.
 const RES_TIP = {
   legitimacy: 'A measure of the integrity of your civilization. Should this fall to zero, your civilization will collapse.',
-  gold: 'A measure of the wealth of your civilization. Spend gold to repair damaged units and buildings, hire mercenaries, upgrade units and buildings, or create specialists.',
-  food: 'A measure of the expansion of your civilization. Food will create new citizens and specialists to power your economy.',
-  production: 'A measure of the industry of your civilization. Production will allow you to deploy new units and buildings.',
-  progress: 'A measure of the ingenuity of your civilization. Progress will unlock new units, buildings, policies, and specialists.',
+  gold: 'A measure of the wealth of your civilization. Spend :gold: to repair damaged units and buildings, hire mercenaries, upgrade units and buildings, or create specialists.',
+  food: 'A measure of the expansion of your civilization. :food: will create new citizens and specialists to power your economy.',
+  production: 'A measure of the industry of your civilization. :production: will allow you to deploy new units and buildings.',
+  progress: 'A measure of the ingenuity of your civilization. :progress: will unlock new units, buildings, policies, and specialists.',
 }
 
 const fmtDelta = (n) => (n > 0 ? `+${n}` : `${n}`)
@@ -110,8 +111,8 @@ function unitTip(def, level, hpBonus) {
   const s = unitStats(def, level, hpBonus)
   return (
     <>
-      {def.description}
-      {def.ability ? <><br /><br /><strong>Ability:</strong> {def.ability}</> : null}
+      <IconText>{def.description}</IconText>
+      {def.ability ? <><br /><br /><strong>Ability:</strong> <IconText>{def.ability}</IconText></> : null}
       <br /><br />
       <StatIcons stats={s} className="tip-stats" />
       <span className="stat-lv"> · Lv {level}</span>
@@ -273,7 +274,7 @@ function SlotRow({ slot, mark, onActivate }) {
         {slot.sub && <div className="slot-card-sub">{slot.sub}</div>}
         {slot.stats
           ? <StatIcons stats={slot.stats} />
-          : slot.line && <div className="slot-card-line">{slot.line}</div>}
+          : slot.line && <div className="slot-card-line"><IconText>{slot.line}</IconText></div>}
       </div>
     </div>
   ) : (

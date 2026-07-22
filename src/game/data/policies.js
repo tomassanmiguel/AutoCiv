@@ -5,6 +5,6 @@
 export const POLICY_DEFS = {
   burial_rites: {
     key: 'burial_rites', name: 'Burial Rites', type: 'Policy',
-    effect: 'Whenever a unit dies, gain progress equal to its HP.',
+    effect: 'Whenever a unit dies, gain :progress: equal to its :defense:.',
   },
 }

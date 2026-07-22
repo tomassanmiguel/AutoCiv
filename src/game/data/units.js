@@ -10,19 +10,19 @@ export const UNIT_DEFS = {
     key: 'warrior', name: 'Warrior', types: ['melee'], placement: 'land',
     cooldown: 3, atk: 5, hp: 11, upAtk: 1, upHp: 2,
     ability: '',
-    description: 'A basic melee soldier — durable and dependable on the front line.',
+    description: 'A basic :melee: soldier — durable and dependable on the front line.',
   },
   wolf: {
     key: 'wolf', name: 'Wolf', types: ['cavalry'], placement: 'land',
     cooldown: 2, atk: 5, hp: 10, upAtk: 1, upHp: 2,
     ability: 'After attacking, moves to a random adjacent empty space.',
-    description: 'A swift pack hunter that strikes and repositions.',
+    description: 'A swift :cavalry: pack hunter that strikes and repositions.',
   },
   slinger: {
     key: 'slinger', name: 'Slinger', types: ['ranged'], placement: 'land',
     cooldown: 4, atk: 6, hp: 8, upAtk: 1, upHp: 1,
     ability: '',
-    description: 'A ranged skirmisher that flings stones from behind cover.',
+    description: 'A :ranged: skirmisher that flings stones from behind cover.',
   },
 }
 
