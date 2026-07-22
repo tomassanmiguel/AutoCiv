@@ -88,6 +88,14 @@ export const UNIT_DEFS = {
     description: 'A :naval: warship with a :ranged: bite — plunders undefended columns for heavy :gold:.',
   },
 
+  // --- Classical era ---
+  crossbowman: {
+    key: 'crossbowman', name: 'Crossbowman', era: 3, types: ['ranged'], placement: 'land',
+    cooldown: 8, atk: 20, hp: 13, upAtk: 2, upHp: 2,
+    ability: '',
+    description: 'A slow but devastating :ranged: unit — heavy bolts that punch through anything.',
+  },
+
   // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
   bear: {
     key: 'bear', name: 'Bear', era: -1, types: ['melee'], placement: 'land',

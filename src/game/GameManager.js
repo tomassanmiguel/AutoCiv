@@ -661,8 +661,8 @@ export class GameManager {
     if (unlock.key === 'clothes' || unlock.key === 'leatherwork') {
       civ.modifiers.unitHpBonus += unlock.key === 'clothes' ? 5 : 8
       this._syncUnitStats() // apply retroactively to deployed units (with Warband)
-    } else if (unlock.key === 'masonry') {
-      civ.modifiers.buildingHpBonus += 10
+    } else if (unlock.key === 'masonry' || unlock.key === 'concrete') {
+      civ.modifiers.buildingHpBonus += unlock.key === 'masonry' ? 10 : 12
       this._syncUnitStats() // retroactively toughen deployed buildings
     } else if (unlock.key === 'basket_weaving' || unlock.key === 'plough') {
       civ.modifiers.foodThresholdMult *= 0.95 // −5% food thresholds (stacks)

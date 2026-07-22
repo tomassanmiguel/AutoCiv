@@ -130,6 +130,10 @@ export const IMPLEMENTED = {
   'Diplomatic Marriage': { kind: 'policy', key: 'diplomatic_marriage', description: 'Unlocks the Diplomatic Marriage policy — mercenaries are hired 3 upgrade levels higher.' },
   'Alphabet':     { kind: 'modifier', key: 'alphabet', silhouette: '/sprites/ui/progress.png', description: 'All future :progress: thresholds are 5% lower.' },
   'Celestial Navigation': { kind: 'building', key: 'lighthouse', description: "Unlocks the Lighthouse — a coastal :gold: building; a :naval: unit doing unblocked damage in its waters gains +200% resources." },
+
+  // --- Classical era ---
+  'Machinery':    { kind: 'unit', key: 'crossbowman', description: 'Unlocks the Crossbowman — a slow, hard-hitting land :ranged: unit.' },
+  'Concrete':     { kind: 'modifier', key: 'concrete', silhouette: '/sprites/ui/defense.png', description: 'Permanently gives all buildings +12 :defense:.' },
 }
 
 export function isImplemented(name) {
