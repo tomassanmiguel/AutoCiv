@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
 import { repairCost, upgradeCost } from '../../game/data/costs.js'
+import { UNIT_DEFS } from '../../game/data/units.js'
 import TileCard from './TileCard.jsx'
 import CombatFx from './CombatFx.jsx'
 import './Tableau.css'
@@ -40,6 +41,13 @@ export default function Tableau() {
   const dragRef = useRef(null)
   const movedRef = useRef(false) // did the last press actually pan? (suppresses the click)
   const [tooltip, setTooltip] = useState(null)
+
+  // Unit reposition drag: `repos` (state) is set once a grab passes the move
+  // threshold and drives the ghost + valid-tile highlight; the ghost follows the
+  // cursor imperatively (reposPendingRef) so ticking re-renders don't reset it.
+  const [repos, setRepos] = useState(null)
+  const reposPendingRef = useRef(null)
+  const ghostRef = useRef(null)
 
   // --- Content dimensions for the current era ---
   const enemyRows = era >= ERA_INDEX.revolution ? 4 : 3 // +1 enemy row from Revolution
@@ -197,9 +205,73 @@ export default function Tableau() {
     viewportRef.current.classList.add('dragging')
   }
 
+  // --- Drag a unit to reposition it (to a valid empty tile) ---
+  const onUnitGrab = (e, tile) => {
+    if (e.button !== 0) return
+    const occ = tile.occupant
+    if (!occ || occ.kind !== 'unit') return
+    e.stopPropagation() // don't start a camera pan
+    e.preventDefault()
+    setTooltip(null)
+    const name = UNIT_DEFS[occ.key]?.name ?? ''
+    reposPendingRef.current = { fromRow: tile.row, fromCol: tile.col, name, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false }
+
+    const onMove = (ev) => {
+      const p = reposPendingRef.current
+      if (!p) return
+      p.x = ev.clientX; p.y = ev.clientY
+      if (!p.active) {
+        if (Math.abs(ev.clientX - p.startX) + Math.abs(ev.clientY - p.startY) <= 4) return
+        p.active = true
+        setRepos({ fromRow: p.fromRow, fromCol: p.fromCol, name: p.name })
+      }
+      const g = ghostRef.current
+      if (g) { g.style.left = `${ev.clientX}px`; g.style.top = `${ev.clientY}px` }
+    }
+    const onUp = (ev) => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      const p = reposPendingRef.current
+      reposPendingRef.current = null
+      if (!p || !p.active) { setRepos(null); return }
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)
+      const tileEl = el && el.closest('.tableau-tile')
+      if (tileEl && tileEl.dataset.row && game.canReposition(p.fromRow, p.fromCol, Number(tileEl.dataset.row), Number(tileEl.dataset.col))) {
+        game.moveUnit(p.fromRow, p.fromCol, Number(tileEl.dataset.row), Number(tileEl.dataset.col))
+        setRepos(null)
+      } else {
+        snapBackGhost(p)
+      }
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  // Invalid drop: animate the ghost back to the source tile, then clear.
+  const snapBackGhost = (p) => {
+    const src = viewportRef.current?.querySelector(`.tableau-tile[data-row="${p.fromRow}"][data-col="${p.fromCol}"]`)
+    const g = ghostRef.current
+    if (!src || !g) { setRepos(null); return }
+    const r = src.getBoundingClientRect()
+    g.style.transition = 'left 0.22s ease, top 0.22s ease, opacity 0.22s ease'
+    g.style.left = `${r.left + r.width / 2}px`
+    g.style.top = `${r.top + r.height / 2}px`
+    g.style.opacity = '0.15'
+    setTimeout(() => setRepos(null), 230)
+  }
+
+  // Position the ghost at the cursor when a reposition drag begins (so it doesn't
+  // flash at the origin before the first move).
+  useEffect(() => {
+    if (repos && ghostRef.current && reposPendingRef.current) {
+      ghostRef.current.style.left = `${reposPendingRef.current.x}px`
+      ghostRef.current.style.top = `${reposPendingRef.current.y}px`
+    }
+  }, [repos])
+
   // --- Tooltips (tiles + battlefield) ---
   const showTip = (content, e) => {
-    if (dragRef.current) return
+    if (dragRef.current || reposPendingRef.current?.active) return
     setTooltip({ ...content, x: e.clientX, y: e.clientY })
   }
   const showTooltip = (tile, e) => showTip(tile.getTooltip(), e)
@@ -225,6 +297,7 @@ export default function Tableau() {
   const phase = game.data.phase
   const gold = game.data.civilization.gold.value
   const canAct = !combat && !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
+  const repositionable = canAct // units may be dragged to a valid empty tile in dev/prep
   const prepping = phase === 'prep'
   const mercCost = prepping ? game.mercCost() : 0
   const tileAction = (tile, occ) => {
@@ -271,12 +344,16 @@ export default function Tableau() {
           const pstate = placing ? game.placementState(tile.row, tile.col) : null
           const placeable = pstate === 'valid' || pstate === 'replace'
           const mercOK = !occ && prepping && game.mercEligible(tile.row, tile.col)
+          const reposSrc = repos && repos.fromRow === tile.row && repos.fromCol === tile.col
+          const reposValid = repos && !reposSrc && game.canReposition(repos.fromRow, repos.fromCol, tile.row, tile.col)
           const cls = [
             'tableau-tile',
             occ ? 'occupied' : '',
             pstate === 'valid' ? 'place-valid' : '',
             pstate === 'replace' ? 'place-replace' : '',
             mercOK ? 'merc-open' : '',
+            reposValid ? 'reposition-valid' : '',
+            reposSrc ? 'reposition-src' : '',
           ].filter(Boolean).join(' ')
           return (
             <div
@@ -299,7 +376,17 @@ export default function Tableau() {
                   backgroundImage: tile.sprite ? `url("${tile.sprite}")` : 'none',
                 }}
               />
-              {occ && <TileCard occupant={occ} era={era} hpBonus={hpBonus} combat={combat} side="player" action={tileAction(tile, occ)} />}
+              {occ && (
+                <TileCard
+                  occupant={occ}
+                  era={era}
+                  hpBonus={hpBonus}
+                  combat={combat}
+                  side="player"
+                  action={tileAction(tile, occ)}
+                  onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
+                />
+              )}
               {mercOK && (
                 <button
                   type="button"
@@ -331,6 +418,11 @@ export default function Tableau() {
             <div key={i} className="tile-tooltip-line">{l}</div>
           ))}
         </div>
+      )}
+
+      {/* Reposition drag ghost (follows the cursor; positioned imperatively). */}
+      {repos && (
+        <div className="unit-drag-ghost" ref={ghostRef}>{repos.name}</div>
       )}
     </div>
   )

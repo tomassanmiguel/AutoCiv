@@ -107,6 +107,28 @@
 }
 .merc-btn-cost img { width: 11px; height: 11px; object-fit: contain; }
 
+/* Unit reposition: valid drop tiles flash yellow; the source tile dims. */
+.tableau-tile.reposition-valid { cursor: grabbing; z-index: 3; }
+.tableau-tile.reposition-valid .tile-bg { animation: tile-valid-flash 1.4s ease-in-out infinite; }
+.tableau-tile.reposition-src .tile-card-anchor { opacity: 0.4; }
+
+/* The dragged-unit label that follows the cursor. */
+.unit-drag-ghost {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(30, 22, 10, 0.92);
+  border: 1px solid #e6c877;
+  color: #f7edd6;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
 .enemy-slot {
   position: absolute;
   background: #1a1410 url("/sprites/tiles/battlefield.png") center / cover;
