@@ -519,8 +519,17 @@ class CombatMixin {
       civ.modifiers.unitHpBonus += 1
       civ.modifiers.buildingHpBonus += 1
     }
-    // Deployed buildings' end-of-era output (e.g. Pier food).
+    // Deployed buildings' end-of-era output (e.g. Pier food, Library progress).
     this._accrueBuildingOutputs()
+    // Forging: upgrade a random adjacent (road-augmented) unit. Stats re-derived by the
+    // _syncUnitStats(false) that runs right after this in _endCombat.
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (occ?.kind !== 'building' || occ.key !== 'forging' || occ.damaged) continue
+      const adj = this._adjacentTiles(tile.row, tile.col).filter((t) => t.occupant?.kind === 'unit' && !t.occupant.damaged)
+      if (adj.length === 0) continue
+      adj[Math.floor(Math.random() * adj.length)].occupant.level += 1
+    }
   }
 
   _defeat() {

@@ -226,6 +226,7 @@ export class GameManager {
       else if (occ.key === 'mint') out = { res: 'gold', amount: def.legitPct(occ.level) * civ.legitimacy.value }
       else if (occ.key === 'temple') out = { res: 'legitimacy', amount: def.legitPerTick(occ.level) }
       else if (occ.key === 'farm') out = { res: 'food', amount: 5 * this._plainsAround(tile) }
+      else if (occ.key === 'forging') out = { res: 'production', amount: def.prodPerTick(occ.level) }
       occ.tickOutput = out
       if (out) totals[out.res] += out.amount
     }
@@ -884,7 +885,9 @@ export class GameManager {
     }
   }
 
-  /** End-of-era economic output from deployed buildings (into resources + lifetime). */
+  /** End-of-era (`per:'era'`) economic output from deployed buildings (into resources +
+   *  lifetime). Food crossings add pops immediately; :progress: is banked (its choices
+   *  open in next era's development, like Burial Rites/Oral Tradition). */
   _accrueBuildingOutputs() {
     const civ = this.data.civilization
     let addedFood = 0
@@ -892,11 +895,10 @@ export class GameManager {
       const occ = tile.occupant
       if (!occ || occ.kind !== 'building' || occ.damaged) continue
       for (const o of buildingOutputs(BUILDING_DEFS[occ.key], occ.level, this.data.era)) {
-        if (o.res === 'food') {
-          civ.food.value += o.amount
-          occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + o.amount
-          addedFood += o.amount
-        }
+        if (!civ[o.res]) continue
+        civ[o.res].value += o.amount // Pier food, Library progress, …
+        occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + o.amount
+        if (o.res === 'food') addedFood += o.amount
       }
     }
     if (addedFood > 0) this._processThresholds('food', civ.food)

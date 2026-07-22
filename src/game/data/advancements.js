@@ -13,7 +13,7 @@ import { ERA_INDEX } from './eras.js'
 const POOL = {
   stone: ['Fire', 'Clothes', 'Cave Painting', 'Language', 'Tools', 'Tribalism', 'Mysticism', 'Hunting', 'Agriculture', 'Fermentation', 'Pack Bonding', 'Mud Brick', 'Basket Weaving', 'Burial Rites', 'Bartering', 'Fishing', 'Ownership', 'Sacred Grounds', 'Midwivery', 'The Sling'],
   bronze: ['The Wheel', 'Domestication', 'Pottery', 'Writing', 'Mining', 'Oral Tradition', 'Hereditary Rule', 'Archery', 'Sailing', 'The Plough', 'Specialization', 'Leatherwork', 'Slavery', 'Alloying', 'Baking', 'Caste System', 'Masonry', 'Trade Networks', 'Hospitality Rites', 'Brothels'],
-  iron: ['Steel', 'Weights and Measures', 'Coinage', 'Horseback Riding', 'Organized Religion', 'Celestial Navigation', 'Mathematics', 'Irrigation', 'Calendar', 'Festivals', 'Terracing', 'Surveying', 'Siege', 'Rudders', 'Code of Laws', 'Embassy', 'Diplomatic Marriage', 'Paper', 'Alphabet', 'Composite Bows'],
+  iron: ['Steel', 'Weights and Measures', 'Coinage', 'Horseback Riding', 'Organized Religion', 'Celestial Navigation', 'Mathematics', 'Irrigation', 'Calendar', 'Festivals', 'Forging', 'Surveying', 'Siege', 'Rudders', 'Code of Laws', 'Embassy', 'Diplomatic Marriage', 'Paper', 'Alphabet', 'Composite Bows'],
   classical: ['Urbanization', 'Democracy', 'Concrete', 'Philosophy', 'Arches', 'Glassblowing', 'Machinery', 'Public Baths', 'Entertainment', 'Poetry', 'Monotheism', 'Census', 'Defensive Pact', 'Rhetoric', 'Pharmacology', 'Citizenship', 'Warships', 'Professional Soldiers', 'Fresco', 'Dressage'],
   early_medieval: ['Feudalism', 'Armor', 'Metallurgy', 'Crop Rotation', 'Trial by Jury', 'Pilgrimage', 'Milling', 'Stirrups', 'Vassalage', 'Castles', 'Schism', 'Civil Service', 'Horseshoes', 'Clinker Construction', 'Algebra', 'Optics', 'Monastic Order', 'Counterweights', 'Manor System', 'Hedgerows'],
   late_medieval: ['Compass', 'Absolute Monarchy', 'Alchemy', 'Longbow', 'Mercenaries', 'Flying Butress', 'Inquisition', 'University', 'Diplomatic Corps', 'Stained Glass', 'Troubadours', 'Guilds', 'Gunpowder', 'Common Law', 'Physics', 'Quarantine', 'Cofferdams', 'Tithing', 'Crusades', 'Branding'],
@@ -122,6 +122,8 @@ export const IMPLEMENTED = {
   'Rudders':      { kind: 'unit', key: 'trireme', description: 'Unlocks the Trireme — a coastal :naval:/:ranged: unit that earns triple :gold: from unblocked damage.' },
   'Siege':        { kind: 'unit', key: 'catapult', description: 'Unlocks the Catapult — a land :siege: unit that strikes the enemy rear with 50% splash.' },
   'Composite Bows': { kind: 'policy', key: 'composite_bows', description: 'Unlocks the Composite Bows policy — ranged attacks deal 50% more damage.' },
+  'Forging':      { kind: 'building', key: 'forging', description: 'Unlocks the Forging — a :production: building that also upgrades a random adjacent unit each combat.' },
+  'Paper':        { kind: 'building', key: 'library', description: 'Unlocks the Library — a :progress: building granting a large :progress: lump each combat.' },
 }
 
 export function isImplemented(name) {

@@ -15,6 +15,8 @@ const kilnPerAdjacent = (level = 1) => level + 1 // +2 / +3 / +4 … :production
 const mineGold = (level = 1) => 8 * level         // :gold: per tick (×2 on a mountain)
 const templeLegit = (level = 1) => level          // :legitimacy: per tick (1 / 2 / 3 …)
 const mintLegitPct = (level = 1) => 0.05 + 0.02 * Math.max(0, level - 1) // 5% / 7% / 9% … of legitimacy
+const forgingProd = (level = 1) => 3 * (level + 1)      // :production: per tick (6 / 9 / 12 …)
+const libraryProgress = (level = 1) => 200 * (level + 1) // end-of-combat :progress: (400 / 600 / 800 …)
 // Brothel combat aura: adjacent units' :attack: multiplier by level (+10/15/20%).
 const brothelAtk = (level = 1) => 0.10 + 0.05 * Math.max(0, level - 1)
 
@@ -75,6 +77,18 @@ export const BUILDING_DEFS = {
     hp: 5, upHp: 3,
     perAdjacent: kilnPerAdjacent,
     effect: (level) => `Produces 2 :production: per tick, plus ${kilnPerAdjacent(level)} for each adjacent building.`,
+  },
+  forging: {
+    key: 'forging', name: 'Forging', types: ['production'], placement: 'land',
+    hp: 10, upHp: 4,
+    prodPerTick: forgingProd,
+    effect: (level) => `Produces ${forgingProd(level)} :production: per tick. At the end of each combat, upgrades a random adjacent unit.`,
+  },
+  library: {
+    key: 'library', name: 'Library', types: ['progress'], placement: 'land',
+    hp: 9, upHp: 3,
+    outputs: (level) => [{ res: 'progress', amount: libraryProgress(level), per: 'era' }],
+    effect: (level) => `At the end of each combat, gain ${libraryProgress(level)} :progress:.`,
   },
   mine: {
     key: 'mine', name: 'Mine', types: ['gold'], placement: 'land',
