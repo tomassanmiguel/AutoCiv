@@ -81,7 +81,7 @@ export const IMPLEMENTED = {
   'Bartering':    { kind: 'pop', key: 'trader', description: 'Unlocks the Trader specialist (+5 :gold: per tick).' },
   'Fishing':      { kind: 'building', key: 'pier', description: 'Unlocks the Pier — a coastal :food: building.' },
   'Ownership':    { kind: 'policy', key: 'ownership', description: 'Unlocks the Ownership policy — all buildings also produce +2 :gold: per tick.' },
-  'Sacred Grounds': { kind: 'policy', key: 'sacred_grounds', description: 'Unlocks the Sacred Grounds policy — consecrate the land your people hold sacred.' },
+  'Sacred Grounds': { kind: 'policy', key: 'sacred_grounds', description: 'Unlocks the Sacred Grounds policy — each empty land tile grants +1 :legitimacy: at the end of combat.' },
   'The Sling':    { kind: 'unit', key: 'slinger', description: 'Unlocks the Slinger — a land :ranged: unit.' },
 }
 

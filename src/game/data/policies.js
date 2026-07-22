@@ -33,10 +33,8 @@ export const POLICY_DEFS = {
     key: 'basket_weaving', name: 'Basket Weaving', type: 'Policy',
     effect: 'All :food: thresholds are 5% lower.',
   },
-  // Sacred Grounds' true effect (empty land tiles grant legitimacy after combat) is
-  // intentionally NOT described — the player discovers it by playing.
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
-    effect: 'Ground consecrated in the quiet reverence of your people.',
+    effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',
   },
 }
