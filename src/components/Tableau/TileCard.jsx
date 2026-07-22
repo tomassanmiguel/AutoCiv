@@ -89,8 +89,9 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
           the "thrust" lunge toward the enemy. */}
       <div className={`tc-lunge ${side}`} key={combat ? (occ.lastAttackSeq ?? 0) : 'idle'}>
         {/* fx wrapper — remounts when fxSeq changes, replaying the upgrade/repair/
-            hire "pop" (green flash + scale). */}
-        <div className={`tc-fx${occ.fxSeq ? ' animate ' + (occ.fxKind ?? '') : ''}`} key={`fx-${occ.fxSeq ?? 0}`}>
+            hire "pop" (green flash + scale). Suppressed in combat so the per-attack
+            lunge remount (which also remounts this wrapper) doesn't re-flash it. */}
+        <div className={`tc-fx${!combat && occ.fxSeq ? ' animate ' + (occ.fxKind ?? '') : ''}`} key={`fx-${occ.fxSeq ?? 0}`}>
           <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''} ${occ.mercenary ? 'mercenary' : ''}`}>
             <div className="tc-level">{occ.level}</div>
             <div className="tc-name">{def.name}</div>

@@ -48,6 +48,8 @@ export default function Tableau() {
   const [repos, setRepos] = useState(null)
   const reposPendingRef = useRef(null)
   const ghostRef = useRef(null)
+  const snapTimerRef = useRef(null) // pending snap-back timeout (canceled on a new grab)
+  const reposSeqRef = useRef(0)     // unique id per drag, keys a fresh ghost node each time
 
   // --- Content dimensions for the current era ---
   const enemyRows = era >= ERA_INDEX.revolution ? 4 : 3 // +1 enemy row from Revolution
@@ -213,8 +215,12 @@ export default function Tableau() {
     e.stopPropagation() // don't start a camera pan
     e.preventDefault()
     setTooltip(null)
+    // A previous drag may still be mid-snap-back; cancel its pending clear so it
+    // can't unmount this drag's ghost.
+    if (snapTimerRef.current) { clearTimeout(snapTimerRef.current); snapTimerRef.current = null }
+    const seq = ++reposSeqRef.current
     const name = UNIT_DEFS[occ.key]?.name ?? ''
-    reposPendingRef.current = { fromRow: tile.row, fromCol: tile.col, name, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false }
+    reposPendingRef.current = { seq, fromRow: tile.row, fromCol: tile.col, name, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false }
 
     const onMove = (ev) => {
       const p = reposPendingRef.current
@@ -223,7 +229,7 @@ export default function Tableau() {
       if (!p.active) {
         if (Math.abs(ev.clientX - p.startX) + Math.abs(ev.clientY - p.startY) <= 4) return
         p.active = true
-        setRepos({ fromRow: p.fromRow, fromCol: p.fromCol, name: p.name })
+        setRepos({ seq: p.seq, fromRow: p.fromRow, fromCol: p.fromCol, name: p.name })
       }
       const g = ghostRef.current
       if (g) { g.style.left = `${ev.clientX}px`; g.style.top = `${ev.clientY}px` }
@@ -257,17 +263,24 @@ export default function Tableau() {
     g.style.left = `${r.left + r.width / 2}px`
     g.style.top = `${r.top + r.height / 2}px`
     g.style.opacity = '0.15'
-    setTimeout(() => setRepos(null), 230)
+    snapTimerRef.current = setTimeout(() => { snapTimerRef.current = null; setRepos(null) }, 230)
   }
 
   // Position the ghost at the cursor when a reposition drag begins (so it doesn't
-  // flash at the origin before the first move).
+  // flash at the origin before the first move). The ghost is keyed per-drag, so
+  // this runs on a fresh node with default styles each time.
   useEffect(() => {
-    if (repos && ghostRef.current && reposPendingRef.current) {
-      ghostRef.current.style.left = `${reposPendingRef.current.x}px`
-      ghostRef.current.style.top = `${reposPendingRef.current.y}px`
+    const g = ghostRef.current
+    if (repos && g && reposPendingRef.current) {
+      g.style.transition = 'none'
+      g.style.opacity = '1'
+      g.style.left = `${reposPendingRef.current.x}px`
+      g.style.top = `${reposPendingRef.current.y}px`
     }
   }, [repos])
+
+  // Cancel a pending snap-back timer on unmount.
+  useEffect(() => () => { if (snapTimerRef.current) clearTimeout(snapTimerRef.current) }, [])
 
   // --- Tooltips (tiles + battlefield) ---
   const showTip = (content, e) => {
@@ -301,7 +314,7 @@ export default function Tableau() {
   const prepping = phase === 'prep'
   const mercCost = prepping ? game.mercCost() : 0
   const tileAction = (tile, occ) => {
-    if (!canAct || !occ) return null
+    if (!canAct || !occ || occ.mercenary) return null // mercenaries are disposable — no repair/upgrade
     if (occ.damaged) {
       const cost = repairCost(occ, era)
       return { kind: 'repair', cost, affordable: gold >= cost, onClick: () => game.repairOccupant(tile.row, tile.col) }
@@ -344,6 +357,7 @@ export default function Tableau() {
           const pstate = placing ? game.placementState(tile.row, tile.col) : null
           const placeable = pstate === 'valid' || pstate === 'replace'
           const mercOK = !occ && prepping && game.mercEligible(tile.row, tile.col)
+          const mercAfford = mercOK && gold >= mercCost
           const reposSrc = repos && repos.fromRow === tile.row && repos.fromCol === tile.col
           const reposValid = repos && !reposSrc && game.canReposition(repos.fromRow, repos.fromCol, tile.row, tile.col)
           const cls = [
@@ -351,7 +365,7 @@ export default function Tableau() {
             occ ? 'occupied' : '',
             pstate === 'valid' ? 'place-valid' : '',
             pstate === 'replace' ? 'place-replace' : '',
-            mercOK ? 'merc-open' : '',
+            mercAfford ? 'merc-open' : '', // only ring the tile when a hire is actually affordable
             reposValid ? 'reposition-valid' : '',
             reposSrc ? 'reposition-src' : '',
           ].filter(Boolean).join(' ')
@@ -420,9 +434,10 @@ export default function Tableau() {
         </div>
       )}
 
-      {/* Reposition drag ghost (follows the cursor; positioned imperatively). */}
+      {/* Reposition drag ghost (follows the cursor; positioned imperatively). Keyed
+          per-drag so a fresh node mounts each time (no stale opacity/transition). */}
       {repos && (
-        <div className="unit-drag-ghost" ref={ghostRef}>{repos.name}</div>
+        <div key={repos.seq} className="unit-drag-ghost" ref={ghostRef}>{repos.name}</div>
       )}
     </div>
   )

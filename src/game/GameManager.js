@@ -578,7 +578,7 @@ export class GameManager {
   repairOccupant(row, col) {
     if (!this._canEconomize()) return
     const occ = this.data.tableau.tileAt(row, col)?.occupant
-    if (!occ || !occ.damaged) return
+    if (!occ || !occ.damaged || occ.mercenary) return // mercenaries are disposable, not repaired
     const cost = repairCost(occ, this.data.era)
     const civ = this.data.civilization
     if (civ.gold.value < cost) return
@@ -593,7 +593,7 @@ export class GameManager {
   upgradeOccupant(row, col) {
     if (!this._canEconomize()) return
     const occ = this.data.tableau.tileAt(row, col)?.occupant
-    if (!occ || occ.damaged) return
+    if (!occ || occ.damaged || occ.mercenary) return // mercenaries disband; don't sink gold into them
     const cost = upgradeCost(occ, this.data.era)
     const civ = this.data.civilization
     if (civ.gold.value < cost) return
@@ -714,6 +714,8 @@ export class GameManager {
   /** Player pressed "Begin Combat" on the preparation screen. */
   beginCombat() {
     if (this.data.phase !== 'prep') return
+    // A paused speed would freeze the battle loop; default to standard so combat runs.
+    if ((SPEED_TPS[this.data.speed] || 0) <= 0) this.data.speed = 'standard'
     this._startCombat()
     this._emit()
   }
@@ -931,6 +933,11 @@ export class GameManager {
   }
 
   _defeat() {
+    // _endCombat never runs on defeat, so disband mercenaries here too (the enemy
+    // host stays on the board as a record of who won).
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      if (tile.occupant?.mercenary) tile.occupant = null
+    }
     this.data.defeated = true
     this.data.combatTime = COMBAT_DURATION
     this._restartTimer()
