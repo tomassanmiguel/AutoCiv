@@ -1,8 +1,99 @@
 import { useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERAS } from '../../game/data/eras.js'
+import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
+import { BUILDING_DEFS, buildingEffect, buildingHp } from '../../game/data/buildings.js'
+import { POLICY_DEFS } from '../../game/data/policies.js'
+import { POP_TYPES } from '../../game/data/pops.js'
+import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import IconText from '../common/IconText.jsx'
 import './ProgressOverlay.css'
+
+const STAT_ICON = {
+  speed: '/sprites/icons/speed.png',
+  atk: '/sprites/icons/attack.png',
+  def: '/sprites/icons/defense.png',
+}
+
+function Stat({ icon, children }) {
+  return <span className="pc-stat"><img src={icon} alt="" />{children}</span>
+}
+
+const catLabel = (list, key) => list.find((c) => c.key === key)?.label ?? ''
+const popRules = (pop) =>
+  'Produces ' + Object.entries(pop.outputs).map(([res, v]) => `+${v} :${res}:`).join(', ') + ' per tick.'
+
+/**
+ * Structured card body for an advancement option. Always leads with "Unlocks <Name>"
+ * and the type (or, for a passive bonus/modifier, just the effect), then the exact
+ * rules text for that unlock — plus Speed/Atk/Def (units) or Def (buildings).
+ */
+function UnlockDetail({ opt, era }) {
+  const u = opt.unlock
+  if (!u) return <div className="pc-rules pc-todo">Not Yet Implemented</div>
+
+  if (u.kind === 'modifier') {
+    // Passive bonus: no "Unlocks" line, just the effect.
+    return <div className="pc-rules"><IconText>{opt.description}</IconText></div>
+  }
+
+  if (u.kind === 'unit') {
+    const def = UNIT_DEFS[u.key]
+    const s = unitStats(def, 1)
+    return (
+      <>
+        <div className="pc-unlocks">Unlocks {def.name}</div>
+        <div className="pc-type"><IconText>{`:${def.types[0]}: ${catLabel(UNIT_CATEGORIES, def.types[0])} unit`}</IconText></div>
+        <div className="pc-stats">
+          <Stat icon={STAT_ICON.speed}>{s.speed}</Stat>
+          <Stat icon={STAT_ICON.atk}>{s.atk}</Stat>
+          <Stat icon={STAT_ICON.def}>{s.def}</Stat>
+        </div>
+        <div className="pc-rules"><IconText>{def.description}</IconText></div>
+        {def.ability ? <div className="pc-rules"><strong>Ability:</strong> <IconText>{def.ability}</IconText></div> : null}
+      </>
+    )
+  }
+
+  if (u.kind === 'building') {
+    const def = BUILDING_DEFS[u.key]
+    return (
+      <>
+        <div className="pc-unlocks">Unlocks {def.name}</div>
+        <div className="pc-type"><IconText>{`:${def.types[0]}: ${catLabel(BUILDING_CATEGORIES, def.types[0])} building`}</IconText></div>
+        <div className="pc-stats">
+          <Stat icon={STAT_ICON.def}>{buildingHp(def, 1)}</Stat>
+        </div>
+        <div className="pc-rules"><IconText>{buildingEffect(def, 1, era)}</IconText></div>
+      </>
+    )
+  }
+
+  if (u.kind === 'policy') {
+    const def = POLICY_DEFS[u.key]
+    return (
+      <>
+        <div className="pc-unlocks">Unlocks {def.name}</div>
+        <div className="pc-type"><IconText>:policy: Policy</IconText></div>
+        <div className="pc-rules"><IconText>{def.effect}</IconText></div>
+      </>
+    )
+  }
+
+  if (u.kind === 'pop') {
+    const pop = POP_TYPES[u.key]
+    return (
+      <>
+        <div className="pc-unlocks">Unlocks {pop.name}</div>
+        <div className="pc-type"><IconText>:pop: Specialist</IconText></div>
+        <div className="pc-rules"><IconText>{popRules(pop)}</IconText></div>
+        {pop.note ? <div className="pc-rules"><IconText>{pop.note}</IconText></div> : null}
+      </>
+    )
+  }
+
+  return null
+}
 
 /**
  * Advancement chooser, shown when a progress threshold is crossed (the game holds
@@ -71,7 +162,9 @@ export default function ProgressOverlay() {
               </div>
               <div className="progress-card-era">{ERAS[opt.eraIndex].name}</div>
               <div className="progress-card-name">{opt.name}</div>
-              <div className="progress-card-desc"><IconText>{opt.description}</IconText></div>
+              <div className="progress-card-body">
+                <UnlockDetail opt={opt} era={game.era} />
+              </div>
             </button>
           ))}
         </div>

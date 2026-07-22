@@ -356,9 +356,12 @@ exists; extend it as systems land.
   era change (`_beginEra`/`setEra` clear `selection`+`pending`).
 - **Options:** draw up to 3 **unchosen** advancements with `eraIndex <= current era`, weighted by
   **2^eraIndex** (so current-era options dominate). Only implemented ones are weighted; if fewer than
-  3, the rest are unimplemented **"Not Yet Implemented"** filler cards. Card = name + era + corner
-  silhouette (policy→policy icon, pop→pop icon, unit/building→the unlocked type's category
-  silhouette, modifier→defense icon, unimplemented→`?`) + description. Hover highlights + enlarges.
+  3, the rest are unimplemented **"Not Yet Implemented"** filler cards. Card (`ProgressOverlay`
+  `UnlockDetail`) = the advancement name + era + corner silhouette, then a **structured body**
+  built from the unlock's real data (NOT a prose blurb): **"Unlocks <Name>"** + type line
+  (`:cavalry: Cavalry unit`, `Policy`, `Specialist`, …) + the unlock's own **rules text**
+  (unit description/ability, `buildingEffect`, policy effect, pop outputs+note) + **stats**
+  (units: Speed/Atk/Def; buildings: Def). A **modifier/bonus** shows just its effect. Hover enlarges.
   If the era's pool is fully **exhausted** (nothing unchosen left), the owed choice is silently
   **skipped** rather than opening a zero-card selection (no soft-lock).
 - **Stages** (`selection.stage`): `choose` (3 cards + **Hide**; hidden cards restored by the rail
