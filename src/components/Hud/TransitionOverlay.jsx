@@ -11,13 +11,14 @@ const STEP_MS = 70 // per-character delete/type speed
 
 /**
  * Full-screen banner shown during the battle and era-transition phases. It
- * orchestrates the animation with timers and calls back into the manager
- * (endBattle / completeTransition) when the animation finishes.
+ * orchestrates the animation with timers and calls completeTransition() when the
+ * era-transition animation finishes (the battle banner is a brief announcement).
  *
- *  - Battle phase: fade in "Battle", hold, fade out.
+ *  - Battle phase: a brief "Battle" announcement, then it clears so the live combat
+ *    underneath is visible (combat runs on the manager's own timer).
  *  - Transition phase: fade in showing the previous era, then a typewriter effect
  *    that deletes the old era one character at a time and types the new one, then
- *    holds and fades out.
+ *    holds and fades out, calling completeTransition().
  */
 export default function TransitionOverlay() {
   const game = useGame()
@@ -33,10 +34,11 @@ export default function TransitionOverlay() {
     const set = (patch) => setState((s) => ({ ...s, ...patch }))
 
     if (phase === 'battle') {
+      // Brief announcement only — combat runs on the manager timer underneath.
       setState({ mode: 'battle', visible: false })
       after(20, () => set({ visible: true }))
-      after(1300, () => set({ visible: false }))
-      after(1750, () => game.endBattle())
+      after(1000, () => set({ visible: false }))
+      after(1400, () => setState(null))
     } else if (phase === 'transition') {
       const from = eraTitle(era)
       const to = eraTitle(era + 1)

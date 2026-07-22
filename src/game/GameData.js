@@ -25,6 +25,15 @@ export class GameData {
     this.selection = null // active choice overlay state machine (see GameManager)
     this.justFilled = null // { group, index, seq } — last roster slot filled (for the fill animation)
 
+    // Combat: a fresh enemy host is generated each era (visible during development,
+    // fights during the battle phase). See GameManager combat methods.
+    this.enemies = [] // enemy instances { key, level, role, col, slot, hp, maxHp, damaged, cdTimer }
+    this.enemyHostType = null // composition type of the current host
+    this.combatTime = 0 // seconds elapsed in the current battle (0..COMBAT_DURATION)
+    this.combatEvents = [] // transient per-step events for UI animation (attacks/damage/deaths)
+    this.combatSeq = 0 // bumps each combat step (lets the UI key/replay transient effects)
+    this.defeated = false // legitimacy hit 0 — game over (mirror of `won`)
+
     this.tableau = new TableauData(seed)
     this.civilization = new CivilizationData()
   }

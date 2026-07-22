@@ -4,25 +4,42 @@
 // Displayed stats (design naming): Speed = cooldown (seconds between attacks),
 // Atk = damage, Def = health (HP). Atk/HP grow linearly with upgrade level;
 // cooldown is fixed. `placement` restricts which tiles a unit may be built on.
+// `era` = the era the unit belongs to (era -1 = pre-Stone wildlife, enemy-only).
+// `shift: true` = after attacking, the unit shifts to an adjacent empty space.
 
 export const UNIT_DEFS = {
   warrior: {
-    key: 'warrior', name: 'Warrior', types: ['melee'], placement: 'land',
+    key: 'warrior', name: 'Warrior', era: 0, types: ['melee'], placement: 'land',
     cooldown: 3, atk: 5, hp: 11, upAtk: 1, upHp: 2,
     ability: '',
     description: 'A basic :melee: soldier — durable and dependable on the front line.',
   },
   wolf: {
-    key: 'wolf', name: 'Wolf', types: ['cavalry'], placement: 'land',
+    key: 'wolf', name: 'Wolf', era: 0, types: ['cavalry'], placement: 'land',
     cooldown: 2, atk: 5, hp: 10, upAtk: 1, upHp: 2,
-    ability: 'After attacking, moves to a random adjacent empty space.',
+    shift: true,
+    ability: 'After attacking, shifts to an adjacent empty space if able.',
     description: 'A swift :cavalry: pack hunter that strikes and repositions.',
   },
   slinger: {
-    key: 'slinger', name: 'Slinger', types: ['ranged'], placement: 'land',
+    key: 'slinger', name: 'Slinger', era: 0, types: ['ranged'], placement: 'land',
     cooldown: 4, atk: 6, hp: 8, upAtk: 1, upHp: 1,
     ability: '',
     description: 'A :ranged: skirmisher that flings stones from behind cover.',
+  },
+
+  // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
+  bear: {
+    key: 'bear', name: 'Bear', era: -1, types: ['melee'], placement: 'land',
+    cooldown: 6, atk: 8, hp: 16, upAtk: 1, upHp: 2,
+    ability: '',
+    description: 'A hulking :melee: beast.',
+  },
+  lion: {
+    key: 'lion', name: 'Lion', era: -1, types: ['cavalry'], placement: 'land',
+    cooldown: 5, atk: 6, hp: 9, upAtk: 1, upHp: 2,
+    ability: '',
+    description: 'A swift :cavalry: predator.',
   },
 }
 

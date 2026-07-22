@@ -7,12 +7,20 @@ import { UNIT_DEFS, unitStats } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
 import { canPlaceOn } from './data/terrain.js'
+import { generateHost } from './data/enemies.js'
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
-// Ticks per second for each speed setting (0 = paused).
+// Ticks per second for each speed setting (0 = paused). During the battle phase
+// the same numbers are a TIME multiplier (1x / 3x / 5x / 10x of real time).
 export const SPEED_TPS = { paused: 0, standard: 1, fast: 3, super: 5, ultra: 10 }
 const THRESHOLD_TYPES = ['progress', 'food', 'production']
+
+// Combat: a battle lasts COMBAT_DURATION combat-seconds; the loop steps every
+// COMBAT_INTERVAL_MS of real time, advancing combat time by the speed multiplier.
+const COMBAT_DURATION = 25
+const COMBAT_INTERVAL_MS = 50
+const MIN_COOLDOWN = 1 // cooldowns can be reduced by %, but never below 1s
 
 const catIndex = (list, key) => list.findIndex((c) => c.key === key)
 
@@ -57,6 +65,7 @@ export class GameManager {
     this.getVersion = () => this._version
 
     this._recomputeOutputs()
+    this._generateEnemies() // era-0 host, visible during development
   }
 
   _emit() {
@@ -80,9 +89,12 @@ export class GameManager {
   _restartTimer() {
     if (this._timer) { clearInterval(this._timer); this._timer = null }
     const tps = SPEED_TPS[this.data.speed]
-    // A pending selection holds the game paused regardless of the chosen speed.
-    if (tps > 0 && this.data.phase === 'development' && !this.data.won && !this.data.selection) {
+    if (tps <= 0 || this.data.won || this.data.defeated || this.data.selection) return
+    // A pending selection / win / defeat holds the game paused.
+    if (this.data.phase === 'development') {
       this._timer = setInterval(() => this.tick(), 1000 / tps)
+    } else if (this.data.phase === 'battle') {
+      this._timer = setInterval(() => this._combatStep(), COMBAT_INTERVAL_MS)
     }
   }
 
@@ -536,14 +548,213 @@ export class GameManager {
   _endDevelopment() {
     if (this.data.phase !== 'development') return // guard against double-accrue
     this._accrueBuildingOutputs()
-    this.data.phase = 'battle'
-    this._restartTimer() // stops ticking
+    this._startCombat()
   }
 
-  /** Called by the UI after the "Battle" banner animation. */
-  endBattle() {
+  // ---------------------------------------------------------------------------
+  // Combat (battle phase). Lasts COMBAT_DURATION combat-seconds. Units attack on
+  // cooldown vs. the era's enemy host. Melee/cavalry only strike when they are the
+  // front-most friendly in the column; ranged strike the front enemy at any range;
+  // an empty column yields gold (player) / legitimacy damage (enemy). Attacks are
+  // resolved bottom-to-top, left-to-right. Non-destroyed instances heal between
+  // combats; destroyed ones stay `damaged` until repaired.
+  // ---------------------------------------------------------------------------
+  _generateEnemies() {
+    const era = this.data.era
+    const t = this.data.tableau
+    const host = generateHost(era, t.enemyRowCount(era), t.columnPlaces(era))
+    this.data.enemies = host.units.map((u) => ({ ...u, cdTimer: 0 }))
+    this.data.enemyHostType = host.type
+  }
+
+  _startCombat() {
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (!occ || occ.damaged) continue
+      occ.hp = occ.maxHp // damage doesn't persist between combats
+      if (occ.kind === 'unit') occ.cdTimer = this._effectiveCooldown(occ)
+    }
+    for (const e of this.data.enemies) {
+      if (e.damaged) continue
+      e.hp = e.maxHp
+      e.cdTimer = this._effectiveCooldown(e)
+    }
+    this.data.combatTime = 0
+    this.data.combatEvents = []
+    this.data.phase = 'battle'
+    this._restartTimer()
+  }
+
+  _combatStep() {
     if (this.data.phase !== 'battle') return
+    const mult = SPEED_TPS[this.data.speed] || 0
+    if (mult <= 0) return
+    const dt = (COMBAT_INTERVAL_MS / 1000) * mult
+    this.data.combatTime += dt
+    this.data.combatSeq++
+    this.data.combatEvents = []
+
+    const bounds = this.data.tableau.visibleBounds(this.data.era)
+    const enemyRows = this.data.tableau.enemyRowCount(this.data.era)
+    const list = this._combatants(bounds, enemyRows)
+    list.sort((a, b) => a.y - b.y || a.col - b.col) // bottom-to-top, left-to-right
+
+    for (const c of list) if (c.isUnit && this._isActive(c)) c.unit.cdTimer -= dt
+
+    for (const c of list) {
+      if (!c.isUnit || !this._isActive(c) || c.unit.cdTimer > 0) continue
+      if (this._resolveAttack(c, bounds)) {
+        c.unit.cdTimer += this._effectiveCooldown(c.unit)
+        if (UNIT_DEFS[c.unit.key]?.shift) this._shift(c, bounds, enemyRows)
+      }
+    }
+
+    const civ = this.data.civilization
+    if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
+    if (this.data.combatTime >= COMBAT_DURATION) { this._endCombat(); return }
+    this._emit()
+  }
+
+  _combatants(bounds, enemyRows) {
+    const out = []
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (!occ) continue
+      out.push({ side: 'player', unit: occ, col: tile.col, row: tile.row, y: tile.row, isUnit: occ.kind === 'unit' })
+    }
+    for (const e of this.data.enemies) {
+      out.push({ side: 'enemy', unit: e, col: e.col, slot: e.slot, y: bounds.maxRow + (enemyRows - e.slot), isUnit: true })
+    }
+    return out
+  }
+
+  _isActive(c) { return !c.unit.damaged }
+
+  _resolveAttack(c, bounds) {
+    const atk = this._effectiveAtk(c.unit)
+    const role = UNIT_DEFS[c.unit.key].types[0]
+    if (c.side === 'player') {
+      const front = this._frontEnemyInCol(c.col)
+      if (!front) {
+        this.data.civilization.gold.value += atk
+        this._pushEvent({ kind: 'gold', amount: atk, col: c.col, row: c.row })
+        return true
+      }
+      if (role === 'ranged' || c.row === this._frontPlayerRow(c.col, bounds)) {
+        this._pushEvent({ kind: 'attack', side: 'player', col: c.col, row: c.row })
+        this._dealDamage(front, atk, 'enemy', { col: front.col, slot: front.slot })
+        return true
+      }
+      return false // melee/cavalry blocked behind a friendly
+    }
+    const front = this._frontPlayerInCol(c.col, bounds)
+    if (!front) {
+      const legit = this.data.civilization.legitimacy
+      legit.value = Math.max(0, legit.value - atk)
+      this._pushEvent({ kind: 'legit', amount: atk, col: c.col })
+      return true
+    }
+    if (role === 'ranged' || c.slot === this._frontEnemySlot(c.col)) {
+      this._pushEvent({ kind: 'attack', side: 'enemy', col: c.col, slot: c.slot })
+      this._dealDamage(front.occ, atk, 'player', { col: c.col, row: front.row })
+      return true
+    }
+    return false
+  }
+
+  _dealDamage(target, amount, side, loc) {
+    target.hp -= amount
+    const killed = target.hp <= 0
+    if (killed) { target.hp = 0; target.damaged = true }
+    this._pushEvent({ kind: 'damage', side, amount, killed, ...loc })
+  }
+
+  _frontEnemyInCol(col) {
+    let best = null
+    for (const e of this.data.enemies) {
+      if (e.col === col && !e.damaged && (best === null || e.slot > best.slot)) best = e
+    }
+    return best
+  }
+  _frontEnemySlot(col) {
+    const f = this._frontEnemyInCol(col)
+    return f ? f.slot : -1
+  }
+  _frontPlayerInCol(col, bounds) {
+    for (let r = bounds.maxRow; r >= bounds.minRow; r--) {
+      const occ = this.data.tableau.tileAt(r, col)?.occupant
+      if (occ && !occ.damaged) return { occ, row: r }
+    }
+    return null
+  }
+  _frontPlayerRow(col, bounds) {
+    const f = this._frontPlayerInCol(col, bounds)
+    return f ? f.row : NaN
+  }
+
+  _effectiveAtk(unit) { return unitStats(UNIT_DEFS[unit.key], unit.level).atk }
+  _effectiveCooldown(unit) {
+    const def = UNIT_DEFS[unit.key] ?? BUILDING_DEFS[unit.key]
+    return Math.max(MIN_COOLDOWN, def?.cooldown ?? MIN_COOLDOWN)
+  }
+
+  _colPlaces(col) {
+    const b = this.data.tableau.visibleBounds(this.data.era)
+    const places = new Set()
+    if (!b) return places
+    for (let r = b.minRow; r <= b.maxRow; r++) {
+      const p = this.data.tableau.tileAt(r, col)?.def?.place
+      if (p) places.add(p)
+    }
+    return places
+  }
+
+  // Wolf ability: after attacking, shift to an adjacent empty valid space.
+  _shift(c, bounds, enemyRows) {
+    const def = UNIT_DEFS[c.unit.key]
+    if (c.side === 'player') {
+      const t = this.data.tableau
+      const nbrs = [[c.row + 1, c.col], [c.row - 1, c.col], [c.row, c.col + 1], [c.row, c.col - 1]]
+      for (const [r, col] of nbrs) {
+        if (!t.isUnlocked(r, col, this.data.era)) continue
+        const tile = t.tileAt(r, col)
+        if (!tile || tile.occupant || !canPlaceOn(def.placement, tile.terrain)) continue
+        t.tileAt(c.row, c.col).occupant = null
+        tile.occupant = c.unit
+        return
+      }
+    } else {
+      const nbrs = [[c.slot + 1, c.col], [c.slot - 1, c.col], [c.slot, c.col + 1], [c.slot, c.col - 1]]
+      for (const [slot, col] of nbrs) {
+        if (slot < 0 || slot >= enemyRows || col < bounds.minCol || col > bounds.maxCol) continue
+        if (!this._colPlaces(col).has(def.placement)) continue
+        if (this.data.enemies.some((e) => e.col === col && e.slot === slot)) continue
+        c.unit.col = col
+        c.unit.slot = slot
+        return
+      }
+    }
+  }
+
+  _pushEvent(ev) { this.data.combatEvents.push({ ...ev, seq: this.data.combatSeq }) }
+
+  _endCombat() {
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer }
+    }
+    this.data.enemies = [] // undefeated enemies fade away
+    this.data.combatTime = 0
+    this.data.combatEvents = []
     this.data.phase = 'transition'
+    this._restartTimer()
+    this._emit()
+  }
+
+  _defeat() {
+    this.data.defeated = true
+    this.data.combatTime = COMBAT_DURATION
+    this._restartTimer()
     this._emit()
   }
 
@@ -569,6 +780,10 @@ export class GameManager {
     this.data.pendingProgress = 0
     this.data.pendingProduction = 0
     this.data.selection = null
+    this.data.combatTime = 0
+    this.data.combatEvents = []
+    this.data.defeated = false
+    this._generateEnemies() // fresh host, visible during development
     this._restartTimer()
   }
 

@@ -1,6 +1,7 @@
 import { Tile } from './Tile.js'
 import { ROWS, COLS, labelAt, isWestCoast, unlockEraIndexAt } from './data/map.js'
 import { resolveTerrainGrid } from './data/terrain.js'
+import { ERA_INDEX } from './data/eras.js'
 
 /**
  * The tableau: the full 8x22 grid of tiles plus the logic for which subset is
@@ -81,6 +82,27 @@ export class TableauData {
       for (let c = 1; c <= COLS; c++) {
         if (this.isUnlocked(r, c, eraIndex)) out.push(this.tileAt(r, c))
       }
+    }
+    return out
+  }
+
+  /** Number of battlefield (enemy) slot rows above the grid (4 from Revolution). */
+  enemyRowCount(eraIndex) {
+    return eraIndex >= ERA_INDEX.revolution ? 4 : 3
+  }
+
+  /** Per visible column, the set of terrain placement classes among its player tiles. */
+  columnPlaces(eraIndex) {
+    const b = this.visibleBounds(eraIndex)
+    if (!b) return []
+    const out = []
+    for (let c = b.minCol; c <= b.maxCol; c++) {
+      const places = new Set()
+      for (let r = b.minRow; r <= b.maxRow; r++) {
+        const p = this.tileAt(r, c)?.def?.place
+        if (p) places.add(p)
+      }
+      out.push({ col: c, places })
     }
     return out
   }
