@@ -5,8 +5,9 @@ import { CivilizationData } from './CivilizationData.js'
  * The complete current status of a game. Owned by GameManager.
  *
  * The game loop runs per era: a development phase (ticks accumulate resources),
- * then a battle phase (skipped for now), then an era transition. Phase state:
- *  - phase: 'development' | 'battle' | 'transition'
+ * then a preparation phase (spend gold / arrange the board), then a battle phase,
+ * then an era transition. Phase state:
+ *  - phase: 'development' | 'prep' | 'battle' | 'transition'
  *  - tick:  current tick within the era (0..TICKS_PER_ERA)
  *  - speed: 'paused' | 'standard' | 'fast' | 'super' | 'ultra'
  */
@@ -24,6 +25,7 @@ export class GameData {
     this.pendingProduction = 0
     this.selection = null // active choice overlay state machine (see GameManager)
     this.justFilled = null // { group, index, seq } — last roster slot filled (for the fill animation)
+    this.popFx = null // { key, seq } — last specialist gold-converted (for a pop-card flash)
 
     // Combat: a fresh enemy host is generated each era (visible during development,
     // fights during the battle phase). See GameManager combat methods.

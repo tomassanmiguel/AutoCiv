@@ -8,6 +8,7 @@ import { BUILDING_DEFS, buildingHp, buildingOutputs } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
 import { canPlaceOn } from './data/terrain.js'
 import { generateHost } from './data/enemies.js'
+import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost } from './data/costs.js'
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
@@ -555,12 +556,166 @@ export class GameManager {
   }
 
   // ---------------------------------------------------------------------------
+  // Gold economy: spend gold to repair / upgrade deployed instances, convert
+  // citizens into specialists, hire one-battle mercenaries, and (free) reposition
+  // units. Repair/upgrade/convert are allowed during development and preparation
+  // (not mid-battle, not while a selection is open, and not after win/defeat).
+  // ---------------------------------------------------------------------------
+  _canEconomize() {
+    const d = this.data
+    return !d.won && !d.defeated && !d.selection && (d.phase === 'development' || d.phase === 'prep')
+  }
+
+  // Tag an instance so its on-tile card replays a one-shot "juice" animation
+  // (green flash + scale) — used for upgrade / repair / mercenary spawn.
+  _fxTag(occ, kind) {
+    this._fxSeq = (this._fxSeq ?? 0) + 1
+    occ.fxSeq = this._fxSeq
+    occ.fxKind = kind
+  }
+
+  /** Repair a damaged unit/building back to full HP for gold. */
+  repairOccupant(row, col) {
+    if (!this._canEconomize()) return
+    const occ = this.data.tableau.tileAt(row, col)?.occupant
+    if (!occ || !occ.damaged) return
+    const cost = repairCost(occ, this.data.era)
+    const civ = this.data.civilization
+    if (civ.gold.value < cost) return
+    civ.gold.value -= cost
+    occ.damaged = false
+    occ.hp = occ.maxHp
+    this._fxTag(occ, 'repair')
+    this._emit()
+  }
+
+  /** Upgrade an undamaged unit/building one level for gold (raises Atk/HP). */
+  upgradeOccupant(row, col) {
+    if (!this._canEconomize()) return
+    const occ = this.data.tableau.tileAt(row, col)?.occupant
+    if (!occ || occ.damaged) return
+    const cost = upgradeCost(occ, this.data.era)
+    const civ = this.data.civilization
+    if (civ.gold.value < cost) return
+    civ.gold.value -= cost
+    occ.level += 1
+    const oldMax = occ.maxHp
+    const newMax = occ.kind === 'unit'
+      ? unitStats(UNIT_DEFS[occ.key], occ.level, civ.modifiers.unitHpBonus).def
+      : buildingHp(BUILDING_DEFS[occ.key], occ.level)
+    occ.maxHp = newMax
+    occ.hp = Math.min(newMax, (occ.hp ?? oldMax) + (newMax - oldMax))
+    this._fxTag(occ, 'upgrade')
+    this._emit()
+  }
+
+  /** Gold cost to convert citizens into one unlocked specialist type right now. */
+  specialistConvertInfo(popKey) {
+    const civ = this.data.civilization
+    const era = this.data.era
+    const n = specialistConvertCount(era)
+    const cost = specialistCost(era)
+    const citizens = civ.pops.citizen ?? 0
+    const unlocked = isSpecialist(popKey) && civ.population.includes(popKey)
+    return { count: n, cost, canAfford: civ.gold.value >= cost, enoughCitizens: citizens >= n, unlocked }
+  }
+
+  /** Spend gold to convert (era+1) citizens into an unlocked specialist type. */
+  convertSpecialistWithGold(popKey) {
+    if (!this._canEconomize()) return
+    const info = this.specialistConvertInfo(popKey)
+    if (!info.unlocked || !info.enoughCitizens || !info.canAfford) return
+    const civ = this.data.civilization
+    civ.gold.value -= info.cost
+    civ.pops.citizen -= info.count
+    civ.pops[popKey] = (civ.pops[popKey] ?? 0) + info.count
+    this._recomputeOutputs()
+    this._fxSeq = (this._fxSeq ?? 0) + 1
+    this.data.popFx = { key: popKey, seq: this._fxSeq }
+    this._emit()
+  }
+
+  /** Unlocked roster units that could be deployed on this tile's terrain. */
+  _placeableUnitsAt(tile) {
+    const out = []
+    for (const slot of this.data.civilization.units) {
+      if (!slot) continue
+      const def = UNIT_DEFS[slot.key]
+      if (def && canPlaceOn(def.placement, tile.terrain)) out.push(slot)
+    }
+    return out
+  }
+
+  mercCost() { return mercenaryCost(this.data.era) }
+
+  /** True if a mercenary can be hired onto this (empty, valid) tile during prep. */
+  mercEligible(row, col) {
+    if (this.data.phase !== 'prep') return false
+    const tile = this.data.tableau.tileAt(row, col)
+    if (!tile || tile.occupant) return false
+    if (!this.data.tableau.isUnlocked(row, col, this.data.era)) return false
+    return this._placeableUnitsAt(tile).length > 0
+  }
+
+  /** Hire a random valid roster unit onto an empty tile for gold. Mercenaries are
+   *  flagged `mercenary` and disband when the battle ends. */
+  hireMercenary(row, col) {
+    if (!this.mercEligible(row, col)) return
+    const tile = this.data.tableau.tileAt(row, col)
+    const candidates = this._placeableUnitsAt(tile)
+    const civ = this.data.civilization
+    const cost = mercenaryCost(this.data.era)
+    if (civ.gold.value < cost) return
+    civ.gold.value -= cost
+    const pick = candidates[Math.floor(Math.random() * candidates.length)]
+    const hp = unitStats(UNIT_DEFS[pick.key], pick.level, civ.modifiers.unitHpBonus).def
+    tile.occupant = { kind: 'unit', key: pick.key, level: pick.level, hp, maxHp: hp, damaged: false, mercenary: true }
+    this._fxTag(tile.occupant, 'hire')
+    this._emit()
+  }
+
+  // --- Free unit repositioning (drag a unit to another valid empty tile) ---
+  canReposition(fromRow, fromCol, toRow, toCol) {
+    if (fromRow === toRow && fromCol === toCol) return false
+    const occ = this.data.tableau.tileAt(fromRow, fromCol)?.occupant
+    if (!occ || occ.kind !== 'unit') return false
+    const to = this.data.tableau.tileAt(toRow, toCol)
+    if (!to || to.occupant) return false // can't replace an occupied tile
+    if (!this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
+    return canPlaceOn(UNIT_DEFS[occ.key].placement, to.terrain)
+  }
+
+  moveUnit(fromRow, fromCol, toRow, toCol) {
+    if (!this.canReposition(fromRow, fromCol, toRow, toCol)) return
+    const from = this.data.tableau.tileAt(fromRow, fromCol)
+    const to = this.data.tableau.tileAt(toRow, toCol)
+    to.occupant = from.occupant
+    from.occupant = null
+    this._emit()
+  }
+
+  // ---------------------------------------------------------------------------
   // Phase machine
   // ---------------------------------------------------------------------------
   _endDevelopment() {
     if (this.data.phase !== 'development') return // guard against double-accrue
     this._accrueBuildingOutputs()
+    this._startPrep()
+  }
+
+  // Combat preparation: a holding phase where the player may spend gold (repair /
+  // upgrade / hire mercenaries / convert specialists) and reposition units before
+  // the fight. No ticking; the player presses "Begin Combat" to start the battle.
+  _startPrep() {
+    this.data.phase = 'prep'
+    this._restartTimer() // clears the dev timer; prep has none
+  }
+
+  /** Player pressed "Begin Combat" on the preparation screen. */
+  beginCombat() {
+    if (this.data.phase !== 'prep') return
     this._startCombat()
+    this._emit()
   }
 
   // ---------------------------------------------------------------------------
@@ -763,7 +918,9 @@ export class GameManager {
   _endCombat() {
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
-      if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer }
+      if (!occ) continue
+      if (occ.mercenary) { tile.occupant = null; continue } // mercenaries disband after the battle
+      if (!occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer }
     }
     this.data.enemies = [] // undefeated enemies fade away
     this.data.combatTime = 0
