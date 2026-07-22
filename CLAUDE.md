@@ -153,10 +153,10 @@ AutoCiv/
 │   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
 │   │   │   ├── units.js       # unit defs (Warrior/Wolf/Slinger + era-1 Bear/Lion) + stat helpers
 │   │   │   ├── enemies.js     # enemy host generation (Horde/Elite/Group) + ENEMY_ROSTER
-│   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp/effect/outputs helpers
+│   │   │   ├── buildings.js   # building defs (Mud Wall/Pier/Campfire/Cave Painting) + hp/effect/outputs helpers
 │   │   │   ├── costs.js       # gold cost formulas (repair/upgrade/specialist/mercenary)
-│   │   │   ├── policies.js    # policy defs (Burial Rites)
-│   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
+│   │   │   ├── policies.js    # policy defs (Burial Rites/Coordination/Warband)
+│   │   │   └── pops.js        # pop types (Citizen + Builder/Farmer/Trader/Shaman) + output/tooltip helpers
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
 │   │   └── react/GameProvider.jsx # <GameProvider> + useGame() hook
 │   └── components/
@@ -314,7 +314,8 @@ exists; extend it as systems land.
 - **Development:** **65 ticks/era**, **paused by default**. A speed widget sets
   `paused`/`standard`(1/s)/`fast`(3/s)/`super`(5/s)/`ultra`(10/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
-  add it to each threshold resource's `value`, then cross any reached thresholds.
+  add it to each threshold resource's `value`, then cross any reached thresholds. The **Coordination**
+  policy adds +1 :progress: per Citizen to that output (`_recomputeOutputs`).
 - **Threshold resources** (progress/food/production) accumulate `value` toward the current level's
   `threshold`; on reaching it, `value` **resets** (overflow carries), `level` (# thresholds reached)
   increments, and the **per-level threshold grows**: `threshold(N)=threshold(N-1)+X·1.25^E·n·R`
@@ -326,7 +327,8 @@ exists; extend it as systems land.
   gold.output`), driven by Trader specialists. At the **end of development** each era, deployed
   buildings accrue their end-of-era output (Pier food) into resources + their lifetime total.
 - **Pops** (`pops.js`): **Citizen** (generalist: 1 progress/food/production each per tick) plus
-  unlockable **specialists** — Builder (+5 production), Farmer (+5 food), Trader (+5 gold). Start = 1
+  unlockable **specialists** — Builder (+5 production), Farmer (+5 food), Trader (+5 gold), **Shaman**
+  (+3 progress, and **+10 legitimacy per Shaman at the end of each combat**, in `_endCombat`). Start = 1
   Citizen (`STARTING_CITIZENS`). **Growth split** (`addPops`): each new pop alternates by a running
   `growthParity` — **EVEN → a specialist** (cycled bottom-to-top via `specialistCursor`), **ODD →
   citizen**; with no specialists unlocked, all growth is citizens.
@@ -346,7 +348,9 @@ exists; extend it as systems land.
 - **Pool:** `advancements.js` holds all **560** advancements (28 eras × 20, verbatim names,
   misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) lists
   the few that currently do something and what they unlock (`kind`: `unit`/`building`/`pop`/`policy`/
-  `modifier`). Only the **Stone** subset is implemented so far (Warrior is pre-unlocked in Melee).
+  `modifier`). Only a **Stone** subset is implemented so far (Warrior is pre-unlocked in Melee):
+  units Wolf/Slinger; buildings Mud Wall/Pier/**Campfire**/**Cave Painting**; policies Burial Rites/
+  **Coordination**/**Warband**; specialists Builder/Farmer/Trader/**Shaman**; modifier Clothes.
 - **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
   the game **paused** (`_restartTimer` is gated on `!selection`). Multiple owed choices queue via
   `pendingProgress`; each resolves then opens the next. Choices earned but unresolved are dropped on
@@ -382,9 +386,14 @@ exists; extend it as systems land.
     clicking one runs `placeAt`, creating the instance (`tile.occupant`). **Back** returns to pick.
     Validity = tile visible this era **and** `canPlaceOn(unit/building.placement, terrain)` (terrain
     `place` class: land/coast/sea/space); Warrior/Wolf/Slinger are land, Pier is coast.
-- **Instances** live on `Tile.occupant` (`{ kind, key, level, hp, maxHp, damaged, lifetimeOutput? }`)
-  and persist across eras. **Deployed buildings** produce their end-of-era output (Pier food) into
-  resources + `lifetimeOutput` (`_accrueBuildingOutputs`).
+- **Instances** live on `Tile.occupant` (`{ kind, key, level, hp, maxHp, damaged, lifetimeOutput?,
+  warband?, storedProgress? }`) and persist across eras. **Deployed buildings** produce their
+  end-of-era output (Pier food — a **flat** `200 + 100·(level−1)`, no era scaling) into resources +
+  `lifetimeOutput` (`_accrueBuildingOutputs`).
+- **Cave Painting** (progress building, hp 8, **can't be upgraded**): carries `storedProgress`
+  (starts 5, **doubles each era after combat** in `_ageCavePaintings`, capped 50000). When a build is
+  placed on its tile (**overbuilt**, in `_createInstance`), that stored :progress: is granted to the
+  civ (and may open advancement choices). The on-tile card/tooltip shows the current stored value.
 - **On-tile cards** (`TileCard`): ~70% of the tile, centered, **enlarge to fill on hover** (which
   shows a rich tooltip and hides the tile tooltip). Corner **level** badge. Units show name + type +
   **Speed/Atk/Def icons**; buildings show name + type + **Def + current outputs** (lifetime total in
@@ -452,6 +461,12 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   damage** (enemy). Buildings are targetable/front-line but don't attack. HP≤0 → `damaged` (inactive
   until repaired). Non-destroyed instances **heal to full** at combat end (damage doesn't persist);
   destroyed ones stay damaged. Wolf `shift`: after attacking, moves to an adjacent empty valid space.
+- **Warband** policy: a unit gets **+1 :attack: / +1 :defense: per other deployed friendly unit of
+  the same key**. Computed in `_syncUnitStats` (folded into `occ.warband` + `maxHp`), which runs on
+  every board/policy/upgrade change and is **snapshotted at `_startCombat`** (fixed for the battle).
+- **Campfire** (utility building): each **whole combat-second** it heals each orthogonally-adjacent
+  friendly (unit or building, below max, not destroyed) by `5/7/9/…%` (per level) of their max HP
+  (`_applyCampfireHealing`, floating green `+N` via a `heal` combat event).
 - **Rendering:** enemies render as red-framed `TileCard`s in the battlefield slots. In combat the Def
   stat shows **remaining HP** (reddening via `color-mix` as it drops; full value outside combat) and a
   **cooldown bar** ticks below each unit. `TickCounter` shows battle seconds remaining. **DefeatScreen**
@@ -558,13 +573,24 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   death shake→gray, panel value pulses). Reddening Def + no-persist damage done; Clothes retroactive.
 - [x] Gold economy: a **preparation** phase; **repair**/**upgrade** deployed instances; **buy
   specialists**; **hire mercenaries**; **drag-reposition** units. (Spend gold is live.)
-- [ ] Battle abilities/policies that need combat: Burial Rites (progress on death), more unit
-  abilities.
+- [~] Content fill-in (5 advancements/batch): batch 1 (Stone) done — Campfire, Cave Painting,
+  Coordination, Warband, Shaman. Combat auras (campfire heal) + board-relative stats (Warband) exist.
+- [ ] Still-inert combat policy: Burial Rites (progress on death). More unit abilities.
 
 ---
 
 ## Changelog
 
+- **2026-07-21** — **Content batch 1 (Stone)** + a Pier fix. Pier food is now a **flat**
+  `200 + 100·(level−1)` (no era scaling); Mud Wall buffed to 25 hp / +10 per upgrade. Implemented five
+  advancements: **Fire**→Campfire (utility building; heals adjacent friendlies `5/7/9…%` max HP per
+  combat-second), **Cave Painting**→Cave Painting (progress building, no upgrade; `storedProgress`
+  starts 5, doubles each era, cap 50000, granted when overbuilt), **Language**→Coordination (policy:
+  Citizens +1 :progress:/tick), **Tribalism**→Warband (policy: units +1 :attack:/+1 :defense: per
+  other deployed unit of the same key), **Mysticism**→Shaman (specialist: +3 :progress:/tick, +10
+  :legitimacy: per Shaman at each combat end). Added `_syncUnitStats` (Warband/Clothes maxHp),
+  `_applyCampfireHealing`, `_ageCavePaintings`, a `heal` combat-FX float, and unit `atkBonus` in
+  `unitStats`. Verified via a Node sim (27 checks).
 - **2026-07-21** — Initial Vite + React scaffold (mirrors Third Place website stack).
   Added state-based screen router in `App.jsx` and a placeholder `TitleScreen`. Established
   theme tokens and shared button styles. This CLAUDE.md created as the living project guide.

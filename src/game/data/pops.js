@@ -26,6 +26,13 @@ export const POP_TYPES = {
     silhouette: '/sprites/ui/pop.png',
     outputs: { gold: 5 },
   },
+  shaman: {
+    key: 'shaman', name: 'Shaman', specialist: true,
+    silhouette: '/sprites/ui/pop.png',
+    outputs: { progress: 3 },
+    combatLegit: 10, // at the end of each combat, each Shaman grants +10 legitimacy
+    note: 'At the end of each combat, each Shaman grants +10 :legitimacy:.',
+  },
 }
 
 /** True if a pop type is a (replaceable) specialist rather than the Citizen. */

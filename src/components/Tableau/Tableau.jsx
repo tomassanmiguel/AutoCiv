@@ -3,6 +3,7 @@ import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
 import { repairCost, upgradeCost } from '../../game/data/costs.js'
 import { UNIT_DEFS } from '../../game/data/units.js'
+import { BUILDING_DEFS } from '../../game/data/buildings.js'
 import TileCard from './TileCard.jsx'
 import CombatFx from './CombatFx.jsx'
 import './Tableau.css'
@@ -323,6 +324,7 @@ export default function Tableau() {
       const cost = repairCost(occ, era)
       return { kind: 'repair', cost, affordable: gold >= cost, onClick: () => game.repairOccupant(tile.row, tile.col) }
     }
+    if (occ.kind === 'building' && BUILDING_DEFS[occ.key]?.noUpgrade) return null // e.g. Cave Painting
     const cost = upgradeCost(occ, era)
     return { kind: 'upgrade', cost, affordable: gold >= cost, onClick: () => game.upgradeOccupant(tile.row, tile.col) }
   }

@@ -64,7 +64,12 @@ for (const [eraId, names] of Object.entries(POOL)) {
  */
 export const IMPLEMENTED = {
   'Clothes':      { kind: 'modifier', key: 'clothes', description: 'Permanently gives all friendly units +5 :defense:.' },
+  'Fire':         { kind: 'building', key: 'campfire', description: 'Unlocks the Campfire — a land :utility: building that heals adjacent units & buildings each second in combat.' },
   'Tools':        { kind: 'pop', key: 'builder', description: 'Unlocks the Builder specialist (+5 :production: per tick).' },
+  'Cave Painting':{ kind: 'building', key: 'cave_painting', description: 'Unlocks the Cave Painting — a :progress: building whose stored :progress: (doubling each era) is granted when it is overbuilt.' },
+  'Language':     { kind: 'policy', key: 'coordination', description: 'Unlocks Coordination — each Citizen also produces +1 :progress: per tick.' },
+  'Tribalism':    { kind: 'policy', key: 'warband', description: 'Unlocks Warband — units gain +1 :attack: and +1 :defense: per other friendly unit of the same type.' },
+  'Mysticism':    { kind: 'pop', key: 'shaman', description: 'Unlocks the Shaman specialist (+3 :progress: per tick; +10 :legitimacy: per Shaman at each combat end).' },
   'Agriculture':  { kind: 'pop', key: 'farmer', description: 'Unlocks the Farmer specialist (+5 :food: per tick).' },
   'Pack Bonding': { kind: 'unit', key: 'wolf', description: 'Unlocks the Wolf — a fast land :cavalry: unit.' },
   'Mud Brick':    { kind: 'building', key: 'mud_wall', description: 'Unlocks the Mud Wall — a sturdy land :defense: building.' },

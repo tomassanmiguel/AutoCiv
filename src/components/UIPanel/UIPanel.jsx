@@ -400,6 +400,7 @@ function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0, slam = f
   const tip = (
     <>
       {popTooltipText(pop)}
+      {pop.note && <><br /><br /><IconText>{pop.note}</IconText></>}
       <br /><br />
       <strong>Total ({count}):</strong> {popTotalSummary(pop, count).join(', ')} per tick.
       {convert && (

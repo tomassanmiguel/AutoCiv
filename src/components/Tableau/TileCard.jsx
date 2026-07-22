@@ -59,7 +59,9 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
   const cdFrac = combat && isUnit && occ.cdTimer != null ? clamp01(occ.cdTimer / cooldown) : null
 
   const outs = isUnit ? [] : buildingOutputs(def, occ.level, era)
-  const stats = isUnit ? unitStats(def, occ.level, hpBonus) : null
+  // Warband folds +N atk into the shown attack (+N def is already baked into maxHp).
+  const stats = isUnit ? unitStats(def, occ.level, hpBonus, occ.warband ?? 0) : null
+  const stored = occ.storedProgress // Cave Painting's banked progress, if any
 
   const tip = (
     <>
@@ -72,6 +74,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
         {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
         <IconVal src={STAT_ICON.def} style={defStyle}>{combat ? `${occ.hp}/${maxHp}` : maxHp}</IconVal>
         {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
+        {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
       </span>
       <span className="tc-tip-lv"> · Lv {occ.level}</span>
       {!isUnit && <><br />Total produced: {occ.lifetimeOutput ?? 0} {outs[0] && <img className="itext-icon" src={RES_ICON[outs[0].res]} alt="" />}</>}
@@ -108,6 +111,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
                 {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
+                {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
               </div>
             </div>
             {action && (

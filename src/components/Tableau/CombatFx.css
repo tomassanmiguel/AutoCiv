@@ -24,6 +24,7 @@
 .fx-float.kill { font-size: 26px; color: #ff4a3a; }
 .fx-float.gold { color: #ffd54a; }
 .fx-float.legit { color: #ff6b5a; }
+.fx-float.heal { color: #8ef29a; }   /* campfire healing */
 
 @keyframes fx-rise {
   0% { opacity: 0; transform: translate(-50%, -35%) scale(0.7); }

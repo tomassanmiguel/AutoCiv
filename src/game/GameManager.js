@@ -141,10 +141,51 @@ export class GameManager {
         totals[res] = (totals[res] ?? 0) + per * count
       }
     }
+    // Coordination policy: each Citizen also yields +1 progress per tick.
+    if (this._hasPolicy('coordination')) totals.progress += (civ.pops.citizen ?? 0)
     civ.progress.output = totals.progress
     civ.food.output = totals.food
     civ.production.output = totals.production
     civ.gold.output = totals.gold
+  }
+
+  /** True if an unlocked policy with this key is in a policy slot. */
+  _hasPolicy(key) {
+    return this.data.civilization.policies.some((p) => p && p.key === key)
+  }
+
+  // --- Warband: units gain +1 atk / +1 def per OTHER deployed friendly unit of the
+  // same key. Snapshotted onto occ.warband; recomputed whenever the board or the
+  // policy set changes (and at combat start). ---
+  _deployedUnitCounts() {
+    const counts = {}
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ && occ.kind === 'unit') counts[occ.key] = (counts[occ.key] ?? 0) + 1
+    }
+    return counts
+  }
+
+  _warbandBonus(occ, counts) {
+    if (!occ || occ.kind !== 'unit' || !this._hasPolicy('warband')) return 0
+    return Math.max(0, (counts[occ.key] ?? 1) - 1)
+  }
+
+  /** Recompute each deployed unit's Warband bonus + effective maxHp (Clothes +
+   *  Warband), topping up full units. Call after any board/policy/modifier change. */
+  _syncUnitStats() {
+    const civ = this.data.civilization
+    const counts = this._deployedUnitCounts()
+    const hpBonus = civ.modifiers.unitHpBonus
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (!occ || occ.kind !== 'unit') continue
+      const wb = this._warbandBonus(occ, counts)
+      const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
+      occ.warband = wb
+      occ.maxHp = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb).def
+      if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
+    }
   }
 
   /** Cross any thresholds this resource has reached this tick. */
@@ -361,15 +402,7 @@ export class GameManager {
     const civ = this.data.civilization
     if (unlock.key === 'clothes') {
       civ.modifiers.unitHpBonus += 5
-      // Apply retroactively to units already deployed on the board.
-      for (const tile of this.data.tableau.tiles.values()) {
-        const occ = tile.occupant
-        if (!occ || occ.kind !== 'unit') continue
-        const newMax = unitStats(UNIT_DEFS[occ.key], occ.level, civ.modifiers.unitHpBonus).def
-        const delta = newMax - occ.maxHp
-        occ.maxHp = newMax
-        occ.hp = Math.min(newMax, (occ.hp ?? newMax) + delta)
-      }
+      this._syncUnitStats() // apply retroactively to deployed units (with Warband)
     }
   }
 
@@ -409,7 +442,7 @@ export class GameManager {
     const civ = this.data.civilization
     if (group === 'units') civ.units[i] = { key: unlock.key, level: 1 }
     else if (group === 'buildings') civ.buildings[i] = { key: unlock.key, level: 1 }
-    else if (group === 'policies') civ.policies[i] = { key: unlock.key }
+    else if (group === 'policies') { civ.policies[i] = { key: unlock.key }; this._syncUnitStats() }
     else if (group === 'population') this._unlockSpecialist(i, unlock.key)
     this._markFilled(group, i)
   }
@@ -419,7 +452,7 @@ export class GameManager {
     if (group === 'population') { this._replaceSpecialist(i, unlock.key); this._markFilled(group, i); return }
     if (group === 'units') civ.units[i] = { key: unlock.key, level: 1 }
     else if (group === 'buildings') civ.buildings[i] = { key: unlock.key, level: 1 }
-    else if (group === 'policies') civ.policies[i] = { key: unlock.key }
+    else if (group === 'policies') { civ.policies[i] = { key: unlock.key }; this._syncUnitStats() }
     this._markFilled(group, i)
   }
 
@@ -522,13 +555,21 @@ export class GameManager {
 
   _createInstance(chosen, tile) {
     const civ = this.data.civilization
+    // Overbuilding a Cave Painting cashes in its stored progress before it's replaced.
+    const prev = tile.occupant
+    if (prev && prev.key === 'cave_painting') {
+      civ.progress.value += prev.storedProgress ?? BUILDING_DEFS.cave_painting.storedBase
+      this._processThresholds('progress', civ.progress) // may queue advancement choices
+    }
     if (chosen.kind === 'unit') {
       const hp = unitStats(UNIT_DEFS[chosen.key], chosen.level, civ.modifiers.unitHpBonus).def
       tile.occupant = { kind: 'unit', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false }
     } else {
       const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level)
       tile.occupant = { kind: 'building', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false, lifetimeOutput: 0 }
+      if (chosen.key === 'cave_painting') tile.occupant.storedProgress = BUILDING_DEFS.cave_painting.storedBase
     }
+    this._syncUnitStats() // board changed → refresh Warband bonuses
   }
 
   _resolveProduction() {
@@ -594,6 +635,8 @@ export class GameManager {
     if (!this._canEconomize()) return
     const occ = this.data.tableau.tileAt(row, col)?.occupant
     if (!occ || occ.damaged || occ.mercenary) return // mercenaries disband; don't sink gold into them
+    const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
+    if (def?.noUpgrade) return // e.g. Cave Painting can't be upgraded
     const cost = upgradeCost(occ, this.data.era)
     const civ = this.data.civilization
     if (civ.gold.value < cost) return
@@ -605,6 +648,7 @@ export class GameManager {
       : buildingHp(BUILDING_DEFS[occ.key], occ.level)
     occ.maxHp = newMax
     occ.hp = Math.min(newMax, (occ.hp ?? oldMax) + (newMax - oldMax))
+    if (occ.kind === 'unit') this._syncUnitStats() // re-fold in any Warband bonus
     this._fxTag(occ, 'upgrade')
     this._emit()
   }
@@ -670,6 +714,7 @@ export class GameManager {
     const pick = candidates[Math.floor(Math.random() * candidates.length)]
     const hp = unitStats(UNIT_DEFS[pick.key], pick.level, civ.modifiers.unitHpBonus).def
     tile.occupant = { kind: 'unit', key: pick.key, level: pick.level, hp, maxHp: hp, damaged: false, mercenary: true }
+    this._syncUnitStats() // the merc counts toward Warband (and vice versa)
     this._fxTag(tile.occupant, 'hire')
     this._emit()
   }
@@ -737,6 +782,7 @@ export class GameManager {
   }
 
   _startCombat() {
+    this._syncUnitStats() // snapshot Warband + maxHp for this battle
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
       if (!occ || occ.damaged) continue
@@ -767,6 +813,7 @@ export class GameManager {
     const mult = SPEED_TPS[this.data.speed] || 0
     if (mult <= 0) return
     const dt = (COMBAT_INTERVAL_MS / 1000) * mult
+    const before = this.data.combatTime
     this.data.combatTime += dt
     this.data.combatSeq++
     this.data.combatEvents = []
@@ -786,6 +833,10 @@ export class GameManager {
         if (UNIT_DEFS[c.unit.key]?.shift) this._shift(c, bounds, enemyRows)
       }
     }
+
+    // Campfire auras heal adjacent friendlies once per whole combat-second crossed.
+    const secs = Math.floor(this.data.combatTime) - Math.floor(before)
+    if (secs > 0) this._applyCampfireHealing(secs)
 
     const civ = this.data.civilization
     if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
@@ -879,7 +930,7 @@ export class GameManager {
     return NaN
   }
 
-  _effectiveAtk(unit) { return unitStats(UNIT_DEFS[unit.key], unit.level).atk }
+  _effectiveAtk(unit) { return unitStats(UNIT_DEFS[unit.key], unit.level, 0, unit.warband ?? 0).atk }
   _effectiveCooldown(unit) {
     const def = UNIT_DEFS[unit.key] ?? BUILDING_DEFS[unit.key]
     return Math.max(MIN_COOLDOWN, def?.cooldown ?? MIN_COOLDOWN)
@@ -925,6 +976,26 @@ export class GameManager {
 
   _pushEvent(ev) { this.data.combatEvents.push({ ...ev, seq: this.data.combatSeq }) }
 
+  /** Campfire buildings heal adjacent friendly units/buildings by a % of their max
+   *  HP for each whole combat-second elapsed (`times`). */
+  _applyCampfireHealing(times) {
+    const t = this.data.tableau
+    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+    for (const tile of t.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (!occ || occ.kind !== 'building' || occ.key !== 'campfire' || occ.damaged) continue
+      const pct = BUILDING_DEFS.campfire.heal(occ.level)
+      for (const [dr, dc] of NBRS) {
+        const nb = t.tileAt(tile.row + dr, tile.col + dc)?.occupant
+        if (!nb || nb.damaged || nb.hp == null || nb.maxHp == null || nb.hp >= nb.maxHp) continue
+        const heal = Math.min(nb.maxHp - nb.hp, Math.max(1, Math.ceil((pct / 100) * nb.maxHp)) * times)
+        if (heal <= 0) continue
+        nb.hp += heal
+        this._pushEvent({ kind: 'heal', amount: heal, col: tile.col + dc, row: tile.row + dr })
+      }
+    }
+  }
+
   _endCombat() {
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
@@ -932,6 +1003,11 @@ export class GameManager {
       if (occ.mercenary) { tile.occupant = null; continue } // mercenaries disband after the battle
       if (!occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer }
     }
+    // Shamans convert the battle's toll into legitimacy (+10 each).
+    const civ = this.data.civilization
+    const shamans = civ.pops.shaman ?? 0
+    if (shamans > 0) civ.legitimacy.value += (POP_TYPES.shaman.combatLegit ?? 10) * shamans
+    this._syncUnitStats() // board changed (mercenaries disbanded)
     this.data.enemies = [] // undefeated enemies fade away
     this.data.combatTime = 0
     this.data.combatEvents = []
@@ -964,8 +1040,20 @@ export class GameManager {
       return
     }
     this.data.era += 1
+    this._ageCavePaintings() // stored progress doubles each era after combat
     this._beginEra()
     this._emit()
+  }
+
+  /** Each surviving Cave Painting's stored :progress: doubles per era (capped). */
+  _ageCavePaintings() {
+    const { storedMax, storedBase } = BUILDING_DEFS.cave_painting
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ && occ.key === 'cave_painting') {
+        occ.storedProgress = Math.min(storedMax, (occ.storedProgress ?? storedBase) * 2)
+      }
+    }
   }
 
   _beginEra() {
@@ -979,6 +1067,7 @@ export class GameManager {
     this.data.combatEvents = []
     this.data.combatIntro = false
     this.data.defeated = false
+    this._syncUnitStats() // board persists across eras; refresh Warband/maxHp
     this._generateEnemies() // fresh host, visible during development
     this._restartTimer()
   }

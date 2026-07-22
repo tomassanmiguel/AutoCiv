@@ -43,12 +43,13 @@ export const UNIT_DEFS = {
   },
 }
 
-/** Effective stats at a given upgrade level, with an optional flat HP bonus (e.g. Clothes). */
-export function unitStats(def, level = 1, hpBonus = 0) {
+/** Effective stats at a given upgrade level, with optional flat HP/Atk bonuses
+ *  (e.g. Clothes → hpBonus; Warband → both). */
+export function unitStats(def, level = 1, hpBonus = 0, atkBonus = 0) {
   const steps = Math.max(0, level - 1)
   return {
     speed: def.cooldown,
-    atk: def.atk + steps * def.upAtk,
+    atk: def.atk + steps * def.upAtk + atkBonus,
     def: def.hp + steps * def.upHp + hpBonus,
   }
 }
