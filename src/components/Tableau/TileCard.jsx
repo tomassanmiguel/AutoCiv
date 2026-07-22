@@ -118,7 +118,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
           {showAtk && <IconVal src={STAT_ICON.atk}>{dispAtk}</IconVal>}
           <IconVal src={STAT_ICON.def} style={isPrev ? undefined : defStyle}>{dispDef}</IconVal>
           {bOuts.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
-          {tickOut && !isPrev && <IconVal src={RES_ICON[tickOut.res]}>{tickOut.amount}/t</IconVal>}
+          {tickOut && !isPrev && <IconVal src={RES_ICON[tickOut.res]}>{Math.floor(tickOut.amount)}/t</IconVal>}
           {stored != null && !isPrev && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
         </span>
         <span className="tc-tip-lv"> · Lv {lvl}</span>
@@ -177,7 +177,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
                 {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
-                {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{tickOut.amount}</IconVal>}
+                {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{Math.floor(tickOut.amount)}</IconVal>}
                 {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
               </div>
             </div>

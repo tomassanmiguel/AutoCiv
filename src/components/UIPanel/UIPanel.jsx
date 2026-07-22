@@ -209,7 +209,8 @@ export default function UIPanel() {
         <InfoTip title="Legitimacy" text={RES_TIP.legitimacy}>
           <div className="legitimacy">
             <img className="legit-icon" src={ICON.legitimacy} alt="Legitimacy" />
-            <PulseNum className="legit-value" value={civ.legitimacy.value} active={combat} />
+            <PulseNum className="legit-value" value={Math.floor(civ.legitimacy.value)} active={combat} />
+            {civ.legitimacy.output > 0 && <span className="res-delta">{fmtDelta(civ.legitimacy.output)}/t</span>}
           </div>
         </InfoTip>
 

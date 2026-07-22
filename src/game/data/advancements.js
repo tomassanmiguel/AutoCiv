@@ -112,6 +112,9 @@ export const IMPLEMENTED = {
   // --- Iron era ---
   'Steel':        { kind: 'unit', key: 'legionnaire', description: 'Unlocks the Legionnaire — a durable land :melee: unit that grows stronger the more of them you field.' },
   'Horseback Riding': { kind: 'unit', key: 'horseman', description: 'Unlocks the Horseman — a fast land :cavalry: unit that can support any column on its landmass.' },
+  'Organized Religion': { kind: 'building', key: 'temple', description: 'Unlocks the Temple — a :legitimacy: building that produces :legitimacy: every tick.' },
+  'Coinage':      { kind: 'building', key: 'mint', description: 'Unlocks the Mint — a :gold: building that mints gold from your current :legitimacy:.' },
+  'Irrigation':   { kind: 'building', key: 'farm', description: 'Unlocks the Farm — a :food: building fed by adjacent Plains.' },
 }
 
 export function isImplemented(name) {

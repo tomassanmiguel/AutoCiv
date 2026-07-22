@@ -119,6 +119,7 @@ export class GameManager {
       this._processThresholds(type, res)
     }
     civ.gold.value += civ.gold.output
+    civ.legitimacy.value += civ.legitimacy.output // Temples produce :legitimacy: per tick
     this._accrueBuildingTickLifetime() // per-tick buildings track a lifetime total
 
     // Count the tick (resources accrue exactly once per tick), then open any owed
@@ -154,7 +155,7 @@ export class GameManager {
   /** Recompute each resource's per-tick output from the population. */
   _recomputeOutputs() {
     const civ = this.data.civilization
-    const totals = { progress: 0, food: 0, production: 0, gold: 0 }
+    const totals = { progress: 0, food: 0, production: 0, gold: 0, legitimacy: 0 }
     for (const [key, count] of Object.entries(civ.pops)) {
       if (!POP_TYPES[key]) continue
       for (const [res, per] of Object.entries(this.popOutput(key))) {
@@ -165,11 +166,12 @@ export class GameManager {
     if (this._hasPolicy('ownership')) totals.gold += 2 * this._deployedBuildingCount()
     // Breweries: +1 gold per tick per unit within each brewery's range.
     totals.gold += this._breweryGold()
-    // Per-tick building outputs (Ranch food, Kiln production, Mine gold).
+    // Per-tick building outputs (Ranch/Farm food, Kiln production, Mine/Mint gold, Temple legitimacy).
     const bt = this._buildingTickOutputs()
     totals.food += bt.food
     totals.production += bt.production
     totals.gold += bt.gold
+    totals.legitimacy += bt.legitimacy
     // Slavery: +10% :production:, −5% :progress: (kept as floats; UI rounds down).
     if (this._hasPolicy('slavery')) {
       totals.production *= 1.10
@@ -179,6 +181,7 @@ export class GameManager {
     civ.food.output = totals.food
     civ.production.output = totals.production
     civ.gold.output = totals.gold
+    civ.legitimacy.output = totals.legitimacy
   }
 
   /** True if an unlocked policy with this key is in a policy slot. */
@@ -211,7 +214,8 @@ export class GameManager {
    *  Mine gold). Also stashes each building's current output on occ.tickOutput so the
    *  on-tile card can display it. */
   _buildingTickOutputs() {
-    const totals = { food: 0, production: 0, gold: 0 }
+    const civ = this.data.civilization
+    const totals = { food: 0, production: 0, gold: 0, legitimacy: 0 }
     for (const tile of this.data.tableau.tiles.values()) {
       const occ = tile.occupant
       if (!occ || occ.kind !== 'building') continue
@@ -221,10 +225,20 @@ export class GameManager {
       if (occ.key === 'ranch') out = { res: 'food', amount: 5 + (occ.ranchBonus ?? 0) }
       else if (occ.key === 'kiln') out = { res: 'production', amount: 2 + def.perAdjacent(occ.level) * this._adjacentBuildingCount(tile.row, tile.col) }
       else if (occ.key === 'mine') out = { res: 'gold', amount: def.goldPerTick(occ.level) * (tile.terrain === 'mountain' ? 2 : 1) }
+      else if (occ.key === 'mint') out = { res: 'gold', amount: def.legitPct(occ.level) * civ.legitimacy.value }
+      else if (occ.key === 'temple') out = { res: 'legitimacy', amount: def.legitPerTick(occ.level) }
+      else if (occ.key === 'farm') out = { res: 'food', amount: 5 * this._plainsAround(tile) }
       occ.tickOutput = out
       if (out) totals[out.res] += out.amount
     }
     return totals
+  }
+
+  /** Count of Plains tiles among a Farm's own tile + its (road-augmented) neighbours. */
+  _plainsAround(tile) {
+    let n = tile.terrain === 'plains' ? 1 : 0
+    for (const nb of this._adjacentTiles(tile.row, tile.col)) if (nb.terrain === 'plains') n++
+    return n
   }
 
   /** Count of adjacent (road-augmented) tiles holding a real, active building. */
