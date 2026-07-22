@@ -23,6 +23,12 @@
   letter-spacing: -1px;
 }
 
-/* Active speed: brighter, gold-tinted glyph + subtle glow. */
-.speed-btn.active { filter: brightness(1.12) drop-shadow(0 0 4px var(--accent-glow)); }
-.speed-btn.active .speed-glyph { color: #7a5410; font-weight: 700; }
+/* Active speed: clearly selected — bright gold ring + glow, lifted and enlarged. */
+.speed-btn.active {
+  filter: brightness(1.2) drop-shadow(0 0 6px var(--accent-glow));
+  box-shadow: 0 0 0 2px #e6c877, 0 0 10px 2px rgba(230, 200, 120, 0.7);
+  border-radius: 5px;
+  transform: translateY(-1px) scale(1.08);
+}
+.speed-btn.active:hover { transform: translateY(-2px) scale(1.08); }
+.speed-btn.active .speed-glyph { color: #2f2410; font-weight: 700; }
