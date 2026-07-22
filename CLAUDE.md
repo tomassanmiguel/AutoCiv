@@ -134,7 +134,8 @@ AutoCiv/
 │   │   ├── LoadingScreen.jsx/.css  # click-to-start splash (unlocks audio)
 │   │   └── TitleScreen.jsx/.css
 │   ├── game/                  # framework-free game model + data (no React here)
-│   │   ├── GameManager.js     # ROOT: owns GameData + the tick loop / phase machine
+│   │   ├── GameManager.js     # ROOT: owns GameData + tick loop / phase machine / economy / adjacency
+│   │   ├── manager/combat.js  # combat subsystem (mixin installed onto GameManager.prototype)
 │   │   ├── GameData.js        # { era, phase, tick, speed, tableau, civilization }
 │   │   ├── TableauData.js     # 9x26 grid of Tiles; per-era visibility + bounds
 │   │   ├── CivilizationData.js# resources (threshold), pops, item slot groups
@@ -210,6 +211,10 @@ AutoCiv/
   wires those into `useSyncExternalStore` and returns the manager. Mutating methods on the
   manager call `_emit()` to bump the version and re-render subscribers. **Add new state to the
   data classes and new mutators to `GameManager`; never hold core game state in React state.**
+  `GameManager` got large, so its **combat** subsystem lives in `game/manager/combat.js` as a mixin
+  class whose methods are copied onto `GameManager.prototype` (`installCombat(GameManager)` at the
+  bottom of `GameManager.js`). Those methods still call `this._foo()` freely — it's the **same single
+  class**, just split across files. Split other subsystems the same way if a file gets unwieldy.
 - **Naming:** components in `PascalCase`, files match component name.
 
 ### Gotchas / notes
