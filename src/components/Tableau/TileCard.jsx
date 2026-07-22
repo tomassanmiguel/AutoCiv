@@ -43,7 +43,7 @@ function defColor(ratio) {
  * level in the tooltip (tinted green). `onGrab` starts a reposition drag.
  * `terrain` is the tile's terrain key (for the Forest combat-def note).
  */
-export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1, anchorClass = '' }) {
+export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1, anchorClass = '' }) {
   const occ = occupant
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
@@ -95,7 +95,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
     const dispAtk = isUnit ? (isPrev ? ps.atk : shownAtk) : null
     const dispDef = isUnit
       ? (isPrev ? ps.def : (combat ? `${occ.hp}/${maxHp}` : maxHp))
-      : (isPrev ? buildingHp(def, lvl) : maxHp)
+      : (isPrev ? buildingHp(def, lvl, buildingHpBonus) : maxHp)
     return (
       <>
         {isPrev && <div className="tc-tip-upg">Upgrade → Lv {lvl}</div>}

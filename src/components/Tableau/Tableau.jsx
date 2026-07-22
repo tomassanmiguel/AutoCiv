@@ -329,6 +329,7 @@ export default function Tableau() {
   const sel = game.data.selection
   const placing = !!(sel && sel.type === 'production' && sel.stage === 'place')
   const hpBonus = game.data.civilization.modifiers.unitHpBonus
+  const buildingHpBonus = game.data.civilization.modifiers.buildingHpBonus
 
   // Enemy host (visible during development as a preview, fighting during battle).
   const combat = game.data.phase === 'battle'
@@ -429,6 +430,7 @@ export default function Tableau() {
                   occupant={occ}
                   era={era}
                   hpBonus={hpBonus}
+                  buildingHpBonus={buildingHpBonus}
                   combat={combat}
                   combatSeq={combatSeq}
                   side="player"

@@ -58,6 +58,7 @@ export class GameManager {
     this._listeners = new Set()
     this._version = 0
     this._timer = null
+    this._roadNetsCache = null // memoized _roadPortSets(); invalidated when a Road is placed
 
     this.subscribe = (fn) => {
       this._listeners.add(fn)
@@ -227,13 +228,16 @@ export class GameManager {
   // _reachableWithin so roads uniformly boost building ranges and unit movement.
 
   /** Connected road networks as PORT sets: each Set holds a network's road tiles plus
-   *  their orthogonal neighbours. Any two tiles in one set are adjacent (distance 1). */
+   *  their orthogonal neighbours. Any two tiles in one set are adjacent (distance 1).
+   *  Memoized (roads only change on placement) so a whole combat step / stat sync reuses
+   *  one computation instead of rescanning the grid per query. */
   _roadPortSets() {
+    if (this._roadNetsCache) return this._roadNetsCache
     const t = this.data.tableau
     const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
     const roadKeys = []
     for (const tile of t.tiles.values()) if (tile.supplement?.key === 'road') roadKeys.push(`${tile.row},${tile.col}`)
-    if (roadKeys.length === 0) return []
+    if (roadKeys.length === 0) { this._roadNetsCache = []; return this._roadNetsCache }
     const roadSet = new Set(roadKeys)
     const seen = new Set()
     const nets = []
@@ -259,6 +263,7 @@ export class GameManager {
       }
       nets.push(ports)
     }
+    this._roadNetsCache = nets
     return nets
   }
 
@@ -762,6 +767,7 @@ export class GameManager {
     // replace and don't overbuild; placing one just re-derives adjacency-based outputs.
     if (chosen.kind === 'building' && BUILDING_DEFS[chosen.key].supplement) {
       tile.supplement = { kind: 'building', key: chosen.key, level: chosen.level }
+      this._roadNetsCache = null // road topology changed → drop the memoized port sets
       this._recomputeOutputs() // roads change brewery/kiln ranges
       this._syncUnitStats()    // and brewery-aura membership
       return
