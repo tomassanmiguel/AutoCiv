@@ -145,6 +145,13 @@ export const BUILDING_DEFS = {
     hp: 16, upHp: 5,
     effect: 'At the end of each combat, gain 5 :legitimacy: for each unit in your civilization.',
   },
+  public_baths: {
+    key: 'public_baths', name: 'Public Baths', types: ['utility'], placement: 'land',
+    hp: 8, upHp: 3,
+    bathsEvery: 5, bathsHealPct: 50, // every 5 combat-seconds: heal adjacent 50% of max HP …
+    bathsAtk: (level = 1) => level, // … and permanently grant adjacent units +level :attack:
+    effect: (level) => `Every 5 seconds in combat, heals adjacent units & buildings for 50% of their max :defense: and permanently grants adjacent units +${level} :attack:.`,
+  },
   // Road: a UTILITY building that UNDERLAPS. `underlap: true` means it lives in the
   // tile's own `underlap` slot (never replaced, no HP/combat) rather than as the
   // occupant. Links every tile it touches into one adjacency group.

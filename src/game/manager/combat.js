@@ -105,7 +105,11 @@ class CombatMixin {
 
     // Campfire auras heal adjacent friendlies once per whole combat-second crossed.
     const secs = Math.floor(this.data.combatTime) - Math.floor(before)
-    if (secs > 0) { this._applyCampfireHealing(secs); this._applyEmbassyMercs(before, this.data.combatTime) }
+    if (secs > 0) {
+      this._applyCampfireHealing(secs)
+      this._applyEmbassyMercs(before, this.data.combatTime)
+      if (this._applyPublicBaths(before, this.data.combatTime)) this._syncUnitStats(true) // permAtk changed
+    }
 
     const civ = this.data.civilization
     if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
@@ -485,6 +489,37 @@ class CombatMixin {
         this._pushEvent({ kind: 'heal', amount: heal, col: nbTile.col, row: nbTile.row })
       }
     }
+  }
+
+  /** Public Baths: at each 5-second mark crossed this step, heal adjacent friendly
+   *  units/buildings by 50% of their max HP and permanently grant adjacent units
+   *  +level :attack: (folded into stats by the caller's _syncUnitStats). Returns whether
+   *  it buffed a unit (so the caller re-syncs). */
+  _applyPublicBaths(before, after) {
+    const def = BUILDING_DEFS.public_baths
+    let hits = 0
+    for (let s = (Math.floor(before / def.bathsEvery) + 1) * def.bathsEvery; s <= after; s += def.bathsEvery) if (s > 0) hits++
+    if (hits === 0) return false
+    let buffed = false
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (occ?.kind !== 'building' || occ.key !== 'public_baths' || occ.damaged) continue
+      const atk = def.bathsAtk(occ.level) * hits
+      for (const nbTile of this._adjacentTiles(tile.row, tile.col)) {
+        const nb = nbTile.occupant
+        if (!nb || nb.damaged) continue
+        if (nb.hp != null && nb.maxHp != null && nb.hp < nb.maxHp) {
+          const heal = Math.min(nb.maxHp - nb.hp, Math.max(1, Math.ceil((def.bathsHealPct / 100) * nb.maxHp)) * hits)
+          if (heal > 0) { nb.hp += heal; this._pushEvent({ kind: 'heal', amount: heal, col: nbTile.col, row: nbTile.row }) }
+        }
+        if (nb.kind === 'unit') {
+          nb.permAtk = (nb.permAtk ?? 0) + atk
+          this._pushEvent({ kind: 'buff', amount: atk, col: nbTile.col, row: nbTile.row })
+          buffed = true
+        }
+      }
+    }
+    return buffed
   }
 
   /** Embassies hire a free mercenary onto an empty adjacent tile at each 8-second mark

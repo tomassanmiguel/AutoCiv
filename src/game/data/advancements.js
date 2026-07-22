@@ -137,6 +137,7 @@ export const IMPLEMENTED = {
   'Arches':       { kind: 'building', key: 'aqueduct', description: 'Unlocks the Aqueduct — a :food: building whose output DOUBLES for each adjacent Aqueduct.' },
   'Glassblowing': { kind: 'building', key: 'glassworks', description: 'Unlocks the Glassworks — a :production: building that grants :legitimacy: whenever you complete another building.' },
   'Entertainment': { kind: 'building', key: 'colosseum', description: 'Unlocks the Colosseum — a :legitimacy: building granting 5 :legitimacy: per unit in your civ at the end of each combat.' },
+  'Public Baths': { kind: 'building', key: 'public_baths', description: 'Unlocks the Public Baths — a :utility: building that heals adjacent friendlies and permanently boosts their :attack: every 5 seconds in combat.' },
 }
 
 export function isImplemented(name) {
