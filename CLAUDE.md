@@ -148,7 +148,7 @@ AutoCiv/
 │   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
 │   │   │   ├── units.js       # unit defs + stat helpers + unitRole (combatRole ?? types[0])
 │   │   │   ├── enemies.js     # enemy host generation (Horde/Elite/Group) + ENEMY_ROSTER
-│   │   │   ├── buildings.js   # building defs (incl. per-tick + supplement) + hp/effect/outputs helpers
+│   │   │   ├── buildings.js   # building defs (per-tick outputs, combat auras, underlapping Road) + helpers
 │   │   │   ├── costs.js       # gold cost formulas (repair/upgrade/specialist/mercenary)
 │   │   │   ├── policies.js    # policy defs (name = unlocking advancement); combat + economy effects
 │   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
@@ -302,8 +302,8 @@ exists; extend it as systems land.
 - Hovering a tile shows a tooltip from `tile.getTooltip()` — the **terrain name + any special
   effect** (`TERRAIN[key].note`, e.g. Forest +5 / Mountain +10 :defense: in combat). This works even
   when a unit occupies the tile: over the surrounding **terrain** you get the tile tooltip, over an
-  **on-tile card** (occupant or supplement) the card's own tooltip takes over (`tileTip` checks
-  `e.target.closest('.tile-card-anchor, .supplement-anchor')`).
+  **on-tile card** (occupant or underlapping Road) the card's own tooltip takes over (`tileTip` checks
+  `e.target.closest('.tile-card-anchor, .underlap-anchor')`).
 - During production **placement**, valid tiles flash yellow / occupied red and are click-to-build.
 
 ### Game loop (`GameManager`, `game/data/resources.js`, `game/data/pops.js`)
@@ -315,11 +315,14 @@ exists; extend it as systems land.
   `paused`/`standard`(1/s)/`fast`(3/s)/`super`(5/s)/`ultra`(10/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
   add it to each threshold resource's `value`, then cross any reached thresholds. Policy/building
-  add-ons to per-tick `output` (`_recomputeOutputs`): **Language** (+1 :progress:/Citizen), **Ownership**
-  (+2 :gold: per deployed building), **Brewery** (+1 :gold: per unit in range), and **per-tick output
-  buildings** (`_buildingTickOutputs`, stashed on `occ.tickOutput`): **Ranch** food, **Kiln** production,
-  **Mine** gold. **Food-threshold modifiers** (`civ.modifiers.foodThresholdMult`, ×0.95 each, stacking):
-  **Basket Weaving** and **The Plough**.
+  add-ons to per-tick `output` (`_recomputeOutputs`): pop-output policies **Language** (Citizen
+  +1 :progress:), **Trade Networks** (Citizen +2 :gold:), **Specialization** (each specialist +1 of its
+  highest output); **Ownership** (+2 :gold: per deployed building); **Brewery** (+1 :gold: per unit in
+  range); **per-tick output buildings** (`_buildingTickOutputs` → `occ.tickOutput`): **Ranch** food,
+  **Kiln** production, **Mine** gold; then **Slavery** scales the totals (×1.10 :production:,
+  ×0.95 :progress:). **Outputs are tracked as FLOATS** (Slavery makes them fractional) and **rounded
+  DOWN in the UI** (`fmtDelta` to 1 decimal; resource values floored). **Food-threshold modifiers**
+  (`civ.modifiers.foodThresholdMult`, ×0.95 each, stacking): **Basket Weaving** and **The Plough**.
 - **Threshold resources** (progress/food/production) accumulate `value` toward the current level's
   `threshold`; on reaching it, `value` **resets** (overflow carries), `level` (# thresholds reached)
   increments, and the **per-level threshold grows**: `threshold(N)=threshold(N-1)+X·1.25^E·n·R`
@@ -355,8 +358,8 @@ exists; extend it as systems land.
   misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) is the
   registry of which ones actually do something + what they unlock (`kind`: `unit`/`building`/`pop`/
   `policy`/`modifier`) — **this registry + `game/data/` are the source of truth for content; don't
-  re-catalogue every piece here.** All of **Stone** (era 0) and the first half of **Bronze** (era 1)
-  are implemented; later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
+  re-catalogue every piece here.** All of **Stone** (era 0) and **Bronze** (era 1) are implemented;
+  later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
   Legitimacy building slot. **A policy's display name matches the advancement that unlocks it**
   (e.g. Language→`language` policy).
 - **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
@@ -399,17 +402,17 @@ exists; extend it as systems land.
     Validity = tile visible this era **and** `canPlaceOn(unit/building.placement, terrain)` (terrain
     `place` class: land/coast/sea/space); Warrior/Wolf/Slinger are land, Pier is coast.
 - **Instances** live on `Tile.occupant` (`{ kind, key, level, hp, maxHp, damaged, lifetimeOutput?,
-  warband?, storedProgress?, ranchBonus?, tickOutput? }`) and persist across eras. Buildings output
+  warband?, permDef?, storedProgress?, ranchBonus?, tickOutput? }`) and persist across eras. Buildings output
   in two ways: **per-tick** (`_buildingTickOutputs` → `_recomputeOutputs`; **Ranch** food = `5 +
   ranchBonus` growing +2/3/4/… each combat end, reset if destroyed; **Kiln** production = `2 +
   (level+1)·adjacentBuildings`; **Mine** gold = `8·level`, ×2 on a mountain) or **end-of-combat**
   (Pier food, flat `200 + 100·(level−1)`; `_accrueBuildingOutputs`).
-- **Supplement buildings** (Road) live in a **separate** `Tile.supplement` slot (their own 8th
-  building category): they **underlap** the occupant, are **never replaced**, have **no HP/combat**,
-  and render as a name-only card in the tile's bottom strip (the occupant card takes the top 80%).
-  The **Road** links every tile it touches into one adjacency group (see Combat → road-augmented
-  adjacency). Placement (`_canPlaceHere`/`placementState`/`_createInstance`) treats a supplement as a
-  plain (never-replace) placement that ignores the occupant but can't stack a second supplement.
+- **Underlapping buildings** (the **Road** — a Utility building flagged `def.underlap`) live in a
+  **separate** `Tile.underlap` slot: they **underlap** the occupant, are **never replaced**, have **no
+  HP/combat**, and render as a name-only card in the tile's bottom strip (the occupant card takes the
+  top 80%). The Road links every tile it touches into one adjacency group (see Combat → road-augmented
+  adjacency). Placement (`_canPlaceHere`/`placementState`/`_createInstance`) treats it as a plain
+  (never-replace) placement that ignores the occupant but can't stack a second underlap.
 - **Cave Painting** (progress building, hp 8, **can't be upgraded** via `def.noUpgrade`): carries
   `storedProgress` (starts 5, **doubles each era after combat** in `_ageCavePaintings`, capped 50000).
   When a build is placed on its tile (**overbuilt**, in `_createInstance`), that stored :progress: is
@@ -449,9 +452,10 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   specialist **PopCard** carries a **Convert +N** button (N = `era+1`) that spends gold to turn
   N citizens into that specialist. Disabled without N citizens or enough gold; flashes green
   (`data.popFx`). Citizen slot never shows it.
-- **Mercenaries** (`hireMercenary` / `mercEligible`): during **prep**, every empty tile that can
-  host ≥1 of your unlocked roster units shows a **Hire** button (+ a gold ring when the hire is
-  affordable). Clicking spawns a **random valid roster unit** (at that slot's level) flagged
+- **Mercenaries** (`hireMercenary` / `mercEligible`, cost `mercCost` — **halved by Hospitality
+  Rites**): during **prep**, every empty tile that can host ≥1 of your unlocked roster **combat**
+  units (`_placeableUnitsAt` excludes **utility** units like the Baker) shows a **Hire** button (+ a
+  gold ring when affordable). Clicking spawns a **random valid roster unit** (at that slot's level) flagged
   `mercenary` (dashed frame) — it fights this one battle and **disbands when the battle ends**
   (removed in `_endCombat`, and in `_defeat` so a lost battle leaves no stragglers). Mercenaries
   can't be repaired/upgraded (no sinking gold into a disposable unit). Hire buttons are **hidden
@@ -502,16 +506,19 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   changes tiles (reposition / Wolf shift / shift-back / drag) **slides** to the new cell rather than
   teleporting — a FLIP in `Tableau` (per-occupant `posRef` of last cell) drives a `TileCard` `.tc-slide`.
 - **Stat pipeline** (`_syncUnitStats(inCombat)`, syncs **units AND buildings**): **units** store
-  `occ.atk`/`occ.maxHp` — flat Clothes + **Hereditary Rule** (hp), Warband/**Tribalism** (+1 atk/def
-  per other same-key deployed unit), **terrain def** (Forest **+5** / Mountain **+10**, **combat only**),
-  then the **Brewery** aura multiplier (×1.1 atk / ×0.9 hp in range). **Buildings** store `occ.maxHp` =
-  `buildingHp(def, level, buildingHpBonus)` + terrain def (combat only), so Hereditary Rule and
-  Forest/Mountain toughen buildings too. Synced at `_startCombat` **and again after any mid-combat move**
-  (`_combatStep` re-syncs so the new tile's terrain/Brewery status applies); `_effectiveAtk` reads
-  `occ.atk` (enemies fall back to base). A unit's **combat role** = `unitRole(def)` = `combatRole ??
-  types[0]` (so the naval **Galley** fights as :melee:). "**Range X**" / adjacency = **road-augmented**
-  graph distance (`_reachableWithin`/`_adjacentTiles`), = Manhattan steps unless a Road bridges tiles.
-  All building-output hooks skip `damaged` (destroyed) instances.
+  `occ.atk`/`occ.maxHp` — flat hp from **Clothes/Leatherwork** + **Hereditary Rule** + a Baker's
+  permanent **`occ.permDef`**, plus Warband/**Tribalism** (+1 atk/def per other same-key unit) and
+  **terrain def** (Forest **+5** / Mountain **+10**, combat only); atk is then multiplied by the
+  **Brewery** aura (×1.1 atk / ×0.9 hp), the **Brothel** aura (+10/15/20% atk, plus −0.5s cooldown via
+  `_effectiveCooldown`), and **Caste System** (×1.25 for level-2+ units). **Buildings** store `occ.maxHp`
+  = `buildingHp(def, level, buildingHpBonus)` (Masonry +10 / Hereditary +1·era) + terrain def (combat
+  only). `occ.atkMult`/`casteActive`/`cdReduce` are stashed so the on-card upgrade preview matches.
+  Synced at `_startCombat` **and after any mid-combat move OR Baker buff** (`_combatStep` re-syncs);
+  `_effectiveAtk` reads `occ.atk` (enemies fall back to base). A unit's **combat role** = `unitRole(def)`
+  = `combatRole ?? types[0]` (naval **Galley** fights as :melee:); **utility** units (**Baker**) never
+  attack — on their cooldown they "act" (`_utilityAct`: grant permanent +def to adjacent units), earning
+  no gold and not repositioning. "**Range X**" / adjacency = **road-augmented** graph distance
+  (`_reachableWithin`/`_adjacentTiles`). Building-output hooks skip `damaged` instances.
 - **End-of-combat effects** (`_endCombat`, survival only — not on defeat): **legitimacy** — each
   undamaged **Totem** grants `10 + 5·(level−1)`, each **Shaman** +10, **Sacred Grounds** +1 per **empty,
   visible, land** tile; **Oral Tradition** — gain :gold: + :progress: equal to post-combat :legitimacy:
@@ -592,8 +599,9 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
   (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
   units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,
-  level-scaled, incl. the Clothes/Hereditary HP bonus); buildings show a **Def stat + effect** (a
-  supplement shows name + effect only, no Def); policies show the effect. Descriptions/effects always report the
+  level-scaled, incl. Clothes/Leatherwork/Hereditary HP; **utility units omit Atk** — they don't
+  attack); buildings show a **Def stat + effect** (an underlapping Road shows name + effect only, no
+  Def); policies show the effect. Descriptions/effects always report the
   **current** value for the current era + level (e.g. the Pier's food), never the upgrade sequence
   or per-level deltas. Full descriptions (icon stats for units) on hover. During an advancement **replace**, the relevant group's tab force-activates
   and its candidate slots **flash red** and are clickable (`resolveReplace`). `CivilizationData`
@@ -606,8 +614,9 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
     categories unlocked at the current era show, so early eras show fewer:
     Melee/Ranged/Cavalry from Stone; Utility + Naval from **Bronze** (the brief's "Copper Age");
     Siege from Iron; Aerial from Gilded; Astral Utility from Atomic; Astral from Lunar. Building
-    categories (not era-gated): Progress, Production, Gold, Food, Legitimacy, Defense, Utility, and
-    **Supplement** (the underlapping Road family).
+    categories (not era-gated): Progress, Production, Gold, Food, Legitimacy, Defense, and **two
+    Utility slots** — a utility building fills the first empty one (`_unlockTarget` is fill-first-empty);
+    the underlapping **Road** occupies a Utility slot too.
   - **Hover** any slot for a tooltip (`<InfoTip>`): category name + description. Policies use one
     shared silhouette + description.
   - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + **effective**
