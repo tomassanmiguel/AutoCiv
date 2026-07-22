@@ -40,7 +40,9 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
   const damaged = occ.damaged
   const isUnit = occ.kind === 'unit'
   const def = isUnit ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
-  const type = catLabel(isUnit ? UNIT_CATEGORIES : BUILDING_CATEGORIES, def.types[0])
+  const cats = isUnit ? UNIT_CATEGORIES : BUILDING_CATEGORIES
+  const type = catLabel(cats, def.types[0])
+  const typeIcon = cats.find((c) => c.key === def.types[0])?.silhouette
 
   const maxHp = occ.maxHp ?? (isUnit ? unitStats(def, occ.level, hpBonus).def : occ.hp)
   const shownDef = combat ? occ.hp : maxHp
@@ -73,19 +75,23 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
 
   return (
     <InfoTip className="tile-card-anchor" title={def.name + (damaged ? ' (damaged)' : '')} text={tip}>
-      <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''}`}>
-        <div className="tc-level">{occ.level}</div>
-        <div className="tc-name">{def.name}</div>
-        <div className="tc-type">{type}</div>
-        <div className="tc-stats">
+      {/* Keyed by lastAttackSeq so the wrapper REMOUNTS on each attack, replaying
+          the "thrust" lunge toward the enemy. */}
+      <div className={`tc-lunge ${side}`} key={combat ? (occ.lastAttackSeq ?? 0) : 'idle'}>
+        <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''}`}>
+          <div className="tc-level">{occ.level}</div>
+          <div className="tc-name">{def.name}</div>
+          {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
+          <div className="tc-stats">
           {isUnit && <IconVal src={STAT_ICON.speed}>{stats.speed}</IconVal>}
           {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
           <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
           {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
         </div>
-        {cdFrac != null && (
-          <div className="tc-cooldown"><div className="tc-cooldown-fill" style={{ width: `${cdFrac * 100}%` }} /></div>
-        )}
+          {cdFrac != null && (
+            <div className="tc-cooldown"><div className="tc-cooldown-fill" style={{ width: `${cdFrac * 100}%` }} /></div>
+          )}
+        </div>
       </div>
     </InfoTip>
   )

@@ -128,6 +128,7 @@ export default function UIPanel() {
   const sel = game.data.selection
   const replacing = sel && sel.type === 'progress' && sel.stage === 'replace' ? sel.pending : null
   const buildPicking = !!(sel && sel.type === 'production' && sel.stage === 'pick')
+  const combat = game.data.phase === 'battle' // pulse gold/legitimacy as they change
 
   // Accordion: at most one group open at a time. Replace mode forces the relevant
   // group open; build-picking forces Units open unless Buildings already is.
@@ -162,11 +163,11 @@ export default function UIPanel() {
         <InfoTip title="Legitimacy" text={RES_TIP.legitimacy}>
           <div className="legitimacy">
             <img className="legit-icon" src={ICON.legitimacy} alt="Legitimacy" />
-            <span className="legit-value">{civ.legitimacy.value}</span>
+            <PulseNum className="legit-value" value={civ.legitimacy.value} active={combat} />
           </div>
         </InfoTip>
 
-        <ResourceLine icon={ICON.gold} label="Gold" value={Math.floor(civ.gold.value)} output={civ.gold.output} tip={RES_TIP.gold} />
+        <ResourceLine icon={ICON.gold} label="Gold" value={Math.floor(civ.gold.value)} output={civ.gold.output} tip={RES_TIP.gold} active={combat} />
         <ResourceBar icon={ICON.food} label="Food" res={civ.food} tip={RES_TIP.food} />
         <ResourceBar icon={ICON.production} label="Production" res={civ.production} tip={RES_TIP.production} />
         <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} tip={RES_TIP.progress} />
@@ -191,12 +192,18 @@ export default function UIPanel() {
   )
 }
 
-function ResourceLine({ icon, label, value, output, tip }) {
+// A number that pulses (remounts, replaying the CSS pulse) each time it changes
+// while `active` — used for gold/legitimacy during combat.
+function PulseNum({ value, active, className = '' }) {
+  return <span key={active ? value : 'static'} className={`${className}${active ? ' pulse-change' : ''}`}>{value}</span>
+}
+
+function ResourceLine({ icon, label, value, output, tip, active }) {
   return (
     <InfoTip title={label} text={tip}>
       <div className="res-line">
         <img className="res-icon" src={icon} alt={label} />
-        <span className="res-value">{value}</span>
+        <PulseNum className="res-value" value={value} active={active} />
         <span className="res-delta">{fmtDelta(output)}/t</span>
       </div>
     </InfoTip>
@@ -268,10 +275,12 @@ function SlotRow({ slot, mark, onActivate }) {
   const filled = slot.kind === 'item'
   const inner = filled ? (
     <div className="slot-card">
-      {slot.silhouette && <img className="slot-card-sil" src={slot.silhouette} alt="" />}
       <div className="slot-card-body">
-        <div className="slot-card-name">{slot.name}</div>
-        {slot.sub && <div className="slot-card-sub">{slot.sub}</div>}
+        {/* Type shown as an ICON next to the name (no "MELEE"/"POLICY" text). */}
+        <div className="slot-card-head">
+          {slot.silhouette && <img className="slot-card-type" src={slot.silhouette} alt="" />}
+          <span className="slot-card-name">{slot.name}</span>
+        </div>
         {slot.stats
           ? <StatIcons stats={slot.stats} />
           : slot.line && <div className="slot-card-line"><IconText>{slot.line}</IconText></div>}

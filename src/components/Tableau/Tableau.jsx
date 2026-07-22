@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
 import TileCard from './TileCard.jsx'
+import CombatFx from './CombatFx.jsx'
 import './Tableau.css'
 
 const CELL = 96          // base tile size in content-space pixels
@@ -280,6 +281,9 @@ export default function Tableau() {
             </div>
           )
         })}
+
+        {/* Floating combat numbers (damage / gold / legitimacy) */}
+        {bounds && <CombatFx bounds={bounds} enemyRows={enemyRows} />}
       </div>
 
       {tooltip && (

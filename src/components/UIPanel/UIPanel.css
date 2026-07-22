@@ -43,6 +43,14 @@
 
 .res-icon { width: 26px; height: 26px; flex: 0 0 26px; }
 
+/* Gold/legitimacy value pulse as it changes during combat. */
+.pulse-change { display: inline-block; animation: value-pulse 0.35s ease; }
+@keyframes value-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
 .res-line {
   display: flex;
   align-items: center;
@@ -218,30 +226,19 @@
   padding: 0.1rem 0.35rem;
   overflow: hidden;
 }
-.slot-card-sil {
-  position: absolute;
-  top: 50%;
-  right: 0.4rem;
-  transform: translateY(-50%);
-  width: 18px;
-  height: auto;
-  max-height: 56%;
-  opacity: 0.4;
-  pointer-events: none;
-}
-/* Text sits left of the corner silhouette so they never overlap. */
-.slot-card-body { position: relative; z-index: 1; min-width: 0; padding-right: 1.5rem; }
+.slot-card-body { position: relative; z-index: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.12rem; }
+/* Head: type icon + name on one row. */
+.slot-card-head { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.slot-card-type { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; opacity: 0.9; }
 .slot-card-name {
   font-weight: 700;
   color: var(--brass);
   font-size: 0.92rem;
   line-height: 1.05;
-}
-.slot-card-sub {
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .slot-card-line {
   font-size: 0.74rem;

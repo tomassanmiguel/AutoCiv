@@ -1,0 +1,32 @@
+.combat-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+}
+.fx-float {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1;
+  white-space: nowrap;
+  text-shadow: 0 0 3px #000, 0 1px 2px #000, 0 0 6px rgba(0, 0, 0, 0.8);
+  animation: fx-rise 0.85s ease-out forwards;
+}
+.fx-float img { width: 18px; height: 18px; }
+
+.fx-float.to-player { color: #ff6b5a; }  /* your unit took damage */
+.fx-float.to-enemy { color: #ffe07a; }   /* enemy took damage */
+.fx-float.kill { font-size: 26px; color: #ff4a3a; }
+.fx-float.gold { color: #ffd54a; }
+.fx-float.legit { color: #ff6b5a; }
+
+@keyframes fx-rise {
+  0% { opacity: 0; transform: translate(-50%, -35%) scale(0.7); }
+  18% { opacity: 1; transform: translate(-50%, -55%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
+}

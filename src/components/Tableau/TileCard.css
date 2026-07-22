@@ -10,7 +10,24 @@
   z-index: 6;
 }
 
+/* Attack "thrust": the wrapper remounts on each attack (keyed by lastAttackSeq)
+   and lunges toward the enemy — player up, enemy down. */
+.tc-lunge { width: 100%; height: 100%; }
+.tc-lunge.player { animation: thrust-up 0.24s ease; }
+.tc-lunge.enemy { animation: thrust-down 0.24s ease; }
+@keyframes thrust-up {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-26%); }
+  100% { transform: translateY(0); }
+}
+@keyframes thrust-down {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(26%); }
+  100% { transform: translateY(0); }
+}
+
 .tile-card {
+  transition: filter 0.4s ease; /* fade to gray on death */
   position: relative;
   width: 100%;
   height: 100%;
@@ -43,10 +60,20 @@
   box-shadow: 0 0 12px rgba(255, 100, 80, 0.6);
 }
 
-/* Damaged: grayed out (tooltip adds "(damaged)"). */
+/* Damaged/slain: shake once, then fade to gray (the filter transition + a one-shot
+   shake both trigger when the .damaged class is added). */
 .tile-card.damaged {
   filter: grayscale(1) brightness(0.68);
   border-color: rgba(150, 150, 150, 0.5);
+  animation: death-shake 0.42s ease;
+}
+@keyframes death-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-12%) rotate(-3deg); }
+  30% { transform: translateX(11%) rotate(3deg); }
+  45% { transform: translateX(-8%) rotate(-2deg); }
+  60% { transform: translateX(7%) rotate(2deg); }
+  80% { transform: translateX(-3%); }
 }
 
 /* Combat cooldown bar (ticks down toward the next attack). */
@@ -90,12 +117,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.tc-type {
-  font-size: 7.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #c9b285;
-}
+/* Type shown as an icon (no text). */
+.tc-type-icon { width: 14px; height: 14px; object-fit: contain; opacity: 0.9; }
 .tc-stats {
   display: flex;
   gap: 3px;
