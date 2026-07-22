@@ -387,8 +387,8 @@ function PopCard({ pop, outputs = pop.outputs, count, mark, onActivate, convert,
           <div className="pop-name">{pop.name}</div>
           <div className="pop-outputs">
             {Object.entries(outputs).map(([res, v]) => (
-              <span key={res} className="pop-output">
-                <img src={ICON[res]} alt={res} />+{v}
+              <span key={res} className={`pop-output${v < 0 ? ' pop-output-neg' : ''}`}>
+                <img src={ICON[res]} alt={res} />{v < 0 ? '' : '+'}{v}
               </span>
             ))}
           </div>

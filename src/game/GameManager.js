@@ -115,8 +115,12 @@ export class GameManager {
       this._processThresholds(type, res)
     }
     civ.gold.value += civ.gold.output
+    // Negative gold (e.g. Philosophers) bleeds legitimacy: lose 1 :legitimacy: per :gold:
+    // below 0, then the deficit is cleared to 0.
+    if (civ.gold.value < 0) { this._damageLegitimacy(-civ.gold.value); civ.gold.value = 0 }
     civ.legitimacy.value += civ.legitimacy.output // Temples produce :legitimacy: per tick
     this._accrueBuildingTickLifetime() // per-tick buildings track a lifetime total
+    if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this.data.defeated = true; this._restartTimer(); this._emit(); return }
 
     // Count the tick (resources accrue exactly once per tick), then open any owed
     // choice (which pauses the game). Development ends only once nothing is
@@ -136,6 +140,8 @@ export class GameManager {
     const base = { ...(POP_TYPES[key]?.outputs ?? {}) }
     if (key === 'citizen' && this._hasPolicy('language')) base.progress = (base.progress ?? 0) + 1
     if (key === 'citizen' && this._hasPolicy('trade_networks')) base.gold = (base.gold ?? 0) + 2
+    // Poet: +2 :progress: per era elapsed since it was unlocked (civ.poetBonus).
+    if (key === 'poet') base.progress = (base.progress ?? 0) + (this.data.civilization.poetBonus ?? 0)
     // Specialization: each non-citizen (specialist) pop produces +1 of each of its
     // highest outputs (all tied maxima get +1).
     if (isSpecialist(key) && this._hasPolicy('specialization')) {
@@ -185,6 +191,14 @@ export class GameManager {
   /** True if an unlocked policy with this key is in a policy slot. */
   _hasPolicy(key) {
     return this.data.civilization.policies.some((p) => p && p.key === key)
+  }
+
+  /** Reduce legitimacy by `amount` (clamped at 0). Democracy doubles ALL losses. */
+  _damageLegitimacy(amount) {
+    if (amount <= 0) return
+    const civ = this.data.civilization
+    const dmg = amount * (this._hasPolicy('democracy') ? 2 : 1)
+    civ.legitimacy.value = Math.max(0, civ.legitimacy.value - dmg)
   }
 
   _deployedBuildingCount() {
@@ -749,6 +763,7 @@ export class GameManager {
     const civ = this.data.civilization
     civ.population[slotIndex] = key
     if (civ.pops[key] === undefined) civ.pops[key] = 0
+    if (key === 'poet') civ.poetBonus = 0 // fresh Poets start at base +1 (bonus grows per era hereafter)
     this._convertCitizenToSpecialist(key)
   }
 
@@ -1146,6 +1161,7 @@ export class GameManager {
       return
     }
     this.data.era += 1
+    this.data.civilization.poetBonus += 2 // Poetry: every era, each Poet permanently gains +2 :progress:
     this._ageCavePaintings() // stored progress doubles each era after combat
     this._beginEra()
     this._emit()

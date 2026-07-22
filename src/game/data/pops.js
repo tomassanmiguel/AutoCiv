@@ -38,6 +38,18 @@ export const POP_TYPES = {
     silhouette: '/sprites/ui/pop.png',
     outputs: { progress: 6 },
   },
+  philosopher: {
+    key: 'philosopher', name: 'Philosopher', specialist: true,
+    silhouette: '/sprites/ui/pop.png',
+    outputs: { progress: 10, gold: -1 },
+    note: 'Each Philosopher drains 1 :gold: per tick. When :gold: goes negative, you lose 1 :legitimacy: for each :gold: lost.',
+  },
+  poet: {
+    key: 'poet', name: 'Poet', specialist: true,
+    silhouette: '/sprites/ui/pop.png',
+    outputs: { progress: 1 },
+    note: 'At the end of each era, every Poet permanently produces +2 :progress:.',
+  },
 }
 
 /** True if a pop type is a (replaceable) specialist rather than the Citizen. */

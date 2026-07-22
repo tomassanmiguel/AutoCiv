@@ -390,6 +390,7 @@
   font-variant-numeric: tabular-nums;
 }
 .pop-output img { width: 15px; height: 15px; }
+.pop-output-neg { color: #b3402e; } /* a drain (e.g. Philosopher's −1 gold) reads red */
 
 .pop-count {
   flex: 0 0 auto;

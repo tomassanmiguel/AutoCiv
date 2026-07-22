@@ -21,7 +21,7 @@ function Stat({ icon, children }) {
 
 const catLabel = (list, key) => list.find((c) => c.key === key)?.label ?? ''
 const popRules = (pop) =>
-  'Produces ' + Object.entries(pop.outputs).map(([res, v]) => `+${v} :${res}:`).join(', ') + ' per tick.'
+  'Produces ' + Object.entries(pop.outputs).map(([res, v]) => `${v < 0 ? '' : '+'}${v} :${res}:`).join(', ') + ' per tick.'
 
 /**
  * Structured card body for an advancement option. Always leads with "Unlocks <Name>"

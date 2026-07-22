@@ -58,6 +58,10 @@ export class CivilizationData {
     //    Plough each ×0.95, stacking).
     this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1, progressThresholdMult: 1 }
 
+    // Poet escalator: +2 :progress: per Poet added at each era end (reset to 0 when the
+    // Poet specialist is first unlocked so a fresh Poet starts at its base +1).
+    this.poetBonus = 0
+
     // Advancement bookkeeping.
     this.chosenAdvancements = new Set() // ids chosen (removed from the pool)
     this.askBeforeReplace = true        // "are you sure" before overwriting a full slot
