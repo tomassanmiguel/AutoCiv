@@ -76,7 +76,7 @@ export const BUILDING_DEFS = {
   road: {
     key: 'road', name: 'Road', types: ['supplement'], placement: 'land',
     supplement: true, noUpgrade: true, hp: 0, upHp: 0,
-    effect: 'A supplement that underlaps any building and is never replaced. All tiles touching the road become adjacent to one another — extending building ranges and unit movement.',
+    effect: 'All tiles adjacent to the road are adjacent to each other. Underlaid.',
   },
 }
 
