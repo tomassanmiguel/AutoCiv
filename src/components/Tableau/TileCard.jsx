@@ -72,8 +72,9 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const ratio = clamp01((occ.hp ?? maxHp) / maxHp)
   const defStyle = combat && ratio < 1 ? { color: defColor(ratio) } : undefined
 
-  // Cooldown bar (units only, during combat): ticks down from full to attack.
-  const cooldown = isUnit ? Math.max(1, def.cooldown) : 0
+  // Cooldown bar (units only, during combat): ticks down from full to attack. Effective
+  // cooldown folds in a Brothel's −0.5s (occ.cdReduce).
+  const cooldown = isUnit ? Math.max(1, def.cooldown - (occ.cdReduce ?? 0)) : 0
   const cdFrac = combat && isUnit && occ.cdTimer != null ? clamp01(occ.cdTimer / cooldown) : null
 
   const outs = isUnit ? [] : buildingOutputs(def, occ.level, era)
@@ -85,7 +86,13 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const statsAt = (lvl) => {
     const s = unitStats(def, lvl, hpBonus + wb, wb)
     const b = occ.inBrewery
-    return { speed: s.speed, atk: Math.round(s.atk * (b ? 1.1 : 1)), def: Math.round(s.def * (b ? 0.9 : 1)) }
+    const atkMult = occ.atkMult ?? (b ? 1.1 : 1) // Brewery × Brothel (positional)
+    const caste = occ.casteActive && lvl > 1 ? 1.25 : 1 // upgraded-unit bonus applies at the previewed level
+    return {
+      speed: Math.max(1, s.speed - (occ.cdReduce ?? 0)),
+      atk: Math.round(s.atk * atkMult * caste),
+      def: Math.round(s.def * (b ? 0.9 : 1)),
+    }
   }
 
   const renderTip = (isPrev) => {
@@ -116,6 +123,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         {/* Terrain / aura notes (current view only). */}
         {!isPrev && terrainDefBonus(terrain) > 0 && <><br /><IconText>{`+${terrainDefBonus(terrain)} :defense: in combat (${TERRAIN[terrain]?.name}).`}</IconText></>}
         {!isPrev && isUnit && occ.inBrewery && <><br /><IconText>{'+10% :attack:, −10% :defense: (Brewery).'}</IconText></>}
+        {!isPrev && isUnit && (occ.cdReduce ?? 0) > 0 && <><br /><IconText>{'−0.5s cooldown & bonus :attack: (Brothel).'}</IconText></>}
+        {!isPrev && isUnit && occ.casteActive && occ.level > 1 && <><br /><IconText>{'+25% :attack: (Caste System).'}</IconText></>}
         {!isPrev && isUnit && wb > 0 && <><br /><IconText>{`+${wb} :attack: & :defense: (Tribalism).`}</IconText></>}
         {!isUnit && !isPrev && (bOuts[0] || tickOut) && <><br />Total produced: {occ.lifetimeOutput ?? 0} <img className="itext-icon" src={RES_ICON[bOuts[0]?.res ?? tickOut.res]} alt="" /></>}
       </>

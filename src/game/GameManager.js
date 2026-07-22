@@ -343,6 +343,21 @@ export class GameManager {
     return false
   }
 
+  /** Combat aura at (row, col) from adjacent Brothels: an :attack: multiplier + a flat
+   *  cooldown reduction (non-stacking — the best adjacent brothel wins). */
+  _brothelAura(row, col) {
+    let atkPct = 0, cd = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && occ.key === 'brothel' && !occ.damaged &&
+          this._reachableWithin(tile.row, tile.col, 1).has(`${row},${col}`)) {
+        atkPct = Math.max(atkPct, BUILDING_DEFS.brothel.atkPct(occ.level))
+        cd = BUILDING_DEFS.brothel.cdReduce
+      }
+    }
+    return { atkMult: 1 + atkPct, cd }
+  }
+
   // --- Warband (Tribalism): units gain +1 atk / +1 def per OTHER deployed friendly
   // unit of the same key. Snapshotted onto occ.warband via _syncUnitStats. ---
   _deployedUnitCounts() {
@@ -381,13 +396,19 @@ export class GameManager {
       if (occ.kind === 'unit') {
         const wb = this._warbandBonus(occ, counts)
         const brew = this._inBreweryRange(tile.row, tile.col)
+        const brothel = this._brothelAura(tile.row, tile.col) // { atkMult, cd }
+        const caste = (this._hasPolicy('caste_system') && occ.level > 1) ? 1.25 : 1 // upgraded units +25% atk
         // occ.permDef = permanent :defense: granted by a Baker (persists across combats).
         const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
+        const posMult = (brew ? 1.1 : 1) * brothel.atkMult // positional atk mult (Brewery × Brothel)
         occ.warband = wb
         occ.terrainDef = terrainDef
         occ.inBrewery = brew
-        occ.atk = Math.round(s.atk * (brew ? 1.1 : 1))
+        occ.cdReduce = brothel.cd
+        occ.atkMult = posMult // stored for the upgrade preview (level-independent part)
+        occ.casteActive = this._hasPolicy('caste_system')
+        occ.atk = Math.round(s.atk * posMult * caste)
         occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
       } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.underlap) {
@@ -1327,7 +1348,7 @@ export class GameManager {
   _effectiveAtk(unit) { return unit.atk ?? unitStats(UNIT_DEFS[unit.key], unit.level, 0, unit.warband ?? 0).atk }
   _effectiveCooldown(unit) {
     const def = UNIT_DEFS[unit.key] ?? BUILDING_DEFS[unit.key]
-    return Math.max(MIN_COOLDOWN, def?.cooldown ?? MIN_COOLDOWN)
+    return Math.max(MIN_COOLDOWN, (def?.cooldown ?? MIN_COOLDOWN) - (unit.cdReduce ?? 0)) // Brothel −0.5s
   }
 
   _colPlaces(col) {

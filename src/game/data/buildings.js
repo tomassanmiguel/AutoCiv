@@ -13,6 +13,8 @@ const totemLegit = (level = 1) => 10 + 5 * Math.max(0, level - 1) // 10 / 15 / 2
 // Per-tick output buildings (resolved with instance/tile context in GameManager):
 const kilnPerAdjacent = (level = 1) => level + 1 // +2 / +3 / +4 … :production: per adjacent building
 const mineGold = (level = 1) => 8 * level         // :gold: per tick (×2 on a mountain)
+// Brothel combat aura: adjacent units' :attack: multiplier by level (+10/15/20%).
+const brothelAtk = (level = 1) => 0.10 + 0.05 * Math.max(0, level - 1)
 
 export const BUILDING_DEFS = {
   mud_wall: {
@@ -45,6 +47,13 @@ export const BUILDING_DEFS = {
     hp: 1, upHp: 0,
     heal: campfireHeal, // % of max HP healed per combat-second
     effect: (level) => `Each second in combat, heals adjacent units & buildings for ${campfireHeal(level)}% of their max :defense:.`,
+  },
+  brothel: {
+    key: 'brothel', name: 'Brothel', types: ['utility'], placement: 'land',
+    hp: 6, upHp: 2,
+    atkPct: brothelAtk, // adjacent-unit :attack: bonus by level
+    cdReduce: 0.5,      // adjacent-unit cooldown reduction (seconds)
+    effect: (level) => `Adjacent units attack 0.5s faster and gain +${Math.round(brothelAtk(level) * 100)}% :attack:.`,
   },
   cave_painting: {
     key: 'cave_painting', name: 'Cave Painting', types: ['progress'], placement: 'land',

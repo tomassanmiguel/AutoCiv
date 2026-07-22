@@ -45,6 +45,10 @@ export const POLICY_DEFS = {
     key: 'slavery', name: 'Slavery', type: 'Policy',
     effect: 'All :production: outputs +10%, but all :progress: outputs −5%.',
   },
+  caste_system: {
+    key: 'caste_system', name: 'Caste System', type: 'Policy',
+    effect: 'Upgraded units (level 2+) deal +25% :attack:.',
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',
