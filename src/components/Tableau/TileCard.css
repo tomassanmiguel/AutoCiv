@@ -69,18 +69,19 @@
 }
 .tc-stats {
   display: flex;
-  gap: 5px;
+  gap: 3px;
   align-items: center;
+  max-width: 100%;
 }
 .tc-stat {
   display: inline-flex;
   align-items: center;
   gap: 1px;
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.tc-stat img { width: 13px; height: 13px; object-fit: contain; }
+.tc-stat img { width: 11px; height: 11px; object-fit: contain; }
 
 /* Tooltip stat line (screen-space, larger & readable). */
 .tc-tip-stats {
