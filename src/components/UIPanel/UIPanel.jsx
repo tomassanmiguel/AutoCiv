@@ -8,7 +8,7 @@ import {
   POPULATION_INFO,
 } from '../../game/data/slots.js'
 import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
-import { BUILDING_DEFS, buildingEffect } from '../../game/data/buildings.js'
+import { BUILDING_DEFS, buildingEffect, buildingHp } from '../../game/data/buildings.js'
 import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
@@ -97,7 +97,9 @@ function buildingSlots(civ, era) {
     if (!occ) return { index, kind: 'empty', silhouette: cat.silhouette, name: cat.label, tip: cat.description }
     const def = BUILDING_DEFS[occ.key]
     const eff = buildingEffect(def, occ.level, era) // current era/level value
-    return { index, kind: 'item', silhouette: cat.silhouette, name: def.name, sub: cat.label, line: eff, tip: eff }
+    // Buildings show a Def stat; Supplements (Road) have no HP, so no Def.
+    const buildingDef = def.supplement ? null : buildingHp(def, occ.level, civ.modifiers.buildingHpBonus)
+    return { index, kind: 'item', silhouette: cat.silhouette, name: def.name, sub: cat.label, line: eff, tip: eff, def: buildingDef }
   })
 }
 function policySlots(civ) {
@@ -321,7 +323,14 @@ function SlotRow({ slot, mark, onActivate, slam = false }) {
         </div>
         {slot.stats
           ? <StatIcons stats={slot.stats} />
-          : slot.line && <div className="slot-card-line"><IconText>{slot.line}</IconText></div>}
+          : <>
+              {slot.def != null && (
+                <span className="slot-card-stats">
+                  <span className="stat"><img src={STAT_ICON.def} alt={STAT_LABEL.def} title={STAT_LABEL.def} />{slot.def}</span>
+                </span>
+              )}
+              {slot.line && <div className="slot-card-line"><IconText>{slot.line}</IconText></div>}
+            </>}
       </div>
     </div>
   ) : (
