@@ -174,6 +174,12 @@ export default function UIPanel() {
     { key: 'population', label: 'Population', slots: populationSlots(civ, game, canConvert) },
   ]
 
+  // While a group is expanded, HIDE the other three entirely so the open group
+  // claims the whole area and its cards fit (collapse it via its header to bring
+  // the tabs back). Exception: during a build PICK the player must be able to
+  // switch Units↔Buildings, so keep the slim tabs visible then.
+  const soloOpen = !!effectiveOpen && !buildPicking
+
   return (
     <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
       <div className="resources">
@@ -191,20 +197,24 @@ export default function UIPanel() {
       </div>
 
       <div className="accordions">
-        {groups.map((g) => (
-          <Accordion
-            key={g.key}
-            label={g.label}
-            slots={g.slots}
-            open={effectiveOpen === g.key}
-            onToggle={() => setOpenGroup((cur) => (cur === g.key ? null : g.key))}
-            candidates={replacing && replacing.group === g.key ? replacing.candidates : null}
-            onReplace={(i) => game.resolveReplace(i)}
-            pickable={buildPicking && (g.key === 'units' || g.key === 'buildings')}
-            onPick={(i) => game.pickBuild(g.key, i)}
-            slamIndex={jf && jf.group === g.key ? jf.index : -1}
-          />
-        ))}
+        {groups.map((g) => {
+          const isOpen = effectiveOpen === g.key
+          if (soloOpen && !isOpen) return null // hide the other dropdowns while one is expanded
+          return (
+            <Accordion
+              key={g.key}
+              label={g.label}
+              slots={g.slots}
+              open={isOpen}
+              onToggle={() => setOpenGroup((cur) => (cur === g.key ? null : g.key))}
+              candidates={replacing && replacing.group === g.key ? replacing.candidates : null}
+              onReplace={(i) => game.resolveReplace(i)}
+              pickable={buildPicking && (g.key === 'units' || g.key === 'buildings')}
+              onPick={(i) => game.pickBuild(g.key, i)}
+              slamIndex={jf && jf.group === g.key ? jf.index : -1}
+            />
+          )
+        })}
       </div>
     </NineSlice>
   )
