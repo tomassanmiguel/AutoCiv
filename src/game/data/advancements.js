@@ -115,6 +115,9 @@ export const IMPLEMENTED = {
   'Organized Religion': { kind: 'building', key: 'temple', description: 'Unlocks the Temple — a :legitimacy: building that produces :legitimacy: every tick.' },
   'Coinage':      { kind: 'building', key: 'mint', description: 'Unlocks the Mint — a :gold: building that mints gold from your current :legitimacy:.' },
   'Irrigation':   { kind: 'building', key: 'farm', description: 'Unlocks the Farm — a :food: building fed by adjacent Plains.' },
+  'Weights and Measures': { kind: 'policy', key: 'weights_and_measures', description: 'Unlocks the Weights and Measures policy — all :gold: outputs are increased by 50%.' },
+  'Mathematics':  { kind: 'modifier', key: 'mathematics', silhouette: '/sprites/ui/production.png', description: 'Immediately grants two :production: builds.' },
+  'Calendar':     { kind: 'policy', key: 'calendar', description: "Unlocks the Calendar policy — each era's development lasts 5 more ticks." },
 }
 
 export function isImplemented(name) {

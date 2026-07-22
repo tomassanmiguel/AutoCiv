@@ -78,6 +78,9 @@ export class GameManager {
   get era() { return this.data.era }
   get eraInfo() { return ERAS[this.data.era] }
 
+  /** Development ticks this era (Calendar policy adds 5). */
+  ticksPerEra() { return TICKS_PER_ERA + (this._hasPolicy('calendar') ? 5 : 0) }
+
   // ---------------------------------------------------------------------------
   // Speed / ticking (development phase)
   // ---------------------------------------------------------------------------
@@ -129,7 +132,7 @@ export class GameManager {
     this.data.tick += 1
     this._maybeOpenSelection()
     if (this.data.selection) { this._emit(); return }
-    if (this.data.tick >= TICKS_PER_ERA) { this._endDevelopment(); this._emit(); return }
+    if (this.data.tick >= this.ticksPerEra()) { this._endDevelopment(); this._emit(); return }
     this._emit()
   }
 
@@ -177,6 +180,8 @@ export class GameManager {
       totals.production *= 1.10
       totals.progress *= 0.95
     }
+    // Weights and Measures: +50% :gold: outputs.
+    if (this._hasPolicy('weights_and_measures')) totals.gold *= 1.5
     civ.progress.output = totals.progress
     civ.food.output = totals.food
     civ.production.output = totals.production
@@ -513,7 +518,7 @@ export class GameManager {
   _afterResolve() {
     this._maybeOpenSelection()
     if (this.data.selection) { this._emit(); return }
-    if (this.data.tick >= TICKS_PER_ERA && this.data.phase === 'development') this._endDevelopment()
+    if (this.data.tick >= this.ticksPerEra() && this.data.phase === 'development') this._endDevelopment()
     else this._restartTimer()
     this._emit()
   }
@@ -663,6 +668,8 @@ export class GameManager {
       this._syncUnitStats() // retroactively toughen deployed buildings
     } else if (unlock.key === 'basket_weaving' || unlock.key === 'plough') {
       civ.modifiers.foodThresholdMult *= 0.95 // −5% food thresholds (stacks)
+    } else if (unlock.key === 'mathematics') {
+      this.data.pendingProduction += 2 // "produce twice" — two immediate build opportunities
     }
   }
 

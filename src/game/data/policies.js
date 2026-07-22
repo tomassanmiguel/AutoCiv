@@ -57,6 +57,14 @@ export const POLICY_DEFS = {
     key: 'hospitality_rites', name: 'Hospitality Rites', type: 'Policy',
     effect: 'Hiring mercenaries costs 50% less :gold:.',
   },
+  weights_and_measures: {
+    key: 'weights_and_measures', name: 'Weights and Measures', type: 'Policy',
+    effect: 'All :gold: outputs are increased by 50%.',
+  },
+  calendar: {
+    key: 'calendar', name: 'Calendar', type: 'Policy',
+    effect: "Each era's development lasts 5 more ticks.",
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',

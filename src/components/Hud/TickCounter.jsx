@@ -1,5 +1,4 @@
 import { useGame } from '../../game/react/GameProvider.jsx'
-import { TICKS_PER_ERA } from '../../game/data/resources.js'
 import InfoTip from '../common/InfoTip.jsx'
 import './TickCounter.css'
 
@@ -20,7 +19,7 @@ export default function TickCounter() {
     title = 'Preparation'
     tip = 'Prepare your forces, then begin combat.'
   } else if (phase === 'development') {
-    value = Math.max(0, TICKS_PER_ERA - game.data.tick)
+    value = Math.max(0, game.ticksPerEra() - game.data.tick)
     title = 'Ticks remaining'
     tip = "Ticks left before this era's development phase ends."
   } else {
