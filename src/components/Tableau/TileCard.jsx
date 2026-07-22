@@ -127,6 +127,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         {!isPrev && isUnit && occ.inBrewery && <><br /><IconText>{'+10% :attack:, −10% :defense: (Brewery).'}</IconText></>}
         {!isPrev && isUnit && (occ.cdReduce ?? 0) > 0 && <><br /><IconText>{'−0.5s cooldown & bonus :attack: (Brothel).'}</IconText></>}
         {!isPrev && isUnit && occ.casteActive && occ.level > 1 && <><br /><IconText>{'+25% :attack: (Caste System).'}</IconText></>}
+        {!isPrev && isUnit && occ.rangedBoost && <><br /><IconText>{'+50% :attack: (Composite Bows).'}</IconText></>}
         {!isPrev && isUnit && wb > 0 && <><br /><IconText>{`+${wb} :attack: & :defense: (Tribalism).`}</IconText></>}
         {!isPrev && isUnit && (occ.packAtk ?? 0) > 0 && <><br /><IconText>{`+${occ.packAtk} :attack: (Legion).`}</IconText></>}
         {!isUnit && !isPrev && (bOuts[0] || tickOut) && <><br />Total produced: {Math.floor(occ.lifetimeOutput ?? 0)} <img className="itext-icon" src={RES_ICON[bOuts[0]?.res ?? tickOut.res]} alt="" /></>}

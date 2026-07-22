@@ -69,6 +69,10 @@ export const POLICY_DEFS = {
     key: 'festivals', name: 'Festivals', type: 'Policy',
     effect: 'End-of-combat effects (legitimacy, Ranch growth, Pier, etc.) trigger an additional time.',
   },
+  composite_bows: {
+    key: 'composite_bows', name: 'Composite Bows', type: 'Policy',
+    effect: 'Ranged attacks deal 50% more damage (any unit that attacks at range).',
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',

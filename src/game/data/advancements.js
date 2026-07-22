@@ -121,6 +121,7 @@ export const IMPLEMENTED = {
   'Festivals':    { kind: 'policy', key: 'festivals', description: 'Unlocks the Festivals policy — end-of-combat effects trigger an additional time.' },
   'Rudders':      { kind: 'unit', key: 'trireme', description: 'Unlocks the Trireme — a coastal :naval:/:ranged: unit that earns triple :gold: from unblocked damage.' },
   'Siege':        { kind: 'unit', key: 'catapult', description: 'Unlocks the Catapult — a land :siege: unit that strikes the enemy rear with 50% splash.' },
+  'Composite Bows': { kind: 'policy', key: 'composite_bows', description: 'Unlocks the Composite Bows policy — ranged attacks deal 50% more damage.' },
 }
 
 export function isImplemented(name) {

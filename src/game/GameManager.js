@@ -413,14 +413,17 @@ export class GameManager {
         const brew = this._inBreweryRange(tile.row, tile.col)
         const brothel = this._brothelAura(tile.row, tile.col) // { atkMult, cd }
         const caste = (this._hasPolicy('caste_system') && occ.level > 1) ? 1.25 : 1 // upgraded units +25% atk
+        // Composite Bows: +50% :attack: to ranged-role units (incl. Catapult/Trireme).
+        const rangedBoost = (this._hasPolicy('composite_bows') && unitRole(UNIT_DEFS[occ.key]) === 'ranged') ? 1.5 : 1
         // occ.permDef = permanent :defense: granted by a Baker (persists across combats).
         const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb + pack)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
-        const posMult = (brew ? 1.1 : 1) * brothel.atkMult // positional atk mult (Brewery × Brothel)
+        const posMult = (brew ? 1.1 : 1) * brothel.atkMult * rangedBoost // level-independent atk mult (Brewery × Brothel × Composite Bows)
         occ.warband = wb
         occ.packAtk = pack
         occ.terrainDef = terrainDef
         occ.inBrewery = brew
+        occ.rangedBoost = rangedBoost > 1
         occ.cdReduce = brothel.cd
         occ.atkMult = posMult // stored for the upgrade preview (level-independent part)
         occ.casteActive = this._hasPolicy('caste_system')
