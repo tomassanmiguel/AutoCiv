@@ -139,8 +139,9 @@ class CombatMixin {
         // friendly unit in front don't act; only the front unit (or any ranged, which
         // shoots over) collects the "unblocked" gold (+ Hunting food).
         if (role !== 'ranged' && !isFrontUnit) return false
-        this.data.civilization.gold.value += atk
-        this._pushEvent({ kind: 'gold', amount: atk, col: c.col, row: c.row })
+        const gold = atk * (UNIT_DEFS[c.unit.key].unblockedGoldMult ?? 1) // Trireme triples unblocked gold
+        this.data.civilization.gold.value += gold
+        this._pushEvent({ kind: 'gold', amount: gold, col: c.col, row: c.row })
         if (this._hasPolicy('hunting')) {
           const food = this.data.civilization.food
           food.value += atk

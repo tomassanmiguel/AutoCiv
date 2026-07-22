@@ -73,6 +73,20 @@ export const UNIT_DEFS = {
     ability: 'Supports any column on its landmass that lacks a :melee:/:cavalry: front — galloping clear across the land to plug the gap.',
     description: 'A swift :cavalry: rider with the range to reinforce your whole line.',
   },
+  catapult: {
+    key: 'catapult', name: 'Catapult', era: 2, types: ['siege'], placement: 'land', combatRole: 'ranged',
+    cooldown: 6, atk: 10, hp: 8, upAtk: 1, upHp: 2,
+    splash: 0.5, // hits the BACK enemy in the column + 50% splash to its neighbours
+    ability: 'Strikes the rear-most enemy in the column and deals 50% splash to adjacent enemies.',
+    description: 'A :siege: engine that lobs over the front line to shatter the enemy backfield.',
+  },
+  trireme: {
+    key: 'trireme', name: 'Trireme', era: 2, types: ['ranged', 'naval'], placement: 'coast', combatRole: 'ranged',
+    cooldown: 5, atk: 10, hp: 13, upAtk: 1, upHp: 2,
+    unblockedGoldMult: 3, // triple the empty-column ("unblocked") gold
+    ability: 'Earns TRIPLE :gold: when it deals unblocked damage (an empty column).',
+    description: 'A :naval: warship with a :ranged: bite — plunders undefended columns for heavy :gold:.',
+  },
 
   // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
   bear: {

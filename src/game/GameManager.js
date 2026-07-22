@@ -18,8 +18,6 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
 const THRESHOLD_TYPES = ['progress', 'food', 'production']
 
-const catIndex = (list, key) => list.findIndex((c) => c.key === key)
-
 // Weighted sampling without replacement (weightFn -> positive number).
 function weightedSample(items, weightFn, k) {
   const pool = items.slice()
@@ -675,8 +673,13 @@ export class GameManager {
   // (policies/specialists take a single slot from a generic group).
   _unlockTarget(unlock) {
     switch (unlock.kind) {
-      case 'unit':
-        return { group: 'units', multiFill: true, slotIndices: UNIT_DEFS[unlock.key].types.map((t) => catIndex(UNIT_CATEGORIES, t)) }
+      case 'unit': {
+        // Fill the first EMPTY slot whose category matches a type (a multi-type unit like
+        // the Trireme = ranged/naval goes in either); full → those become replace candidates.
+        const types = UNIT_DEFS[unlock.key].types
+        const slotIndices = UNIT_CATEGORIES.map((c, i) => i).filter((i) => types.includes(UNIT_CATEGORIES[i].key))
+        return { group: 'units', multiFill: false, slotIndices }
+      }
       case 'building': {
         // Fill the first EMPTY slot whose category matches the building's type (Utility
         // has two slots); when all are full those slots become the replace candidates.

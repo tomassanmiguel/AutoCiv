@@ -119,6 +119,7 @@ export const IMPLEMENTED = {
   'Mathematics':  { kind: 'modifier', key: 'mathematics', silhouette: '/sprites/ui/production.png', description: 'Immediately grants two :production: builds.' },
   'Calendar':     { kind: 'policy', key: 'calendar', description: "Unlocks the Calendar policy — each era's development lasts 5 more ticks." },
   'Festivals':    { kind: 'policy', key: 'festivals', description: 'Unlocks the Festivals policy — end-of-combat effects trigger an additional time.' },
+  'Rudders':      { kind: 'unit', key: 'trireme', description: 'Unlocks the Trireme — a coastal :naval:/:ranged: unit that earns triple :gold: from unblocked damage.' },
 }
 
 export function isImplemented(name) {
