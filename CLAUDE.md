@@ -151,7 +151,8 @@ AutoCiv/
 │   │   │   ├── slots.js       # Unit/Building slot categories (label + description)
 │   │   │   ├── resources.js   # threshold config + T(N) formula + rubber band
 │   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
-│   │   │   ├── units.js       # unit defs (Warrior/Wolf/Slinger) + stat/level helpers
+│   │   │   ├── units.js       # unit defs (Warrior/Wolf/Slinger + era-1 Bear/Lion) + stat helpers
+│   │   │   ├── enemies.js     # enemy host generation (Horde/Elite/Group) + ENEMY_ROSTER
 │   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp/effect/outputs helpers
 │   │   │   ├── policies.js    # policy defs (Burial Rites)
 │   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
@@ -166,7 +167,7 @@ AutoCiv/
 │       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
 │       ├── Progress/ProgressOverlay.jsx/.css # advancement chooser (cards/confirm/replace)
 │       ├── Production/ProductionPrompt.jsx/.css # build flow prompt (pick / place, Back / Skip)
-│       ├── Victory/VictoryScreen.jsx/.css # 9-slice "Victory" popup (Hide / Return to Title)
+│       ├── Victory/{VictoryScreen,DefeatScreen}.jsx/.css # end-game popups (Victory / Defeat)
 │       ├── Widgets/WidgetRail.jsx/.css # far-right widget rail (trophy/flask re-summon overlays)
 │       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
 ├── Music/ · Sprites/         # SOURCE assets (originals; see Assets)
@@ -297,9 +298,9 @@ exists; extend it as systems land.
 - During production **placement**, valid tiles flash yellow / occupied red and are click-to-build.
 
 ### Game loop (`GameManager`, `game/data/resources.js`, `game/data/pops.js`)
-- Each era runs: **development** (timer-driven ticks) → **battle** (skipped, banner only) →
-  **transition** (banner) → next era, until the last era (`won`). State on `GameData`:
-  `phase` (`development`/`battle`/`transition`), `tick` (0..65), `speed`.
+- Each era runs: **development** (timer-driven ticks) → **battle** (25s of combat) →
+  **transition** (banner) → next era, until the last era (`won`) or legitimacy 0 (`defeated`).
+  State on `GameData`: `phase` (`development`/`battle`/`transition`), `tick` (0..65), `speed`.
 - **Development:** **65 ticks/era**, **paused by default**. A speed widget sets
   `paused`/`standard`(1/s)/`fast`(3/s)/`super`(5/s)/`ultra`(10/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
@@ -319,11 +320,12 @@ exists; extend it as systems land.
   Citizen (`STARTING_CITIZENS`). **Growth split** (`addPops`): each new pop alternates by a running
   `growthParity` — **EVEN → a specialist** (cycled bottom-to-top via `specialistCursor`), **ODD →
   citizen**; with no specialists unlocked, all growth is citizens.
-- **Phase machine:** dev ends at 65 ticks → `phase='battle'`; the UI's `TransitionOverlay` plays
-  the banner and calls back `endBattle()` → `phase='transition'` → banner → `completeTransition()`
-  → next era (paused). Completing the **final era (Infinity)** sets `data.won = true` (no next
-  era), which shows the **Victory screen**. The temporary era slider calls `setEra` (instant debug
-  jump, no banner; resets `won`).
+- **Phase machine:** dev ends at 65 ticks → `_startCombat` (`phase='battle'`, 25s combat, see
+  below) → `_endCombat` → `phase='transition'` → the `TransitionOverlay` typewriter →
+  `completeTransition()` → next era (paused). Completing the **final era (Infinity)** sets
+  `data.won = true` (Victory); legitimacy hitting 0 sets `data.defeated = true` (Defeat) and freezes
+  the game. The temporary era slider calls `setEra` (instant debug jump; resets `won`/`defeated`,
+  regenerates the enemy host).
 - **Interpretations** (flagged in `resources.js`): E is 0-based; `value` resets per level (carries
   overflow) while the per-level threshold grows; n = global level (never resets); R's
   `expected = (era+1)·targetPerEra`, actual = level; "Copper Age"→Bronze; starting pops = 1.
@@ -379,27 +381,48 @@ exists; extend it as systems land.
   that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation.
 - All flashing (replace red / pick yellow / tile placement) is a slow ~1.4s pulse.
 
+### Combat (`GameManager` combat methods, `game/data/enemies.js`, `Tableau/TileCard`)
+- **Enemy host** (`generateHost`, regenerated each era, visible as a preview during development):
+  one composition — **Horde** (Classical+, units 1–5 eras ago, 50% of the battlefield), **Elite**
+  (10%; current-era units +1 upgrade OR last-era units +2 upgrades), or **Group** (25%; current +
+  previous era). Units only spawn in columns whose **terrain can host** them (`columnPlaces` +
+  `canPlaceOn`); each column is re-ordered **melee/cavalry front, ranged back** (packed from the
+  front slot). Enemies never spawn support/buildings. Roster of enemy unit keys per era = `ENEMY_ROSTER`
+  (era **−1** = Bear/Lion/Wolf wildlife; era 0 = Warrior/Slinger/Wolf). Enemies fade after each combat.
+- **Loop:** `_combatStep` runs every 50ms real, advancing combat time by the speed multiplier (the
+  speed widget = 1x/3x/5x/10x); a battle is `COMBAT_DURATION = 25` combat-seconds. Attacks resolve
+  **bottom-to-top, left-to-right**; each unit attacks on its **cooldown** (fractional, floored at
+  `MIN_COOLDOWN = 1`s). **Melee/cavalry** only strike as the column's front-most friendly; **ranged**
+  strike the front enemy at any range; an **empty column** yields **gold** (player) / **legitimacy
+  damage** (enemy). Buildings are targetable/front-line but don't attack. HP≤0 → `damaged` (inactive
+  until repaired). Non-destroyed instances **heal to full** at combat end (damage doesn't persist);
+  destroyed ones stay damaged. Wolf `shift`: after attacking, moves to an adjacent empty valid space.
+- **Rendering:** enemies render as red-framed `TileCard`s in the battlefield slots. In combat the Def
+  stat shows **remaining HP** (reddening via `color-mix` as it drops; full value outside combat) and a
+  **cooldown bar** ticks below each unit. `TickCounter` shows battle seconds remaining. **DefeatScreen**
+  mirrors Victory (rail **💀** re-summons it). Instances carry combat state on the same object
+  (`hp`/`maxHp`/`damaged`/`cdTimer`); `data.combatEvents` records per-step attacks/damage for future juice.
+
 ### HUD (`components/Hud`)
 - **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
   the tiles — `.tableau-window` is a column, HUD strip then tableau). Order: **EraBanner
   (`"<Era> Age"`) → menu button → TickCounter → SpeedControl**, horizontal.
-- **TickCounter** — ticks remaining in the era's development phase (counts down 65→0) in a box.
-- **SpeedControl** — framed speed buttons (`paused`/`standard`/`fast`/`super`/`ultra`) with tooltips.
-- **TransitionOverlay** — battle banner + era-transition banner (fade in → **typewriter**: delete
-  the previous age char-by-char, type the new age char-by-char → fade out), driving phase callbacks.
+- **TickCounter** — ticks remaining in development (65→0), or **seconds remaining** during a battle.
+- **SpeedControl** — framed speed buttons (`paused`/`standard`/`fast`/`super`/`ultra`); the same
+  control accelerates combat (as a time multiplier).
+- **TransitionOverlay** — a brief **"Battle"** announcement (combat runs underneath) + the era-
+  transition banner (fade in → **typewriter** delete/type the age → fade out → `completeTransition`).
 - **AudioController** subscribes to the manager and crossfades the era track on any track-boundary
   era change (loop or debug jump).
 
-### Victory & widgets (`components/Victory`, `components/Widgets`)
-- **VictoryScreen** — a centered light-`Box` 9-slice popup over a dimmed tableau, shown when
-  `game.data.won` is true (final era completed). Reads **"Victory"** and offers **Hide** (tuck it
-  away so the finished map stays inspectable) and **Return to Title** (`onExit`). `hidden` state
-  lives on `GameScreen` so the popup and the rail share it.
-- **WidgetRail** — a vertical stack of framed icon buttons floating on the **right edge of the
-  tableau window** (`position: absolute`, below the HUD). Home for contextual widgets: the **Victory
-  trophy** (🏆, when the game is won *and* the popup is hidden) and the **Progress flask** (the
-  progress icon, when an advancement chooser is hidden) — each re-opens its overlay. Add future
-  widgets here.
+### End-game & widgets (`components/Victory`, `components/Widgets`)
+- **VictoryScreen** / **DefeatScreen** — mirror-image centered 9-slice popups over a dimmed tableau,
+  shown when `game.data.won` (final era completed) / `game.data.defeated` (legitimacy 0). Each reads
+  **"Victory"** / **"Defeat"** and offers **Hide** (keep the map/battlefield inspectable) and **Return
+  to Title** (`onExit`); the `hidden` flags live on `GameScreen`.
+- **WidgetRail** — a vertical stack of framed icon buttons on the **right edge of the tableau window**
+  (below the HUD). Contextual widgets: **Victory trophy** (🏆), **Defeat skull** (💀), and the
+  **Progress flask** — each re-opens its hidden overlay. Add future widgets here.
 
 ### Civilization panel (`CivilizationData.js`, `components/UIPanel`)
 - **Framing:** the whole panel is wrapped in the light `Box` 9-slice frame and each dropdown in
@@ -458,9 +481,11 @@ exists; extend it as systems land.
   pool), unlock into roster slots (fill / confirm / replace), specialists + pop-growth split.
 - [x] Production/build flow: choose a unit/building, placement mode (valid tiles flash), deploy an
   instance onto a tile with an on-tile card; damaged appearance; slot-fill "slam" juice.
-- [ ] Real battle phase (enemies in the Battlefield slots + combat resolution) — makes unit/building
-  stats, abilities, Burial Rites, Clothes, and Pier era-food actually matter.
-- [ ] Spend gold; upgrades (levels already scale stats); legitimacy loss/defeat.
+- [x] Battle phase: per-era enemy hosts, 25s combat (cooldowns/targeting/gold/legitimacy), damaged
+  state, Defeat screen. Combat **juice** (attack thrust, floating damage numbers, gold/legitimacy
+  up-animations, death shake→gray) is the next slice; reddening Def + no-persist damage are done.
+- [ ] Battle abilities/policies that need combat: Burial Rites (progress on death), Clothes HP bonus
+  in combat, more unit abilities. Spend gold; repair damaged units; upgrades.
 
 ---
 
@@ -569,3 +594,11 @@ exists; extend it as systems land.
   (InfoTip auto-routes string tooltips through it). Tokenized the implemented content + category/
   resource descriptions. Bolder panel replace/pick flashes; shrank on-card stat icons to stay
   within the card frame (tooltip keeps the large readable ones).
+- **2026-07-21** — Implemented the **combat / battle phase**. Each era generates an enemy host
+  (`data/enemies.js`: Horde/Elite/Group, terrain-gated columns, melee-front ordering; era −1 Bear/
+  Lion/Wolf wildlife). The battle phase runs a 25s combat (`_combatStep`, speed = time multiplier):
+  bottom-to-top/left-to-right, cooldown-based (fractional, min 1s) attacks — melee/cavalry as the
+  front-most friendly, ranged at range, empty columns → gold / legitimacy damage; HP≤0 → damaged;
+  survivors heal between combats; Wolf shifts after attacking; legitimacy 0 → **Defeat** screen.
+  Enemies render as red `TileCard`s with cooldown bars + remaining-HP (reddening) Def. Model verified
+  via a Node sim (host validity/ordering, resolve, defeat, heal). Combat juice is the next slice.
