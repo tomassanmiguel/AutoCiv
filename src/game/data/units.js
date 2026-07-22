@@ -41,6 +41,12 @@ export const UNIT_DEFS = {
     ability: '',
     description: 'A :naval: warship deployed on the coast that rams enemies as :melee:.',
   },
+  spearman: {
+    key: 'spearman', name: 'Spearman', era: 1, types: ['melee'], placement: 'land',
+    cooldown: 3, atk: 6, hp: 19, upAtk: 1, upHp: 3,
+    ability: '',
+    description: 'A bronze :melee: front-liner — far tougher than the Warrior.',
+  },
 
   // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
   bear: {
