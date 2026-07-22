@@ -21,7 +21,7 @@ export default function CombatPrep() {
         <div className="prep-body">
           <div className="prep-title">Prepare for Battle</div>
           <div className="prep-hint">
-            <IconText>{'Spend :gold: to repair, upgrade, convert specialists, or hire mercenaries — then begin.'}</IconText>
+            <IconText>{'Spend :gold: on repairs, upgrades, specialists & mercenaries.'}</IconText>
           </div>
         </div>
         <div className="prep-gold">

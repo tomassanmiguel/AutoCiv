@@ -1,13 +1,17 @@
 /* Non-blocking preparation bar pinned to the BOTTOM (so it never covers the enemy
-   formation at the top); tiles/panel stay interactive. */
+   formation at the top) and RIGHT-aligned so it clears the left-packed HUD strip
+   (era / tick / speed controls, which render at the bottom). z-index sits above the
+   HUD strip (20) so Begin Combat is actually clickable where they'd otherwise meet;
+   tiles/panel stay interactive. */
 .prep-wrap {
   position: absolute;
   bottom: 14px;
   left: 0;
   right: 0;
-  z-index: 18;
+  z-index: 21;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-right: 1.25rem;
   pointer-events: none;
   animation: prep-in 0.28s ease;
 }
@@ -56,7 +60,7 @@
   font-size: 1rem;
   color: #6e4f16;
 }
-.prep-hint { font-size: 0.78rem; color: #5b4626; max-width: 28rem; }
+.prep-hint { font-size: 0.78rem; color: #5b4626; max-width: 22rem; }
 .prep-gold {
   flex: 0 0 auto;
   display: inline-flex;

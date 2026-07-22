@@ -427,10 +427,11 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   reset it); dropping on a valid tile moves the unit, any invalid drop snaps back. You can't displace
   an occupied tile. During placement a real drag suppresses the source tile's placement click (via
   `movedRef`), so a plain click still places/replaces but a drag only moves.
-- **CombatPrep** (`components/Prep`): a non-blocking horizontal bar pinned to the **bottom** of the
+- **CombatPrep** (`components/Prep`): a non-blocking horizontal bar in the **bottom-right** of the
   tableau (mounted in `GameScreen`) shown in the `prep` phase with a prominent **Begin Combat**
-  button; kept at the bottom so it never covers the enemy formation up top. The tableau + panel stay
-  interactive so all the above can happen. The enemy host is visible on the battlefield throughout prep.
+  button. Bottom so it never covers the enemy formation up top; right-aligned + `z-index: 21` (above
+  the HUD strip) so it clears the left-packed HUD widgets and the button stays clickable. The tableau
+  + panel stay interactive so all the above can happen. The enemy host is visible throughout prep.
 
 ### Combat (`GameManager` combat methods, `game/data/enemies.js`, `Tableau/TileCard`)
 - **Enemy host** (`generateHost`, regenerated each era, visible as a preview during development):
@@ -463,9 +464,12 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   `.damaged`); the panel gold/legitimacy values **pulse** as they change during combat.
 
 ### HUD (`components/Hud`)
-- **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
-  the tiles — `.tableau-window` is a column, HUD strip then tableau). Order: **EraBanner
-  (`"<Era> Age"`) → menu button → TickCounter → SpeedControl**, horizontal.
+- **HUD strip** (`.top-hud`): a full-width horizontal strip. NOTE: `.tableau-window` is a flex
+  column with `<Tableau/>` first (grows to fill) and the strip second, so the strip actually renders
+  along the **bottom** of the tableau window (despite the `top-hud` name). `z-index: 20`, and it
+  captures pointer events across its full width — so bottom-anchored overlays must sit above it and
+  clear of its widgets. Order: **EraBanner (`"<Era> Age"`) → menu button → TickCounter →
+  SpeedControl**, packed left.
 - **TickCounter** — ticks remaining in development (65→0), a **⚔** glyph during preparation,
   or **seconds remaining** during a battle.
 - **SpeedControl** — framed speed buttons (`paused`/`standard`/`fast`/`super`/`ultra`); the same
