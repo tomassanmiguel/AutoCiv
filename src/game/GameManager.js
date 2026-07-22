@@ -206,21 +206,15 @@ export class GameManager {
 
   _deployedBuildingCount() {
     let n = 0
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (occ?.kind === 'building' && !occ.damaged) n++ // destroyed buildings don't produce
-    }
+    for (const { occ } of this._buildingInstances()) if (!occ.damaged) n++ // destroyed buildings don't produce
     return n
   }
 
   /** Total per-tick gold from all breweries (+1 per unit within each brewery's range). */
   _breweryGold() {
     let g = 0
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (occ?.kind === 'building' && occ.key === 'brewery' && !occ.damaged) {
-        g += this._unitsInRange(tile.row, tile.col, BUILDING_DEFS.brewery.range(occ.level))
-      }
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.key === 'brewery' && !occ.damaged) g += this._unitsInRange(tile.row, tile.col, BUILDING_DEFS.brewery.range(occ.level))
     }
     return g
   }
@@ -231,9 +225,7 @@ export class GameManager {
   _buildingTickOutputs() {
     const civ = this.data.civilization
     const totals = { food: 0, production: 0, gold: 0, legitimacy: 0 }
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (!occ || occ.kind !== 'building') continue
+    for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
       const def = BUILDING_DEFS[occ.key]
       let out = null
@@ -259,21 +251,20 @@ export class GameManager {
     return n
   }
 
-  /** Count of undamaged Aqueducts on tiles (road-augmented) adjacent to `tile`. */
+  /** Count of undamaged Aqueducts on tiles (road-augmented) adjacent to `tile` (incl. city extras). */
   _adjacentAqueductCount(tile) {
     let n = 0
     for (const nb of this._adjacentTiles(tile.row, tile.col)) {
-      if (nb.occupant?.kind === 'building' && nb.occupant.key === 'aqueduct' && !nb.occupant.damaged) n++
+      for (const occ of this._buildingsOn(nb)) if (occ.key === 'aqueduct' && !occ.damaged) n++
     }
     return n
   }
 
-  /** Count of adjacent (road-augmented) tiles holding a real, active building. */
+  /** Count of active buildings on adjacent (road-augmented) tiles (incl. city extras). */
   _adjacentBuildingCount(r, c) {
     let n = 0
     for (const tile of this._adjacentTiles(r, c)) {
-      const occ = tile.occupant
-      if (occ?.kind === 'building' && !occ.damaged && !BUILDING_DEFS[occ.key]?.underlap) n++
+      for (const occ of this._buildingsOn(tile)) if (!occ.damaged) n++
     }
     return n
   }
@@ -375,9 +366,8 @@ export class GameManager {
 
   /** True if (row, col) is within some undamaged brewery's (road-augmented) range. */
   _inBreweryRange(row, col) {
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (occ?.kind === 'building' && occ.key === 'brewery' && !occ.damaged &&
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.key === 'brewery' && !occ.damaged &&
           this._reachableWithin(tile.row, tile.col, BUILDING_DEFS.brewery.range(occ.level)).has(`${row},${col}`)) {
         return true
       }
@@ -841,8 +831,11 @@ export class GameManager {
     if (!sel || sel.type !== 'production' || sel.stage !== 'place' || !sel.chosen) return null
     const tile = this.data.tableau.tileAt(row, col)
     if (!tile || !this._canPlaceHere(sel.chosen, tile)) return 'invalid'
-    // Underlapping buildings coexist with the occupant, so they're always a plain (valid) placement.
-    if (sel.chosen.kind === 'building' && BUILDING_DEFS[sel.chosen.key].underlap) return 'valid'
+    const def = BUILDING_DEFS[sel.chosen.key]
+    // Underlaid buildings (Road / City) coexist with the occupant → always a plain placement.
+    if (sel.chosen.kind === 'building' && (def?.underlap || def?.underlaidCity)) return 'valid'
+    // On a city tile, buildings ADD (into extra slots) and never replace, so they read green.
+    if (tile.city && sel.chosen.kind === 'building') return 'valid'
     return tile.occupant ? 'replace' : 'valid'
   }
 
@@ -860,54 +853,100 @@ export class GameManager {
     if (!this.data.tableau.isUnlocked(tile.row, tile.col, this.data.era)) return false
     const def = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
     if (!canPlaceOn(def.placement, tile.terrain)) return false
-    // An underlapping building coexists with the occupant but can't stack (one per tile).
+    // Underlaid buildings coexist with the occupant but can't stack (one per slot).
     if (chosen.kind === 'building' && def.underlap) return !tile.underlap
+    if (chosen.kind === 'building' && def.underlaidCity) return !tile.city
+    if (tile.city) {
+      // City buildings can't be replaced; extra buildings stack into free extra slots.
+      if (chosen.kind === 'building') return !tile.occupant || this._cityRoom(tile) > 0
+      // A unit can occupy only an empty primary slot or replace a unit — never a city building.
+      return !tile.occupant || tile.occupant.kind === 'unit'
+    }
     return true
+  }
+
+  /** Free extra-building slots remaining on a city tile (0 on a non-city tile). */
+  _cityRoom(tile) {
+    if (!tile.city) return 0
+    return BUILDING_DEFS.city.extraCap - (tile.extras?.length ?? 0)
+  }
+
+  /** All building instances physically on a tile: the occupant (if a building) + city extras. */
+  _buildingsOn(tile) {
+    const out = []
+    if (tile.occupant?.kind === 'building') out.push(tile.occupant)
+    if (tile.extras) for (const e of tile.extras) out.push(e)
+    return out
+  }
+
+  /** Every deployed building instance across the board, with its tile: [{ tile, occ }]. */
+  _buildingInstances() {
+    const out = []
+    for (const tile of this.data.tableau.tiles.values()) {
+      for (const occ of this._buildingsOn(tile)) out.push({ tile, occ })
+    }
+    return out
+  }
+
+  /** Build a fresh unit/building instance object (not yet placed). */
+  _makeInstance(chosen) {
+    const civ = this.data.civilization
+    if (chosen.kind === 'unit') {
+      const hp = unitStats(UNIT_DEFS[chosen.key], chosen.level, civ.modifiers.unitHpBonus).def
+      return { kind: 'unit', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false }
+    }
+    const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level, civ.modifiers.buildingHpBonus)
+    const inst = { kind: 'building', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false, lifetimeOutput: 0 }
+    if (chosen.key === 'cave_painting') inst.storedProgress = BUILDING_DEFS.cave_painting.storedBase
+    if (chosen.key === 'ranch') { inst.ranchBonus = 0; inst.ranchStep = 2 }
+    return inst
   }
 
   _createInstance(chosen, tile) {
     const civ = this.data.civilization
-    // Underlapping buildings (Road) share the tile in their own slot — they never
-    // replace and don't overbuild; placing one just re-derives adjacency-based outputs.
-    if (chosen.kind === 'building' && BUILDING_DEFS[chosen.key].underlap) {
+    const bdef = chosen.kind === 'building' ? BUILDING_DEFS[chosen.key] : null
+    // Road: an underlapping utility in the tile's own underlap slot (adjacency only).
+    if (bdef?.underlap) {
       tile.underlap = { kind: 'building', key: chosen.key, level: chosen.level }
       this._roadNetsCache = null // road topology changed → drop the memoized port sets
       this._recomputeOutputs() // roads change brewery/kiln ranges
       this._syncUnitStats()    // and brewery-aura membership
       return
     }
-    // Overbuilding a Cave Painting cashes in its stored progress before it's replaced.
-    const prev = tile.occupant
+    // City: an underlaid support in its own slot that grants extra building capacity.
+    if (bdef?.underlaidCity) {
+      tile.city = { kind: 'building', key: chosen.key, level: chosen.level }
+      if (!tile.extras) tile.extras = []
+      this._recomputeOutputs()
+      this._syncUnitStats()
+      return
+    }
+    // On a city tile whose primary slot is taken, a building stacks into an EXTRA slot
+    // (additive — city buildings never replace). Otherwise it fills the primary slot.
+    const toExtra = chosen.kind === 'building' && tile.city && !!tile.occupant
+    // Overbuilding a Cave Painting (replacing the occupant) cashes in its stored progress.
+    const prev = toExtra ? null : tile.occupant
     if (prev && prev.key === 'cave_painting') {
       civ.progress.value += prev.storedProgress ?? BUILDING_DEFS.cave_painting.storedBase
       this._processThresholds('progress', civ.progress) // may queue advancement choices
     }
-    if (chosen.kind === 'unit') {
-      const hp = unitStats(UNIT_DEFS[chosen.key], chosen.level, civ.modifiers.unitHpBonus).def
-      tile.occupant = { kind: 'unit', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false }
-    } else {
-      const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level, civ.modifiers.buildingHpBonus)
-      tile.occupant = { kind: 'building', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false, lifetimeOutput: 0 }
-      if (chosen.key === 'cave_painting') tile.occupant.storedProgress = BUILDING_DEFS.cave_painting.storedBase
-      if (chosen.key === 'ranch') { tile.occupant.ranchBonus = 0; tile.occupant.ranchStep = 2 }
-    }
+    const inst = this._makeInstance(chosen)
+    if (toExtra) (tile.extras ??= []).push(inst)
+    else tile.occupant = inst
     this._syncUnitStats() // board changed → refresh Warband bonuses
     this._recomputeOutputs() // …and per-tick building outputs (Ranch/Kiln/Mine/Brewery)
     // Glassworks: completing any building grants legitimacy per OTHER deployed Glassworks.
     if (chosen.kind === 'building') {
       let legit = 0
-      for (const t of this.data.tableau.tiles.values()) {
-        const g = t.occupant
-        if (g?.kind === 'building' && g.key === 'glassworks' && !g.damaged && g !== tile.occupant) {
-          legit += BUILDING_DEFS.glassworks.legitOnBuild(g.level)
-        }
+      for (const { occ: g } of this._buildingInstances()) {
+        if (g.key === 'glassworks' && !g.damaged && g !== inst) legit += BUILDING_DEFS.glassworks.legitOnBuild(g.level)
       }
       if (legit > 0) civ.legitimacy.value += legit
     }
     // Midwivery: creating a unit yields production equal to its (effective) defense.
     // In development, so crossing a production threshold opens a build (may chain).
     if (chosen.kind === 'unit' && this._hasPolicy('midwivery')) {
-      civ.production.value += tile.occupant.maxHp ?? 0
+      civ.production.value += inst.maxHp ?? 0
       this._processThresholds('production', civ.production)
     }
   }
@@ -921,11 +960,8 @@ export class GameManager {
   /** Add each per-tick building's current output to its lifetime total (once per dev
    *  tick; occ.tickOutput was just refreshed by _recomputeOutputs). */
   _accrueBuildingTickLifetime() {
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (occ?.kind === 'building' && !occ.damaged && occ.tickOutput) {
-        occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + occ.tickOutput.amount
-      }
+    for (const { occ } of this._buildingInstances()) {
+      if (!occ.damaged && occ.tickOutput) occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + occ.tickOutput.amount
     }
   }
 
@@ -935,9 +971,8 @@ export class GameManager {
   _accrueBuildingOutputs() {
     const civ = this.data.civilization
     let addedFood = 0
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (!occ || occ.kind !== 'building' || occ.damaged) continue
+    for (const { occ } of this._buildingInstances()) {
+      if (occ.damaged) continue
       for (const o of buildingOutputs(BUILDING_DEFS[occ.key], occ.level, this.data.era)) {
         if (!civ[o.res]) continue
         civ[o.res].value += o.amount // Pier food, Library progress, …
@@ -1173,11 +1208,8 @@ export class GameManager {
   /** Each surviving Cave Painting's stored :progress: doubles per era (capped). */
   _ageCavePaintings() {
     const { storedMax, storedBase } = BUILDING_DEFS.cave_painting
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (occ && occ.key === 'cave_painting') {
-        occ.storedProgress = Math.min(storedMax, (occ.storedProgress ?? storedBase) * 2)
-      }
+    for (const { occ } of this._buildingInstances()) {
+      if (occ.key === 'cave_painting') occ.storedProgress = Math.min(storedMax, (occ.storedProgress ?? storedBase) * 2)
     }
   }
 

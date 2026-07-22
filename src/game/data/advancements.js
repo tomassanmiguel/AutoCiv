@@ -132,6 +132,7 @@ export const IMPLEMENTED = {
   'Celestial Navigation': { kind: 'building', key: 'lighthouse', description: "Unlocks the Lighthouse — a coastal :gold: building; a :naval: unit doing unblocked damage in its waters gains +200% resources." },
 
   // --- Classical era ---
+  'Urbanization': { kind: 'building', key: 'city', description: 'Unlocks the City — an underlaid :utility: support that lets a tile hold 2 additional buildings (which can never be replaced).' },
   'Machinery':    { kind: 'unit', key: 'crossbowman', description: 'Unlocks the Crossbowman — a slow, hard-hitting land :ranged: unit.' },
   'Concrete':     { kind: 'modifier', key: 'concrete', silhouette: '/sprites/ui/defense.png', description: 'Permanently gives all buildings +12 :defense:.' },
   'Arches':       { kind: 'building', key: 'aqueduct', description: 'Unlocks the Aqueduct — a :food: building whose output DOUBLES for each adjacent Aqueduct.' },

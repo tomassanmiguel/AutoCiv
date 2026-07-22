@@ -21,6 +21,11 @@ export class Tile {
     // An UNDERLAPPING building (e.g. Road) that shares the tile with the occupant in
     // its own slot — never replaced, no combat/HP. Shape: { kind:'building', key, level }.
     this.underlap = null
+    // An underlaid CITY (its own slot, independent of a Road) that lets this tile hold
+    // extra buildings. Shape: { kind:'building', key:'city', level }. `extras` holds the
+    // additional (non-underlaid) buildings, each { kind:'building', key, level, hp, … }.
+    this.city = null
+    this.extras = []
   }
 
   get def() {

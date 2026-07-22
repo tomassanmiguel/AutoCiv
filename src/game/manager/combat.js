@@ -474,10 +474,8 @@ class CombatMixin {
   /** Campfire buildings heal adjacent friendly units/buildings by a % of their max
    *  HP for each whole combat-second elapsed (`times`). */
   _applyCampfireHealing(times) {
-    const t = this.data.tableau
-    for (const tile of t.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (!occ || occ.kind !== 'building' || occ.key !== 'campfire' || occ.damaged) continue
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.key !== 'campfire' || occ.damaged) continue
       const pct = BUILDING_DEFS.campfire.heal(occ.level)
       for (const nbTile of this._adjacentTiles(tile.row, tile.col)) {
         const nb = nbTile.occupant
@@ -500,9 +498,8 @@ class CombatMixin {
     for (let s = (Math.floor(before / def.bathsEvery) + 1) * def.bathsEvery; s <= after; s += def.bathsEvery) if (s > 0) hits++
     if (hits === 0) return false
     let buffed = false
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (occ?.kind !== 'building' || occ.key !== 'public_baths' || occ.damaged) continue
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.key !== 'public_baths' || occ.damaged) continue
       const atk = def.bathsAtk(occ.level) * hits
       for (const nbTile of this._adjacentTiles(tile.row, tile.col)) {
         const nb = nbTile.occupant
@@ -528,9 +525,8 @@ class CombatMixin {
     let hits = 0
     for (let s = (Math.floor(before / every) + 1) * every; s <= after; s += every) if (s > 0) hits++
     if (hits === 0) return
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (occ?.kind !== 'building' || occ.key !== 'embassy' || occ.damaged) continue
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.key !== 'embassy' || occ.damaged) continue
       for (let i = 0; i < hits; i++) this._spawnMercAdjacent(tile)
     }
   }
@@ -590,9 +586,8 @@ class CombatMixin {
   _applyEraEndEffects() {
     const civ = this.data.civilization
     // Ranch: grow its per-tick food bonus (+2/3/4/…) if it survived; reset if destroyed.
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (occ?.kind !== 'building' || occ.key !== 'ranch') continue
+    for (const { occ } of this._buildingInstances()) {
+      if (occ.key !== 'ranch') continue
       if (occ.damaged) { occ.ranchBonus = 0; occ.ranchStep = 2 }
       else {
         occ.ranchBonus = (occ.ranchBonus ?? 0) + (occ.ranchStep ?? 2)
@@ -605,9 +600,8 @@ class CombatMixin {
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       if (tile.occupant?.kind === 'unit') deployedUnits++
     }
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (occ?.kind !== 'building' || occ.damaged) continue
+    for (const { occ } of this._buildingInstances()) {
+      if (occ.damaged) continue
       if (occ.key === 'totem') legit += BUILDING_DEFS.totem.combatLegit(occ.level)
       else if (occ.key === 'colosseum') legit += 5 * deployedUnits // 5 :legitimacy: per unit in the civ
     }
@@ -634,9 +628,8 @@ class CombatMixin {
     this._accrueBuildingOutputs()
     // Forging: upgrade a random adjacent (road-augmented) unit. Stats re-derived by the
     // _syncUnitStats(false) that runs right after this in _endCombat.
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (occ?.kind !== 'building' || occ.key !== 'forging' || occ.damaged) continue
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.key !== 'forging' || occ.damaged) continue
       const adj = this._adjacentTiles(tile.row, tile.col).filter((t) => t.occupant?.kind === 'unit' && !t.occupant.damaged)
       if (adj.length === 0) continue
       adj[Math.floor(Math.random() * adj.length)].occupant.level += 1

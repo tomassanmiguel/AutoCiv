@@ -152,6 +152,16 @@ export const BUILDING_DEFS = {
     bathsAtk: (level = 1) => level, // … and permanently grant adjacent units +level :attack:
     effect: (level) => `Every 5 seconds in combat, heals adjacent units & buildings for 50% of their max :defense: and permanently grants adjacent units +${level} :attack:.`,
   },
+  // City: an underlaid UTILITY support. `underlaidCity: true` gives it its OWN tile slot
+  // (`tile.city`, independent of a Road) with no HP/combat, and lets the tile hold
+  // `extraCap` additional non-underlaid buildings in `tile.extras`. City buildings are
+  // additive (they never replace) and can't be replaced or overbuilt themselves.
+  city: {
+    key: 'city', name: 'City', types: ['utility'], placement: 'land',
+    underlaidCity: true, noUpgrade: true, hp: 0, upHp: 0,
+    extraCap: 2, // additional buildings the tile can hold beyond its primary occupant
+    effect: 'Underlaid. Lets this tile hold 2 additional buildings. City buildings can never be replaced.',
+  },
   // Road: a UTILITY building that UNDERLAPS. `underlap: true` means it lives in the
   // tile's own `underlap` slot (never replaced, no HP/combat) rather than as the
   // occupant. Links every tile it touches into one adjacency group.
