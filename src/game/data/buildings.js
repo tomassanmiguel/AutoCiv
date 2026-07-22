@@ -108,6 +108,12 @@ export const BUILDING_DEFS = {
     legitPct: mintLegitPct,
     effect: (level) => `Produces :gold: each tick equal to ${Math.round(mintLegitPct(level) * 100)}% of your current :legitimacy:.`,
   },
+  lighthouse: {
+    key: 'lighthouse', name: 'Lighthouse', types: ['gold'], placement: 'coast',
+    hp: 12, upHp: 4,
+    unblockedBonus: 2, // +200% (ADDITIVE) to resources a :naval: unit reaps from unblocked damage in its waters
+    effect: "When a :naval: unit deals unblocked damage in the Lighthouse's waters, resources gained are increased by 200%.",
+  },
   temple: {
     key: 'temple', name: 'Temple', types: ['legitimacy'], placement: 'land',
     hp: 18, upHp: 6,

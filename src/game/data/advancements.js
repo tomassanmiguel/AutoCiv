@@ -129,6 +129,7 @@ export const IMPLEMENTED = {
   'Code of Laws': { kind: 'policy', key: 'code_of_laws', description: 'Unlocks the Code of Laws policy — unit and building repair costs are 75% lower.' },
   'Diplomatic Marriage': { kind: 'policy', key: 'diplomatic_marriage', description: 'Unlocks the Diplomatic Marriage policy — mercenaries are hired 3 upgrade levels higher.' },
   'Alphabet':     { kind: 'modifier', key: 'alphabet', silhouette: '/sprites/ui/progress.png', description: 'All future :progress: thresholds are 5% lower.' },
+  'Celestial Navigation': { kind: 'building', key: 'lighthouse', description: "Unlocks the Lighthouse — a coastal :gold: building; a :naval: unit doing unblocked damage in its waters gains +200% resources." },
 }
 
 export function isImplemented(name) {

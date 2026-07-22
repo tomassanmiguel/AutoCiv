@@ -139,14 +139,19 @@ class CombatMixin {
         // friendly unit in front don't act; only the front unit (or any ranged, which
         // shoots over) collects the "unblocked" gold (+ Hunting food).
         if (role !== 'ranged' && !isFrontUnit) return false
-        const gold = atk * (UNIT_DEFS[c.unit.key].unblockedGoldMult ?? 1) // Trireme triples unblocked gold
+        // Additive % bonuses to unblocked-damage resources: the unit's own gold bonus
+        // (Trireme, gold only) + Lighthouse (+200% to ALL resources for a :naval: unit in
+        // its waters). Additive, NOT multiplicative.
+        const lighthouse = this._navalUnblockedBonus(c)
+        const gold = Math.round(atk * ((UNIT_DEFS[c.unit.key].unblockedGoldMult ?? 1) + lighthouse))
         this.data.civilization.gold.value += gold
         this._pushEvent({ kind: 'gold', amount: gold, col: c.col, row: c.row })
         if (this._hasPolicy('hunting')) {
+          const foodGain = Math.round(atk * (1 + lighthouse))
           const food = this.data.civilization.food
-          food.value += atk
+          food.value += foodGain
           this._processThresholds('food', food)
-          this._pushEvent({ kind: 'food', amount: atk, col: c.col, row: c.row })
+          this._pushEvent({ kind: 'food', amount: foodGain, col: c.col, row: c.row })
         }
         return true
       }
@@ -221,6 +226,45 @@ class CombatMixin {
   _enemyNeighbors(e) {
     return this.data.enemies.filter((o) => !o.damaged && o !== e &&
       Math.abs(o.col - e.col) + Math.abs(o.slot - e.slot) === 1)
+  }
+
+  /** Additive % bonus to a :naval: unit's unblocked-damage resources from every undamaged
+   *  Lighthouse in the same waters (each +200%). 0 for non-naval units / none in range. */
+  _navalUnblockedBonus(c) {
+    if (!UNIT_DEFS[c.unit.key].types.includes('naval')) return 0
+    const waters = this._watersTiles(c.row, c.col)
+    if (waters.size === 0) return 0
+    let bonus = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && occ.key === 'lighthouse' && !occ.damaged && waters.has(`${tile.row},${tile.col}`)) {
+        bonus += BUILDING_DEFS.lighthouse.unblockedBonus
+      }
+    }
+    return bonus
+  }
+
+  /** "r,c" keys of the connected water body (coast/sea, currently visible) containing (sr, sc). */
+  _watersTiles(sr, sc) {
+    const t = this.data.tableau
+    const era = this.data.era
+    const isWater = (r, c) => {
+      const p = t.tileAt(r, c)?.def?.place
+      return (p === 'coast' || p === 'sea') && t.isUnlocked(r, c, era)
+    }
+    const seen = new Set()
+    if (!isWater(sr, sc)) return seen
+    seen.add(`${sr},${sc}`)
+    const stack = [[sr, sc]]
+    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+    while (stack.length) {
+      const [r, c] = stack.pop()
+      for (const [dr, dc] of NBRS) {
+        const nr = r + dr, nc = c + dc, k = `${nr},${nc}`
+        if (!seen.has(k) && isWater(nr, nc)) { seen.add(k); stack.push([nr, nc]) }
+      }
+    }
+    return seen
   }
   _frontPlayerInCol(col, bounds) {
     for (let r = bounds.maxRow; r >= bounds.minRow; r--) {
