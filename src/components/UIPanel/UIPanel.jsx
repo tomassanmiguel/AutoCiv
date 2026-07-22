@@ -148,13 +148,9 @@ export default function UIPanel() {
   const canConvert = !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
 
   // Accordion: at most one group open at a time. Replace mode forces the relevant
-  // group open; build-picking forces Units open unless Buildings already is.
+  // group open; otherwise the player's chosen group (or none).
   const [openGroup, setOpenGroup] = useState('units')
-  const effectiveOpen = replacing
-    ? replacing.group
-    : buildPicking
-      ? (openGroup === 'buildings' ? 'buildings' : 'units')
-      : openGroup
+  const effectiveOpen = replacing ? replacing.group : openGroup
 
   // When a roster slot is filled (advancement unlock), open its tab so the
   // fill "slam" animation is visible.
@@ -167,6 +163,16 @@ export default function UIPanel() {
     }
   }, [jf])
 
+  // When a build PICK begins, default to a pickable group (Units) so its yellow
+  // slots are visible; the player can still collapse and switch to Buildings.
+  const wasPicking = useRef(false)
+  useEffect(() => {
+    if (buildPicking && !wasPicking.current && openGroup !== 'units' && openGroup !== 'buildings') {
+      setOpenGroup('units')
+    }
+    wasPicking.current = buildPicking
+  }, [buildPicking, openGroup])
+
   const groups = [
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
     { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era) },
@@ -176,9 +182,8 @@ export default function UIPanel() {
 
   // While a group is expanded, HIDE the other three entirely so the open group
   // claims the whole area and its cards fit (collapse it via its header to bring
-  // the tabs back). Exception: during a build PICK the player must be able to
-  // switch Units↔Buildings, so keep the slim tabs visible then.
-  const soloOpen = !!effectiveOpen && !buildPicking
+  // the tabs back). Applies during a build pick too — collapse to switch groups.
+  const soloOpen = !!effectiveOpen
 
   return (
     <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
