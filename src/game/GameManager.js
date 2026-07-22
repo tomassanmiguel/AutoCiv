@@ -106,13 +106,14 @@ export class GameManager {
     }
     civ.gold.value += civ.gold.output
 
-    // Count the tick FIRST (resources accrue exactly once per tick), THEN — if a
-    // progress threshold crossed this tick — open the choice, which pauses the
-    // game. Resuming continues on the next tick, so no tick's output is
-    // double-counted (the pause is a genuinely free pause).
+    // Count the tick (resources accrue exactly once per tick), then open any owed
+    // choice (which pauses the game). Development ends only once nothing is
+    // pending — so a threshold crossed on the FINAL tick is still presented before
+    // the era ends (see _afterResolve).
     this.data.tick += 1
-    if (this.data.tick >= TICKS_PER_ERA) { this._endDevelopment(); this._emit(); return }
     this._maybeOpenSelection()
+    if (this.data.selection) { this._emit(); return }
+    if (this.data.tick >= TICKS_PER_ERA) { this._endDevelopment(); this._emit(); return }
     this._emit()
   }
 
@@ -188,19 +189,26 @@ export class GameManager {
   _maybeOpenSelection() {
     if (this.data.selection) return
     if (this.data.phase !== 'development' || this.data.won) return
-    if (this.data.pendingProgress > 0) this._openProgressSelection()
-    else if (this.data.pendingProduction > 0) this._openProductionSelection()
+    // Progress first, then production. Skip any progress choice that has no options
+    // left (era pool exhausted) so an empty selection can't soft-lock the game.
+    while (this.data.pendingProgress > 0) {
+      const options = this._pickProgressOptions()
+      if (options.length === 0) { this.data.pendingProgress -= 1; continue }
+      this.data.selection = { type: 'progress', stage: 'choose', hidden: false, pending: null, options }
+      this._restartTimer() // holds the game paused
+      return
+    }
+    if (this.data.pendingProduction > 0) this._openProductionSelection()
   }
 
-  _openProgressSelection() {
-    this.data.selection = {
-      type: 'progress',
-      stage: 'choose', // 'choose' | 'confirm' | 'replace'
-      hidden: false,
-      pending: null,
-      options: this._pickProgressOptions(),
-    }
-    this._restartTimer() // holds the game paused
+  /** After a selection resolves: open the next owed choice; else resume ticking,
+   *  or end development if the era's last tick was already reached. */
+  _afterResolve() {
+    this._maybeOpenSelection()
+    if (this.data.selection) { this._emit(); return }
+    if (this.data.tick >= TICKS_PER_ERA && this.data.phase === 'development') this._endDevelopment()
+    else this._restartTimer()
+    this._emit()
   }
 
   /** Draw up to three unchosen advancements (<= current era), weighted by 2^era. */
@@ -331,9 +339,7 @@ export class GameManager {
   _resolveProgress() {
     this.data.pendingProgress = Math.max(0, this.data.pendingProgress - 1)
     this.data.selection = null
-    this._maybeOpenSelection()
-    if (!this.data.selection) this._restartTimer() // resume at the chosen speed
-    this._emit()
+    this._afterResolve()
   }
 
   _markChosen(id) { this.data.civilization.chosenAdvancements.add(id) }
@@ -503,9 +509,7 @@ export class GameManager {
   _resolveProduction() {
     this.data.pendingProduction = Math.max(0, this.data.pendingProduction - 1)
     this.data.selection = null
-    this._maybeOpenSelection()
-    if (!this.data.selection) this._restartTimer()
-    this._emit()
+    this._afterResolve()
   }
 
   /** End-of-era economic output from deployed buildings (into resources + lifetime). */
@@ -530,6 +534,7 @@ export class GameManager {
   // Phase machine
   // ---------------------------------------------------------------------------
   _endDevelopment() {
+    if (this.data.phase !== 'development') return // guard against double-accrue
     this._accrueBuildingOutputs()
     this.data.phase = 'battle'
     this._restartTimer() // stops ticking
