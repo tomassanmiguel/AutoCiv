@@ -937,8 +937,16 @@ export class GameManager {
     if (c.side === 'player') {
       const front = this._frontEnemyInCol(c.col)
       if (!front) {
+        // No enemy target in this column: the attack goes "unblocked" — it yields
+        // gold, and (Hunting) that much :food: too.
         this.data.civilization.gold.value += atk
         this._pushEvent({ kind: 'gold', amount: atk, col: c.col, row: c.row })
+        if (this._hasPolicy('hunting')) {
+          const food = this.data.civilization.food
+          food.value += atk
+          this._processThresholds('food', food)
+          this._pushEvent({ kind: 'food', amount: atk, col: c.col, row: c.row })
+        }
         return true
       }
       if (role === 'ranged' || c.row === this._frontPlayerUnitRow(c.col, bounds)) {
@@ -968,19 +976,13 @@ export class GameManager {
     const killed = target.hp <= 0
     if (killed) { target.hp = 0; target.damaged = true }
     this._pushEvent({ kind: 'damage', side, amount, killed, ...loc })
-    const civ = this.data.civilization
-    // Hunting: unblocked damage your units land on enemies is also gained as food.
-    if (side === 'enemy' && this._hasPolicy('hunting')) {
-      civ.food.value += amount
-      this._processThresholds('food', civ.food)
-    }
     // Burial Rites: any unit that dies yields :progress: equal to its :defense: (maxHp).
     // Banked to progress.value (NOT crossed here) — progress choices only open in
     // development, and pending choices are dropped at era change; the banked value
     // carries into next era's dev and opens the choices there.
     if (killed && this._hasPolicy('burial_rites')) {
       const p = target.maxHp ?? 0
-      civ.progress.value += p
+      this.data.civilization.progress.value += p
       this._pushEvent({ kind: 'progress', amount: p, ...loc })
     }
   }

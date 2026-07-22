@@ -26,6 +26,7 @@
 .fx-float.legit { color: #ff6b5a; }
 .fx-float.heal { color: #8ef29a; }   /* campfire healing */
 .fx-float.progress { color: #6fd0ff; }  /* burial rites progress on death */
+.fx-float.food { color: #a6d95b; }   /* hunting food on unblocked (no-target) attack */
 
 @keyframes fx-rise {
   0% { opacity: 0; transform: translate(-50%, -35%) scale(0.7); }

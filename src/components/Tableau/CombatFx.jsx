@@ -43,6 +43,9 @@ export default function CombatFx({ bounds, enemyRows }) {
         spawned.push({ id: idRef.current++, ...pos, text: `-${ev.amount}`, cls: `dmg ${ev.side === 'enemy' ? 'to-enemy' : 'to-player'}${ev.killed ? ' kill' : ''}` })
       } else if (ev.kind === 'gold') {
         spawned.push({ id: idRef.current++, ...pos, text: `+${ev.amount}`, icon: '/sprites/icons/gold.png', cls: 'gold' })
+      } else if (ev.kind === 'food') {
+        // Hunting fires on the same empty-column cell as the gold float — nudge it up so they don't overlap.
+        spawned.push({ id: idRef.current++, x: pos.x, y: pos.y - 20, text: `+${ev.amount}`, icon: '/sprites/icons/food.png', cls: 'food' })
       } else if (ev.kind === 'legit') {
         spawned.push({ id: idRef.current++, ...pos, text: `-${ev.amount}`, icon: '/sprites/icons/legitimacy.png', cls: 'legit' })
       } else if (ev.kind === 'heal') {

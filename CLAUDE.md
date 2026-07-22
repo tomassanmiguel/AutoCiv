@@ -483,8 +483,9 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 - **End-of-combat legitimacy** (`_endCombat`, survival only — not on defeat): each undamaged **Totem**
   grants `10 + 5·(level−1)`; each **Shaman** +10; **Sacred Grounds** grants +1 per **empty, visible,
   land** tile.
-- **Event-triggered policies** (checked via `_hasPolicy`): **Hunting** — a player unit dealing
-  unblocked damage to an enemy also gains that much :food: (in `_dealDamage`); **Burial Rites** — any
+- **Event-triggered policies** (checked via `_hasPolicy`): **Hunting** — a player unit attacking a
+  column with **no enemy target** ("unblocked" damage) gains :food: equal to its :attack:, alongside
+  the usual gold (in `_resolveAttack`'s empty-column branch); **Burial Rites** — any
   unit that dies banks :progress: equal to its :defense: (added to `progress.value`, NOT crossed
   mid-combat — progress choices only open in development, so it carries into next era's dev); **Midwivery**
   — creating a unit yields :production: equal to its effective :defense: (in `_createInstance`, during
