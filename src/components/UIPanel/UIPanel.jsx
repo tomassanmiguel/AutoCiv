@@ -99,12 +99,26 @@ function policySlots(civ) {
     return { index, kind: 'item', silhouette: POLICY_INFO.silhouette, name: def.name, sub: def.type, line: def.effect, tip: def.effect }
   })
 }
-function populationSlots(civ) {
-  return civ.population.map((key, index) =>
-    key && POP_TYPES[key]
-      ? { index, kind: 'pop', pop: POP_TYPES[key], count: civ.pops[key] ?? 0 }
-      : { index, kind: 'empty', silhouette: POPULATION_INFO.silhouette, name: POPULATION_INFO.label, tip: POPULATION_INFO.description },
-  )
+function populationSlots(civ, game, canConvert) {
+  return civ.population.map((key, index) => {
+    if (!key || !POP_TYPES[key]) {
+      return { index, kind: 'empty', silhouette: POPULATION_INFO.silhouette, name: POPULATION_INFO.label, tip: POPULATION_INFO.description }
+    }
+    // Specialists can be bought (era+1 citizens -> this type) for gold.
+    let convert = null
+    if (canConvert && POP_TYPES[key].specialist) {
+      const info = game.specialistConvertInfo(key)
+      convert = {
+        count: info.count,
+        cost: info.cost,
+        enabled: info.enoughCitizens && info.canAfford,
+        enoughCitizens: info.enoughCitizens,
+        onClick: () => game.convertSpecialistWithGold(key),
+      }
+    }
+    const flashSeq = game.data.popFx && game.data.popFx.key === key ? game.data.popFx.seq : 0
+    return { index, kind: 'pop', pop: POP_TYPES[key], count: civ.pops[key] ?? 0, convert, flashSeq }
+  })
 }
 
 function unitTip(def, level, hpBonus) {
@@ -128,7 +142,10 @@ export default function UIPanel() {
   const sel = game.data.selection
   const replacing = sel && sel.type === 'progress' && sel.stage === 'replace' ? sel.pending : null
   const buildPicking = !!(sel && sel.type === 'production' && sel.stage === 'pick')
-  const combat = game.data.phase === 'battle' // pulse gold/legitimacy as they change
+  const phase = game.data.phase
+  const combat = phase === 'battle' // pulse gold/legitimacy as they change
+  // Specialist gold-conversion is offered during development + preparation.
+  const canConvert = !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
 
   // Accordion: at most one group open at a time. Replace mode forces the relevant
   // group open; build-picking forces Units open unless Buildings already is.
@@ -154,7 +171,7 @@ export default function UIPanel() {
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
     { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era) },
     { key: 'policies', label: 'Policies', slots: policySlots(civ) },
-    { key: 'population', label: 'Population', slots: populationSlots(civ) },
+    { key: 'population', label: 'Population', slots: populationSlots(civ, game, canConvert) },
   ]
 
   return (
@@ -257,7 +274,7 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickab
             // replaying the fill "slam" animation (but not on stat/count changes).
             const key = s.kind === 'pop' ? `${s.index}:${s.pop.key}` : `${s.index}:${s.name ?? s.kind}`
             return s.kind === 'pop'
-              ? <PopCard key={key} pop={s.pop} count={s.count} mark={mark} onActivate={onActivate} />
+              ? <PopCard key={key} pop={s.pop} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} />
               : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} />
           })}
         </div>
@@ -316,22 +333,39 @@ function SlotRow({ slot, mark, onActivate }) {
 
 /**
  * A population pop card: name + per-pop output icons and the count. Hover shows
- * per-pop and total output. A replacement candidate (`mark`) flashes and is clickable.
+ * per-pop and total output. A replacement candidate (`mark`) flashes and is
+ * clickable. Specialists carry a `convert` button (spend gold to turn era+1
+ * citizens into this type); `flashSeq` replays a green flash when just converted.
  */
-function PopCard({ pop, count, mark, onActivate }) {
+function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0 }) {
   const body = (
     <>
-      <div className="pop-main">
-        <div className="pop-name">{pop.name}</div>
-        <div className="pop-outputs">
-          {Object.entries(pop.outputs).map(([res, v]) => (
-            <span key={res} className="pop-output">
-              <img src={ICON[res]} alt={res} />+{v}
-            </span>
-          ))}
+      <div className="pop-top">
+        <div className="pop-main">
+          <div className="pop-name">{pop.name}</div>
+          <div className="pop-outputs">
+            {Object.entries(pop.outputs).map(([res, v]) => (
+              <span key={res} className="pop-output">
+                <img src={ICON[res]} alt={res} />+{v}
+              </span>
+            ))}
+          </div>
         </div>
+        <div className="pop-count">{count}</div>
       </div>
-      <div className="pop-count">{count}</div>
+      {convert && (
+        <button
+          type="button"
+          className={`pop-convert${convert.enabled ? '' : ' disabled'}`}
+          disabled={!convert.enabled}
+          onClick={(e) => { e.stopPropagation(); convert.onClick() }}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <span className="pop-convert-label">Convert +{convert.count}</span>
+          <span className="pop-convert-cost"><img src={ICON.gold} alt="" />{convert.cost}</span>
+        </button>
+      )}
+      {flashSeq ? <span key={flashSeq} className="pop-flash-overlay" /> : null}
     </>
   )
 
@@ -340,6 +374,10 @@ function PopCard({ pop, count, mark, onActivate }) {
       {popTooltipText(pop)}
       <br /><br />
       <strong>Total ({count}):</strong> {popTotalSummary(pop, count).join(', ')} per tick.
+      {convert && (
+        <><br /><br /><strong>Convert:</strong> {convert.count} citizen{convert.count === 1 ? '' : 's'} → {pop.name} for {convert.cost} gold
+          {convert.enoughCitizens ? '' : ' (need more citizens)'}.</>
+      )}
     </>
   )
 
