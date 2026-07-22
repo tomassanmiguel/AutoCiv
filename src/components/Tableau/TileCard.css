@@ -36,6 +36,57 @@
   line-clamp: 1;
 }
 
+/* City tile: buildings render as a vertical stack of name-only "road style" strips. */
+.city-stack {
+  position: absolute;
+  inset: 8% 6% 6% 6%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+.city-strip-anchor {
+  position: relative;
+  flex: 0 1 auto;
+  height: 30%;
+  min-height: 0;
+  transition: transform 0.12s ease;
+}
+.city-strip-anchor:hover { transform: scale(1.2); z-index: 7; }
+.tile-card.strip {
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 3px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(30, 24, 12, 0.9);
+  border: 1px solid rgba(210, 180, 110, 0.55);
+}
+.tile-card.strip .tc-name {
+  font-size: 8px;
+  text-align: left;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+.tile-card.strip .tc-level { font-size: 7px; padding: 0 2px; }
+
+/* Small corner tag marking a tile as a City (visible even when empty). */
+.city-badge {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 4;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #1a140a;
+  background: rgba(230, 200, 120, 0.85);
+  padding: 0 3px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
 /* Slide layer: a unit that changed tiles mounts here and animates from its old cell
    (offset --sx/--sy) to this one, so shifts/repositions slide instead of teleport. */
 .tc-slide { width: 100%; height: 100%; }

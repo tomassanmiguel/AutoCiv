@@ -43,7 +43,7 @@ function defColor(ratio) {
  * level in the tooltip (tinted green). `onGrab` starts a reposition drag.
  * `terrain` is the tile's terrain key (for the Forest combat-def note).
  */
-export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1, anchorClass = '' }) {
+export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1, anchorClass = '', strip = false }) {
   const occ = occupant
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
@@ -132,6 +132,24 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         {!isPrev && isUnit && (occ.packAtk ?? 0) > 0 && <><br /><IconText>{`+${occ.packAtk} :attack: (Legion).`}</IconText></>}
         {!isUnit && !isPrev && (bOuts[0] || tickOut) && <><br />Total produced: {Math.floor(occ.lifetimeOutput ?? 0)} <img className="itext-icon" src={RES_ICON[bOuts[0]?.res ?? tickOut.res]} alt="" /></>}
       </>
+    )
+  }
+
+  // City-tile buildings (and the primary occupant) render as compact, name-only
+  // "road style" strips — details on hover (the same rich tooltip as a full card).
+  if (strip) {
+    return (
+      <InfoTip
+        className="tile-card-anchor city-strip-anchor"
+        title={def.name + (damaged ? ' (damaged)' : occ.mercenary ? ' (mercenary)' : '')}
+        text={renderTip(false)}
+        onMouseDown={onGrab}
+      >
+        <div className={`tile-card strip ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''}`}>
+          <span className="tc-name">{def.name}</span>
+          <span className="tc-level">{occ.level}</span>
+        </div>
+      </InfoTip>
     )
   }
 

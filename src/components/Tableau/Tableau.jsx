@@ -425,23 +425,46 @@ export default function Tableau() {
                   backgroundImage: tile.sprite ? `url("${tile.sprite}")` : 'none',
                 }}
               />
-              {occ && (
-                <TileCard
-                  occupant={occ}
-                  era={era}
-                  hpBonus={hpBonus}
-                  buildingHpBonus={buildingHpBonus}
-                  combat={combat}
-                  combatSeq={combatSeq}
-                  side="player"
-                  terrain={tile.terrain}
-                  action={tileAction(tile, occ)}
-                  slide={slideFor(occ, j * CELL, i * CELL)}
-                  onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
-                  anchorClass={tile.underlap ? 'has-underlap' : ''}
-                />
+              {/* A CITY tile shows its buildings (primary + extras) as name-only strips
+                  stacked in the cell; a plain tile shows the full occupant card. */}
+              {tile.city ? (
+                ([occ, ...(tile.extras ?? [])].filter(Boolean).length > 0 || null) && (
+                  <div className="city-stack">
+                    {[occ, ...(tile.extras ?? [])].filter(Boolean).map((b, k) => (
+                      <TileCard
+                        key={`${b.key}-${k}`}
+                        occupant={b}
+                        era={era}
+                        combat={combat}
+                        combatSeq={combatSeq}
+                        side="player"
+                        terrain={tile.terrain}
+                        strip
+                        onGrab={repositionable && b.kind === 'unit' && b === occ ? (e) => onUnitGrab(e, tile) : undefined}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : (
+                occ && (
+                  <TileCard
+                    occupant={occ}
+                    era={era}
+                    hpBonus={hpBonus}
+                    buildingHpBonus={buildingHpBonus}
+                    combat={combat}
+                    combatSeq={combatSeq}
+                    side="player"
+                    terrain={tile.terrain}
+                    action={tileAction(tile, occ)}
+                    slide={slideFor(occ, j * CELL, i * CELL)}
+                    onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
+                    anchorClass={tile.underlap ? 'has-underlap' : ''}
+                  />
+                )
               )}
-              {/* Road underlaps the occupant in its own bottom strip. */}
+              {/* A City marks the tile (its own underlaid badge); a Road underlaps in a strip. */}
+              {tile.city && <span className="city-badge">City</span>}
               {tile.underlap && <TileCard occupant={tile.underlap} era={era} side="player" />}
               {mercOK && !repos && (
                 <button
