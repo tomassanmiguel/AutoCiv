@@ -42,10 +42,12 @@ export const BUILDING_CATEGORIES = [
     description: ':legitimacy: Legitimacy buildings help eternalize your rule' },
   { key: 'defense', label: 'Defense', silhouette: '/sprites/ui/defense.png',
     description: ':defense: Defense buildings keep the unwanted out' },
+  // Two Utility building slots (index-aligned to civ.buildings 6 & 7). A utility
+  // building fills the first empty one; the Road (an underlapping utility) fits here too.
   { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
     description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
-  { key: 'supplement', label: 'Supplement', silhouette: null, // no icon — supplements render name-only
-    description: 'Supplement buildings underlap other buildings and are never replaced. They shape the board with passive effects but do not fight.' },
+  { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
+    description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
 ]
 
 // Policies and Population are generic slots (no per-slot category); every slot

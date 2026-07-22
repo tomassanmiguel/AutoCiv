@@ -231,14 +231,14 @@ export class GameManager {
     let n = 0
     for (const tile of this._adjacentTiles(r, c)) {
       const occ = tile.occupant
-      if (occ?.kind === 'building' && !occ.damaged && !BUILDING_DEFS[occ.key]?.supplement) n++
+      if (occ?.kind === 'building' && !occ.damaged && !BUILDING_DEFS[occ.key]?.underlap) n++
     }
     return n
   }
 
   // --- Road-augmented adjacency ---------------------------------------------------
-  // A Road (supplement) makes every tile it touches mutually adjacent, chaining
-  // through connected roads. ALL adjacency/range queries route through
+  // A Road (an underlapping utility) makes every tile it touches mutually adjacent,
+  // chaining through connected roads. ALL adjacency/range queries route through
   // _reachableWithin so roads uniformly boost building ranges and unit movement.
 
   /** Connected road networks as PORT sets: each Set holds a network's road tiles plus
@@ -250,7 +250,7 @@ export class GameManager {
     const t = this.data.tableau
     const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
     const roadKeys = []
-    for (const tile of t.tiles.values()) if (tile.supplement?.key === 'road') roadKeys.push(`${tile.row},${tile.col}`)
+    for (const tile of t.tiles.values()) if (tile.underlap?.key === 'road') roadKeys.push(`${tile.row},${tile.col}`)
     if (roadKeys.length === 0) { this._roadNetsCache = []; return this._roadNetsCache }
     const roadSet = new Set(roadKeys)
     const seen = new Set()
@@ -389,7 +389,7 @@ export class GameManager {
         occ.atk = Math.round(s.atk * (brew ? 1.1 : 1))
         occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
-      } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.supplement) {
+      } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.underlap) {
         const newMax = buildingHp(BUILDING_DEFS[occ.key], occ.level, civ.modifiers.buildingHpBonus) + terrainDef
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         occ.maxHp = Math.max(1, newMax)
@@ -632,8 +632,13 @@ export class GameManager {
     switch (unlock.kind) {
       case 'unit':
         return { group: 'units', multiFill: true, slotIndices: UNIT_DEFS[unlock.key].types.map((t) => catIndex(UNIT_CATEGORIES, t)) }
-      case 'building':
-        return { group: 'buildings', multiFill: true, slotIndices: BUILDING_DEFS[unlock.key].types.map((t) => catIndex(BUILDING_CATEGORIES, t)) }
+      case 'building': {
+        // Fill the first EMPTY slot whose category matches the building's type (Utility
+        // has two slots); when all are full those slots become the replace candidates.
+        const types = BUILDING_DEFS[unlock.key].types
+        const slotIndices = BUILDING_CATEGORIES.map((c, i) => i).filter((i) => types.includes(BUILDING_CATEGORIES[i].key))
+        return { group: 'buildings', multiFill: false, slotIndices }
+      }
       case 'policy':
         return { group: 'policies', multiFill: false, slotIndices: [0, 1, 2, 3, 4] }
       case 'pop':
@@ -751,8 +756,8 @@ export class GameManager {
     if (!sel || sel.type !== 'production' || sel.stage !== 'place' || !sel.chosen) return null
     const tile = this.data.tableau.tileAt(row, col)
     if (!tile || !this._canPlaceHere(sel.chosen, tile)) return 'invalid'
-    // Supplements underlap the occupant, so they're always a plain (valid) placement.
-    if (sel.chosen.kind === 'building' && BUILDING_DEFS[sel.chosen.key].supplement) return 'valid'
+    // Underlapping buildings coexist with the occupant, so they're always a plain (valid) placement.
+    if (sel.chosen.kind === 'building' && BUILDING_DEFS[sel.chosen.key].underlap) return 'valid'
     return tile.occupant ? 'replace' : 'valid'
   }
 
@@ -770,17 +775,17 @@ export class GameManager {
     if (!this.data.tableau.isUnlocked(tile.row, tile.col, this.data.era)) return false
     const def = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
     if (!canPlaceOn(def.placement, tile.terrain)) return false
-    // Supplements underlap the occupant but can't stack (one supplement per tile).
-    if (chosen.kind === 'building' && def.supplement) return !tile.supplement
+    // An underlapping building coexists with the occupant but can't stack (one per tile).
+    if (chosen.kind === 'building' && def.underlap) return !tile.underlap
     return true
   }
 
   _createInstance(chosen, tile) {
     const civ = this.data.civilization
-    // Supplement buildings (Road) underlap the occupant in their own slot — they never
+    // Underlapping buildings (Road) share the tile in their own slot — they never
     // replace and don't overbuild; placing one just re-derives adjacency-based outputs.
-    if (chosen.kind === 'building' && BUILDING_DEFS[chosen.key].supplement) {
-      tile.supplement = { kind: 'building', key: chosen.key, level: chosen.level }
+    if (chosen.kind === 'building' && BUILDING_DEFS[chosen.key].underlap) {
+      tile.underlap = { kind: 'building', key: chosen.key, level: chosen.level }
       this._roadNetsCache = null // road topology changed → drop the memoized port sets
       this._recomputeOutputs() // roads change brewery/kiln ranges
       this._syncUnitStats()    // and brewery-aura membership

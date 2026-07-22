@@ -50,12 +50,12 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const isUnit = occ.kind === 'unit'
   const def = isUnit ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
 
-  // Supplement buildings (Road): a minimal name-only card in its own bottom strip, no
+  // Underlapping buildings (Road): a minimal name-only card in its own bottom strip, no
   // stats/combat/actions. Its own tooltip still explains the effect.
-  if (!isUnit && def.supplement) {
+  if (!isUnit && def.underlap) {
     return (
-      <InfoTip className="supplement-anchor" title={def.name} text={buildingEffect(def, occ.level, era)}>
-        <div className="tile-card supplement"><span className="tc-name">{def.name}</span></div>
+      <InfoTip className="underlap-anchor" title={def.name} text={buildingEffect(def, occ.level, era)}>
+        <div className="tile-card underlap"><span className="tc-name">{def.name}</span></div>
       </InfoTip>
     )
   }

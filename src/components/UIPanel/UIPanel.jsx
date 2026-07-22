@@ -99,8 +99,8 @@ function buildingSlots(civ, era) {
     if (!occ) return { index, kind: 'empty', silhouette: cat.silhouette, name: cat.label, tip: cat.description }
     const def = BUILDING_DEFS[occ.key]
     const eff = buildingEffect(def, occ.level, era) // current era/level value
-    // Buildings show a Def stat; Supplements (Road) have no HP, so no Def.
-    const buildingDef = def.supplement ? null : buildingHp(def, occ.level, civ.modifiers.buildingHpBonus)
+    // Buildings show a Def stat; underlapping buildings (Road) have no HP, so no Def.
+    const buildingDef = def.underlap ? null : buildingHp(def, occ.level, civ.modifiers.buildingHpBonus)
     return { index, kind: 'item', silhouette: cat.silhouette, name: def.name, sub: cat.label, line: eff, tip: eff, def: buildingDef }
   })
 }

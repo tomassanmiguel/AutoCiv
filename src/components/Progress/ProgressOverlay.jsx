@@ -58,12 +58,12 @@ function UnlockDetail({ opt, era }) {
   if (u.kind === 'building') {
     const def = BUILDING_DEFS[u.key]
     const typeLabel = catLabel(BUILDING_CATEGORIES, def.types[0])
-    // Supplements (Road) have no combat/HP: no Def stat, and their category has no icon.
+    // Underlapping buildings (Road) have no combat/HP: no Def stat shown.
     return (
       <>
         <div className="pc-unlocks">Unlocks {def.name}</div>
-        <div className="pc-type"><IconText>{def.supplement ? `${typeLabel} building` : `:${def.types[0]}: ${typeLabel} building`}</IconText></div>
-        {!def.supplement && (
+        <div className="pc-type"><IconText>{`:${def.types[0]}: ${typeLabel} building`}</IconText></div>
+        {!def.underlap && (
           <div className="pc-stats">
             <Stat icon={STAT_ICON.def}>{buildingHp(def, 1)}</Stat>
           </div>

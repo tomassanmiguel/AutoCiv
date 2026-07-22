@@ -71,11 +71,12 @@ export const BUILDING_DEFS = {
     goldPerTick: mineGold,
     effect: (level) => `Produces ${mineGold(level)} :gold: per tick — doubled when placed on a mountain.`,
   },
-  // Supplement building: no HP, no combat. Lives in tile.supplement (underlaps the
-  // occupant), never replaced. Links every tile it touches into one adjacency group.
+  // Road: a UTILITY building that UNDERLAPS. `underlap: true` means it lives in the
+  // tile's own `underlap` slot (never replaced, no HP/combat) rather than as the
+  // occupant. Links every tile it touches into one adjacency group.
   road: {
-    key: 'road', name: 'Road', types: ['supplement'], placement: 'land',
-    supplement: true, noUpgrade: true, hp: 0, upHp: 0,
+    key: 'road', name: 'Road', types: ['utility'], placement: 'land',
+    underlap: true, noUpgrade: true, hp: 0, upHp: 0,
     effect: 'All tiles adjacent to the road are adjacent to each other. Underlaid.',
   },
 }
