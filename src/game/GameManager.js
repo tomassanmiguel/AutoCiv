@@ -381,7 +381,8 @@ export class GameManager {
       if (occ.kind === 'unit') {
         const wb = this._warbandBonus(occ, counts)
         const brew = this._inBreweryRange(tile.row, tile.col)
-        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef, wb)
+        // occ.permDef = permanent :defense: granted by a Baker (persists across combats).
+        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         occ.warband = wb
         occ.terrainDef = terrainDef
@@ -1097,15 +1098,23 @@ export class GameManager {
     for (const c of list) if (c.isUnit && this._isActive(c)) c.unit.cdTimer -= dt
 
     let shifted = false
+    let buffed = false
     for (const c of list) {
       if (!c.isUnit || !this._isActive(c) || c.unit.cdTimer > 0) continue
+      // Utility units (Baker) "act" instead of attacking — buff neighbours, no lunge/gold.
+      if (this._isUtilityActor(c)) {
+        this._utilityAct(c)
+        c.unit.cdTimer += this._effectiveCooldown(c.unit)
+        buffed = true
+        continue
+      }
       if (this._resolveAttack(c, bounds)) {
         c.unit.cdTimer += this._effectiveCooldown(c.unit)
         c.unit.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
         if (UNIT_DEFS[c.unit.key]?.shift && this._shift(c, bounds, enemyRows)) shifted = true
       }
     }
-    if (shifted) this._syncUnitStats(true) // a Wolf shift changed a unit's tile
+    if (shifted || buffed) this._syncUnitStats(true) // a Wolf shift or Baker buff changed unit stats
 
     // Campfire auras heal adjacent friendlies once per whole combat-second crossed.
     const secs = Math.floor(this.data.combatTime) - Math.floor(before)
@@ -1221,6 +1230,24 @@ export class GameManager {
       if (occ && !occ.damaged && occ.kind === 'unit') return r
     }
     return NaN
+  }
+
+  // --- Utility unit "acts" (e.g. Baker): resolve on cooldown like an attack, but grant
+  // an effect instead of dealing damage. Player-only (enemies never field utility units). ---
+  _isUtilityActor(c) {
+    return c.side === 'player' && c.isUnit && !!UNIT_DEFS[c.unit.key]?.bakerDef
+  }
+
+  /** Baker acts: permanently grant +N :defense: to each adjacent friendly unit. */
+  _utilityAct(c) {
+    const amount = UNIT_DEFS[c.unit.key].bakerDef(c.unit.level)
+    for (const tile of this._adjacentTiles(c.row, c.col)) {
+      const occ = tile.occupant
+      if (occ?.kind === 'unit' && !occ.damaged) {
+        occ.permDef = (occ.permDef ?? 0) + amount
+        this._pushEvent({ kind: 'buff', amount, col: tile.col, row: tile.row })
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------

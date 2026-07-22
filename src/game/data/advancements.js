@@ -99,6 +99,7 @@ export const IMPLEMENTED = {
   'Leatherwork':  { kind: 'modifier', key: 'leatherwork', silhouette: '/sprites/ui/defense.png', description: 'Permanently gives all friendly units +8 :defense:.' },
   'Slavery':      { kind: 'policy', key: 'slavery', description: 'Unlocks the Slavery policy — all :production: outputs +10%, but all :progress: outputs −5%.' },
   'Alloying':     { kind: 'unit', key: 'spearman', description: 'Unlocks the Spearman — a tough land :melee: unit.' },
+  'Baking':       { kind: 'unit', key: 'baker', description: 'Unlocks the Baker — a :utility: unit that permanently toughens adjacent units when it acts.' },
   'Oral Tradition': { kind: 'policy', key: 'oral_tradition', description: 'Unlocks the Oral Tradition policy — at the end of combat, gain :gold: and :progress: equal to your current :legitimacy:.' },
   'Hereditary Rule': { kind: 'policy', key: 'hereditary_rule', description: 'Unlocks the Hereditary Rule policy — at the end of combat, all units and buildings permanently gain +1 :defense:.' },
   'The Plough':   { kind: 'modifier', key: 'plough', silhouette: '/sprites/ui/food.png', description: 'All :food: thresholds are 5% lower.' },

@@ -52,6 +52,9 @@ export default function CombatFx({ bounds, enemyRows }) {
         spawned.push({ id: idRef.current++, ...pos, text: `+${ev.amount}`, icon: '/sprites/icons/defense.png', cls: 'heal' })
       } else if (ev.kind === 'progress') {
         spawned.push({ id: idRef.current++, ...pos, text: `+${ev.amount}`, icon: '/sprites/icons/progress.png', cls: 'progress' })
+      } else if (ev.kind === 'buff') {
+        // Baker permanent-def buff — a green +N :defense: float (reuses the heal style).
+        spawned.push({ id: idRef.current++, ...pos, text: `+${ev.amount}`, icon: '/sprites/icons/defense.png', cls: 'heal' })
       }
     }
     if (!spawned.length) return

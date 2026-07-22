@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
+import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingOutputs, buildingHp } from '../../game/data/buildings.js'
 import { TERRAIN, terrainDefBonus } from '../../game/data/terrain.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
@@ -64,6 +64,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const type = catLabel(cats, def.types[0])
   const typeIcon = cats.find((c) => c.key === def.types[0])?.silhouette
   const wb = occ.warband ?? 0
+  const showAtk = isUnit && unitRole(def) !== 'utility' // utility units don't attack
 
   const maxHp = occ.maxHp ?? (isUnit ? unitStats(def, occ.level, hpBonus, wb).def : occ.hp)
   const shownDef = combat ? occ.hp : maxHp
@@ -105,7 +106,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         <br /><br />
         <span className="tc-tip-stats">
           {isUnit && <IconVal src={STAT_ICON.speed}>{dispSpeed}</IconVal>}
-          {isUnit && <IconVal src={STAT_ICON.atk}>{dispAtk}</IconVal>}
+          {showAtk && <IconVal src={STAT_ICON.atk}>{dispAtk}</IconVal>}
           <IconVal src={STAT_ICON.def} style={isPrev ? undefined : defStyle}>{dispDef}</IconVal>
           {bOuts.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
           {tickOut && !isPrev && <IconVal src={RES_ICON[tickOut.res]}>{tickOut.amount}/t</IconVal>}
@@ -161,7 +162,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
               {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
               <div className="tc-stats">
                 {isUnit && <IconVal src={STAT_ICON.speed}>{cooldown}</IconVal>}
-                {isUnit && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
+                {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
                 {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{tickOut.amount}</IconVal>}

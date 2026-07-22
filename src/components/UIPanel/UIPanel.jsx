@@ -7,7 +7,7 @@ import {
   POLICY_INFO,
   POPULATION_INFO,
 } from '../../game/data/slots.js'
-import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
+import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingHp } from '../../game/data/buildings.js'
 import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
@@ -40,11 +40,12 @@ const STAT_ICON = {
 }
 const STAT_LABEL = { speed: 'Speed', atk: 'Attack', def: 'Defense' }
 
-/** A row of stat icon+value pairs (order: Speed, Atk, Def). */
-function StatIcons({ stats, className = 'slot-card-stats' }) {
+/** A row of stat icon+value pairs (default order: Speed, Atk, Def). Utility units pass
+ *  keys without 'atk' since they don't attack. */
+function StatIcons({ stats, keys = ['speed', 'atk', 'def'], className = 'slot-card-stats' }) {
   return (
     <span className={className}>
-      {['speed', 'atk', 'def'].map((k) => (
+      {keys.map((k) => (
         <span key={k} className="stat">
           <img src={STAT_ICON[k]} alt={STAT_LABEL[k]} title={STAT_LABEL[k]} />
           {stats[k]}
@@ -53,6 +54,8 @@ function StatIcons({ stats, className = 'slot-card-stats' }) {
     </span>
   )
 }
+
+const unitStatKeys = (def) => (unitRole(def) === 'utility' ? ['speed', 'def'] : ['speed', 'atk', 'def'])
 
 // 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
 const FRAME = { light: '/sprites/ui/box.png', dark: '/sprites/ui/box-dark.png' }
@@ -88,7 +91,7 @@ function unitSlots(civ, era, hpBonus) {
       const def = UNIT_DEFS[occ.key]
       return {
         index, kind: 'item', silhouette: cat.silhouette,
-        name: def.name, sub: cat.label, stats: unitStats(def, occ.level, hpBonus),
+        name: def.name, sub: cat.label, stats: unitStats(def, occ.level, hpBonus), statKeys: unitStatKeys(def),
         tip: unitTip(def, occ.level, hpBonus),
       }
     })
@@ -141,7 +144,7 @@ function unitTip(def, level, hpBonus) {
       <IconText>{def.description}</IconText>
       {def.ability ? <><br /><br /><strong>Ability:</strong> <IconText>{def.ability}</IconText></> : null}
       <br /><br />
-      <StatIcons stats={s} className="tip-stats" />
+      <StatIcons stats={s} keys={unitStatKeys(def)} className="tip-stats" />
       <span className="stat-lv"> · Lv {level}</span>
     </>
   )
@@ -324,7 +327,7 @@ function SlotRow({ slot, mark, onActivate, slam = false }) {
           <span className="slot-card-name">{slot.name}</span>
         </div>
         {slot.stats
-          ? <StatIcons stats={slot.stats} />
+          ? <StatIcons stats={slot.stats} keys={slot.statKeys} />
           : <>
               {slot.def != null && (
                 <span className="slot-card-stats">

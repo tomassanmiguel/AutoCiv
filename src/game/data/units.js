@@ -47,6 +47,14 @@ export const UNIT_DEFS = {
     ability: '',
     description: 'A bronze :melee: front-liner — far tougher than the Warrior.',
   },
+  baker: {
+    key: 'baker', name: 'Baker', era: 1, types: ['utility'], placement: 'land',
+    cooldown: 6, atk: 0, hp: 10, upAtk: 0, upHp: 2,
+    // On each "act" (its cooldown), permanently toughens adjacent units.
+    bakerDef: (level = 1) => level + 1, // +2 / +3 / +4 …
+    ability: 'When it acts, all adjacent units permanently gain +2/3/4/… :defense:.',
+    description: 'A :utility: support that never attacks — it hands out rations, permanently toughening the units around it.',
+  },
 
   // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
   bear: {

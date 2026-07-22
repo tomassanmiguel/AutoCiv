@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERAS } from '../../game/data/eras.js'
-import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
+import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingHp } from '../../game/data/buildings.js'
 import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES } from '../../game/data/pops.js'
@@ -46,7 +46,7 @@ function UnlockDetail({ opt, era }) {
         <div className="pc-type"><IconText>{`:${def.types[0]}: ${catLabel(UNIT_CATEGORIES, def.types[0])} unit`}</IconText></div>
         <div className="pc-stats">
           <Stat icon={STAT_ICON.speed}>{s.speed}</Stat>
-          <Stat icon={STAT_ICON.atk}>{s.atk}</Stat>
+          {unitRole(def) !== 'utility' && <Stat icon={STAT_ICON.atk}>{s.atk}</Stat>}
           <Stat icon={STAT_ICON.def}>{s.def}</Stat>
         </div>
         <div className="pc-rules"><IconText>{def.description}</IconText></div>
