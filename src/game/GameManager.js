@@ -400,10 +400,12 @@ export class GameManager {
       return
     }
 
-    // All relevant slots full -> replace flow (optionally gated by a confirm).
+    // All relevant slots full -> replace flow. With MULTIPLE candidate slots the
+    // player must click one to replace, and that click IS the confirmation — so skip
+    // the "are you sure". Only a single (auto) replacement keeps the confirm gate.
     sel.pending = { unlock: opt.unlock, group: target.group, candidates: target.slotIndices, advId: opt.id }
-    if (this.data.civilization.askBeforeReplace) sel.stage = 'confirm'
-    else this._beginReplace()
+    if (target.slotIndices.length > 1 || !this.data.civilization.askBeforeReplace) this._beginReplace()
+    else sel.stage = 'confirm'
     this._emit()
   }
 

@@ -150,31 +150,30 @@ export default function UIPanel() {
   // Basket Weaving lowers food thresholds 5% — reflect that in the food bar.
   const foodThresholdMult = civ.policies.some((p) => p && p.key === 'basket_weaving') ? 0.95 : 1
 
-  // Accordion: at most one group open at a time. Replace mode forces the relevant
-  // group open; otherwise the player's chosen group (or none).
-  const [openGroup, setOpenGroup] = useState('units')
-  const effectiveOpen = replacing ? replacing.group : openGroup
+  // Side tabs: all four always visible; the active one's content fills the body.
+  // A replace forces the relevant tab active; otherwise it's the player's choice.
+  const [activeTab, setActiveTab] = useState('units')
+  const effectiveTab = replacing ? replacing.group : activeTab
 
-  // When a roster slot is filled (advancement unlock), open its tab so the
+  // When a roster slot is filled (advancement unlock), switch to its tab so the
   // fill "slam" animation is visible.
   const jf = game.data.justFilled
   const lastFillSeq = useRef(-1)
   useEffect(() => {
     if (jf && jf.seq !== lastFillSeq.current) {
       lastFillSeq.current = jf.seq
-      setOpenGroup(jf.group)
+      setActiveTab(jf.group)
     }
   }, [jf])
 
-  // When a build PICK begins, default to a pickable group (Units) so its yellow
-  // slots are visible; the player can still collapse and switch to Buildings.
+  // When a build PICK begins, jump to a pickable tab (Units) if not already on one.
   const wasPicking = useRef(false)
   useEffect(() => {
-    if (buildPicking && !wasPicking.current && openGroup !== 'units' && openGroup !== 'buildings') {
-      setOpenGroup('units')
+    if (buildPicking && !wasPicking.current && activeTab !== 'units' && activeTab !== 'buildings') {
+      setActiveTab('units')
     }
     wasPicking.current = buildPicking
-  }, [buildPicking, openGroup])
+  }, [buildPicking, activeTab])
 
   const groups = [
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
@@ -182,11 +181,7 @@ export default function UIPanel() {
     { key: 'policies', label: 'Policies', slots: policySlots(civ) },
     { key: 'population', label: 'Population', slots: populationSlots(civ, game, canConvert) },
   ]
-
-  // While a group is expanded, HIDE the other three entirely so the open group
-  // claims the whole area and its cards fit (collapse it via its header to bring
-  // the tabs back). Applies during a build pick too — collapse to switch groups.
-  const soloOpen = !!effectiveOpen
+  const active = groups.find((g) => g.key === effectiveTab) ?? groups[0]
 
   return (
     <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
@@ -204,25 +199,33 @@ export default function UIPanel() {
         <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} tip={RES_TIP.progress} />
       </div>
 
-      <div className="accordions">
-        {groups.map((g) => {
-          const isOpen = effectiveOpen === g.key
-          if (soloOpen && !isOpen) return null // hide the other dropdowns while one is expanded
-          return (
-            <Accordion
-              key={g.key}
-              label={g.label}
-              slots={g.slots}
-              open={isOpen}
-              onToggle={() => setOpenGroup((cur) => (cur === g.key ? null : g.key))}
-              candidates={replacing && replacing.group === g.key ? replacing.candidates : null}
-              onReplace={(i) => game.resolveReplace(i)}
-              pickable={buildPicking && (g.key === 'units' || g.key === 'buildings')}
-              onPick={(i) => game.pickBuild(g.key, i)}
-              slamIndex={jf && jf.group === g.key ? jf.index : -1}
-            />
-          )
-        })}
+      <div className="panel-tabbed">
+        <div className="panel-tabs">
+          {groups.map((g) => {
+            const isActive = effectiveTab === g.key
+            // During a build pick, highlight the pickable (Units/Buildings) tabs.
+            const pickHl = buildPicking && (g.key === 'units' || g.key === 'buildings')
+            return (
+              <button
+                key={g.key}
+                className={`panel-tab${isActive ? ' active' : ''}${pickHl ? ' pick-hl' : ''}`}
+                onClick={() => setActiveTab(g.key)}
+              >
+                {g.label}
+              </button>
+            )
+          })}
+        </div>
+        <NineSlice className="tab-body" src={FRAME.dark} slice={FRAME_SLICE} width={DROP_BORDER}>
+          <SlotList
+            slots={active.slots}
+            candidates={replacing && replacing.group === active.key ? replacing.candidates : null}
+            onReplace={(i) => game.resolveReplace(i)}
+            pickable={buildPicking && (active.key === 'units' || active.key === 'buildings')}
+            onPick={(i) => game.pickBuild(active.key, i)}
+            slamIndex={jf && jf.group === active.key ? jf.index : -1}
+          />
+        </NineSlice>
       </div>
     </NineSlice>
   )
@@ -264,21 +267,10 @@ function ResourceBar({ icon, label, res, tip, mult = 1 }) {
   )
 }
 
-function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickable, onPick, slamIndex = -1 }) {
-  // Closed groups collapse to a slim clickable tab so the OPEN group's framed body
-  // can claim (almost) the whole panel height — every card then has room to fit.
-  if (!open) {
-    return (
-      <button className="accordion-tab" onClick={onToggle}>
-        <span className="accordion-caret">▸</span>
-        <span className="accordion-label">{label}</span>
-      </button>
-    )
-  }
-
+/** The active tab's slots. A slot's interactive `mark`: 'replace' (red) for a
+ *  replace candidate, 'pick' (yellow) for a buildable item during production. */
+function SlotList({ slots, candidates, onReplace, pickable, onPick, slamIndex = -1 }) {
   const candidateSet = candidates ? new Set(candidates) : null
-  // A slot's interactive mark: 'replace' (red) for a replace candidate, 'pick'
-  // (yellow) for a buildable item during production. Empty slots never mark.
   const markOf = (s) => {
     if (candidateSet && candidateSet.has(s.index)) return 'replace'
     if (pickable && s.kind === 'item') return 'pick'
@@ -286,32 +278,19 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickab
   }
   const activate = (s, mark) => (mark === 'pick' ? () => onPick(s.index) : () => onReplace(s.index))
   return (
-    <NineSlice
-      className="accordion open"
-      src={FRAME.dark}
-      slice={FRAME_SLICE}
-      width={DROP_BORDER}
-    >
-      <button className="accordion-header" onClick={onToggle}>
-        <span className="accordion-caret">▸</span>
-        <span className="accordion-label">{label}</span>
-      </button>
-      <div className="accordion-body">
-        <div className="slot-list">
-          {slots.map((s) => {
-            const mark = markOf(s)
-            const onActivate = mark ? activate(s, mark) : null
-            // Key by occupant identity so a slot REMOUNTS when it's filled/replaced,
-            // replaying the fill "slam" animation (but not on stat/count changes).
-            const key = s.kind === 'pop' ? `${s.index}:${s.pop.key}` : `${s.index}:${s.name ?? s.kind}`
-            const slam = s.index === slamIndex // only the just-filled slot plays the "slam"
-            return s.kind === 'pop'
-              ? <PopCard key={key} pop={s.pop} outputs={s.outputs} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} slam={slam} />
-              : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} slam={slam} />
-          })}
-        </div>
-      </div>
-    </NineSlice>
+    <div className="slot-list">
+      {slots.map((s) => {
+        const mark = markOf(s)
+        const onActivate = mark ? activate(s, mark) : null
+        // Key by occupant identity so a slot REMOUNTS when it's filled/replaced,
+        // replaying the fill "slam" animation (but not on stat/count changes).
+        const key = s.kind === 'pop' ? `${s.index}:${s.pop.key}` : `${s.index}:${s.name ?? s.kind}`
+        const slam = s.index === slamIndex // only the just-filled slot plays the "slam"
+        return s.kind === 'pop'
+          ? <PopCard key={key} pop={s.pop} outputs={s.outputs} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} slam={slam} />
+          : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} slam={slam} />
+      })}
+    </div>
   )
 }
 

@@ -158,7 +158,7 @@ AutoCiv/
 │       ├── common/{NineSlice,InfoTip,IconText}.jsx/.css # 9-slice frame; tooltip; inline-icon prose
 │       ├── GameScreen.jsx/.css    # composes the in-game view
 │       ├── Tableau/{Tableau,TileCard,CombatFx}.jsx/.css # camera + grid + placement + cards + combat floats
-│       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard (+ replace/pick flash, fill juice)
+│       ├── UIPanel/UIPanel.jsx/.css   # resources + side-tab item groups + PopCard (replace/pick flash, fill juice)
 │       ├── Menu/MenuOverlay.jsx/.css  # framed menu + TEMP era widget
 │       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
 │       ├── Progress/ProgressOverlay.jsx/.css # advancement chooser (cards/confirm/replace)
@@ -367,10 +367,11 @@ exists; extend it as systems land.
   If the era's pool is fully **exhausted** (nothing unchosen left), the owed choice is silently
   **skipped** rather than opening a zero-card selection (no soft-lock).
 - **Stages** (`selection.stage`): `choose` (3 cards + **Hide**; hidden cards restored by the rail
-  flask) → on a full-slot unlock, `confirm` (an "Are you sure?" with **don't-ask-again** →
-  `civ.askBeforeReplace`) → `replace` (chooser hidden with no re-show; the panel's candidate slots
-  **flash red** and are clickable → `resolveReplace`; **Cancel** returns to `choose`). Empty slots
-  fill immediately.
+  flask) → on a full-slot unlock with **multiple** candidate slots, straight to `replace` (the panel's
+  candidate slots **flash red** and are clickable → `resolveReplace`; that click IS the confirmation,
+  so **no "are you sure"**). A **single-candidate** (auto) replacement still routes through `confirm`
+  (an "Are you sure?" with **don't-ask-again** → `civ.askBeforeReplace`), since there's no pick to
+  confirm it. Empty slots fill immediately.
 - **Unlock rules:** unit/building fills its category slot(s) (a multi-type item fills each empty type
   slot; only when **all** its type slots are full does it go to replace). Policies use the 5 generic
   slots; specialists use population slots **1–4** (Citizen slot 0 is never replaced). Unlocking a
@@ -551,24 +552,24 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   scoped to `.ui-panel`); slot rows sit on a translucent parchment inset to stay readable.
   Panel width is 400px to fit the ornate border.
 - **Legitimacy** — the civ's "HP": icon + value on one compact centered row (kept small so the
-  dropdowns get height). **Starts at 50.** Stores `{ value, output }`.
+  dropdowns get height). **Starts at 100.** Stores `{ value, output }`.
 - **Gold** — icon + value (left) + per-tick delta (right). `{ value, output }`.
 - **Food / Production / Progress** — threshold resources (see Game loop): icon + **level number**
   (# thresholds reached) + **bar** (`value / threshold` toward the current level's requirement) +
   per-tick delta. Shape `{ value, output, level, threshold }`.
-- **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
-  **Buildings (7)**, **Policies (5)**, **Population (5)**. While one group is **expanded** the other
-  three are **hidden entirely** (`soloOpen`) so the open group — the only one with the dark `Box
-  Dark` frame and a body — fills the whole dropdown area and its cards get maximum room; collapse it
-  via its header to bring the **slim clickable tabs** back and pick another. This holds during a
-  build **pick** too (it defaults **Units** open so the yellow pickable slots show; collapse to
-  switch to Buildings). **empty** slots show a centered type silhouette, while
+- **Item groups** are **side tabs** (`.panel-tabs`, a vertical strip on the left of the dropdown
+  area) — **Units**, **Buildings (7)**, **Policies (5)**, **Population (5)** — **all four always
+  visible**; the **active** tab's slots fill the dark `Box Dark`-framed content body (`.tab-body`,
+  rendered by `SlotList`). `activeTab` is the player's choice, but a **replace** forces the relevant
+  tab active and a **build pick** jumps to Units and makes the pickable **Units/Buildings tabs pulse
+  gold** (`.pick-hl`). A fill/unlock switches to that group's tab (for the slam). **empty** slots show
+  a centered type silhouette, while
   **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
   (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
   units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,
   level-scaled, incl. the Clothes HP bonus); buildings/policies show the effect. Descriptions/effects always report the
   **current** value for the current era + level (e.g. the Pier's food), never the upgrade sequence
-  or per-level deltas. Full descriptions (icon stats for units) on hover. During an advancement **replace**, the active group's accordion force-opens
+  or per-level deltas. Full descriptions (icon stats for units) on hover. During an advancement **replace**, the relevant group's tab force-activates
   and its candidate slots **flash red** and are clickable (`resolveReplace`). `CivilizationData`
   roster slots hold `{ key, level }` (Warrior pre-fills Melee); `pops` holds counts by type.
   - **Slot data** lives in `game/data/slots.js`: `UNIT_CATEGORIES` (9), `BUILDING_CATEGORIES`

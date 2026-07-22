@@ -110,85 +110,67 @@
   text-shadow: 0 1px 0 rgba(255, 245, 220, 0.4);
 }
 
-/* ---------- Accordions (dark-framed dropdowns) ---------- */
-.accordions {
+/* ---------- Side tabs (vertical) + framed content body ---------- */
+.panel-tabbed {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-direction: row;
+  gap: 0.35rem;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/* Only the OPEN group carries the ornate Box Dark frame (<NineSlice>) and its
-   body; it flex-grows to fill the remaining panel height. */
-.accordion {
+/* Vertical strip of always-visible tab buttons on the left. */
+.panel-tabs {
+  flex: 0 0 auto;
+  width: 62px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  flex: 0 0 auto;
-  min-height: 0;
+  gap: 0.35rem;
 }
-.accordion.open { flex: 1 1 auto; }
-
-/* Closed group: a slim flat tab (no frame) that just switches the open group. */
-.accordion-tab {
+.panel-tab {
   flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.32rem 0.6rem;
+  padding: 0.5rem 0.2rem;
   border: 1px solid rgba(90, 65, 25, 0.3);
-  border-radius: 6px;
+  border-radius: 6px 0 0 6px;
+  border-right: none;
   background: rgba(60, 40, 15, 0.12);
+  color: var(--ink-soft);
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--ink);
+  font-size: 0.66rem;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-align: center;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.accordion-tab:hover {
-  background: rgba(60, 40, 15, 0.2);
+.panel-tab:hover { background: rgba(60, 40, 15, 0.22); color: var(--ink); }
+/* Active tab: brighter, brass edge, and visually joined to the content body. */
+.panel-tab.active {
+  background: rgba(250, 242, 224, 0.72);
+  color: var(--ink);
   border-color: var(--brass);
+  box-shadow: inset 2px 0 0 var(--brass);
+}
+/* During production, the pickable (Units/Buildings) tabs pulse gold. */
+.panel-tab.pick-hl { animation: tab-pick-flash 1.4s ease-in-out infinite; }
+@keyframes tab-pick-flash {
+  0%, 100% { border-color: #d9a520; box-shadow: inset 2px 0 0 rgba(217, 165, 32, 0.7); }
+  50% { border-color: #ffcf33; box-shadow: inset 3px 0 0 #ffcf33, 0 0 10px 1px rgba(255, 207, 51, 0.7); }
 }
 
-.accordion-header {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  min-height: 28px;
-  padding: 0.2rem 0.35rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-  cursor: pointer;
-}
-.accordion-caret {
-  color: var(--brass);
-  transition: transform 0.28s ease;
-  display: inline-block;
-}
-.accordion.open .accordion-caret { transform: rotate(90deg); }
-.accordion-label { flex: 1 1 auto; text-align: left; }
-
-.accordion-body {
-  flex: 1 1 0;
+/* Content body: the Box Dark frame (<NineSlice>) holding the active tab's slots. */
+.tab-body {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
+  display: flex;
   overflow: hidden;
-  opacity: 1;
-  transition: opacity 0.22s ease;
-}
-.accordion:not(.open) .accordion-body {
-  flex-grow: 0;
-  flex-basis: 0;
-  opacity: 0;
 }
 
 .slot-list {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
   gap: 0.35rem;
   padding: 0.1rem 0.15rem 0.25rem;

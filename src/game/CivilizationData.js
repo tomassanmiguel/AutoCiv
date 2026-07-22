@@ -28,7 +28,7 @@ function makeThresholdResource(type) {
  */
 export class CivilizationData {
   constructor() {
-    this.legitimacy = { value: 50, output: 0 } // the civ's "HP"
+    this.legitimacy = { value: 100, output: 0 } // the civ's "HP"
     this.gold = { value: 0, output: 0 }
 
     this.food = makeThresholdResource('food')
