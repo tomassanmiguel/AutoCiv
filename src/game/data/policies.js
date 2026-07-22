@@ -21,6 +21,10 @@ export const POLICY_DEFS = {
     key: 'hunting', name: 'Hunting', type: 'Policy',
     effect: 'Whenever your units deal unblocked damage, also gain that much :food:.',
   },
+  midwivery: {
+    key: 'midwivery', name: 'Midwivery', type: 'Policy',
+    effect: 'Whenever you create a unit, gain :production: equal to its :defense:.',
+  },
   ownership: {
     key: 'ownership', name: 'Ownership', type: 'Policy',
     effect: 'All buildings also produce +2 :gold: per tick.',

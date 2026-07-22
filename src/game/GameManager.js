@@ -630,6 +630,12 @@ export class GameManager {
       if (chosen.key === 'cave_painting') tile.occupant.storedProgress = BUILDING_DEFS.cave_painting.storedBase
     }
     this._syncUnitStats() // board changed → refresh Warband bonuses
+    // Midwivery: creating a unit yields production equal to its (effective) defense.
+    // In development, so crossing a production threshold opens a build (may chain).
+    if (chosen.kind === 'unit' && this._hasPolicy('midwivery')) {
+      civ.production.value += tile.occupant.maxHp ?? 0
+      this._processThresholds('production', civ.production)
+    }
   }
 
   _resolveProduction() {
@@ -962,11 +968,20 @@ export class GameManager {
     const killed = target.hp <= 0
     if (killed) { target.hp = 0; target.damaged = true }
     this._pushEvent({ kind: 'damage', side, amount, killed, ...loc })
+    const civ = this.data.civilization
     // Hunting: unblocked damage your units land on enemies is also gained as food.
     if (side === 'enemy' && this._hasPolicy('hunting')) {
-      const food = this.data.civilization.food
-      food.value += amount
-      this._processThresholds('food', food)
+      civ.food.value += amount
+      this._processThresholds('food', civ.food)
+    }
+    // Burial Rites: any unit that dies yields :progress: equal to its :defense: (maxHp).
+    // Banked to progress.value (NOT crossed here) — progress choices only open in
+    // development, and pending choices are dropped at era change; the banked value
+    // carries into next era's dev and opens the choices there.
+    if (killed && this._hasPolicy('burial_rites')) {
+      const p = target.maxHp ?? 0
+      civ.progress.value += p
+      this._pushEvent({ kind: 'progress', amount: p, ...loc })
     }
   }
 

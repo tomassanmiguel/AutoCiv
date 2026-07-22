@@ -47,6 +47,8 @@ export default function CombatFx({ bounds, enemyRows }) {
         spawned.push({ id: idRef.current++, ...pos, text: `-${ev.amount}`, icon: '/sprites/icons/legitimacy.png', cls: 'legit' })
       } else if (ev.kind === 'heal') {
         spawned.push({ id: idRef.current++, ...pos, text: `+${ev.amount}`, icon: '/sprites/icons/defense.png', cls: 'heal' })
+      } else if (ev.kind === 'progress') {
+        spawned.push({ id: idRef.current++, ...pos, text: `+${ev.amount}`, icon: '/sprites/icons/progress.png', cls: 'progress' })
       }
     }
     if (!spawned.length) return

@@ -77,6 +77,7 @@ export const IMPLEMENTED = {
   'Mud Brick':    { kind: 'building', key: 'mud_wall', description: 'Unlocks the Mud Wall — a sturdy land :defense: building.' },
   'Basket Weaving': { kind: 'policy', key: 'basket_weaving', description: 'Unlocks the Basket Weaving policy — all :food: thresholds are 5% lower.' },
   'Burial Rites': { kind: 'policy', key: 'burial_rites', description: 'Whenever a unit dies, gain :progress: equal to its :defense:.' },
+  'Midwivery':    { kind: 'policy', key: 'midwivery', description: 'Unlocks the Midwivery policy — whenever you create a unit, gain :production: equal to its :defense:.' },
   'Bartering':    { kind: 'pop', key: 'trader', description: 'Unlocks the Trader specialist (+5 :gold: per tick).' },
   'Fishing':      { kind: 'building', key: 'pier', description: 'Unlocks the Pier — a coastal :food: building.' },
   'Ownership':    { kind: 'policy', key: 'ownership', description: 'Unlocks the Ownership policy — all buildings also produce +2 :gold: per tick.' },

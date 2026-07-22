@@ -25,6 +25,7 @@
 .fx-float.gold { color: #ffd54a; }
 .fx-float.legit { color: #ff6b5a; }
 .fx-float.heal { color: #8ef29a; }   /* campfire healing */
+.fx-float.progress { color: #6fd0ff; }  /* burial rites progress on death */
 
 @keyframes fx-rise {
   0% { opacity: 0; transform: translate(-50%, -35%) scale(0.7); }
