@@ -2,8 +2,6 @@
 .infotip {
   position: fixed;
   z-index: 60;
-  /* Open to the left of the cursor, vertically centered on it. */
-  transform: translate(calc(-100% - 16px), -50%);
   max-width: 260px;
   background: var(--bg-3);
   color: var(--text);
@@ -13,6 +11,10 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
+/* `left`/`top` are set to the anchor's edge; the transform tucks the box just
+   beside it (vertically centered) so it never covers the anchor. */
+.infotip.open-left { transform: translate(-100%, -50%); }
+.infotip.open-right { transform: translate(0, -50%); }
 .infotip-title {
   font-weight: 700;
   color: var(--accent-light);
