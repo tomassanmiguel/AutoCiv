@@ -167,8 +167,9 @@ export default function UIPanel() {
   const combat = phase === 'battle' // pulse gold/legitimacy as they change
   // Specialist gold-conversion is offered during development + preparation.
   const canConvert = !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
-  // Basket Weaving / The Plough lower food thresholds — reflect that in the food bar.
+  // Threshold-lowering modifiers (Basket Weaving/Plough → food, Alphabet → progress).
   const foodThresholdMult = civ.modifiers.foodThresholdMult
+  const progressThresholdMult = civ.modifiers.progressThresholdMult
 
   // Side tabs: all four always visible; the active one's content fills the body.
   // A replace forces the relevant tab active; otherwise it's the player's choice.
@@ -217,7 +218,7 @@ export default function UIPanel() {
         <ResourceLine icon={ICON.gold} label="Gold" value={Math.floor(civ.gold.value)} output={civ.gold.output} tip={RES_TIP.gold} active={combat} />
         <ResourceBar icon={ICON.food} label="Food" res={civ.food} tip={RES_TIP.food} mult={foodThresholdMult} />
         <ResourceBar icon={ICON.production} label="Production" res={civ.production} tip={RES_TIP.production} />
-        <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} tip={RES_TIP.progress} />
+        <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} tip={RES_TIP.progress} mult={progressThresholdMult} />
       </div>
 
       <div className="panel-tabbed">

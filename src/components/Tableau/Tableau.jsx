@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
-import { repairCost, upgradeCost } from '../../game/data/costs.js'
+import { upgradeCost } from '../../game/data/costs.js'
 import { UNIT_DEFS } from '../../game/data/units.js'
 import { BUILDING_DEFS } from '../../game/data/buildings.js'
 import TileCard from './TileCard.jsx'
@@ -350,7 +350,7 @@ export default function Tableau() {
   const tileAction = (tile, occ) => {
     if (!canAct || !occ || occ.mercenary) return null // mercenaries are disposable — no repair/upgrade
     if (occ.damaged) {
-      const cost = repairCost(occ, era)
+      const cost = game.repairCostFor(occ) // Code of Laws discount applies
       return { kind: 'repair', cost, affordable: gold >= cost, onClick: () => game.repairOccupant(tile.row, tile.col) }
     }
     if (occ.kind === 'building' && BUILDING_DEFS[occ.key]?.noUpgrade) return null // e.g. Cave Painting

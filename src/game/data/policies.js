@@ -77,6 +77,14 @@ export const POLICY_DEFS = {
     key: 'surveying', name: 'Surveying', type: 'Policy',
     effect: 'At the end of each combat, a Road is laid on a random valid tile.',
   },
+  code_of_laws: {
+    key: 'code_of_laws', name: 'Code of Laws', type: 'Policy',
+    effect: 'Unit and building repair costs are reduced by 75%.',
+  },
+  diplomatic_marriage: {
+    key: 'diplomatic_marriage', name: 'Diplomatic Marriage', type: 'Policy',
+    effect: 'Mercenaries are hired 3 upgrade levels higher.',
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',

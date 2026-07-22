@@ -445,7 +445,8 @@ export class GameManager {
    *  compared/subtracted requirement). */
   _processThresholds(type, res) {
     const cfg = RESOURCE_CONFIG[type]
-    const mult = type === 'food' ? this.data.civilization.modifiers.foodThresholdMult : 1
+    const m = this.data.civilization.modifiers
+    const mult = type === 'food' ? m.foodThresholdMult : type === 'progress' ? m.progressThresholdMult : 1
     let guard = 0
     while (res.value >= res.threshold * mult && guard++ < 1000) {
       res.value -= res.threshold * mult // carry the overflow into the next level
@@ -665,6 +666,8 @@ export class GameManager {
       this._syncUnitStats() // retroactively toughen deployed buildings
     } else if (unlock.key === 'basket_weaving' || unlock.key === 'plough') {
       civ.modifiers.foodThresholdMult *= 0.95 // −5% food thresholds (stacks)
+    } else if (unlock.key === 'alphabet') {
+      civ.modifiers.progressThresholdMult *= 0.95 // −5% progress thresholds (stacks)
     } else if (unlock.key === 'mathematics') {
       this.data.pendingProduction += 2 // "produce twice" — two immediate build opportunities
     }
@@ -923,12 +926,17 @@ export class GameManager {
     occ.fxKind = kind
   }
 
+  /** Repair cost for a damaged occupant, with the Code of Laws discount (−75%). */
+  repairCostFor(occ) {
+    return Math.round(repairCost(occ, this.data.era) * (this._hasPolicy('code_of_laws') ? 0.25 : 1))
+  }
+
   /** Repair a damaged unit/building back to full HP for gold. */
   repairOccupant(row, col) {
     if (!this._canEconomize()) return
     const occ = this.data.tableau.tileAt(row, col)?.occupant
     if (!occ || !occ.damaged || occ.mercenary) return // mercenaries are disposable, not repaired
-    const cost = repairCost(occ, this.data.era)
+    const cost = this.repairCostFor(occ)
     const civ = this.data.civilization
     if (civ.gold.value < cost) return
     civ.gold.value -= cost

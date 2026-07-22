@@ -126,6 +126,9 @@ export const IMPLEMENTED = {
   'Paper':        { kind: 'building', key: 'library', description: 'Unlocks the Library — a :progress: building granting a large :progress: lump each combat.' },
   'Surveying':    { kind: 'policy', key: 'surveying', description: 'Unlocks the Surveying policy — at the end of each combat, a Road is laid on a random valid tile.' },
   'Embassy':      { kind: 'building', key: 'embassy', description: 'Unlocks the Embassy — a :utility: building that hires a free mercenary onto an adjacent tile every 8 seconds in combat.' },
+  'Code of Laws': { kind: 'policy', key: 'code_of_laws', description: 'Unlocks the Code of Laws policy — unit and building repair costs are 75% lower.' },
+  'Diplomatic Marriage': { kind: 'policy', key: 'diplomatic_marriage', description: 'Unlocks the Diplomatic Marriage policy — mercenaries are hired 3 upgrade levels higher.' },
+  'Alphabet':     { kind: 'modifier', key: 'alphabet', silhouette: '/sprites/ui/progress.png', description: 'All future :progress: thresholds are 5% lower.' },
 }
 
 export function isImplemented(name) {

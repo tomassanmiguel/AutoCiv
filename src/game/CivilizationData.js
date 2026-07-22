@@ -56,7 +56,7 @@ export class CivilizationData {
     //    (Clothes, and +1 each combat from Hereditary Rule).
     //  foodThresholdMult — multiplies every :food: threshold (Basket Weaving / The
     //    Plough each ×0.95, stacking).
-    this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1 }
+    this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1, progressThresholdMult: 1 }
 
     // Advancement bookkeeping.
     this.chosenAdvancements = new Set() // ids chosen (removed from the pool)
