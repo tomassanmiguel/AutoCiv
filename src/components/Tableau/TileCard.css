@@ -32,11 +32,40 @@
   box-shadow: 0 0 12px rgba(230, 200, 120, 0.65);
 }
 
+/* Enemy units: hostile red frame + badge. */
+.tile-card.enemy {
+  background: rgba(32, 12, 10, 0.86);
+  border-color: rgba(224, 92, 74, 0.75);
+}
+.tile-card.enemy .tc-level { background: #e05c4a; color: #1a0a08; }
+.tile-card-anchor:hover .tile-card.enemy {
+  border-color: #ff7a63;
+  box-shadow: 0 0 12px rgba(255, 100, 80, 0.6);
+}
+
 /* Damaged: grayed out (tooltip adds "(damaged)"). */
 .tile-card.damaged {
   filter: grayscale(1) brightness(0.68);
   border-color: rgba(150, 150, 150, 0.5);
 }
+
+/* Combat cooldown bar (ticks down toward the next attack). */
+.tc-cooldown {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 2px;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tc-cooldown-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6fd0ff, #bfeaff);
+  transition: width 0.05s linear;
+}
+.tile-card.enemy .tc-cooldown-fill { background: linear-gradient(90deg, #ff9a7f, #ffd2c2); }
 
 .tc-level {
   position: absolute;

@@ -1,0 +1,53 @@
+/* Defeat popup — mirror of Victory (centered 9-slice box over a dimmed tableau). */
+.defeat-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 45%, rgba(40, 8, 6, 0.4), rgba(6, 2, 2, 0.75));
+  backdrop-filter: blur(2px);
+  animation: defeat-fade-in 0.4s ease;
+}
+@keyframes defeat-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.defeat-panel {
+  --fw: 34px;
+  min-width: 320px;
+  max-width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.3rem 2rem;
+  color: #2f2512;
+  text-align: center;
+  animation: defeat-rise 0.4s ease;
+}
+@keyframes defeat-rise {
+  from { transform: translateY(14px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.defeat-title {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  letter-spacing: 0.04em;
+  color: #9c2b1e;
+  text-shadow: 0 1px 0 rgba(255, 210, 200, 0.4);
+}
+
+.defeat-actions { display: flex; gap: 0.8rem; }
+
+.defeat-btn {
+  --fw: 14px;
+  padding: 0.2rem 1.1rem;
+  min-height: 44px;
+  color: #2f2512;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.defeat-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }

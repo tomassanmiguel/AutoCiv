@@ -563,7 +563,7 @@ export class GameManager {
     const era = this.data.era
     const t = this.data.tableau
     const host = generateHost(era, t.enemyRowCount(era), t.columnPlaces(era))
-    this.data.enemies = host.units.map((u) => ({ ...u, cdTimer: 0 }))
+    this.data.enemies = host.units.map((u) => ({ ...u, kind: 'unit', cdTimer: 0 }))
     this.data.enemyHostType = host.type
   }
 

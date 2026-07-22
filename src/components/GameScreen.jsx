@@ -11,6 +11,7 @@ import TransitionOverlay from './Hud/TransitionOverlay.jsx'
 import ProgressOverlay from './Progress/ProgressOverlay.jsx'
 import ProductionPrompt from './Production/ProductionPrompt.jsx'
 import VictoryScreen from './Victory/VictoryScreen.jsx'
+import DefeatScreen from './Victory/DefeatScreen.jsx'
 import WidgetRail from './Widgets/WidgetRail.jsx'
 import AudioController from './AudioController.jsx'
 import './GameScreen.css'
@@ -27,6 +28,7 @@ export default function GameScreen({ seed, audio, onExit }) {
   // Victory popup can be hidden (map stays inspectable) and re-summoned via the
   // trophy widget. Held here so both the popup and the rail share it.
   const [victoryHidden, setVictoryHidden] = useState(false)
+  const [defeatHidden, setDefeatHidden] = useState(false)
 
   // Stop the tick loop when leaving the game.
   useEffect(() => () => manager.stop(), [manager])
@@ -42,11 +44,17 @@ export default function GameScreen({ seed, audio, onExit }) {
             <TickCounter />
             <SpeedControl />
           </div>
-          <WidgetRail victoryHidden={victoryHidden} onShowVictory={() => setVictoryHidden(false)} />
+          <WidgetRail
+            victoryHidden={victoryHidden}
+            onShowVictory={() => setVictoryHidden(false)}
+            defeatHidden={defeatHidden}
+            onShowDefeat={() => setDefeatHidden(false)}
+          />
           <TransitionOverlay />
           <ProgressOverlay />
           <ProductionPrompt />
           <VictoryScreen hidden={victoryHidden} onHide={() => setVictoryHidden(true)} onExit={onExit} />
+          <DefeatScreen hidden={defeatHidden} onHide={() => setDefeatHidden(true)} onExit={onExit} />
         </div>
         <UIPanel />
         <AudioController audio={audio} />

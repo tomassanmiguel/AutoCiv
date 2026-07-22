@@ -213,6 +213,11 @@ export default function Tableau() {
   const placing = !!(sel && sel.type === 'production' && sel.stage === 'place')
   const hpBonus = game.data.civilization.modifiers.unitHpBonus
 
+  // Enemy host (visible during development as a preview, fighting during battle).
+  const combat = game.data.phase === 'battle'
+  const enemyGrid = new Map()
+  for (const e of game.data.enemies) enemyGrid.set(`${e.col}:${e.slot}`, e)
+
   return (
     <div className="tableau-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
       <div
@@ -220,23 +225,23 @@ export default function Tableau() {
         ref={contentRef}
         style={{ width: contentW, height: contentH }}
       >
-        {/* Enemy slots (Battlefield) atop each visible column */}
+        {/* Enemy slots (Battlefield) atop each visible column; enemies deploy here */}
         {cols.map((c) =>
-          Array.from({ length: enemyRows }, (_, k) => (
-            <div
-              key={`enemy-${c}-${k}`}
-              className="enemy-slot"
-              style={{
-                left: (c - bounds.minCol) * CELL,
-                top: k * CELL,
-                width: CELL,
-                height: CELL,
-              }}
-              onMouseEnter={(e) => showTip(BATTLEFIELD_TIP, e)}
-              onMouseMove={moveTooltip}
-              onMouseLeave={() => setTooltip(null)}
-            />
-          )),
+          Array.from({ length: enemyRows }, (_, k) => {
+            const enemy = enemyGrid.get(`${c}:${k}`)
+            return (
+              <div
+                key={`enemy-${c}-${k}`}
+                className={`enemy-slot${enemy ? ' occupied' : ''}`}
+                style={{ left: (c - bounds.minCol) * CELL, top: k * CELL, width: CELL, height: CELL }}
+                onMouseEnter={enemy ? undefined : (e) => showTip(BATTLEFIELD_TIP, e)}
+                onMouseMove={enemy ? undefined : moveTooltip}
+                onMouseLeave={enemy ? undefined : () => setTooltip(null)}
+              >
+                {enemy && <TileCard occupant={enemy} era={era} combat={combat} side="enemy" />}
+              </div>
+            )
+          }),
         )}
 
         {/* Player tiles */}
@@ -271,7 +276,7 @@ export default function Tableau() {
                   backgroundImage: tile.sprite ? `url("${tile.sprite}")` : 'none',
                 }}
               />
-              {occ && <TileCard occupant={occ} era={era} hpBonus={hpBonus} />}
+              {occ && <TileCard occupant={occ} era={era} hpBonus={hpBonus} combat={combat} side="player" />}
             </div>
           )
         })}
