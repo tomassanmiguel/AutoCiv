@@ -143,16 +143,16 @@ AutoCiv/
 │   │   ├── GameData.js        # { era, phase, tick, speed, tableau, civilization }
 │   │   ├── TableauData.js     # 9x26 grid of Tiles; per-era visibility + bounds
 │   │   ├── CivilizationData.js# resources (threshold), pops, item slot groups
-│   │   ├── Tile.js            # one tile; getTooltip()
+│   │   ├── Tile.js            # one tile; getTooltip(); `occupant` (deployed unit/building)
 │   │   ├── data/
 │   │   │   ├── eras.js        # 28 eras + soundtrack + eraTitle()
 │   │   │   ├── map.js         # ROW/COL unlock eras + 9x26 terrain labels + COLUMN_SPECIALS
-│   │   │   ├── terrain.js     # terrain registry + seeded meta-type resolution
+│   │   │   ├── terrain.js     # terrain registry (+ placement class) + canPlaceOn + seeded resolution
 │   │   │   ├── slots.js       # Unit/Building slot categories (label + description)
 │   │   │   ├── resources.js   # threshold config + T(N) formula + rubber band
 │   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
 │   │   │   ├── units.js       # unit defs (Warrior/Wolf/Slinger) + stat/level helpers
-│   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp/current-effect helpers
+│   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp/effect/outputs helpers
 │   │   │   ├── policies.js    # policy defs (Burial Rites)
 │   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
@@ -160,11 +160,12 @@ AutoCiv/
 │   └── components/
 │       ├── common/{NineSlice,InfoTip}.jsx/.css # 9-slice frame; hover tooltip
 │       ├── GameScreen.jsx/.css    # composes the in-game view
-│       ├── Tableau/Tableau.jsx/.css   # pan/zoom camera + grid + enemy slots + tooltip
-│       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard
+│       ├── Tableau/{Tableau,TileCard}.jsx/.css # camera + grid + placement mode + on-tile cards
+│       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard (+ replace/pick flash, fill juice)
 │       ├── Menu/MenuOverlay.jsx/.css  # framed menu + TEMP era widget
 │       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
 │       ├── Progress/ProgressOverlay.jsx/.css # advancement chooser (cards/confirm/replace)
+│       ├── Production/ProductionPrompt.jsx/.css # build flow prompt (pick / place, Back / Skip)
 │       ├── Victory/VictoryScreen.jsx/.css # 9-slice "Victory" popup (Hide / Return to Title)
 │       ├── Widgets/WidgetRail.jsx/.css # far-right widget rail (trophy/flask re-summon overlays)
 │       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
@@ -281,7 +282,9 @@ exists; extend it as systems land.
   enemy-row count), which would teleport every existing tile. On era change the camera is
   **counter-translated by that shift first** (via `prevLayoutRef`) so the current view holds
   still, then the zoom-out animates — no jolt.
-- Hovering a tile shows a tooltip from `tile.getTooltip()` (currently just the terrain name).
+- Hovering an empty tile shows a tooltip from `tile.getTooltip()` (terrain name). Occupied tiles
+  instead show their **on-tile card** (`TileCard`) with its own hover tooltip (see Production/build).
+- During production **placement**, valid tiles flash yellow / occupied red and are click-to-build.
 
 ### Game loop (`GameManager`, `game/data/resources.js`, `game/data/pops.js`)
 - Each era runs: **development** (timer-driven ticks) → **battle** (skipped, banner only) →
@@ -297,9 +300,10 @@ exists; extend it as systems land.
   (`resources.js`: `T0`/`X`/`targetPerEra`; **E = 0-based era; n = the GLOBAL level, never resets**).
   Because the delta is always positive, **each level's requirement is strictly higher than the last**.
   R rubber-bands the running level toward `(era+1)·targetPerEra`. **Food** crossings add pops via
-  `addPops(era+1)`; **progress** crossings open an advancement selection (see below); **production**
-  crossings increment `pendingProduction` (build flow not implemented yet). **Gold** also accrues
-  per tick (`gold.value += gold.output`), driven by Trader specialists.
+  `addPops(era+1)`; **progress** crossings open an advancement selection; **production** crossings
+  open a build selection (both see below). **Gold** also accrues per tick (`gold.value +=
+  gold.output`), driven by Trader specialists. At the **end of development** each era, deployed
+  buildings accrue their end-of-era output (Pier food) into resources + their lifetime total.
 - **Pops** (`pops.js`): **Citizen** (generalist: 1 progress/food/production each per tick) plus
   unlockable **specialists** — Builder (+5 production), Farmer (+5 food), Trader (+5 gold). Start = 1
   Citizen (`STARTING_CITIZENS`). **Growth split** (`addPops`): each new pop alternates by a running
@@ -341,6 +345,27 @@ exists; extend it as systems land.
   `modifiers.unitHpBonus`) applies immediately with no slot.
 - **Resume:** resolving clears the selection and resumes at `data.speed` — the speed selected before
   (or changed during) the selection; the speed control stays clickable (backdrop sits below the HUD).
+
+### Production / build (`components/Production`, `components/Tableau/TileCard`)
+- Crossing a **production** threshold opens a `selection` of `type:'production'` (game paused), a
+  two-stage flow driven by `ProductionPrompt`:
+  - **pick:** the panel's **unlocked unit/building** slots flash **yellow** and are clickable
+    (`pickBuild`). Units auto-expands (unless Buildings already open). **Skip** declines the build.
+  - **place:** valid tiles on the tableau flash **yellow** (empty) / **red** (occupied → replace);
+    clicking one runs `placeAt`, creating the instance (`tile.occupant`). **Back** returns to pick.
+    Validity = tile visible this era **and** `canPlaceOn(unit/building.placement, terrain)` (terrain
+    `place` class: land/coast/sea/space); Warrior/Wolf/Slinger are land, Pier is coast.
+- **Instances** live on `Tile.occupant` (`{ kind, key, level, hp, maxHp, damaged, lifetimeOutput? }`)
+  and persist across eras. **Deployed buildings** produce their end-of-era output (Pier food) into
+  resources + `lifetimeOutput` (`_accrueBuildingOutputs`).
+- **On-tile cards** (`TileCard`): ~70% of the tile, centered, **enlarge to fill on hover** (which
+  shows a rich tooltip and hides the tile tooltip). Corner **level** badge. Units show name + type +
+  **Speed/Atk/Def icons**; buildings show name + type + **Def + current outputs** (lifetime total in
+  the tooltip). **Damaged** instances gray out and read "(damaged)". The tile sprite lives on its own
+  `.tile-bg` layer so the west-coast mirror never flips the card.
+- **Fill juice:** filling a roster slot (advancement unlock) sets `data.justFilled`; the panel opens
+  that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation.
+- All flashing (replace red / pick yellow / tile placement) is a slow ~1.4s pulse.
 
 ### HUD (`components/Hud`)
 - **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
@@ -419,7 +444,7 @@ exists; extend it as systems land.
   banners + typewriter transition. Battle phase is stubbed (banner only).
 - [x] Progress selection: threshold → paused 3-card advancement chooser (hide/re-muster, weighted
   pool), unlock into roster slots (fill / confirm / replace), specialists + pop-growth split.
-- [ ] Production/build flow: choose a unit/building, placement mode (valid tiles flash), deploy an
+- [x] Production/build flow: choose a unit/building, placement mode (valid tiles flash), deploy an
   instance onto a tile with an on-tile card; damaged appearance; slot-fill "slam" juice.
 - [ ] Real battle phase (enemies in the Battlefield slots + combat resolution) — makes unit/building
   stats, abilities, Burial Rites, Clothes, and Pier era-food actually matter.
@@ -507,3 +532,17 @@ exists; extend it as systems land.
   red-flashing candidate slots), specialist unlock/citizen-conversion, and the EVEN/ODD pop-growth
   split. Filled panel slots now render item cards. Engine flows verified via a Node sim; an
   adversarial multi-agent review pass ran over the slice. Production/build flow is next.
+- **2026-07-21** — Review fixes on the progress slice: tick now counts before opening a choice (no
+  free extra accumulation tick per advancement); unlocking a policy/specialist fills one slot, not
+  all; replace-candidate slots keep their tooltip + gained keyboard activation.
+- **2026-07-21** — Unit/building **stat icons** (Speed/Attack/Defense served into
+  `public/sprites/icons`) replace the text stat line; building effects report the **current**
+  era/level value (e.g. Pier food) not the upgrade sequence; card formatting: smaller corner
+  silhouettes, no icon/text overlap, wrapping policy text, larger stat icons.
+- **2026-07-21** — Implemented the **production / build flow** (`components/Production`,
+  `Tableau/TileCard`). A production threshold pauses and opens a pick→place selection: unlocked
+  units/buildings flash yellow in the panel, then valid tiles flash yellow/red on the tableau;
+  placing deploys a `tile.occupant` instance rendered as an on-tile card (hover-enlarge + tooltip,
+  level badge, damaged gray-out). Added terrain placement classes + `canPlaceOn`, building
+  end-of-era outputs + lifetime (Pier food), and a roster slot-fill "slam" animation. Model verified
+  via a Node sim (pick/place, land-only validity, replace, Pier accrual, full-era resolve).
