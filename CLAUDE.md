@@ -418,12 +418,15 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   affordable). Clicking spawns a **random valid roster unit** (at that slot's level) flagged
   `mercenary` (dashed frame) — it fights this one battle and **disbands when the battle ends**
   (removed in `_endCombat`, and in `_defeat` so a lost battle leaves no stragglers). Mercenaries
-  can't be repaired/upgraded (no sinking gold into a disposable unit).
+  can't be repaired/upgraded (no sinking gold into a disposable unit). Hire buttons are **hidden
+  while a reposition drag is active** so they can't get in the way of the drop.
 - **Reposition** (`canReposition` / `moveUnit`, free): **units** (not buildings) can be **dragged**
-  to a valid **empty** tile during dev/prep. On grab (past a small threshold) valid tiles flash
-  yellow, the source dims, and a labelled ghost follows the cursor (positioned imperatively so
-  ticks don't reset it); dropping on a valid tile moves the unit, any invalid drop snaps back.
-  You can't displace an occupied tile.
+  to a valid **empty** tile during dev/prep — **and while choosing a build's location** (drag a unit
+  aside to make room for the building). On grab (past a small threshold) valid tiles flash yellow,
+  the source dims, and a labelled ghost follows the cursor (positioned imperatively so ticks don't
+  reset it); dropping on a valid tile moves the unit, any invalid drop snaps back. You can't displace
+  an occupied tile. During placement a real drag suppresses the source tile's placement click (via
+  `movedRef`), so a plain click still places/replaces but a drag only moves.
 - **CombatPrep** (`components/Prep`): a non-blocking banner (mounted in `GameScreen`) shown in the
   `prep` phase with a prominent **Begin Combat** button; the tableau + panel stay interactive so
   all the above can happen. The enemy host is visible on the battlefield throughout prep.
@@ -498,9 +501,9 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   **Buildings (7)**, **Policies (5)**, **Population (5)**. While one group is **expanded** the other
   three are **hidden entirely** (`soloOpen`) so the open group — the only one with the dark `Box
   Dark` frame and a body — fills the whole dropdown area and its cards get maximum room; collapse it
-  via its header to bring the **slim clickable tabs** back and pick another. (Exception: during a
-  build **pick** the closed groups stay as slim tabs so Units↔Buildings remains switchable.)
-  **empty** slots show a centered type silhouette, while
+  via its header to bring the **slim clickable tabs** back and pick another. This holds during a
+  build **pick** too (it defaults **Units** open so the yellow pickable slots show; collapse to
+  switch to Buildings). **empty** slots show a centered type silhouette, while
   **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
   (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
   units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,
@@ -705,3 +708,9 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   the open group the whole area so late-game unit cards stop getting cut off — closed groups stay as
   slim tabs only during a build pick; (3) on-tile card names now **shrink + wrap to two lines** and
   only ellipsize as a true last resort (no more premature truncation).
+- **2026-07-21** — More reposition/panel fixes: (1) units can now be **dragged while choosing a
+  build's location** (drag one aside to make room), with a real drag suppressing the placement click
+  so click=place/replace, drag=move; (2) **Hire** buttons are hidden during a reposition drag so they
+  can't block the drop; (3) the panel's hide-the-other-dropdowns behavior now applies **during a
+  build pick** too (defaults Units open, collapse to switch to Buildings) instead of falling back to
+  slim tabs.
