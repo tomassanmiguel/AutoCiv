@@ -17,11 +17,10 @@ const POOL = {
   classical: ['Urbanization', 'Democracy', 'Concrete', 'Philosophy', 'Arches', 'Glassblowing', 'Machinery', 'Public Baths', 'Entertainment', 'Poetry', 'Monotheism', 'Census', 'Defensive Pact', 'Rhetoric', 'Pharmacology', 'Citizenship', 'Warships', 'Professional Soldiers', 'Fresco', 'Dressage'],
   early_medieval: ['Feudalism', 'Armor', 'Metallurgy', 'Crop Rotation', 'Trial by Jury', 'Pilgrimage', 'Milling', 'Stirrups', 'Vassalage', 'Castles', 'Schism', 'Civil Service', 'Horseshoes', 'Clinker Construction', 'Algebra', 'Optics', 'Monastic Order', 'Counterweights', 'Manor System', 'Hedgerows'],
   late_medieval: ['Compass', 'Absolute Monarchy', 'Alchemy', 'Longbow', 'Mercenaries', 'Flying Butress', 'Inquisition', 'University', 'Diplomatic Corps', 'Stained Glass', 'Troubadours', 'Guilds', 'Gunpowder', 'Common Law', 'Physics', 'Quarantine', 'Cofferdams', 'Tithing', 'Crusades', 'Branding'],
-  // NOTE: the design sheet lists "Domestication" in BOTH Bronze and Renaissance.
-  // Since IMPLEMENTED is name-keyed, that collision would light up both eras once
-  // Bronze's Domestication is implemented — so the Renaissance duplicate is renamed
-  // "Husbandry" (era-appropriate) to keep names unique.
-  renaissance: ['Perspective', 'Printing Press', 'Canons', 'Scientific Method', 'Maritime Law', 'Banking', 'Economics', 'Calculus', 'Astronomy', 'Star Forts', 'Humanism', 'Machiavellianism', 'Joint Stock Company', 'Tolerance', 'Patronage', 'Husbandry', 'Brocade', 'Anatomy', 'Clocks', 'Masquerades'],
+  // NOTE: the sheet's Renaissance "Domestication" was a typo for "Domes"; fixing it
+  // also removes the name collision with Bronze's Domestication (IMPLEMENTED is
+  // name-keyed, so a duplicated name would light up both eras).
+  renaissance: ['Perspective', 'Printing Press', 'Canons', 'Scientific Method', 'Maritime Law', 'Banking', 'Economics', 'Calculus', 'Astronomy', 'Star Forts', 'Humanism', 'Machiavellianism', 'Joint Stock Company', 'Tolerance', 'Patronage', 'Domes', 'Brocade', 'Anatomy', 'Clocks', 'Masquerades'],
   exploration: ['Deepwater Navigation', 'Colombian Exchange', 'Reformation', 'Shipbuilding', 'Muskets', 'Creole Culture', 'Colonialism', 'Native Diplomacy', 'Scurvy Prevention', 'Natural History', 'Evangelism', 'Coffee', 'Cartography', 'Opera', 'Mercantilism', 'Patents', 'Potatoes', 'Dragoons', 'Indentured Servitude', 'Circumnavigation'],
   revolution: ['Constitution', 'Levee en Masse', 'Theory of Evolution', 'Nationalism', 'Bayonets', 'Newspaper', 'Paper Money', 'Statistics', 'Metric System', 'Inoculation', 'Gas Light', 'Free Press', 'Abolition', 'Rifling', 'Chemistry', 'Canning', 'Hydraulic Press', 'Native Integration', 'Napoleonic Code', 'Zooly'],
   steam: ['Telegraph', 'Mass Production', 'Electricity', 'Railroad', 'Machine Guns', 'Public Schooling', 'Germ Theory', 'Public Health', 'Gunboat Diplomacy', 'Steel Hulls', 'Canals', 'Industrial Agriculture', 'Incorporation', 'Dynamite', 'Income Tax', 'Reforestation', 'Suspension Bridge', 'Restaurants', 'Contraception', 'Archaeology'],
