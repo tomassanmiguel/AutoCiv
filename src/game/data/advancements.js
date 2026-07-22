@@ -134,6 +134,9 @@ export const IMPLEMENTED = {
   // --- Classical era ---
   'Machinery':    { kind: 'unit', key: 'crossbowman', description: 'Unlocks the Crossbowman — a slow, hard-hitting land :ranged: unit.' },
   'Concrete':     { kind: 'modifier', key: 'concrete', silhouette: '/sprites/ui/defense.png', description: 'Permanently gives all buildings +12 :defense:.' },
+  'Arches':       { kind: 'building', key: 'aqueduct', description: 'Unlocks the Aqueduct — a :food: building whose output DOUBLES for each adjacent Aqueduct.' },
+  'Glassblowing': { kind: 'building', key: 'glassworks', description: 'Unlocks the Glassworks — a :production: building that grants :legitimacy: whenever you complete another building.' },
+  'Entertainment': { kind: 'building', key: 'colosseum', description: 'Unlocks the Colosseum — a :legitimacy: building granting 5 :legitimacy: per unit in your civ at the end of each combat.' },
 }
 
 export function isImplemented(name) {

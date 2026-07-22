@@ -227,6 +227,8 @@ export class GameManager {
       else if (occ.key === 'temple') out = { res: 'legitimacy', amount: def.legitPerTick(occ.level) }
       else if (occ.key === 'farm') out = { res: 'food', amount: 5 * this._plainsAround(tile) }
       else if (occ.key === 'forging') out = { res: 'production', amount: def.prodPerTick(occ.level) }
+      else if (occ.key === 'aqueduct') out = { res: 'food', amount: def.base(occ.level) * Math.pow(2, this._adjacentAqueductCount(tile)) }
+      else if (occ.key === 'glassworks') out = { res: 'production', amount: 10 }
       occ.tickOutput = out
       if (out) totals[out.res] += out.amount
     }
@@ -237,6 +239,15 @@ export class GameManager {
   _plainsAround(tile) {
     let n = tile.terrain === 'plains' ? 1 : 0
     for (const nb of this._adjacentTiles(tile.row, tile.col)) if (nb.terrain === 'plains') n++
+    return n
+  }
+
+  /** Count of undamaged Aqueducts on tiles (road-augmented) adjacent to `tile`. */
+  _adjacentAqueductCount(tile) {
+    let n = 0
+    for (const nb of this._adjacentTiles(tile.row, tile.col)) {
+      if (nb.occupant?.kind === 'building' && nb.occupant.key === 'aqueduct' && !nb.occupant.damaged) n++
+    }
     return n
   }
 
@@ -863,6 +874,17 @@ export class GameManager {
     }
     this._syncUnitStats() // board changed → refresh Warband bonuses
     this._recomputeOutputs() // …and per-tick building outputs (Ranch/Kiln/Mine/Brewery)
+    // Glassworks: completing any building grants legitimacy per OTHER deployed Glassworks.
+    if (chosen.kind === 'building') {
+      let legit = 0
+      for (const t of this.data.tableau.tiles.values()) {
+        const g = t.occupant
+        if (g?.kind === 'building' && g.key === 'glassworks' && !g.damaged && g !== tile.occupant) {
+          legit += BUILDING_DEFS.glassworks.legitOnBuild(g.level)
+        }
+      }
+      if (legit > 0) civ.legitimacy.value += legit
+    }
     // Midwivery: creating a unit yields production equal to its (effective) defense.
     // In development, so crossing a production threshold opens a build (may chain).
     if (chosen.kind === 'unit' && this._hasPolicy('midwivery')) {

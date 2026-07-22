@@ -18,6 +18,8 @@ const mintLegitPct = (level = 1) => 0.05 + 0.02 * Math.max(0, level - 1) // 5% /
 const forgingProd = (level = 1) => 3 * (level + 1)      // :production: per tick (6 / 9 / 12 …)
 const libraryProgress = (level = 1) => 200 * (level + 1) // end-of-combat :progress: (400 / 600 / 800 …)
 const lighthouseBonus = (level = 1) => 2 + 0.5 * Math.max(0, level - 1) // +200% then +50%/level (additive)
+const aqueductBase = (level = 1) => 5 * (level + 1)     // base :food:/tick (10 / 15 / 20 …), ×2 per adjacent Aqueduct
+const glassworksLegit = (level = 1) => 30 + 5 * Math.max(0, level - 1) // :legitimacy: on each building completed (30 / 35 / 40 …)
 // Brothel combat aura: adjacent units' :attack: multiplier by level (+10/15/20%).
 const brothelAtk = (level = 1) => 0.10 + 0.05 * Math.max(0, level - 1)
 
@@ -125,6 +127,23 @@ export const BUILDING_DEFS = {
     key: 'farm', name: 'Farm', types: ['food'], placement: 'land',
     hp: 6, upHp: 2,
     effect: 'Produces +5 :food: per tick for each adjacent Plains tile (including its own).',
+  },
+  aqueduct: {
+    key: 'aqueduct', name: 'Aqueduct', types: ['food'], placement: 'land',
+    hp: 12, upHp: 5, // +5 base food per upgrade (via aqueductBase)
+    base: aqueductBase,
+    effect: (level) => `Produces ${aqueductBase(level)} :food: per tick — DOUBLED for each adjacent Aqueduct.`,
+  },
+  glassworks: {
+    key: 'glassworks', name: 'Glassworks', types: ['production'], placement: 'land',
+    hp: 10, upHp: 4,
+    legitOnBuild: glassworksLegit,
+    effect: (level) => `Produces 10 :production: per tick. Whenever you complete another building anywhere, gain ${glassworksLegit(level)} :legitimacy:.`,
+  },
+  colosseum: {
+    key: 'colosseum', name: 'Colosseum', types: ['legitimacy'], placement: 'land',
+    hp: 16, upHp: 5,
+    effect: 'At the end of each combat, gain 5 :legitimacy: for each unit in your civilization.',
   },
   // Road: a UTILITY building that UNDERLAPS. `underlap: true` means it lives in the
   // tile's own `underlap` slot (never replaced, no HP/combat) rather than as the

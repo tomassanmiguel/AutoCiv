@@ -565,13 +565,17 @@ class CombatMixin {
         occ.ranchStep = (occ.ranchStep ?? 2) + 1
       }
     }
-    // Legitimacy: Totems, Shamans, and Sacred Grounds' empty land.
+    // Legitimacy: Totems, Colosseums, Shamans, and Sacred Grounds' empty land.
     let legit = 0
+    let deployedUnits = 0
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      if (tile.occupant?.kind === 'unit') deployedUnits++
+    }
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
-      if (occ?.kind === 'building' && occ.key === 'totem' && !occ.damaged) {
-        legit += BUILDING_DEFS.totem.combatLegit(occ.level)
-      }
+      if (occ?.kind !== 'building' || occ.damaged) continue
+      if (occ.key === 'totem') legit += BUILDING_DEFS.totem.combatLegit(occ.level)
+      else if (occ.key === 'colosseum') legit += 5 * deployedUnits // 5 :legitimacy: per unit in the civ
     }
     legit += (POP_TYPES.shaman.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
     if (this._hasPolicy('sacred_grounds')) {
