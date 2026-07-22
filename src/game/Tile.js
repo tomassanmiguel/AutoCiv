@@ -18,6 +18,9 @@ export class Tile {
     // A deployed unit/building instance, or null. Shape:
     //   { kind:'unit'|'building', key, level, hp, maxHp, damaged, lifetimeOutput? }
     this.occupant = null
+    // A "supplement" building (e.g. Road) that UNDERLAPS the occupant in its own
+    // slot — never replaced, no combat/HP. Shape: { kind:'building', key, level }.
+    this.supplement = null
   }
 
   get def() {

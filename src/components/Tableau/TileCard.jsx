@@ -43,12 +43,23 @@ function defColor(ratio) {
  * level in the tooltip (tinted green). `onGrab` starts a reposition drag.
  * `terrain` is the tile's terrain key (for the Forest combat-def note).
  */
-export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1 }) {
+export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1, anchorClass = '' }) {
   const occ = occupant
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
   const isUnit = occ.kind === 'unit'
   const def = isUnit ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
+
+  // Supplement buildings (Road): a minimal name-only card in its own bottom strip, no
+  // stats/combat/actions. Its own tooltip still explains the effect.
+  if (!isUnit && def.supplement) {
+    return (
+      <InfoTip className="supplement-anchor" title={def.name} text={buildingEffect(def, occ.level, era)}>
+        <div className="tile-card supplement"><span className="tc-name">{def.name}</span></div>
+      </InfoTip>
+    )
+  }
+
   const cats = isUnit ? UNIT_CATEGORIES : BUILDING_CATEGORIES
   const type = catLabel(cats, def.types[0])
   const typeIcon = cats.find((c) => c.key === def.types[0])?.silhouette
@@ -114,7 +125,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
 
   return (
     <InfoTip
-      className="tile-card-anchor"
+      className={`tile-card-anchor ${anchorClass}`}
       tipClassName={showPreview ? 'upgrade-preview' : ''}
       title={def.name + (damaged ? ' (damaged)' : occ.mercenary ? ' (mercenary)' : '')}
       text={renderTip(showPreview)}

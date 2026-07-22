@@ -49,6 +49,13 @@ export const BUILDING_DEFS = {
     storedBase: 5, storedMax: 50000, // starts at 5 :progress:, doubles each era, capped
     effect: 'When overbuilt, grants its stored :progress: (starts at 5, doubles each era after combat, max 50000).',
   },
+  // Supplement building: no HP, no combat. Lives in tile.supplement (underlaps the
+  // occupant), never replaced. Links every tile it touches into one adjacency group.
+  road: {
+    key: 'road', name: 'Road', types: ['supplement'], placement: 'land',
+    supplement: true, noUpgrade: true, hp: 0, upHp: 0,
+    effect: 'A supplement that underlaps any building and is never replaced. All tiles touching the road become adjacent to one another — extending building ranges and unit movement.',
+  },
 }
 
 /** Effective building HP at a given upgrade level, plus a flat civ-wide bonus

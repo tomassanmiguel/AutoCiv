@@ -44,6 +44,8 @@ export const BUILDING_CATEGORIES = [
     description: ':defense: Defense buildings keep the unwanted out' },
   { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
     description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
+  { key: 'supplement', label: 'Supplement', silhouette: '/sprites/ui/utility-building.png',
+    description: 'Supplement buildings underlap other buildings and are never replaced. They shape the board with passive effects but do not fight.' },
 ]
 
 // Policies and Population are generic slots (no per-slot category); every slot

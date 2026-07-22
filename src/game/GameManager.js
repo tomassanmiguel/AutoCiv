@@ -185,22 +185,103 @@ export class GameManager {
     return g
   }
 
-  /** Count of deployed, active player units within `range` orthogonal steps of (cr, cc). */
+  // --- Road-augmented adjacency ---------------------------------------------------
+  // A Road (supplement) makes every tile it touches mutually adjacent, chaining
+  // through connected roads. ALL adjacency/range queries route through
+  // _reachableWithin so roads uniformly boost building ranges and unit movement.
+
+  /** Connected road networks as PORT sets: each Set holds a network's road tiles plus
+   *  their orthogonal neighbours. Any two tiles in one set are adjacent (distance 1). */
+  _roadPortSets() {
+    const t = this.data.tableau
+    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+    const roadKeys = []
+    for (const tile of t.tiles.values()) if (tile.supplement?.key === 'road') roadKeys.push(`${tile.row},${tile.col}`)
+    if (roadKeys.length === 0) return []
+    const roadSet = new Set(roadKeys)
+    const seen = new Set()
+    const nets = []
+    for (const rk of roadKeys) {
+      if (seen.has(rk)) continue
+      const comp = []
+      const stack = [rk]
+      seen.add(rk)
+      while (stack.length) {
+        const cur = stack.pop()
+        comp.push(cur)
+        const [r, c] = cur.split(',').map(Number)
+        for (const [dr, dc] of NBRS) {
+          const nk = `${r + dr},${c + dc}`
+          if (roadSet.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk) }
+        }
+      }
+      const ports = new Set()
+      for (const ck of comp) {
+        ports.add(ck)
+        const [r, c] = ck.split(',').map(Number)
+        for (const [dr, dc] of NBRS) if (t.tileAt(r + dr, c + dc)) ports.add(`${r + dr},${c + dc}`)
+      }
+      nets.push(ports)
+    }
+    return nets
+  }
+
+  /** Map "r,c" -> step distance for every tile within `range` steps of (sr, sc), where
+   *  a road network links all its ports at distance 1 (a "shortcut"). */
+  _reachableWithin(sr, sc, range) {
+    const t = this.data.tableau
+    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+    const nets = this._roadPortSets()
+    const dist = new Map([[`${sr},${sc}`, 0]])
+    const q = [[sr, sc]]
+    let head = 0
+    while (head < q.length) {
+      const [r, c] = q[head++]
+      const cur = `${r},${c}`
+      const d = dist.get(cur)
+      if (d >= range) continue
+      const nbrs = new Set()
+      for (const [dr, dc] of NBRS) if (t.tileAt(r + dr, c + dc)) nbrs.add(`${r + dr},${c + dc}`)
+      for (const ports of nets) if (ports.has(cur)) for (const p of ports) if (p !== cur) nbrs.add(p)
+      for (const nk of nbrs) {
+        if (dist.has(nk)) continue
+        dist.set(nk, d + 1)
+        const [nr, nc] = nk.split(',').map(Number)
+        q.push([nr, nc])
+      }
+    }
+    return dist
+  }
+
+  /** Tiles at road-augmented distance exactly 1 from (r, c). */
+  _adjacentTiles(r, c) {
+    const out = []
+    for (const [k, d] of this._reachableWithin(r, c, 1)) {
+      if (d !== 1) continue
+      const [tr, tc] = k.split(',').map(Number)
+      const tile = this.data.tableau.tileAt(tr, tc)
+      if (tile) out.push(tile)
+    }
+    return out
+  }
+
+  /** Count of deployed, active player units within `range` road-augmented steps of (cr, cc). */
   _unitsInRange(cr, cc, range) {
     let n = 0
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (occ?.kind === 'unit' && !occ.damaged && Math.abs(tile.row - cr) + Math.abs(tile.col - cc) <= range) n++
+    for (const k of this._reachableWithin(cr, cc, range).keys()) {
+      const [r, c] = k.split(',').map(Number)
+      const occ = this.data.tableau.tileAt(r, c)?.occupant
+      if (occ?.kind === 'unit' && !occ.damaged) n++
     }
     return n
   }
 
-  /** True if (row, col) is within some undamaged brewery's range (its aura). */
+  /** True if (row, col) is within some undamaged brewery's (road-augmented) range. */
   _inBreweryRange(row, col) {
     for (const tile of this.data.tableau.tiles.values()) {
       const occ = tile.occupant
       if (occ?.kind === 'building' && occ.key === 'brewery' && !occ.damaged &&
-          Math.abs(tile.row - row) + Math.abs(tile.col - col) <= BUILDING_DEFS.brewery.range(occ.level)) {
+          this._reachableWithin(tile.row, tile.col, BUILDING_DEFS.brewery.range(occ.level)).has(`${row},${col}`)) {
         return true
       }
     }
@@ -615,6 +696,8 @@ export class GameManager {
     if (!sel || sel.type !== 'production' || sel.stage !== 'place' || !sel.chosen) return null
     const tile = this.data.tableau.tileAt(row, col)
     if (!tile || !this._canPlaceHere(sel.chosen, tile)) return 'invalid'
+    // Supplements underlap the occupant, so they're always a plain (valid) placement.
+    if (sel.chosen.kind === 'building' && BUILDING_DEFS[sel.chosen.key].supplement) return 'valid'
     return tile.occupant ? 'replace' : 'valid'
   }
 
@@ -631,11 +714,22 @@ export class GameManager {
   _canPlaceHere(chosen, tile) {
     if (!this.data.tableau.isUnlocked(tile.row, tile.col, this.data.era)) return false
     const def = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
-    return canPlaceOn(def.placement, tile.terrain)
+    if (!canPlaceOn(def.placement, tile.terrain)) return false
+    // Supplements underlap the occupant but can't stack (one supplement per tile).
+    if (chosen.kind === 'building' && def.supplement) return !tile.supplement
+    return true
   }
 
   _createInstance(chosen, tile) {
     const civ = this.data.civilization
+    // Supplement buildings (Road) underlap the occupant in their own slot — they never
+    // replace and don't overbuild; placing one just re-derives adjacency-based outputs.
+    if (chosen.kind === 'building' && BUILDING_DEFS[chosen.key].supplement) {
+      tile.supplement = { kind: 'building', key: chosen.key, level: chosen.level }
+      this._recomputeOutputs() // roads change brewery/kiln ranges
+      this._syncUnitStats()    // and brewery-aura membership
+      return
+    }
     // Overbuilding a Cave Painting cashes in its stored progress before it's replaced.
     const prev = tile.occupant
     if (prev && prev.key === 'cave_painting') {
@@ -1072,18 +1166,32 @@ export class GameManager {
       if (this._columnHasEnemies(tile.col)) continue // has targets here — stay
       const role = UNIT_DEFS[occ.key]?.types[0]
       if (role !== 'melee' && role !== 'cavalry' && role !== 'ranged') continue
-      for (const targetCol of [tile.col - 1, tile.col + 1]) {
-        if (targetCol < bounds.minCol || targetCol > bounds.maxCol) continue
-        if (!this._columnHasEnemies(targetCol)) continue
-        const ok = role === 'ranged'
-          ? this._columnHasCover(targetCol, bounds)
-          : !this._columnHasFriendlyFront(targetCol, bounds)
-        if (!ok) continue
-        const dest = this._lateralTile(targetCol, occ, tile.row) // same row, one column over
-        if (dest) { dest.occupant = occ; tile.occupant = null; moved = true; break }
-      }
+      const dest = this._repositionDest(tile, occ, role, bounds)
+      if (dest) { dest.occupant = occ; tile.occupant = null; moved = true }
     }
     return moved
+  }
+
+  /** Best reposition target for an idle unit: an empty, valid tile at road-augmented
+   *  distance 1 in a DIFFERENT column that has enemies and satisfies the role's rule
+   *  (melee/cavalry → no friendly front there; ranged → has cover there). With no road
+   *  this is exactly the same-row neighbouring column (a lateral step — never a leap to
+   *  a distant row); a road bridges it to any of the network's ports. */
+  _repositionDest(tile, occ, role, bounds) {
+    const cands = []
+    for (const [k, d] of this._reachableWithin(tile.row, tile.col, 1)) {
+      if (d !== 1) continue
+      const [r, c] = k.split(',').map(Number)
+      if (c === tile.col || c < bounds.minCol || c > bounds.maxCol) continue
+      if (!this._columnHasEnemies(c)) continue
+      const dt = this.data.tableau.tileAt(r, c)
+      if (!dt || dt.occupant || !this.data.tableau.isUnlocked(r, c, this.data.era)) continue
+      if (!canPlaceOn(UNIT_DEFS[occ.key].placement, dt.terrain)) continue
+      const ok = role === 'ranged' ? this._columnHasCover(c, bounds) : !this._columnHasFriendlyFront(c, bounds)
+      if (ok) cands.push(dt)
+    }
+    cands.sort((a, b) => a.col - b.col || a.row - b.row)
+    return cands[0] ?? null
   }
 
   _columnHasEnemies(col) {
@@ -1110,16 +1218,6 @@ export class GameManager {
     }
     return false
   }
-  // The tile directly beside (`col`, same `row`) if it's empty, unlocked, and valid
-  // for `occ`. A reposition is a LATERAL step — never a leap to a distant row, so a
-  // unit can't jump across regions (e.g. earth → mars) when nearby rows are full.
-  _lateralTile(col, occ, row) {
-    const tile = this.data.tableau.tileAt(row, col)
-    if (tile && !tile.occupant && this.data.tableau.isUnlocked(row, col, this.data.era) &&
-        canPlaceOn(UNIT_DEFS[occ.key].placement, tile.terrain)) return tile
-    return null
-  }
-
   // Player units carry a synced effective atk (occ.atk); enemies fall back to base.
   _effectiveAtk(unit) { return unit.atk ?? unitStats(UNIT_DEFS[unit.key], unit.level, 0, unit.warband ?? 0).atk }
   _effectiveCooldown(unit) {
@@ -1144,11 +1242,9 @@ export class GameManager {
     const def = UNIT_DEFS[c.unit.key]
     if (c.side === 'player') {
       const t = this.data.tableau
-      const nbrs = [[c.row + 1, c.col], [c.row - 1, c.col], [c.row, c.col + 1], [c.row, c.col - 1]]
-      for (const [r, col] of nbrs) {
-        if (!t.isUnlocked(r, col, this.data.era)) continue
-        const tile = t.tileAt(r, col)
-        if (!tile || tile.occupant || !canPlaceOn(def.placement, tile.terrain)) continue
+      // Adjacent empty valid tile (road-augmented — a Road lets the Wolf shift farther).
+      for (const tile of this._adjacentTiles(c.row, c.col)) {
+        if (tile.occupant || !t.isUnlocked(tile.row, tile.col, this.data.era) || !canPlaceOn(def.placement, tile.terrain)) continue
         t.tileAt(c.row, c.col).occupant = null
         tile.occupant = c.unit
         return true
@@ -1173,18 +1269,17 @@ export class GameManager {
    *  HP for each whole combat-second elapsed (`times`). */
   _applyCampfireHealing(times) {
     const t = this.data.tableau
-    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
     for (const tile of t.visibleTiles(this.data.era)) {
       const occ = tile.occupant
       if (!occ || occ.kind !== 'building' || occ.key !== 'campfire' || occ.damaged) continue
       const pct = BUILDING_DEFS.campfire.heal(occ.level)
-      for (const [dr, dc] of NBRS) {
-        const nb = t.tileAt(tile.row + dr, tile.col + dc)?.occupant
+      for (const nbTile of this._adjacentTiles(tile.row, tile.col)) {
+        const nb = nbTile.occupant
         if (!nb || nb.damaged || nb.hp == null || nb.maxHp == null || nb.hp >= nb.maxHp) continue
         const heal = Math.min(nb.maxHp - nb.hp, Math.max(1, Math.ceil((pct / 100) * nb.maxHp)) * times)
         if (heal <= 0) continue
         nb.hp += heal
-        this._pushEvent({ kind: 'heal', amount: heal, col: tile.col + dc, row: tile.row + dr })
+        this._pushEvent({ kind: 'heal', amount: heal, col: nbTile.col, row: nbTile.row })
       }
     }
   }

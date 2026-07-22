@@ -9,6 +9,32 @@
   transform: scale(1.42);
   z-index: 6;
 }
+/* With a supplement (Road) underlapping, the main card takes the top ~80%, leaving
+   the bottom ~20% for the supplement strip. */
+.tile-card-anchor.has-supplement { inset: 8% 15% 30% 15%; }
+
+/* Supplement (Road) card: a name-only strip pinned to the bottom of the tile. */
+.supplement-anchor {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 3%;
+  height: 22%;
+  z-index: 4;
+  transition: transform 0.12s ease;
+}
+.supplement-anchor:hover { transform: scale(1.3); z-index: 7; }
+.tile-card.supplement {
+  gap: 0;
+  padding: 1px 3px;
+  background: rgba(30, 24, 12, 0.9);
+  border: 1px dashed rgba(210, 180, 110, 0.6);
+}
+.tile-card.supplement .tc-name {
+  font-size: 8px;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
 
 /* Slide layer: a unit that changed tiles mounts here and animates from its old cell
    (offset --sx/--sy) to this one, so shifts/repositions slide instead of teleport. */

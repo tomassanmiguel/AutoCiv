@@ -318,7 +318,7 @@ export default function Tableau() {
   // CARD the card's own tooltip takes over (and we clear the terrain one), but over
   // the surrounding terrain we still show the tile's terrain/effect tooltip.
   const tileTip = (tile, e) => {
-    if (e.target.closest?.('.tile-card-anchor')) { setTooltip(null); return }
+    if (e.target.closest?.('.tile-card-anchor, .supplement-anchor')) { setTooltip(null); return }
     showTip(tile.getTooltip(), e)
   }
 
@@ -436,8 +436,11 @@ export default function Tableau() {
                   action={tileAction(tile, occ)}
                   slide={slideFor(occ, j * CELL, i * CELL)}
                   onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
+                  anchorClass={tile.supplement ? 'has-supplement' : ''}
                 />
               )}
+              {/* Supplement (Road) underlaps the occupant in its own bottom strip. */}
+              {tile.supplement && <TileCard occupant={tile.supplement} era={era} side="player" />}
               {mercOK && !repos && (
                 <button
                   type="button"
