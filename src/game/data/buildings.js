@@ -59,6 +59,12 @@ export const BUILDING_DEFS = {
     cdReduce: 0.5,      // adjacent-unit cooldown reduction (seconds)
     effect: (level) => `Adjacent units attack 0.5s faster and gain +${Math.round(brothelAtk(level) * 100)}% :attack:.`,
   },
+  embassy: {
+    key: 'embassy', name: 'Embassy', types: ['utility'], placement: 'land',
+    hp: 20, upHp: 6,
+    mercEvery: 8, // combat-seconds between free mercenaries
+    effect: 'In combat, hires a random mercenary onto an empty adjacent tile every 8 seconds.',
+  },
   cave_painting: {
     key: 'cave_painting', name: 'Cave Painting', types: ['progress'], placement: 'land',
     hp: 8, upHp: 0, noUpgrade: true,

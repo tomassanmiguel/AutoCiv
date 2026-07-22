@@ -105,7 +105,7 @@ class CombatMixin {
 
     // Campfire auras heal adjacent friendlies once per whole combat-second crossed.
     const secs = Math.floor(this.data.combatTime) - Math.floor(before)
-    if (secs > 0) this._applyCampfireHealing(secs)
+    if (secs > 0) { this._applyCampfireHealing(secs); this._applyEmbassyMercs(before, this.data.combatTime) }
 
     const civ = this.data.civilization
     if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
@@ -443,6 +443,35 @@ class CombatMixin {
     }
   }
 
+  /** Embassies hire a free mercenary onto an empty adjacent tile at each 8-second mark
+   *  crossed this step. */
+  _applyEmbassyMercs(before, after) {
+    const every = BUILDING_DEFS.embassy.mercEvery
+    let hits = 0
+    for (let s = (Math.floor(before / every) + 1) * every; s <= after; s += every) if (s > 0) hits++
+    if (hits === 0) return
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (occ?.kind !== 'building' || occ.key !== 'embassy' || occ.damaged) continue
+      for (let i = 0; i < hits; i++) this._spawnMercAdjacent(tile)
+    }
+  }
+
+  /** Spawn a random one-battle mercenary onto a random empty adjacent tile it can stand on. */
+  _spawnMercAdjacent(embassyTile) {
+    const spots = this._adjacentTiles(embassyTile.row, embassyTile.col).filter(
+      (t) => !t.occupant && this.data.tableau.isUnlocked(t.row, t.col, this.data.era) && this._placeableUnitsAt(t).length > 0)
+    if (spots.length === 0) return
+    const dest = spots[Math.floor(Math.random() * spots.length)]
+    const picks = this._placeableUnitsAt(dest)
+    const pick = picks[Math.floor(Math.random() * picks.length)]
+    const level = this._mercLevel(pick.level)
+    const hp = unitStats(UNIT_DEFS[pick.key], level, this.data.civilization.modifiers.unitHpBonus).def
+    dest.occupant = { kind: 'unit', key: pick.key, level, hp, maxHp: hp, damaged: false, mercenary: true, homeRow: dest.row, homeCol: dest.col }
+    this._syncUnitStats(true) // combat stats for the new merc (and Warband refresh)
+    dest.occupant.cdTimer = this._effectiveCooldown(dest.occupant)
+  }
+
   /** After a battle, move every unit back to the tile it started combat on (units
    *  reposition/shift during combat) and disband mercenaries. Buildings never move. */
   _restoreUnitHomes() {
@@ -530,6 +559,8 @@ class CombatMixin {
       if (adj.length === 0) continue
       adj[Math.floor(Math.random() * adj.length)].occupant.level += 1
     }
+    // Surveying: lay a Road on a random valid tile.
+    if (this._hasPolicy('surveying')) this._layRandomRoad()
   }
 
   _defeat() {

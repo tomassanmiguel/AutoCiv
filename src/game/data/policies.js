@@ -73,6 +73,10 @@ export const POLICY_DEFS = {
     key: 'composite_bows', name: 'Composite Bows', type: 'Policy',
     effect: 'Ranged attacks deal 50% more damage (any unit that attacks at range).',
   },
+  surveying: {
+    key: 'surveying', name: 'Surveying', type: 'Policy',
+    effect: 'At the end of each combat, a Road is laid on a random valid tile.',
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',

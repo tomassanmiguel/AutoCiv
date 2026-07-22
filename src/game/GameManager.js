@@ -1006,6 +1006,23 @@ export class GameManager {
     return Math.round(mercenaryCost(this.data.era) * (this._hasPolicy('hospitality_rites') ? 0.5 : 1))
   }
 
+  /** Level a mercenary spawns at (Diplomatic Marriage adds 3 levels). */
+  _mercLevel(baseLevel) {
+    return baseLevel + (this._hasPolicy('diplomatic_marriage') ? 3 : 0)
+  }
+
+  /** Surveying: lay a Road (underlap) on a random visible land tile that has none. */
+  _layRandomRoad() {
+    const cands = []
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      if (!tile.underlap && tile.def?.place === 'land') cands.push(tile)
+    }
+    if (cands.length === 0) return
+    const tile = cands[Math.floor(Math.random() * cands.length)]
+    tile.underlap = { kind: 'building', key: 'road', level: 1 }
+    this._roadNetsCache = null // road topology changed
+  }
+
   /** True if a mercenary can be hired onto this (empty, valid) tile during prep. */
   mercEligible(row, col) {
     if (this.data.phase !== 'prep') return false
@@ -1026,8 +1043,9 @@ export class GameManager {
     if (civ.gold.value < cost) return
     civ.gold.value -= cost
     const pick = candidates[Math.floor(Math.random() * candidates.length)]
-    const hp = unitStats(UNIT_DEFS[pick.key], pick.level, civ.modifiers.unitHpBonus).def
-    tile.occupant = { kind: 'unit', key: pick.key, level: pick.level, hp, maxHp: hp, damaged: false, mercenary: true }
+    const level = this._mercLevel(pick.level)
+    const hp = unitStats(UNIT_DEFS[pick.key], level, civ.modifiers.unitHpBonus).def
+    tile.occupant = { kind: 'unit', key: pick.key, level, hp, maxHp: hp, damaged: false, mercenary: true }
     this._syncUnitStats() // the merc counts toward Warband (and vice versa)
     this._recomputeOutputs() // …and Brewery gold (a new unit may be in range)
     this._fxTag(tile.occupant, 'hire')

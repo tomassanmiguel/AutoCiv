@@ -124,6 +124,8 @@ export const IMPLEMENTED = {
   'Composite Bows': { kind: 'policy', key: 'composite_bows', description: 'Unlocks the Composite Bows policy — ranged attacks deal 50% more damage.' },
   'Forging':      { kind: 'building', key: 'forging', description: 'Unlocks the Forging — a :production: building that also upgrades a random adjacent unit each combat.' },
   'Paper':        { kind: 'building', key: 'library', description: 'Unlocks the Library — a :progress: building granting a large :progress: lump each combat.' },
+  'Surveying':    { kind: 'policy', key: 'surveying', description: 'Unlocks the Surveying policy — at the end of each combat, a Road is laid on a random valid tile.' },
+  'Embassy':      { kind: 'building', key: 'embassy', description: 'Unlocks the Embassy — a :utility: building that hires a free mercenary onto an adjacent tile every 8 seconds in combat.' },
 }
 
 export function isImplemented(name) {
