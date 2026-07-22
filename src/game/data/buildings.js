@@ -8,12 +8,26 @@ const pierFood = (level = 1) => 200 + 100 * Math.max(0, level - 1)
 
 // Campfire combat heal: % of a neighbour's max HP restored per combat-second.
 const campfireHeal = (level = 1) => 5 + 2 * Math.max(0, level - 1) // 5 / 7 / 9 / ...
+// Totem legitimacy granted at the end of each combat (per level).
+const totemLegit = (level = 1) => 10 + 5 * Math.max(0, level - 1) // 10 / 15 / 20 / ...
 
 export const BUILDING_DEFS = {
   mud_wall: {
     key: 'mud_wall', name: 'Mud Wall', types: ['defense'], placement: 'land',
     hp: 25, upHp: 10,
     effect: 'A sturdy wall that stalls the enemy advance.',
+  },
+  totem: {
+    key: 'totem', name: 'Totem', types: ['legitimacy'], placement: 'land',
+    hp: 15, upHp: 5,
+    combatLegit: totemLegit,
+    effect: (level) => `At the end of combat, gain ${totemLegit(level)} :legitimacy:.`,
+  },
+  brewery: {
+    key: 'brewery', name: 'Brewery', types: ['gold'], placement: 'land',
+    hp: 5, upHp: 0,
+    range: (level) => level, // range 1 / 2 / 3 / … (orthogonal steps)
+    effect: (level) => `+1 :gold: per tick for each unit in range ${level}. Units in range: +10% :attack:, −10% :defense:.`,
   },
   pier: {
     key: 'pier', name: 'Pier', types: ['food'], placement: 'coast',

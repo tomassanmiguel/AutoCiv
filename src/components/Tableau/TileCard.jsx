@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
-import { BUILDING_DEFS, buildingEffect, buildingOutputs } from '../../game/data/buildings.js'
+import { BUILDING_DEFS, buildingEffect, buildingOutputs, buildingHp } from '../../game/data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import InfoTip from '../common/InfoTip.jsx'
 import IconText from '../common/IconText.jsx'
@@ -37,20 +38,24 @@ function defColor(ratio) {
  * ('player'|'enemy') styles the frame; damaged instances gray out.
  *
  * `action` ({ kind:'repair'|'upgrade', cost, affordable, onClick }) renders a
- * gold-cost button on the card (repair a damaged instance / upgrade a healthy one).
- * `onGrab` (player units) starts a reposition drag from this card.
+ * gold-cost button on the card. Hovering an `upgrade` action previews the NEXT
+ * level in the tooltip (tinted green). `onGrab` starts a reposition drag.
+ * `terrain` is the tile's terrain key (for the Forest combat-def note).
  */
-export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab }) {
+export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain }) {
   const occ = occupant
+  const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
   const isUnit = occ.kind === 'unit'
   const def = isUnit ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
   const cats = isUnit ? UNIT_CATEGORIES : BUILDING_CATEGORIES
   const type = catLabel(cats, def.types[0])
   const typeIcon = cats.find((c) => c.key === def.types[0])?.silhouette
+  const wb = occ.warband ?? 0
 
-  const maxHp = occ.maxHp ?? (isUnit ? unitStats(def, occ.level, hpBonus).def : occ.hp)
+  const maxHp = occ.maxHp ?? (isUnit ? unitStats(def, occ.level, hpBonus, wb).def : occ.hp)
   const shownDef = combat ? occ.hp : maxHp
+  const shownAtk = isUnit ? (occ.atk ?? unitStats(def, occ.level, hpBonus, wb).atk) : null
   const ratio = clamp01((occ.hp ?? maxHp) / maxHp)
   const defStyle = combat && ratio < 1 ? { color: defColor(ratio) } : undefined
 
@@ -59,33 +64,59 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
   const cdFrac = combat && isUnit && occ.cdTimer != null ? clamp01(occ.cdTimer / cooldown) : null
 
   const outs = isUnit ? [] : buildingOutputs(def, occ.level, era)
-  // Warband folds +N atk into the shown attack (+N def is already baked into maxHp).
-  const stats = isUnit ? unitStats(def, occ.level, hpBonus, occ.warband ?? 0) : null
   const stored = occ.storedProgress // Cave Painting's banked progress, if any
 
-  const tip = (
-    <>
-      <IconText>{`:${def.types[0]}:`}</IconText> {type}
-      <br /><IconText>{isUnit ? def.description : buildingEffect(def, occ.level, era)}</IconText>
-      {isUnit && def.ability ? <><br /><br /><strong>Ability:</strong> <IconText>{def.ability}</IconText></> : null}
-      <br /><br />
-      <span className="tc-tip-stats">
-        {isUnit && <IconVal src={STAT_ICON.speed}>{stats.speed}</IconVal>}
-        {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
-        <IconVal src={STAT_ICON.def} style={defStyle}>{combat ? `${occ.hp}/${maxHp}` : maxHp}</IconVal>
-        {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
-        {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
-      </span>
-      <span className="tc-tip-lv"> · Lv {occ.level}</span>
-      {!isUnit && <><br />Total produced: {occ.lifetimeOutput ?? 0} {outs[0] && <img className="itext-icon" src={RES_ICON[outs[0].res]} alt="" />}</>}
-    </>
-  )
+  // Effective unit stats at a level (Clothes + Warband, then Brewery aura), matching
+  // the manager's pipeline (Forest is combat-only, so omitted from the dev preview).
+  const statsAt = (lvl) => {
+    const s = unitStats(def, lvl, hpBonus + wb, wb)
+    const b = occ.inBrewery
+    return { speed: s.speed, atk: Math.round(s.atk * (b ? 1.1 : 1)), def: Math.round(s.def * (b ? 0.9 : 1)) }
+  }
+
+  const renderTip = (isPrev) => {
+    const lvl = isPrev ? occ.level + 1 : occ.level
+    const ps = isUnit && isPrev ? statsAt(lvl) : null
+    const bOuts = isUnit ? [] : buildingOutputs(def, lvl, era)
+    const dispSpeed = isUnit ? (isPrev ? ps.speed : cooldown) : null
+    const dispAtk = isUnit ? (isPrev ? ps.atk : shownAtk) : null
+    const dispDef = isUnit
+      ? (isPrev ? ps.def : (combat ? `${occ.hp}/${maxHp}` : maxHp))
+      : (isPrev ? buildingHp(def, lvl) : maxHp)
+    return (
+      <>
+        {isPrev && <div className="tc-tip-upg">Upgrade → Lv {lvl}</div>}
+        <IconText>{`:${def.types[0]}:`}</IconText> {type}
+        <br /><IconText>{isUnit ? def.description : buildingEffect(def, lvl, era)}</IconText>
+        {isUnit && def.ability ? <><br /><br /><strong>Ability:</strong> <IconText>{def.ability}</IconText></> : null}
+        <br /><br />
+        <span className="tc-tip-stats">
+          {isUnit && <IconVal src={STAT_ICON.speed}>{dispSpeed}</IconVal>}
+          {isUnit && <IconVal src={STAT_ICON.atk}>{dispAtk}</IconVal>}
+          <IconVal src={STAT_ICON.def} style={isPrev ? undefined : defStyle}>{dispDef}</IconVal>
+          {bOuts.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
+          {stored != null && !isPrev && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
+        </span>
+        <span className="tc-tip-lv"> · Lv {lvl}</span>
+        {/* Terrain / aura notes (current view only). */}
+        {!isPrev && isUnit && terrain === 'forest' && <><br /><IconText>{'+5 :defense: in combat (Forest).'}</IconText></>}
+        {!isPrev && isUnit && occ.inBrewery && <><br /><IconText>{'+10% :attack:, −10% :defense: (Brewery).'}</IconText></>}
+        {!isPrev && isUnit && wb > 0 && <><br /><IconText>{`+${wb} :attack: & :defense: (Tribalism).`}</IconText></>}
+        {!isUnit && !isPrev && <><br />Total produced: {occ.lifetimeOutput ?? 0} {bOuts[0] && <img className="itext-icon" src={RES_ICON[bOuts[0].res]} alt="" />}</>}
+      </>
+    )
+  }
+
+  // Derive the preview from LIVE action state so a disabled/unmounted Upgrade
+  // button (which can't fire onMouseLeave) can't leave the preview stuck on.
+  const showPreview = preview && action?.kind === 'upgrade' && action.affordable
 
   return (
     <InfoTip
       className="tile-card-anchor"
+      tipClassName={showPreview ? 'upgrade-preview' : ''}
       title={def.name + (damaged ? ' (damaged)' : occ.mercenary ? ' (mercenary)' : '')}
-      text={tip}
+      text={renderTip(showPreview)}
       onMouseDown={onGrab}
     >
       {/* Keyed by lastAttackSeq so the wrapper REMOUNTS on each attack, replaying
@@ -107,8 +138,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
               </div>
               {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
               <div className="tc-stats">
-                {isUnit && <IconVal src={STAT_ICON.speed}>{stats.speed}</IconVal>}
-                {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
+                {isUnit && <IconVal src={STAT_ICON.speed}>{cooldown}</IconVal>}
+                {isUnit && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
                 {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
@@ -121,6 +152,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
                 disabled={!action.affordable}
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => { e.stopPropagation(); action.onClick() }}
+                onMouseEnter={action.kind === 'upgrade' ? () => setPreview(true) : undefined}
+                onMouseLeave={action.kind === 'upgrade' ? () => setPreview(false) : undefined}
               >
                 <img className="tc-action-icon" src={ACTION_ICON[action.kind]} alt={action.kind} />
                 <span className="tc-action-cost"><img src={RES_ICON.gold} alt="" />{action.cost}</span>

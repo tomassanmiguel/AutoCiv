@@ -146,6 +146,8 @@ export default function UIPanel() {
   const combat = phase === 'battle' // pulse gold/legitimacy as they change
   // Specialist gold-conversion is offered during development + preparation.
   const canConvert = !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
+  // Basket Weaving lowers food thresholds 5% — reflect that in the food bar.
+  const foodThresholdMult = civ.policies.some((p) => p && p.key === 'basket_weaving') ? 0.95 : 1
 
   // Accordion: at most one group open at a time. Replace mode forces the relevant
   // group open; otherwise the player's chosen group (or none).
@@ -196,7 +198,7 @@ export default function UIPanel() {
         </InfoTip>
 
         <ResourceLine icon={ICON.gold} label="Gold" value={Math.floor(civ.gold.value)} output={civ.gold.output} tip={RES_TIP.gold} active={combat} />
-        <ResourceBar icon={ICON.food} label="Food" res={civ.food} tip={RES_TIP.food} />
+        <ResourceBar icon={ICON.food} label="Food" res={civ.food} tip={RES_TIP.food} mult={foodThresholdMult} />
         <ResourceBar icon={ICON.production} label="Production" res={civ.production} tip={RES_TIP.production} />
         <ResourceBar icon={ICON.progress} label="Progress" res={civ.progress} tip={RES_TIP.progress} />
       </div>
@@ -243,8 +245,9 @@ function ResourceLine({ icon, label, value, output, tip, active }) {
   )
 }
 
-function ResourceBar({ icon, label, res, tip }) {
-  const pct = res.threshold > 0 ? Math.min(100, (res.value / res.threshold) * 100) : 0
+function ResourceBar({ icon, label, res, tip, mult = 1 }) {
+  const threshold = res.threshold * mult // effective (e.g. Basket Weaving lowers food 5%)
+  const pct = threshold > 0 ? Math.min(100, (res.value / threshold) * 100) : 0
   return (
     <InfoTip title={label} text={tip}>
       <div className="res-bar-row">
@@ -252,7 +255,7 @@ function ResourceBar({ icon, label, res, tip }) {
         <span className="res-level" title="Thresholds reached">{res.level}</span>
         <div className="res-bar-track">
           <div className="res-bar-fill" style={{ width: `${pct}%` }} />
-          <span className="res-bar-label">{Math.floor(res.value)}/{Math.ceil(res.threshold)}</span>
+          <span className="res-bar-label">{Math.floor(res.value)}/{Math.ceil(threshold)}</span>
         </div>
         <span className="res-delta">{fmtDelta(res.output)}/t</span>
       </div>

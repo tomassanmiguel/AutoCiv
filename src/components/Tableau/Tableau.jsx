@@ -403,6 +403,7 @@ export default function Tableau() {
                   hpBonus={hpBonus}
                   combat={combat}
                   side="player"
+                  terrain={tile.terrain}
                   action={tileAction(tile, occ)}
                   onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
                 />

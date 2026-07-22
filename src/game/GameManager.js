@@ -141,8 +141,12 @@ export class GameManager {
         totals[res] = (totals[res] ?? 0) + per * count
       }
     }
-    // Coordination policy: each Citizen also yields +1 progress per tick.
-    if (this._hasPolicy('coordination')) totals.progress += (civ.pops.citizen ?? 0)
+    // Language policy: each Citizen also yields +1 progress per tick.
+    if (this._hasPolicy('language')) totals.progress += (civ.pops.citizen ?? 0)
+    // Ownership policy: every deployed building yields +2 gold per tick.
+    if (this._hasPolicy('ownership')) totals.gold += 2 * this._deployedBuildingCount()
+    // Breweries: +1 gold per tick per unit within each brewery's range.
+    totals.gold += this._breweryGold()
     civ.progress.output = totals.progress
     civ.food.output = totals.food
     civ.production.output = totals.production
@@ -154,9 +158,51 @@ export class GameManager {
     return this.data.civilization.policies.some((p) => p && p.key === key)
   }
 
-  // --- Warband: units gain +1 atk / +1 def per OTHER deployed friendly unit of the
-  // same key. Snapshotted onto occ.warband; recomputed whenever the board or the
-  // policy set changes (and at combat start). ---
+  _deployedBuildingCount() {
+    let n = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && !occ.damaged) n++ // destroyed buildings don't produce
+    }
+    return n
+  }
+
+  /** Total per-tick gold from all breweries (+1 per unit within each brewery's range). */
+  _breweryGold() {
+    let g = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && occ.key === 'brewery' && !occ.damaged) {
+        g += this._unitsInRange(tile.row, tile.col, BUILDING_DEFS.brewery.range(occ.level))
+      }
+    }
+    return g
+  }
+
+  /** Count of deployed, active player units within `range` orthogonal steps of (cr, cc). */
+  _unitsInRange(cr, cc, range) {
+    let n = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ?.kind === 'unit' && !occ.damaged && Math.abs(tile.row - cr) + Math.abs(tile.col - cc) <= range) n++
+    }
+    return n
+  }
+
+  /** True if (row, col) is within some undamaged brewery's range (its aura). */
+  _inBreweryRange(row, col) {
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && occ.key === 'brewery' && !occ.damaged &&
+          Math.abs(tile.row - row) + Math.abs(tile.col - col) <= BUILDING_DEFS.brewery.range(occ.level)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  // --- Warband (Tribalism): units gain +1 atk / +1 def per OTHER deployed friendly
+  // unit of the same key. Snapshotted onto occ.warband via _syncUnitStats. ---
   _deployedUnitCounts() {
     const counts = {}
     for (const tile of this.data.tableau.tiles.values()) {
@@ -167,13 +213,19 @@ export class GameManager {
   }
 
   _warbandBonus(occ, counts) {
-    if (!occ || occ.kind !== 'unit' || !this._hasPolicy('warband')) return 0
+    if (!occ || occ.kind !== 'unit' || !this._hasPolicy('tribalism')) return 0
     return Math.max(0, (counts[occ.key] ?? 1) - 1)
   }
 
-  /** Recompute each deployed unit's Warband bonus + effective maxHp (Clothes +
-   *  Warband), topping up full units. Call after any board/policy/modifier change. */
-  _syncUnitStats() {
+  /**
+   * Recompute each deployed unit's effective combat stats and store them on the
+   * occupant (occ.atk / occ.maxHp), folding in every modifier:
+   *   flat  += Clothes (hp), Warband (atk+hp), Forest (+5 hp, combat only)
+   *   mult  ×= Brewery aura (+10% atk, −10% hp) when in a brewery's range
+   * Full-HP units are topped up. `inCombat` gates the Forest bonus (combat only).
+   * Called on every board/policy/upgrade change and (with inCombat) at combat start.
+   */
+  _syncUnitStats(inCombat = this.data.phase === 'battle') {
     const civ = this.data.civilization
     const counts = this._deployedUnitCounts()
     const hpBonus = civ.modifiers.unitHpBonus
@@ -181,19 +233,27 @@ export class GameManager {
       const occ = tile.occupant
       if (!occ || occ.kind !== 'unit') continue
       const wb = this._warbandBonus(occ, counts)
+      const forest = (inCombat && tile.terrain === 'forest') ? 5 : 0
+      const brew = this._inBreweryRange(tile.row, tile.col)
+      const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + forest, wb)
       const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
       occ.warband = wb
-      occ.maxHp = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb).def
+      occ.forestDef = forest
+      occ.inBrewery = brew
+      occ.atk = Math.round(s.atk * (brew ? 1.1 : 1))
+      occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
       if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
     }
   }
 
-  /** Cross any thresholds this resource has reached this tick. */
+  /** Cross any thresholds this resource has reached this tick. Basket Weaving lowers
+   *  food thresholds by 5% (applied to the compared/subtracted requirement). */
   _processThresholds(type, res) {
     const cfg = RESOURCE_CONFIG[type]
+    const mult = (type === 'food' && this._hasPolicy('basket_weaving')) ? 0.95 : 1
     let guard = 0
-    while (res.value >= res.threshold && guard++ < 1000) {
-      res.value -= res.threshold // carry the overflow into the next level
+    while (res.value >= res.threshold * mult && guard++ < 1000) {
+      res.value -= res.threshold * mult // carry the overflow into the next level
       res.level += 1
       if (type === 'food') this.addPops(this.data.era + 1)
       else if (type === 'progress') this.data.pendingProgress += 1
@@ -736,6 +796,7 @@ export class GameManager {
     const to = this.data.tableau.tileAt(toRow, toCol)
     to.occupant = from.occupant
     from.occupant = null
+    this._syncUnitStats() // position changed → refresh Brewery-aura membership
     this._emit()
   }
 
@@ -782,7 +843,7 @@ export class GameManager {
   }
 
   _startCombat() {
-    this._syncUnitStats() // snapshot Warband + maxHp for this battle
+    this._syncUnitStats(true) // snapshot combat stats (Warband/Forest/Brewery) for this battle
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
       if (!occ || occ.damaged) continue
@@ -820,19 +881,24 @@ export class GameManager {
 
     const bounds = this.data.tableau.visibleBounds(this.data.era)
     const enemyRows = this.data.tableau.enemyRowCount(this.data.era)
+    // Flow idle units toward reachable enemies; re-sync so their Forest/Brewery
+    // bonuses reflect the NEW tile (stats are stored per-occupant by _syncUnitStats).
+    if (this._combatReposition(bounds)) this._syncUnitStats(true)
     const list = this._combatants(bounds, enemyRows)
     list.sort((a, b) => a.y - b.y || a.col - b.col) // bottom-to-top, left-to-right
 
     for (const c of list) if (c.isUnit && this._isActive(c)) c.unit.cdTimer -= dt
 
+    let shifted = false
     for (const c of list) {
       if (!c.isUnit || !this._isActive(c) || c.unit.cdTimer > 0) continue
       if (this._resolveAttack(c, bounds)) {
         c.unit.cdTimer += this._effectiveCooldown(c.unit)
         c.unit.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
-        if (UNIT_DEFS[c.unit.key]?.shift) this._shift(c, bounds, enemyRows)
+        if (UNIT_DEFS[c.unit.key]?.shift && this._shift(c, bounds, enemyRows)) shifted = true
       }
     }
+    if (shifted) this._syncUnitStats(true) // a Wolf shift changed a unit's tile
 
     // Campfire auras heal adjacent friendlies once per whole combat-second crossed.
     const secs = Math.floor(this.data.combatTime) - Math.floor(before)
@@ -896,6 +962,12 @@ export class GameManager {
     const killed = target.hp <= 0
     if (killed) { target.hp = 0; target.damaged = true }
     this._pushEvent({ kind: 'damage', side, amount, killed, ...loc })
+    // Hunting: unblocked damage your units land on enemies is also gained as food.
+    if (side === 'enemy' && this._hasPolicy('hunting')) {
+      const food = this.data.civilization.food
+      food.value += amount
+      this._processThresholds('food', food)
+    }
   }
 
   _frontEnemyInCol(col) {
@@ -930,7 +1002,86 @@ export class GameManager {
     return NaN
   }
 
-  _effectiveAtk(unit) { return unitStats(UNIT_DEFS[unit.key], unit.level, 0, unit.warband ?? 0).atk }
+  // ---------------------------------------------------------------------------
+  // Combat repositioning: a unit whose own column has NO enemies flows one column
+  // over toward reachable enemies.
+  //  - melee/cavalry: move to an adjacent column that HAS enemies and NO friendly
+  //    melee/cavalry unit (become its front line).
+  //  - ranged: move to an adjacent column that HAS enemies and friendly cover (a
+  //    defensive building or a melee unit) to shoot from behind.
+  // ---------------------------------------------------------------------------
+  _combatReposition(bounds) {
+    if (!bounds) return false
+    const units = []
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (occ && occ.kind === 'unit' && !occ.damaged) units.push({ tile, occ })
+    }
+    units.sort((a, b) => a.tile.row - b.tile.row || a.tile.col - b.tile.col)
+    let moved = false
+    for (const { tile, occ } of units) {
+      if (this._columnHasEnemies(tile.col)) continue // has targets here — stay
+      const role = UNIT_DEFS[occ.key]?.types[0]
+      if (role !== 'melee' && role !== 'cavalry' && role !== 'ranged') continue
+      for (const targetCol of [tile.col - 1, tile.col + 1]) {
+        if (targetCol < bounds.minCol || targetCol > bounds.maxCol) continue
+        if (!this._columnHasEnemies(targetCol)) continue
+        const ok = role === 'ranged'
+          ? this._columnHasCover(targetCol, bounds)
+          : !this._columnHasFriendlyFront(targetCol, bounds)
+        if (!ok) continue
+        const dest = this._emptyTileInColumn(targetCol, occ, tile.row, bounds)
+        if (dest) { dest.occupant = occ; tile.occupant = null; moved = true; break }
+      }
+    }
+    return moved
+  }
+
+  _columnHasEnemies(col) {
+    return this.data.enemies.some((e) => e.col === col && !e.damaged)
+  }
+  // Friendly melee/cavalry unit present in a column.
+  _columnHasFriendlyFront(col, bounds) {
+    for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+      const occ = this.data.tableau.tileAt(r, col)?.occupant
+      if (occ?.kind === 'unit' && !occ.damaged) {
+        const role = UNIT_DEFS[occ.key]?.types[0]
+        if (role === 'melee' || role === 'cavalry') return true
+      }
+    }
+    return false
+  }
+  // Cover for ranged: a friendly defensive building or a melee unit in the column.
+  _columnHasCover(col, bounds) {
+    for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+      const occ = this.data.tableau.tileAt(r, col)?.occupant
+      if (!occ || occ.damaged) continue
+      if (occ.kind === 'building' && BUILDING_DEFS[occ.key]?.types?.includes('defense')) return true
+      if (occ.kind === 'unit' && UNIT_DEFS[occ.key]?.types[0] === 'melee') return true
+    }
+    return false
+  }
+  // An empty, unlocked, terrain-valid tile in a column for `occ` (prefer `preferRow`).
+  _emptyTileInColumn(col, occ, preferRow, bounds) {
+    const def = UNIT_DEFS[occ.key]
+    const tryRow = (r) => {
+      if (r < bounds.minRow || r > bounds.maxRow) return null
+      const tile = this.data.tableau.tileAt(r, col)
+      if (tile && !tile.occupant && this.data.tableau.isUnlocked(r, col, this.data.era) &&
+          canPlaceOn(def.placement, tile.terrain)) return tile
+      return null
+    }
+    const hit = tryRow(preferRow)
+    if (hit) return hit
+    for (let d = 1; d <= bounds.maxRow - bounds.minRow; d++) {
+      const t = tryRow(preferRow + d) || tryRow(preferRow - d)
+      if (t) return t
+    }
+    return null
+  }
+
+  // Player units carry a synced effective atk (occ.atk); enemies fall back to base.
+  _effectiveAtk(unit) { return unit.atk ?? unitStats(UNIT_DEFS[unit.key], unit.level, 0, unit.warband ?? 0).atk }
   _effectiveCooldown(unit) {
     const def = UNIT_DEFS[unit.key] ?? BUILDING_DEFS[unit.key]
     return Math.max(MIN_COOLDOWN, def?.cooldown ?? MIN_COOLDOWN)
@@ -948,6 +1099,7 @@ export class GameManager {
   }
 
   // Wolf ability: after attacking, shift to an adjacent empty valid space.
+  // Returns true if the unit actually moved (so the caller can re-sync stats).
   _shift(c, bounds, enemyRows) {
     const def = UNIT_DEFS[c.unit.key]
     if (c.side === 'player') {
@@ -959,7 +1111,7 @@ export class GameManager {
         if (!tile || tile.occupant || !canPlaceOn(def.placement, tile.terrain)) continue
         t.tileAt(c.row, c.col).occupant = null
         tile.occupant = c.unit
-        return
+        return true
       }
     } else {
       const nbrs = [[c.slot + 1, c.col], [c.slot - 1, c.col], [c.slot, c.col + 1], [c.slot, c.col - 1]]
@@ -969,9 +1121,10 @@ export class GameManager {
         if (this.data.enemies.some((e) => e.col === col && e.slot === slot)) continue
         c.unit.col = col
         c.unit.slot = slot
-        return
+        return true
       }
     }
+    return false
   }
 
   _pushEvent(ev) { this.data.combatEvents.push({ ...ev, seq: this.data.combatSeq }) }
@@ -1003,11 +1156,23 @@ export class GameManager {
       if (occ.mercenary) { tile.occupant = null; continue } // mercenaries disband after the battle
       if (!occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer }
     }
-    // Shamans convert the battle's toll into legitimacy (+10 each).
+    // End-of-combat legitimacy: Totems, Shamans, and Sacred Grounds' empty land.
     const civ = this.data.civilization
-    const shamans = civ.pops.shaman ?? 0
-    if (shamans > 0) civ.legitimacy.value += (POP_TYPES.shaman.combatLegit ?? 10) * shamans
-    this._syncUnitStats() // board changed (mercenaries disbanded)
+    let legit = 0
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && occ.key === 'totem' && !occ.damaged) {
+        legit += BUILDING_DEFS.totem.combatLegit(occ.level)
+      }
+    }
+    legit += (POP_TYPES.shaman.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
+    if (this._hasPolicy('sacred_grounds')) {
+      for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+        if (!tile.occupant && tile.def?.place === 'land') legit += 1
+      }
+    }
+    if (legit > 0) civ.legitimacy.value += legit
+    this._syncUnitStats(false) // combat over: drop the Forest bonus, disband mercs' warband
     this.data.enemies = [] // undefeated enemies fade away
     this.data.combatTime = 0
     this.data.combatEvents = []

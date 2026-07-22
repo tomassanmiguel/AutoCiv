@@ -18,7 +18,7 @@ const EST_W = 300 // ~tooltip max-width + margin, used only to decide the edge f
  * just beside it (to the left, flipping right near the screen edge) so it never
  * covers the card/slot it describes.
  */
-export default function InfoTip({ title, text, className = '', children, ...rest }) {
+export default function InfoTip({ title, text, className = '', tipClassName = '', children, ...rest }) {
   const anchorRef = useRef(null)
   const [pos, setPos] = useState(null)
   const place = () => {
@@ -43,7 +43,7 @@ export default function InfoTip({ title, text, className = '', children, ...rest
     >
       {children}
       {pos && createPortal(
-        <div className={`infotip ${pos.right ? 'open-right' : 'open-left'}`} style={{ left: pos.x, top: pos.y }}>
+        <div className={`infotip ${pos.right ? 'open-right' : 'open-left'}${tipClassName ? ' ' + tipClassName : ''}`} style={{ left: pos.x, top: pos.y }}>
           {title && <div className="infotip-title">{title}</div>}
           {/* String tooltips route through IconText so :token:s render as icons. */}
           <div className="infotip-body">{typeof text === 'string' ? <IconText>{text}</IconText> : text}</div>

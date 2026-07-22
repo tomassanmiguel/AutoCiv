@@ -15,6 +15,20 @@
    beside it (vertically centered) so it never covers the anchor. */
 .infotip.open-left { transform: translate(-100%, -50%); }
 .infotip.open-right { transform: translate(0, -50%); }
+
+/* Upgrade preview (hovering the on-card Upgrade button): dark-green tint to signal
+   these are the POST-upgrade values. */
+.infotip.upgrade-preview {
+  background: #12331c;
+  border-color: #3f8f52;
+}
+.infotip.upgrade-preview .infotip-title { color: #9be8ad; }
+.tc-tip-upg {
+  font-weight: 700;
+  color: #b8f0c4;
+  margin-bottom: 0.2rem;
+  font-size: 0.85rem;
+}
 .infotip-title {
   font-weight: 700;
   color: var(--accent-light);

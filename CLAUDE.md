@@ -155,7 +155,7 @@ AutoCiv/
 │   │   │   ├── enemies.js     # enemy host generation (Horde/Elite/Group) + ENEMY_ROSTER
 │   │   │   ├── buildings.js   # building defs (Mud Wall/Pier/Campfire/Cave Painting) + hp/effect/outputs helpers
 │   │   │   ├── costs.js       # gold cost formulas (repair/upgrade/specialist/mercenary)
-│   │   │   ├── policies.js    # policy defs (Burial Rites/Coordination/Warband)
+│   │   │   ├── policies.js    # policy defs (name = unlocking advancement); combat + economy effects
 │   │   │   └── pops.js        # pop types (Citizen + Builder/Farmer/Trader/Shaman) + output/tooltip helpers
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
 │   │   └── react/GameProvider.jsx # <GameProvider> + useGame() hook
@@ -314,8 +314,10 @@ exists; extend it as systems land.
 - **Development:** **65 ticks/era**, **paused by default**. A speed widget sets
   `paused`/`standard`(1/s)/`fast`(3/s)/`super`(5/s)/`ultra`(10/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
-  add it to each threshold resource's `value`, then cross any reached thresholds. The **Coordination**
-  policy adds +1 :progress: per Citizen to that output (`_recomputeOutputs`).
+  add it to each threshold resource's `value`, then cross any reached thresholds. Policy/building
+  add-ons to per-tick `output` (`_recomputeOutputs`): **Language** (+1 :progress:/Citizen), **Ownership**
+  (+2 :gold: per deployed building), **Brewery** (+1 :gold: per unit within each brewery's range).
+  **Basket Weaving** makes all **food** thresholds 5% lower (`_processThresholds`).
 - **Threshold resources** (progress/food/production) accumulate `value` toward the current level's
   `threshold`; on reaching it, `value` **resets** (overflow carries), `level` (# thresholds reached)
   increments, and the **per-level threshold grows**: `threshold(N)=threshold(N-1)+X·1.25^E·n·R`
@@ -348,9 +350,11 @@ exists; extend it as systems land.
 - **Pool:** `advancements.js` holds all **560** advancements (28 eras × 20, verbatim names,
   misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) lists
   the few that currently do something and what they unlock (`kind`: `unit`/`building`/`pop`/`policy`/
-  `modifier`). Only a **Stone** subset is implemented so far (Warrior is pre-unlocked in Melee):
-  units Wolf/Slinger; buildings Mud Wall/Pier/**Campfire**/**Cave Painting**; policies Burial Rites/
-  **Coordination**/**Warband**; specialists Builder/Farmer/Trader/**Shaman**; modifier Clothes.
+  `modifier`). Almost all of **Stone** is implemented now (only *Midwivery* is left; Warrior pre-unlocked
+  in Melee, **Totem** pre-unlocked in Legitimacy): units Wolf/Slinger; buildings Mud Wall/Pier/Campfire/
+  Cave Painting/**Totem**/**Brewery**; policies Burial Rites/Language/Tribalism/**Hunting**/**Ownership**/
+  **Basket Weaving**/**Sacred Grounds**; specialists Builder/Farmer/Trader/Shaman; modifier Clothes.
+  **A policy's display name matches the advancement that unlocks it** (e.g. Language→`language` policy).
 - **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
   the game **paused** (`_restartTimer` is gated on `!selection`). Multiple owed choices queue via
   `pendingProgress`; each resolves then opens the next. Choices earned but unresolved are dropped on
@@ -390,15 +394,22 @@ exists; extend it as systems land.
   warband?, storedProgress? }`) and persist across eras. **Deployed buildings** produce their
   end-of-era output (Pier food — a **flat** `200 + 100·(level−1)`, no era scaling) into resources +
   `lifetimeOutput` (`_accrueBuildingOutputs`).
-- **Cave Painting** (progress building, hp 8, **can't be upgraded**): carries `storedProgress`
-  (starts 5, **doubles each era after combat** in `_ageCavePaintings`, capped 50000). When a build is
-  placed on its tile (**overbuilt**, in `_createInstance`), that stored :progress: is granted to the
-  civ (and may open advancement choices). The on-tile card/tooltip shows the current stored value.
+- **Cave Painting** (progress building, hp 8, **can't be upgraded** via `def.noUpgrade`): carries
+  `storedProgress` (starts 5, **doubles each era after combat** in `_ageCavePaintings`, capped 50000).
+  When a build is placed on its tile (**overbuilt**, in `_createInstance`), that stored :progress: is
+  granted to the civ (and may open advancement choices). Card/tooltip show the current stored value.
+- **Totem** (legitimacy building, **pre-unlocked**, hp 15/+5): grants `10 + 5·(level−1)` :legitimacy:
+  at each combat's end. **Brewery** (gold building, hp 5, range = level): +1 :gold:/tick per unit in
+  range, and units in range get a **±10% aura** (+10% atk, −10% hp). Neither uses `_accrueBuildingOutputs`
+  — Totem/Sacred-Grounds/Shaman resolve in `_endCombat`; Brewery/Ownership gold in `_recomputeOutputs`.
 - **On-tile cards** (`TileCard`): ~70% of the tile, centered, **enlarge to fill on hover** (which
   shows a rich tooltip and hides the tile tooltip). Corner **level** badge. Units show name + type +
-  **Speed/Atk/Def icons**; buildings show name + type + **Def + current outputs** (lifetime total in
-  the tooltip). **Damaged** instances gray out and read "(damaged)". The tile sprite lives on its own
-  `.tile-bg` layer so the west-coast mirror never flips the card.
+  **Speed/Atk/Def icons** (Atk/Def are the synced **effective** `occ.atk`/`occ.maxHp`, incl. Warband/
+  Brewery); buildings show name + type + **Def + current outputs** (lifetime total in the tooltip).
+  The unit tooltip also notes Forest/Brewery/Tribalism bonuses. **Damaged** instances gray out and read
+  "(damaged)". Hovering the on-card **Upgrade** button switches the tooltip to a **dark-green preview**
+  of the next level (`InfoTip` `tipClassName="upgrade-preview"`; `renderTip(true)`). The tile sprite
+  lives on its own `.tile-bg` layer so the west-coast mirror never flips the card.
 - **Fill juice:** filling a roster slot (advancement unlock) sets `data.justFilled`; the panel opens
   that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation. The slam
   is gated to the just-filled slot (a `.slam` class) so merely switching tabs — which now remounts
@@ -461,9 +472,22 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   damage** (enemy). Buildings are targetable/front-line but don't attack. HP≤0 → `damaged` (inactive
   until repaired). Non-destroyed instances **heal to full** at combat end (damage doesn't persist);
   destroyed ones stay damaged. Wolf `shift`: after attacking, moves to an adjacent empty valid space.
-- **Warband** policy: a unit gets **+1 :attack: / +1 :defense: per other deployed friendly unit of
-  the same key**. Computed in `_syncUnitStats` (folded into `occ.warband` + `maxHp`), which runs on
-  every board/policy/upgrade change and is **snapshotted at `_startCombat`** (fixed for the battle).
+- **Repositioning** (`_combatReposition`, each step before attacks): a unit whose **own column has no
+  enemies** flows one column over. **melee/cavalry** → an adjacent column that has enemies and **no
+  friendly melee/cavalry** (become its front line). **ranged** → an adjacent column that has enemies
+  and friendly **cover** (a defensive building or a melee unit). Moves to an empty, unlocked,
+  terrain-valid tile; if none qualifies it stays (and an enemy-free column still yields gold).
+- **Stat pipeline** (`_syncUnitStats(inCombat)`, stores `occ.atk`/`occ.maxHp`): flat bonuses Clothes
+  (hp), Warband/**Tribalism** (+1 atk/def per other same-key deployed unit), **Forest** (+5 def, tiles
+  where `terrain==='forest'`, **combat only**), then the **Brewery** aura multiplier (×1.1 atk / ×0.9
+  hp when in range). Synced at `_startCombat` **and again after any mid-combat move** (a reposition or
+  Wolf shift both return whether they moved, and `_combatStep` re-syncs so the new tile's Forest/Brewery
+  status takes effect); `_effectiveAtk` reads `occ.atk` (enemies fall back to base). "**Range X**"
+  throughout = tiles within X orthogonal steps (Manhattan distance ≤ X). All building-output hooks skip
+  `damaged` (destroyed) instances.
+- **End-of-combat legitimacy** (`_endCombat`, survival only — not on defeat): each undamaged **Totem**
+  grants `10 + 5·(level−1)`; each **Shaman** +10; **Sacred Grounds** grants +1 per **empty, visible,
+  land** tile.
 - **Campfire** (utility building): each **whole combat-second** it heals each orthogonally-adjacent
   friendly (unit or building, below max, not destroyed) by `5/7/9/…%` (per level) of their max HP
   (`_applyCampfireHealing`, floating green `+N` via a `heal` combat event).
@@ -573,14 +597,30 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   death shake→gray, panel value pulses). Reddening Def + no-persist damage done; Clothes retroactive.
 - [x] Gold economy: a **preparation** phase; **repair**/**upgrade** deployed instances; **buy
   specialists**; **hire mercenaries**; **drag-reposition** units. (Spend gold is live.)
-- [~] Content fill-in (5 advancements/batch): batch 1 (Stone) done — Campfire, Cave Painting,
-  Coordination, Warband, Shaman. Combat auras (campfire heal) + board-relative stats (Warband) exist.
+- [~] Content fill-in (5 advancements/batch): batch 1 + batch 2 (Stone) done. **Stone is complete
+  except _Midwivery_.** Rich combat systems now exist: unit repositioning, per-tile Forest bonus,
+  building auras (Campfire heal, Brewery ±10%), end-of-combat legitimacy (Totem/Shaman/Sacred Grounds),
+  damage→food (Hunting), board-relative stats (Tribalism).
 - [ ] Still-inert combat policy: Burial Rites (progress on death). More unit abilities.
 
 ---
 
 ## Changelog
 
+- **2026-07-21** — **Content batch 2 (Stone)** + three combat-rule changes. Rules: (1) **combat
+  repositioning** — idle melee/cavalry/ranged units flow one column toward reachable enemies
+  (`_combatReposition`); (2) **Forest** tiles give a unit +5 :defense: in combat only (noted in the
+  tooltip); (3) end-of-combat legitimacy now includes a **Totem** legitimacy building (pre-unlocked,
+  10 +5/level). Also: policies renamed so their name matches the unlocking advancement (Language,
+  Tribalism, …); the on-card **Upgrade** hover previews the next level in a dark-green tooltip. Five
+  advancements: **Hunting** (unblocked damage→:food:), **Ownership** (buildings +2 :gold:/tick),
+  **Basket Weaving** (food thresholds −5%), **Fermentation**→**Brewery** (gold building; +1 :gold:/tick
+  per unit in range = level; range aura +10% atk/−10% hp), **Sacred Grounds** (empty visible land tiles
+  → +1 :legitimacy: at combat end; effect hidden from its description). Unified unit stats into
+  `_syncUnitStats(inCombat)` storing `occ.atk`/`occ.maxHp`. An adversarial multi-agent review then
+  caught + fixed: mid-combat moves (reposition/Wolf shift) now **re-sync** so Forest/Brewery bonuses
+  track the unit's real tile; Ownership/Brewery skip **damaged** buildings/units; the on-card upgrade
+  preview is derived from live action state so it can't stick on. Verified via a Node sim (38 checks).
 - **2026-07-21** — **Content batch 1 (Stone)** + a Pier fix. Pier food is now a **flat**
   `200 + 100·(level−1)` (no era scaling); Mud Wall buffed to 25 hp / +10 per upgrade. Implemented five
   advancements: **Fire**→Campfire (utility building; heals adjacent friendlies `5/7/9…%` max HP per
