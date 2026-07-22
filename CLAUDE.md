@@ -486,16 +486,18 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 ### Combat (`GameManager` combat methods, `game/data/enemies.js`, `Tableau/TileCard`)
 - **Enemy host** (`generateHost`, regenerated each era, visible as a preview during development):
   a **budget-based** system (`enemies.js`). Each era gets a **threat budget** `B0·growth^era`
-  (`BUDGET_BASE`/`BUDGET_GROWTH` — the two tuning knobs) that is **spent buying enemy units**. The
-  candidate pool is the player's own **combat** `UNIT_DEFS` (no utility/support) from `era−ERA_SPREAD`
-  up to **era+1** (a rare next-era peek), weighted toward recent eras (falling back to all units ≤ era+1
-  when later eras aren't implemented yet). A unit's **cost** ≈ its combat value `atk·(25/cooldown) + def`
-  at its level; older units arrive as higher-level **veterans** (`rollLevel`). The buy loop fills bodies
-  into valid columns (terrain via `columnPlaces`+`canPlaceOn`) until the board is full or budget runs
-  out; **leftover budget levels up placed enemies**, so late-era hosts are FEWER-but-STRONGER (a full
-  board of high-level units). Columns are re-ordered **melee/cavalry front, ranged back**. Enemies never
-  spawn support/buildings; they fade after each combat. (`ENEMY_ROSTER` and the old Horde/Elite/Group
-  fraction compositions are retired.)
+  (`BUDGET_BASE`/`BUDGET_GROWTH`), times a per-host **±`STRENGTH_VARIANCE`** random swing. It's **spent
+  buying enemy units** from a candidate pool = the player's own **combat** `UNIT_DEFS` (no utility) from
+  `era−ERA_SPREAD` up to **era+1** (a rare next-era peek), weighted toward recent eras (falling back to
+  all units ≤ era+1 when later eras aren't implemented yet). A unit's **cost** ≈ its combat value
+  `atk·(25/cooldown) + def` at its level; each unit's level is a **geometric upgrade roll** (`rollLevel`:
+  repeated 50% coin, so P(≥k upgrades)=0.5^k ⇒ ~1/32 reach +5). The buy loop keeps buying **bodies** into
+  valid columns (terrain via `columnPlaces`+`canPlaceOn`) — skipping unaffordable rolls, not stopping —
+  until the board is full or nothing's affordable; only then does **leftover budget level up placed
+  enemies**. So the host grows in COUNT as the budget rises, with a random upgrade tail, and only once the
+  board is full do levels inflate (fewer-but-stronger). Columns re-ordered **melee/cavalry front, ranged
+  back**. Enemies never spawn support/buildings; they fade after each combat. (`ENEMY_ROSTER` + the old
+  Horde/Elite/Group fractions are retired.)
 - **Loop:** `_combatStep` runs every 50ms real, advancing combat time by the speed multiplier (the
   speed widget = 1x/3x/5x/10x); a battle is `COMBAT_DURATION = 25` combat-seconds. Attacks resolve
   **bottom-to-top, left-to-right**; each unit attacks on its **cooldown** (fractional, floored at

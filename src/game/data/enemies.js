@@ -9,8 +9,8 @@
 import { UNIT_DEFS, unitStats, unitRole } from './units.js'
 
 // --- Tunables (calibrate by playtest) --------------------------------------------
-const BUDGET_BASE = 40      // B0: era-0 threat budget
-const BUDGET_GROWTH = 1.25  // per-era multiplier
+const BUDGET_BASE = 120     // B0: era-0 threat budget
+const BUDGET_GROWTH = 1.2   // per-era multiplier
 const STRENGTH_VARIANCE = 0.25 // ±25% random swing on a host's budget
 const COMBAT_DURATION = 25  // matches GameManager's battle length (for the DPS term)
 const ERA_SPREAD = 5        // how many eras back the enemy pool reaches
@@ -55,10 +55,13 @@ function weightedPick(cands, rng) {
   return cands[cands.length - 1].key
 }
 
-/** Level an enemy of `unitEra` arrives at in `era`: older units come as higher-level
- *  "veterans" (so they stay relevant), with a little random spread. */
-function rollLevel(era, unitEra, rng) {
-  return 1 + Math.max(0, era - unitEra) + (rng() < 0.4 ? 1 : 0)
+/** Random upgrade spread: each extra level is a repeated 50% coin flip, so a unit has
+ *  P(≥k upgrades) = 0.5^k (≈1/32 reach +5). Independent of era — the budget grows the
+ *  body count, and the leftover-levelling phase scales a full board up. */
+function rollLevel(rng) {
+  let level = 1
+  while (rng() < 0.5) level++
+  return level
 }
 
 /**
@@ -84,26 +87,29 @@ export function generateHost(era, rows, columns, rng = Math.random) {
   // ±STRENGTH_VARIANCE random swing on this host's budget (stable per seed).
   let budget = threatBudget(era) * (1 - STRENGTH_VARIANCE + rng() * 2 * STRENGTH_VARIANCE)
 
-  // --- Phase 1: buy bodies until the board is full or the budget runs dry. ---
-  let placed = 0, guard = 0
-  while (placed < capacity && budget > 0 && guard++ < capacity * 60 + 500) {
+  // --- Phase 1: buy bodies until the board is full or the budget can't afford any. ---
+  // Skip a roll that can't be placed/afforded but keep trying cheaper/placeable rolls,
+  // so the budget buys as many BODIES as possible before levelling begins (misses = a
+  // run of consecutive unspendable rolls → nothing left affordable).
+  let placed = 0, misses = 0
+  while (placed < capacity && budget > 0 && misses < 40) {
     const key = weightedPick(candidates, rng)
     const def = UNIT_DEFS[key]
     const valid = columns.filter((c) => c.places.has(def.placement) && perCol.get(c.col).length < rows)
-    if (valid.length === 0) continue // every column this unit could use is full
-    const level = rollLevel(era, def.era, rng)
+    const level = rollLevel(rng)
     const cost = unitCost(key, level)
-    if (cost > budget && placed > 0) break // can't afford another (but always place at least one)
+    if (valid.length === 0 || (cost > budget && placed > 0)) { misses++; continue }
     const c = valid[Math.floor(rng() * valid.length)]
     const entry = { key, level, role: unitRole(def), col: c.col }
     perCol.get(c.col).push(entry)
     placedList.push(entry)
     budget -= cost
     placed++
+    misses = 0
   }
 
   // --- Phase 2: spend the leftover budget levelling up placed enemies. ---
-  let misses = 0
+  misses = 0
   while (budget > 0 && placedList.length > 0 && misses < placedList.length + 5) {
     const e = placedList[Math.floor(rng() * placedList.length)]
     const marginal = unitCost(e.key, e.level + 1) - unitCost(e.key, e.level)
