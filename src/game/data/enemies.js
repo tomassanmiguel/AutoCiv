@@ -4,7 +4,7 @@
 // then each column is re-ordered so melee/cavalry sit in FRONT of ranged (nearest
 // the player). Enemies never spawn support units or buildings.
 
-import { UNIT_DEFS, unitStats } from './units.js'
+import { UNIT_DEFS, unitStats, unitRole } from './units.js'
 
 // Which unit keys are available as ENEMIES at a given era index (era -1 = wildlife).
 export const ENEMY_ROSTER = {
@@ -79,7 +79,7 @@ export function generateHost(era, rows, columns, rng = Math.random) {
     const valid = columns.filter((c) => c.places.has(def.placement) && perCol.get(c.col).length < rows)
     if (valid.length === 0) break // nowhere left this unit can go
     const c = valid[Math.floor(rng() * valid.length)]
-    perCol.get(c.col).push({ key: pick.key, level: pick.level, role: def.types[0] })
+    perCol.get(c.col).push({ key: pick.key, level: pick.level, role: unitRole(def) })
     placed++
   }
 

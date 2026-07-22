@@ -28,6 +28,20 @@ export const UNIT_DEFS = {
     description: 'A :ranged: skirmisher that flings stones from behind cover.',
   },
 
+  // --- Bronze era ---
+  archer: {
+    key: 'archer', name: 'Archer', era: 1, types: ['ranged'], placement: 'land',
+    cooldown: 4, atk: 8, hp: 9, upAtk: 1, upHp: 2,
+    ability: '',
+    description: 'A :ranged: bowman with more reach and punch than the Slinger.',
+  },
+  galley: {
+    key: 'galley', name: 'Galley', era: 1, types: ['naval'], placement: 'coast', combatRole: 'melee',
+    cooldown: 3, atk: 6, hp: 13, upAtk: 1, upHp: 2,
+    ability: '',
+    description: 'A :naval: warship deployed on the coast that rams enemies as :melee:.',
+  },
+
   // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
   bear: {
     key: 'bear', name: 'Bear', era: -1, types: ['melee'], placement: 'land',
@@ -41,6 +55,13 @@ export const UNIT_DEFS = {
     ability: '',
     description: 'A swift :cavalry: predator.',
   },
+}
+
+/** Combat behaviour of a unit — its role in battle. Defaults to the first slot
+ *  category, but a unit may override via `combatRole` (e.g. a :naval: unit that
+ *  fights as :melee:), so its slot and its battlefield behaviour can differ. */
+export function unitRole(def) {
+  return def?.combatRole ?? def?.types?.[0]
 }
 
 /** Effective stats at a given upgrade level, with optional flat HP/Atk bonuses

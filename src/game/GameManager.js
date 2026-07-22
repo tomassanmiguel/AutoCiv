@@ -3,7 +3,7 @@ import { ERAS, ERA_COUNT } from './data/eras.js'
 import { RESOURCE_CONFIG, TICKS_PER_ERA, nextThreshold, rubberBand } from './data/resources.js'
 import { POP_TYPES, isSpecialist } from './data/pops.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
-import { UNIT_DEFS, unitStats } from './data/units.js'
+import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
 import { canPlaceOn, terrainDefBonus } from './data/terrain.js'
@@ -1109,7 +1109,7 @@ export class GameManager {
 
   _resolveAttack(c, bounds) {
     const atk = this._effectiveAtk(c.unit)
-    const role = UNIT_DEFS[c.unit.key].types[0]
+    const role = unitRole(UNIT_DEFS[c.unit.key])
     if (c.side === 'player') {
       const front = this._frontEnemyInCol(c.col)
       const isFrontUnit = c.row === this._frontPlayerUnitRow(c.col, bounds)
@@ -1217,7 +1217,7 @@ export class GameManager {
     let moved = false
     for (const { tile, occ } of units) {
       if (this._columnHasEnemies(tile.col)) continue // has targets here — stay
-      const role = UNIT_DEFS[occ.key]?.types[0]
+      const role = unitRole(UNIT_DEFS[occ.key])
       if (role !== 'melee' && role !== 'cavalry' && role !== 'ranged') continue
       const dest = this._repositionDest(tile, occ, role, bounds)
       if (dest) { dest.occupant = occ; tile.occupant = null; moved = true }
@@ -1255,7 +1255,7 @@ export class GameManager {
     for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
       const occ = this.data.tableau.tileAt(r, col)?.occupant
       if (occ?.kind === 'unit' && !occ.damaged) {
-        const role = UNIT_DEFS[occ.key]?.types[0]
+        const role = unitRole(UNIT_DEFS[occ.key])
         if (role === 'melee' || role === 'cavalry') return true
       }
     }
@@ -1267,7 +1267,7 @@ export class GameManager {
       const occ = this.data.tableau.tileAt(r, col)?.occupant
       if (!occ || occ.damaged) continue
       if (occ.kind === 'building' && BUILDING_DEFS[occ.key]?.types?.includes('defense')) return true
-      if (occ.kind === 'unit' && UNIT_DEFS[occ.key]?.types[0] === 'melee') return true
+      if (occ.kind === 'unit' && unitRole(UNIT_DEFS[occ.key]) === 'melee') return true
     }
     return false
   }
