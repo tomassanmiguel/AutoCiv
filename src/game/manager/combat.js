@@ -150,6 +150,16 @@ class CombatMixin {
         }
         return true
       }
+      if (UNIT_DEFS[c.unit.key].splash != null) {
+        // Siege (Catapult): lob over the front line onto the REAR-most enemy, then
+        // deal `splash`× damage to its (col/slot) neighbours.
+        const back = this._backEnemyInCol(c.col)
+        this._pushEvent({ kind: 'attack', side: 'player', col: c.col, row: c.row })
+        this._dealDamage(back, atk, 'enemy', { col: back.col, slot: back.slot })
+        const splash = Math.round(atk * UNIT_DEFS[c.unit.key].splash)
+        if (splash > 0) for (const nb of this._enemyNeighbors(back)) this._dealDamage(nb, splash, 'enemy', { col: nb.col, slot: nb.slot })
+        return true
+      }
       if (role === 'ranged' || isFrontUnit) {
         this._pushEvent({ kind: 'attack', side: 'player', col: c.col, row: c.row })
         this._dealDamage(front, atk, 'enemy', { col: front.col, slot: front.slot })
@@ -198,6 +208,19 @@ class CombatMixin {
   _frontEnemySlot(col) {
     const f = this._frontEnemyInCol(col)
     return f ? f.slot : -1
+  }
+  // Rear-most enemy (smallest slot = farthest from the player) — the Catapult's target.
+  _backEnemyInCol(col) {
+    let best = null
+    for (const e of this.data.enemies) {
+      if (e.col === col && !e.damaged && (best === null || e.slot < best.slot)) best = e
+    }
+    return best
+  }
+  /** Undamaged enemies orthogonally adjacent to `e` in the col/slot grid (splash targets). */
+  _enemyNeighbors(e) {
+    return this.data.enemies.filter((o) => !o.damaged && o !== e &&
+      Math.abs(o.col - e.col) + Math.abs(o.slot - e.slot) === 1)
   }
   _frontPlayerInCol(col, bounds) {
     for (let r = bounds.maxRow; r >= bounds.minRow; r--) {

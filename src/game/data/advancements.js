@@ -120,6 +120,7 @@ export const IMPLEMENTED = {
   'Calendar':     { kind: 'policy', key: 'calendar', description: "Unlocks the Calendar policy — each era's development lasts 5 more ticks." },
   'Festivals':    { kind: 'policy', key: 'festivals', description: 'Unlocks the Festivals policy — end-of-combat effects trigger an additional time.' },
   'Rudders':      { kind: 'unit', key: 'trireme', description: 'Unlocks the Trireme — a coastal :naval:/:ranged: unit that earns triple :gold: from unblocked damage.' },
+  'Siege':        { kind: 'unit', key: 'catapult', description: 'Unlocks the Catapult — a land :siege: unit that strikes the enemy rear with 50% splash.' },
 }
 
 export function isImplemented(name) {
