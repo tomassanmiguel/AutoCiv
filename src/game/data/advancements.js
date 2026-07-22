@@ -88,7 +88,7 @@ export const IMPLEMENTED = {
   'The Sling':    { kind: 'unit', key: 'slinger', description: 'Unlocks the Slinger — a land :ranged: unit.' },
 
   // --- Bronze era ---
-  'The Wheel':    { kind: 'building', key: 'road', description: 'Unlocks the Road — a Supplement building that underlaps others and links every adjacent tile, extending building ranges and unit movement.' },
+  'The Wheel':    { kind: 'building', key: 'road', description: 'Unlocks the Road — a Utility building that underlaps others and links every adjacent tile, extending building ranges and unit movement.' },
   'Domestication': { kind: 'building', key: 'ranch', description: 'Unlocks the Ranch — a :food: building that produces food each tick and grows stronger after every combat (reset if destroyed).' },
   'Pottery':      { kind: 'building', key: 'kiln', description: 'Unlocks the Kiln — a :production: building fed by each adjacent building.' },
   'Mining':       { kind: 'building', key: 'mine', description: 'Unlocks the Mine — a :gold: building, doubled when placed on a mountain.' },

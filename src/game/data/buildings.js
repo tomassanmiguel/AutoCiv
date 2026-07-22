@@ -91,7 +91,7 @@ export const BUILDING_DEFS = {
 }
 
 /** Effective building HP at a given upgrade level, plus a flat civ-wide bonus
- *  (Hereditary Rule). Supplement buildings (Road) have no HP. */
+ *  (Hereditary Rule / Masonry). Underlapping buildings (Road) have no HP. */
 export function buildingHp(def, level = 1, hpBonus = 0) {
   return def.hp + Math.max(0, level - 1) * (def.upHp ?? 0) + hpBonus
 }

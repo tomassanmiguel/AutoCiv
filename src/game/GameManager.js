@@ -962,13 +962,14 @@ export class GameManager {
     this._emit()
   }
 
-  /** Unlocked roster units that could be deployed on this tile's terrain. */
+  /** Unlocked roster units that could be hired as a mercenary onto this tile's terrain.
+   *  Excludes utility units (e.g. Baker) — a mercenary is a disposable COMBAT unit. */
   _placeableUnitsAt(tile) {
     const out = []
     for (const slot of this.data.civilization.units) {
       if (!slot) continue
       const def = UNIT_DEFS[slot.key]
-      if (def && canPlaceOn(def.placement, tile.terrain)) out.push(slot)
+      if (def && unitRole(def) !== 'utility' && canPlaceOn(def.placement, tile.terrain)) out.push(slot)
     }
     return out
   }

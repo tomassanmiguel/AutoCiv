@@ -84,7 +84,9 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   // Effective unit stats at a level (Clothes + Warband, then Brewery aura), matching
   // the manager's pipeline (Forest is combat-only, so omitted from the dev preview).
   const statsAt = (lvl) => {
-    const s = unitStats(def, lvl, hpBonus + wb, wb)
+    // Include occ.permDef (Baker's permanent buff) so the preview Def matches occ.maxHp;
+    // it only affects def (unitStats' hpBonus arg), not atk.
+    const s = unitStats(def, lvl, hpBonus + wb + (occ.permDef ?? 0), wb)
     const b = occ.inBrewery
     const atkMult = occ.atkMult ?? (b ? 1.1 : 1) // Brewery × Brothel (positional)
     const caste = occ.casteActive && lvl > 1 ? 1.25 : 1 // upgraded-unit bonus applies at the previewed level

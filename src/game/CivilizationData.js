@@ -42,7 +42,7 @@ export class CivilizationData {
     // 5 policy slots. Warrior is unlocked from the start (Melee = index 0).
     this.units = new Array(9).fill(null)
     this.units[0] = { key: 'warrior', level: 1 }
-    // Buildings index-aligned to BUILDING_CATEGORIES (8, incl. Supplement); Totem
+    // Buildings index-aligned to BUILDING_CATEGORIES (8, incl. two Utility slots); Totem
     // pre-unlocked (Legitimacy = index 4).
     this.buildings = new Array(8).fill(null)
     this.buildings[4] = { key: 'totem', level: 1 }
