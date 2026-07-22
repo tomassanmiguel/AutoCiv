@@ -1,27 +1,22 @@
 # AutoCiv — Project Guide (CLAUDE.md)
 
-> **This is a living document, and it must stay STRICTLY ACCURATE and TIGHT.** With
-> **every change** to the game, update this file — both from a **game-design perspective**
-> (rules, systems, content, balance) and a **code perspective** (architecture, modules,
-> conventions, gotchas). We are building AutoCiv **iteratively, one piece at a time**, and
-> this file is the single source of truth that accumulates as we go.
+> **This is a living reference — keep it ACCURATE, TIGHT, and MINIMAL.** We are building
+> AutoCiv **fast and iteratively**, so this file is optimized for *onboarding speed*, not
+> completeness: it holds the **critical information needed to understand the project** —
+> the **game rules/systems** and the **code architecture/conventions/gotchas** — and nothing
+> more. It is **NOT** a comprehensive design doc, a full content catalogue, or a change log.
 >
-> **Updating is not just adding — it is also removing and correcting.** Every edit to the
-> game is also an edit to this file: **delete** anything that is now false, **rewrite**
-> anything that changed, and **do not leave outdated statements standing.** An inaccurate
-> line here is worse than no line at all, because it will be trusted. Before finishing any
-> task, re-read the sections you touched and reconcile them with what the code and rules
-> now actually do.
+> **What to include:** the rules and mechanics that define how the game works; the systems
+> and how they connect; the code layout and the non-obvious conventions/gotchas a new
+> contributor would trip on. **What to leave out:** an exhaustive list of every unit /
+> building / policy and its numbers (the code in `game/data/` is the source of truth for
+> content); dated histories of what changed; anything aspirational or speculative.
 >
-> **How to update this file after a change:**
-> 1. If the change alters a game rule or system, record it under **Game Design** — and
->    **remove or rewrite** any prior rule it supersedes or contradicts.
-> 2. If it adds/changes code structure or conventions, update **Architecture & Code** —
->    fix the file tree, paths, and conventions so they match reality; delete stale entries.
-> 3. Add a dated one-line entry to the **Changelog** at the bottom.
-> 4. Keep it **concise**: no speculation, no aspirational features written as if they exist,
->    no duplication. Document only what is **actually true right now**. If unsure whether
->    something still holds, verify against the code before writing it down.
+> **Updating is removing and correcting, not just adding.** With every change: **delete**
+> anything now false, **rewrite** anything that changed, and prefer describing the *general
+> rule/system* over enumerating each new piece of content. An inaccurate or bloated line is
+> worse than no line — it will be trusted and it slows the next reader down. Before finishing
+> a task, re-read the sections you touched and reconcile them with what the code now does.
 
 ---
 
@@ -348,13 +343,13 @@ exists; extend it as systems land.
 
 ### Advancements / progress selection (`game/data/advancements.js`, `components/Progress`)
 - **Pool:** `advancements.js` holds all **560** advancements (28 eras × 20, verbatim names,
-  misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) lists
-  the few that currently do something and what they unlock (`kind`: `unit`/`building`/`pop`/`policy`/
-  `modifier`). Almost all of **Stone** is implemented now (only *Midwivery* is left; Warrior pre-unlocked
-  in Melee, **Totem** pre-unlocked in Legitimacy): units Wolf/Slinger; buildings Mud Wall/Pier/Campfire/
-  Cave Painting/**Totem**/**Brewery**; policies Burial Rites/Language/Tribalism/**Hunting**/**Ownership**/
-  **Basket Weaving**/**Sacred Grounds**; specialists Builder/Farmer/Trader/Shaman; modifier Clothes.
-  **A policy's display name matches the advancement that unlocks it** (e.g. Language→`language` policy).
+  misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) is the
+  registry of which ones actually do something + what they unlock (`kind`: `unit`/`building`/`pop`/
+  `policy`/`modifier`) — **this registry + `game/data/` are the source of truth for content; don't
+  re-catalogue every piece here.** The whole **Stone** era (era 0) is implemented; later eras are
+  filled in a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
+  Legitimacy building slot. **A policy's display name matches the advancement that unlocks it**
+  (e.g. Language→`language` policy).
 - **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
   the game **paused** (`_restartTimer` is gated on `!selection`). Multiple owed choices queue via
   `pendingProgress`; each resolves then opens the next. Choices earned but unresolved are dropped on
@@ -488,6 +483,12 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 - **End-of-combat legitimacy** (`_endCombat`, survival only — not on defeat): each undamaged **Totem**
   grants `10 + 5·(level−1)`; each **Shaman** +10; **Sacred Grounds** grants +1 per **empty, visible,
   land** tile.
+- **Event-triggered policies** (checked via `_hasPolicy`): **Hunting** — a player unit dealing
+  unblocked damage to an enemy also gains that much :food: (in `_dealDamage`); **Burial Rites** — any
+  unit that dies banks :progress: equal to its :defense: (added to `progress.value`, NOT crossed
+  mid-combat — progress choices only open in development, so it carries into next era's dev); **Midwivery**
+  — creating a unit yields :production: equal to its effective :defense: (in `_createInstance`, during
+  development, so it may cross a production threshold and chain another build).
 - **Campfire** (utility building): each **whole combat-second** it heals each orthogonally-adjacent
   friendly (unit or building, below max, not destroyed) by `5/7/9/…%` (per level) of their max HP
   (`_applyCampfireHealing`, floating green `+N` via a `heal` combat event).
@@ -579,209 +580,3 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 - Framed hamburger button (in the left HUD) opens a 9-slice-boxed overlay (light panel, dark
   framed buttons). Holds a **temporary Era control** (slider + Prev/Next) that calls
   `GameManager.setEra` as an **instant debug jump** (no banner), plus **Exit to Title**.
-
----
-
-## Roadmap (loose, piece-by-piece)
-
-- [x] Project scaffold + placeholder title screen.
-- [x] UI viewer: tableau grid + camera, enemy slots, civ panel, menu/era widget, era music.
-- [x] Development phase: tick engine, resources/thresholds, Citizen pops, speed control, era
-  banners + typewriter transition. Battle phase is stubbed (banner only).
-- [x] Progress selection: threshold → paused 3-card advancement chooser (hide/re-muster, weighted
-  pool), unlock into roster slots (fill / confirm / replace), specialists + pop-growth split.
-- [x] Production/build flow: choose a unit/building, placement mode (valid tiles flash), deploy an
-  instance onto a tile with an on-tile card; damaged appearance; slot-fill "slam" juice.
-- [x] Battle phase: per-era enemy hosts, 25s combat (cooldowns/targeting/gold/legitimacy), damaged
-  state, Defeat screen, and **combat juice** (attack thrust, floating damage/gold/legitimacy numbers,
-  death shake→gray, panel value pulses). Reddening Def + no-persist damage done; Clothes retroactive.
-- [x] Gold economy: a **preparation** phase; **repair**/**upgrade** deployed instances; **buy
-  specialists**; **hire mercenaries**; **drag-reposition** units. (Spend gold is live.)
-- [~] Content fill-in (5 advancements/batch): batch 1 + batch 2 (Stone) done. **Stone is complete
-  except _Midwivery_.** Rich combat systems now exist: unit repositioning, per-tile Forest bonus,
-  building auras (Campfire heal, Brewery ±10%), end-of-combat legitimacy (Totem/Shaman/Sacred Grounds),
-  damage→food (Hunting), board-relative stats (Tribalism).
-- [ ] Still-inert combat policy: Burial Rites (progress on death). More unit abilities.
-
----
-
-## Changelog
-
-- **2026-07-21** — **Content batch 2 (Stone)** + three combat-rule changes. Rules: (1) **combat
-  repositioning** — idle melee/cavalry/ranged units flow one column toward reachable enemies
-  (`_combatReposition`); (2) **Forest** tiles give a unit +5 :defense: in combat only (noted in the
-  tooltip); (3) end-of-combat legitimacy now includes a **Totem** legitimacy building (pre-unlocked,
-  10 +5/level). Also: policies renamed so their name matches the unlocking advancement (Language,
-  Tribalism, …); the on-card **Upgrade** hover previews the next level in a dark-green tooltip. Five
-  advancements: **Hunting** (unblocked damage→:food:), **Ownership** (buildings +2 :gold:/tick),
-  **Basket Weaving** (food thresholds −5%), **Fermentation**→**Brewery** (gold building; +1 :gold:/tick
-  per unit in range = level; range aura +10% atk/−10% hp), **Sacred Grounds** (empty visible land tiles
-  → +1 :legitimacy: at combat end; effect hidden from its description). Unified unit stats into
-  `_syncUnitStats(inCombat)` storing `occ.atk`/`occ.maxHp`. An adversarial multi-agent review then
-  caught + fixed: mid-combat moves (reposition/Wolf shift) now **re-sync** so Forest/Brewery bonuses
-  track the unit's real tile; Ownership/Brewery skip **damaged** buildings/units; the on-card upgrade
-  preview is derived from live action state so it can't stick on. Verified via a Node sim (38 checks).
-- **2026-07-21** — **Content batch 1 (Stone)** + a Pier fix. Pier food is now a **flat**
-  `200 + 100·(level−1)` (no era scaling); Mud Wall buffed to 25 hp / +10 per upgrade. Implemented five
-  advancements: **Fire**→Campfire (utility building; heals adjacent friendlies `5/7/9…%` max HP per
-  combat-second), **Cave Painting**→Cave Painting (progress building, no upgrade; `storedProgress`
-  starts 5, doubles each era, cap 50000, granted when overbuilt), **Language**→Coordination (policy:
-  Citizens +1 :progress:/tick), **Tribalism**→Warband (policy: units +1 :attack:/+1 :defense: per
-  other deployed unit of the same key), **Mysticism**→Shaman (specialist: +3 :progress:/tick, +10
-  :legitimacy: per Shaman at each combat end). Added `_syncUnitStats` (Warband/Clothes maxHp),
-  `_applyCampfireHealing`, `_ageCavePaintings`, a `heal` combat-FX float, and unit `atkBonus` in
-  `unitStats`. Verified via a Node sim (27 checks).
-- **2026-07-21** — Initial Vite + React scaffold (mirrors Third Place website stack).
-  Added state-based screen router in `App.jsx` and a placeholder `TitleScreen`. Established
-  theme tokens and shared button styles. This CLAUDE.md created as the living project guide.
-- **2026-07-21** — Strengthened the maintenance contract: updates must remove/correct stale
-  info and keep the doc strictly accurate and tight, not merely append.
-- **2026-07-21** — Built the UI viewer: framework-free `game/` model layer
-  (GameManager→GameData→TableauData/CivilizationData/Tile) with a `useSyncExternalStore`
-  bridge; 8×22 tableau from the real design sheet (row/col unlock model, 28 eras, seeded
-  meta-terrain resolution); pan/zoom camera with reusable `revealFullTableau`; enemy slots;
-  civ panel (Legitimacy/Gold/Food/Production/Progress + Units/Buildings/Policies/Population
-  accordions); menu overlay with a temporary era widget; era-driven cross-fading music.
-  Wired assets into `public/` and transcoded the soundtrack WAV→OGG (~350 MB → ~33 MB).
-- **2026-07-21** — Fixes: (1) rewrote `AudioManager` to a channel-based cross-fade so tracks
-  can't stack when the era changes rapidly; (2) west-facing coast tiles are mirrored
-  (`flipX`/`isWestCoast`); (3) terrain regions now randomize per run (fresh random seed per
-  new game) instead of a static map.
-- **2026-07-21** — Reworked the panel dropdowns: slots are now large full-width rows that
-  flex-fill the panel height, each with a category label + description. Units cut 9→8 and
-  Buildings labeled with fixed categories (`game/data/slots.js`); descriptions clamp to the
-  row with full text on hover.
-- **2026-07-21** — Set up git (branch `main`, per-change commits) and added the
-  version-control + working-style notes to this file. Added the reusable `<NineSlice>`
-  (border-image) component and framed the info panel (light `Box`) and dropdowns (dark
-  `Box Dark`) with 9-slice parchment frames, restyling the panel to dark-ink-on-parchment.
-- **2026-07-21** — Added `<InfoTip>` hover tooltips to the five top resources. Fixed ESLint
-  errors: moved the map-seed generation to `App`'s New Game handler (was calling `Math.random`
-  during render — the map could regenerate on an incidental re-render), and created the
-  `AudioManager` inside an effect instead of during render.
-- **2026-07-21** — Slots now show a **centered type silhouette** (from `public/sprites/ui/`)
-  instead of inline text, with the description on hover. Added a 9th unit category **Aerial**
-  and made unit categories **era-gated** (`unlock` era in `slots.js`; "Copper Age" → Bronze,
-  "Support" → Utility). Reordered building categories and refreshed all slot descriptions.
-- **2026-07-21** — Fixed tiles blurring on zoom (removed `will-change: transform` from the
-  tableau content). Rebuilt the title screen around the **Title Card** art (which already
-  contains the logo): dropped the old text logo/kicker/tagline/footer/starfield and placed
-  parchment-framed (`Box` 9-slice) menu buttons in the card's open sky. The card fits the
-  viewport (letterboxed) and uses `container-type: size` so the menu scales via `cq` units.
-- **2026-07-21** — Added the title-screen track (`First Fire to Stars` → `public/music/title.ogg`)
-  and moved the `AudioManager` up to `App` so it's session-long: title↔era music now cross-fades
-  on the same system across screen changes (`AudioController` just syncs the era). Added a
-  fade-to-black screen transition (`App.transitionTo` + `.screen-fade`). Trimmed dead App.css.
-- **2026-07-21** — Added a pixel-art **LoadingScreen** click-to-start splash as the entry point.
-  It captures the first gesture (so audio can autoplay), then fades into the title screen where
-  the music begins. Added the `--font-pixel` (Press Start 2P) web font.
-- **2026-07-21** — Expanded the map from 8×22 to **9×26**: new top row 9 (Invasion) with an
-  Asteroid + Deep Space/Exoplanet extended up, and far-right **Galactic** deep-space columns
-  23–26 (Early/Late Galactic, Utopian) that scatter planet/star/singularity tiles per column
-  (`COLUMN_SPECIALS`). Added planet/star/singularity terrains + the `Asteroid` label. Enemy
-  slots now render the **Battlefield** tile instead of red squares.
-- **2026-07-21** — Battlefield-slot tooltip; enemy rows grow 3→4 from the Revolution era.
-- **2026-07-21** — Implemented the **development-phase game loop**: `GameManager` tick engine
-  (65 ticks/era, speed-controlled), cumulative threshold resources (`resources.js` formula),
-  Citizen pops (`pops.js`) producing progress/food/production, food thresholds adding pops.
-  Added the left HUD (era banner, speed widget, framed menu), the battle/era **TransitionOverlay**
-  (slot-machine era spin), resource level numbers + bar-to-next-threshold, and the Citizen
-  `PopCard`. Battle phase is a stubbed banner. Engine verified stable over all 28 eras via sim.
-- **2026-07-21** — Loop fixes: threshold `n` is now the global level (never resets per era) with
-  the rubber band vs `(era+1)·targetPerEra` (thresholds now strictly monotonic); music crossfades
-  reliably via a direct manager subscription; moved the speed control to a top HUD row and added a
-  ticks-remaining `TickCounter`; replaced the slot-machine era spin with a **typewriter** effect;
-  removed the pop-card silhouette and added a total-output line to its tooltip.
-- **2026-07-21** — Smoothed the era map growth: on era change the camera is counter-translated by
-  the grid's content-origin shift (`prevLayoutRef`) before the zoom-out animates, so tiles no
-  longer teleport/jolt.
-- **2026-07-21** — Rebalanced speeds: Fast 2→**3** t/s, Super 3→**5** t/s, Ultra 5→**10** t/s
-  (`SPEED_TPS` + SpeedControl tooltips).
-- **2026-07-21** — Added the **Victory screen** (`components/Victory`): a light-`Box` 9-slice
-  "Victory" popup shown on completing the final era (`won`), with **Hide** (keeps the map
-  inspectable) and **Return to Title**. Added a far-right **WidgetRail** (`components/Widgets`)
-  whose **trophy** widget re-summons the popup after it's hidden.
-- **2026-07-21** — Implemented the **progress / advancement selection**. Added the 560-entry
-  advancement pool + `IMPLEMENTED` registry (`data/advancements.js`) and unit/building/policy/
-  specialist defs (`units.js`/`buildings.js`/`policies.js`/`pops.js`; Warrior pre-unlocked). A
-  progress threshold now pauses the game and opens a weighted 3-card chooser (`ProgressOverlay`)
-  with Hide/re-muster (rail flask), fill-or-replace into roster slots (confirm + don't-ask-again,
-  red-flashing candidate slots), specialist unlock/citizen-conversion, and the EVEN/ODD pop-growth
-  split. Filled panel slots now render item cards. Engine flows verified via a Node sim; an
-  adversarial multi-agent review pass ran over the slice. Production/build flow is next.
-- **2026-07-21** — Review fixes on the progress slice: tick now counts before opening a choice (no
-  free extra accumulation tick per advancement); unlocking a policy/specialist fills one slot, not
-  all; replace-candidate slots keep their tooltip + gained keyboard activation.
-- **2026-07-21** — Unit/building **stat icons** (Speed/Attack/Defense served into
-  `public/sprites/icons`) replace the text stat line; building effects report the **current**
-  era/level value (e.g. Pier food) not the upgrade sequence; card formatting: smaller corner
-  silhouettes, no icon/text overlap, wrapping policy text, larger stat icons.
-- **2026-07-21** — Implemented the **production / build flow** (`components/Production`,
-  `Tableau/TileCard`). A production threshold pauses and opens a pick→place selection: unlocked
-  units/buildings flash yellow in the panel, then valid tiles flash yellow/red on the tableau;
-  placing deploys a `tile.occupant` instance rendered as an on-tile card (hover-enlarge + tooltip,
-  level badge, damaged gray-out). Added terrain placement classes + `canPlaceOn`, building
-  end-of-era outputs + lifetime (Pier food), and a roster slot-fill "slam" animation. Model verified
-  via a Node sim (pick/place, land-only validity, replace, Pier accrual, full-era resolve).
-- **2026-07-21** — Production-slice review fixes: (1) a threshold crossing on the FINAL dev tick is
-  now presented before the era ends (was discarded); (2) an exhausted advancement pool auto-skips
-  instead of opening a zero-card soft-lock; (3) `_endDevelopment` guarded against double-accrue;
-  (4) a drag-vs-click guard so panning during placement no longer drops the unit on the wrong tile;
-  (5) placement flashes were inset box-shadows hidden behind the new `.tile-bg` layer — moved onto
-  `.tile-bg` and made bolder (this is why the Pier's coast tiles didn't visibly highlight).
-- **2026-07-21** — **Pervasive inline-icon prose** (`IconText` + `:token:` markup): gameplay
-  descriptions/effects/tooltips now render resource/stat/type **icons** instead of the words
-  (InfoTip auto-routes string tooltips through it). Tokenized the implemented content + category/
-  resource descriptions. Bolder panel replace/pick flashes; shrank on-card stat icons to stay
-  within the card frame (tooltip keeps the large readable ones).
-- **2026-07-21** — Implemented the **combat / battle phase**. Each era generates an enemy host
-  (`data/enemies.js`: Horde/Elite/Group, terrain-gated columns, melee-front ordering; era −1 Bear/
-  Lion/Wolf wildlife). The battle phase runs a 25s combat (`_combatStep`, speed = time multiplier):
-  bottom-to-top/left-to-right, cooldown-based (fractional, min 1s) attacks — melee/cavalry as the
-  front-most friendly, ranged at range, empty columns → gold / legitimacy damage; HP≤0 → damaged;
-  survivors heal between combats; Wolf shifts after attacking; legitimacy 0 → **Defeat** screen.
-  Enemies render as red `TileCard`s with cooldown bars + remaining-HP (reddening) Def. Model verified
-  via a Node sim (host validity/ordering, resolve, defeat, heal). Combat juice is the next slice.
-- **2026-07-21** — Combat-slice review fixes: (1) enemy hosts were EMPTY from Iron on (roster only
-  covers eras −1/0) — `buildPool` now falls back to the nearest rostered units, so no era is a
-  walkover; (2) a friendly building in front zeroed the column's melee — the melee gate now uses a
-  unit-only front row so walls shield without disabling your attackers; (3) Victory/Defeat raised to
-  z-index 200 (above the battle banner); (4) TickCounter shows a dash during the transition phase.
-  Floating combat numbers/thrust/death-shake juice remains the next slice.
-- **2026-07-21** — **Combat juice** + card polish: `CombatFx` floats damage/gold/legitimacy numbers
-  over the source cell; unit cards **thrust** on attack (keyed by `lastAttackSeq`); destroyed cards
-  **shake→fade to gray**; panel gold/legitimacy **pulse** as they change. Clothes now applies **+5 HP
-  retroactively** to deployed units. Card **type shown as an icon** (dropped the "MELEE"/"POLICY" text
-  + corner watermark so the policy card fits). Selected **speed button** clearly highlighted.
-- **2026-07-21** — **Gold economy** (makes gold useful). Added `game/data/costs.js` (repair / upgrade /
-  specialist / mercenary formulas) and a new **preparation phase** between development and battle
-  (`_startPrep` → `CombatPrep` banner → **Begin Combat**). Gold now buys: **repair** a damaged
-  unit/building, **upgrade** a healthy one (both via a gold-cost button on the on-tile card, with a
-  green flash + grow/shrink pop), **specialists** (a **Convert +N** button on each specialist PopCard
-  turns era+1 citizens into that type), and **mercenaries** (hire a random valid roster unit onto an
-  empty tile during prep; flagged `mercenary`, disbands in `_endCombat`). **Units drag to reposition**
-  onto a valid empty tile any time in dev/prep (valid tiles flash yellow, invalid drops snap back;
-  no displacing). All buttons gray out when gold is short. Added `Repair`/`Upgrade` icons. Model
-  verified via a Node sim (29 checks); an adversarial multi-agent review ran over the slice.
-- **2026-07-21** — UI fixes: (1) the on-tile **Repair** button no longer looks grayed on a damaged
-  card — the damaged **grayscale** filter now wraps an inner `.tc-body` so the sibling action button
-  keeps full color; (2) the card **level badge** moved in-flow into a name/level header row so it can
-  no longer **overlap** the name; (3) combat is **held** until the "Battle" banner clears
-  (`data.combatIntro` + `dismissCombatIntro()`), so the fight no longer runs under the popup; (4)
-  `InfoTip` **portals** its tooltip to `<body>` so the hover-scaled tile card (a transformed ancestor)
-  can't misplace it; (5) the civ panel now **collapses closed dropdowns to slim tabs** and shrinks the
-  legitimacy header to a compact row, so the open group fills the height and its cards fit (the fill
-  "slam" is gated to the just-filled slot so tab-switching doesn't replay it).
-- **2026-07-21** — Follow-ups on the above: (1) `InfoTip` now anchors to the hovered element's
-  bounding box and opens **beside** it (left, flipping right at the edge, vertically centered)
-  instead of over the cursor, so a card/slot tooltip **never covers** it; (2) while a panel dropdown
-  is expanded the other three are **hidden entirely** (collapse via the header to switch), giving
-  the open group the whole area so late-game unit cards stop getting cut off — closed groups stay as
-  slim tabs only during a build pick; (3) on-tile card names now **shrink + wrap to two lines** and
-  only ellipsize as a true last resort (no more premature truncation).
-- **2026-07-21** — More reposition/panel fixes: (1) units can now be **dragged while choosing a
-  build's location** (drag one aside to make room), with a real drag suppressing the placement click
-  so click=place/replace, drag=move; (2) **Hire** buttons are hidden during a reposition drag so they
-  can't block the drop; (3) the panel's hide-the-other-dropdowns behavior now applies **during a
-  build pick** too (defaults Units open, collapse to switch to Buildings) instead of falling back to
-  slim tabs.
