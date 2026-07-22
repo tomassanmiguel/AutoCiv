@@ -65,6 +65,10 @@ export const POLICY_DEFS = {
     key: 'calendar', name: 'Calendar', type: 'Policy',
     effect: "Each era's development lasts 5 more ticks.",
   },
+  festivals: {
+    key: 'festivals', name: 'Festivals', type: 'Policy',
+    effect: 'End-of-combat effects (legitimacy, Ranch growth, Pier, etc.) trigger an additional time.',
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',

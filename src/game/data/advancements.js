@@ -118,6 +118,7 @@ export const IMPLEMENTED = {
   'Weights and Measures': { kind: 'policy', key: 'weights_and_measures', description: 'Unlocks the Weights and Measures policy — all :gold: outputs are increased by 50%.' },
   'Mathematics':  { kind: 'modifier', key: 'mathematics', silhouette: '/sprites/ui/production.png', description: 'Immediately grants two :production: builds.' },
   'Calendar':     { kind: 'policy', key: 'calendar', description: "Unlocks the Calendar policy — each era's development lasts 5 more ticks." },
+  'Festivals':    { kind: 'policy', key: 'festivals', description: 'Unlocks the Festivals policy — end-of-combat effects trigger an additional time.' },
 }
 
 export function isImplemented(name) {

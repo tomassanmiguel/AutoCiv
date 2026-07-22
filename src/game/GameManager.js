@@ -1506,6 +1506,24 @@ export class GameManager {
       const occ = tile.occupant
       if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer } // survivors heal to full
     }
+    // "End of era" (= end of combat) effects — Festivals triggers them an extra time.
+    const times = this._hasPolicy('festivals') ? 2 : 1
+    for (let i = 0; i < times; i++) this._applyEraEndEffects()
+    this._syncUnitStats(false) // combat over: drop terrain bonus, fold in Hereditary Rule
+    this.data.enemies = [] // undefeated enemies fade away
+    this.data.combatTime = 0
+    this.data.combatEvents = []
+    this.data.combatIntro = false
+    this.data.phase = 'transition'
+    this._restartTimer()
+    this._emit()
+  }
+
+  /** The "end of era" (= end of combat) effects that Festivals can trigger an extra
+   *  time: Ranch growth, Totem/Shaman/Sacred-Grounds legitimacy, Oral Tradition,
+   *  Hereditary Rule, and deployed buildings' end-of-era output (Pier food). */
+  _applyEraEndEffects() {
+    const civ = this.data.civilization
     // Ranch: grow its per-tick food bonus (+2/3/4/…) if it survived; reset if destroyed.
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
@@ -1516,8 +1534,7 @@ export class GameManager {
         occ.ranchStep = (occ.ranchStep ?? 2) + 1
       }
     }
-    // End-of-combat legitimacy: Totems, Shamans, and Sacred Grounds' empty land.
-    const civ = this.data.civilization
+    // Legitimacy: Totems, Shamans, and Sacred Grounds' empty land.
     let legit = 0
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
@@ -1532,8 +1549,8 @@ export class GameManager {
       }
     }
     if (legit > 0) civ.legitimacy.value += legit
-    // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy:
-    // (progress banked like Burial Rites — its choices open in next era's development).
+    // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy: (progress
+    // banked like Burial Rites — its choices open in next era's development).
     if (this._hasPolicy('oral_tradition')) {
       const L = Math.floor(civ.legitimacy.value)
       civ.gold.value += L
@@ -1544,16 +1561,8 @@ export class GameManager {
       civ.modifiers.unitHpBonus += 1
       civ.modifiers.buildingHpBonus += 1
     }
-    // End-of-combat building outputs (e.g. Pier food) accrue now (= "end of era").
+    // Deployed buildings' end-of-era output (e.g. Pier food).
     this._accrueBuildingOutputs()
-    this._syncUnitStats(false) // combat over: drop terrain bonus, fold in Hereditary Rule
-    this.data.enemies = [] // undefeated enemies fade away
-    this.data.combatTime = 0
-    this.data.combatEvents = []
-    this.data.combatIntro = false
-    this.data.phase = 'transition'
-    this._restartTimer()
-    this._emit()
   }
 
   _defeat() {
