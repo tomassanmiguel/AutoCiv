@@ -108,6 +108,9 @@ export const IMPLEMENTED = {
   'Oral Tradition': { kind: 'policy', key: 'oral_tradition', description: 'Unlocks the Oral Tradition policy — at the end of combat, gain :gold: and :progress: equal to your current :legitimacy:.' },
   'Hereditary Rule': { kind: 'policy', key: 'hereditary_rule', description: 'Unlocks the Hereditary Rule policy — at the end of combat, all units and buildings permanently gain +1 :defense:.' },
   'The Plough':   { kind: 'modifier', key: 'plough', silhouette: '/sprites/ui/food.png', description: 'All :food: thresholds are 5% lower.' },
+
+  // --- Iron era ---
+  'Steel':        { kind: 'unit', key: 'legionnaire', description: 'Unlocks the Legionnaire — a durable land :melee: unit that grows stronger the more of them you field.' },
 }
 
 export function isImplemented(name) {

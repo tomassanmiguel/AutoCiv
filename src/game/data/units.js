@@ -56,6 +56,15 @@ export const UNIT_DEFS = {
     description: 'A :utility: support that never attacks — it hands out rations, permanently toughening the units around it.',
   },
 
+  // --- Iron era ---
+  legionnaire: {
+    key: 'legionnaire', name: 'Legionnaire', era: 2, types: ['melee'], placement: 'land',
+    cooldown: 4, atk: 7, hp: 22, upAtk: 1, upHp: 3,
+    packAtk: 3, // intrinsic +3 :attack: per OTHER Legionnaire on the tableau (see _syncUnitStats)
+    ability: 'Gains +3 :attack: for every other Legionnaire on your tableau.',
+    description: 'A disciplined :melee: soldier — the more Legionnaires you field, the harder each one hits.',
+  },
+
   // Era -1 wildlife — enemy-only (no advancement unlocks them for the player).
   bear: {
     key: 'bear', name: 'Bear', era: -1, types: ['melee'], placement: 'land',

@@ -396,14 +396,17 @@ export class GameManager {
       const terrainDef = inCombat ? terrainDefBonus(tile.terrain) : 0
       if (occ.kind === 'unit') {
         const wb = this._warbandBonus(occ, counts)
+        // Legion: an intrinsic +packAtk :attack: per OTHER same-key unit (e.g. Legionnaire).
+        const pack = (UNIT_DEFS[occ.key].packAtk ?? 0) * Math.max(0, (counts[occ.key] ?? 1) - 1)
         const brew = this._inBreweryRange(tile.row, tile.col)
         const brothel = this._brothelAura(tile.row, tile.col) // { atkMult, cd }
         const caste = (this._hasPolicy('caste_system') && occ.level > 1) ? 1.25 : 1 // upgraded units +25% atk
         // occ.permDef = permanent :defense: granted by a Baker (persists across combats).
-        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb)
+        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb + pack)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         const posMult = (brew ? 1.1 : 1) * brothel.atkMult // positional atk mult (Brewery × Brothel)
         occ.warband = wb
+        occ.packAtk = pack
         occ.terrainDef = terrainDef
         occ.inBrewery = brew
         occ.cdReduce = brothel.cd
