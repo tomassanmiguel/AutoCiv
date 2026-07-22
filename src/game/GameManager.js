@@ -3,9 +3,10 @@ import { ERAS, ERA_COUNT } from './data/eras.js'
 import { RESOURCE_CONFIG, TICKS_PER_ERA, nextThreshold, rubberBand } from './data/resources.js'
 import { POP_TYPES, isSpecialist } from './data/pops.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
-import { UNIT_DEFS } from './data/units.js'
-import { BUILDING_DEFS } from './data/buildings.js'
+import { UNIT_DEFS, unitStats } from './data/units.js'
+import { BUILDING_DEFS, buildingHp, buildingOutputs } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
+import { canPlaceOn } from './data/terrain.js'
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
@@ -188,7 +189,7 @@ export class GameManager {
     if (this.data.selection) return
     if (this.data.phase !== 'development' || this.data.won) return
     if (this.data.pendingProgress > 0) this._openProgressSelection()
-    // production selections land in the next slice.
+    else if (this.data.pendingProduction > 0) this._openProductionSelection()
   }
 
   _openProgressSelection() {
@@ -367,20 +368,28 @@ export class GameManager {
     return civ[group][i] == null
   }
 
+  // Flag the slot just filled so the panel can animate it + open its tab.
+  _markFilled(group, i) {
+    this._fillSeq = (this._fillSeq ?? 0) + 1
+    this.data.justFilled = { group, index: i, seq: this._fillSeq }
+  }
+
   _fillSlot(group, i, unlock) {
     const civ = this.data.civilization
     if (group === 'units') civ.units[i] = { key: unlock.key, level: 1 }
     else if (group === 'buildings') civ.buildings[i] = { key: unlock.key, level: 1 }
     else if (group === 'policies') civ.policies[i] = { key: unlock.key }
     else if (group === 'population') this._unlockSpecialist(i, unlock.key)
+    this._markFilled(group, i)
   }
 
   _replaceSlot(group, i, unlock) {
     const civ = this.data.civilization
-    if (group === 'population') { this._replaceSpecialist(i, unlock.key); return }
+    if (group === 'population') { this._replaceSpecialist(i, unlock.key); this._markFilled(group, i); return }
     if (group === 'units') civ.units[i] = { key: unlock.key, level: 1 }
     else if (group === 'buildings') civ.buildings[i] = { key: unlock.key, level: 1 }
     else if (group === 'policies') civ.policies[i] = { key: unlock.key }
+    this._markFilled(group, i)
   }
 
   _unlockSpecialist(slotIndex, key) {
@@ -415,9 +424,113 @@ export class GameManager {
   }
 
   // ---------------------------------------------------------------------------
+  // Production selection (production threshold): pick a unlocked unit/building
+  // from the roster, then place an instance onto a valid tile.
+  // ---------------------------------------------------------------------------
+  _openProductionSelection() {
+    this.data.selection = {
+      type: 'production',
+      stage: 'pick', // 'pick' (choose from roster) | 'place' (choose a tile)
+      chosen: null, // { group, index, kind, key, level }
+    }
+    this._restartTimer()
+  }
+
+  /** Player clicked a (flashing) buildable roster slot. */
+  pickBuild(group, index) {
+    const sel = this.data.selection
+    if (!sel || sel.type !== 'production' || sel.stage !== 'pick') return
+    if (group !== 'units' && group !== 'buildings') return
+    const occ = this.data.civilization[group][index]
+    if (!occ) return
+    sel.chosen = { group, index, kind: group === 'units' ? 'unit' : 'building', key: occ.key, level: occ.level }
+    sel.stage = 'place'
+    this._emit()
+  }
+
+  /** Return from placement back to the roster picker. */
+  backToBuildPick() {
+    const sel = this.data.selection
+    if (!sel || sel.type !== 'production') return
+    sel.chosen = null
+    sel.stage = 'pick'
+    this._emit()
+  }
+
+  /** Skip the build entirely (safe fallback / decline). */
+  cancelBuild() {
+    const sel = this.data.selection
+    if (!sel || sel.type !== 'production') return
+    this._resolveProduction()
+  }
+
+  /** Placement state of a tile for the current build: 'valid' | 'replace' | 'invalid' | null. */
+  placementState(row, col) {
+    const sel = this.data.selection
+    if (!sel || sel.type !== 'production' || sel.stage !== 'place' || !sel.chosen) return null
+    const tile = this.data.tableau.tileAt(row, col)
+    if (!tile || !this._canPlaceHere(sel.chosen, tile)) return 'invalid'
+    return tile.occupant ? 'replace' : 'valid'
+  }
+
+  /** Player clicked a tile to build on (creates/replaces the instance). */
+  placeAt(row, col) {
+    const sel = this.data.selection
+    if (!sel || sel.type !== 'production' || sel.stage !== 'place' || !sel.chosen) return
+    const tile = this.data.tableau.tileAt(row, col)
+    if (!tile || !this._canPlaceHere(sel.chosen, tile)) return
+    this._createInstance(sel.chosen, tile)
+    this._resolveProduction()
+  }
+
+  _canPlaceHere(chosen, tile) {
+    if (!this.data.tableau.isUnlocked(tile.row, tile.col, this.data.era)) return false
+    const def = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
+    return canPlaceOn(def.placement, tile.terrain)
+  }
+
+  _createInstance(chosen, tile) {
+    const civ = this.data.civilization
+    if (chosen.kind === 'unit') {
+      const hp = unitStats(UNIT_DEFS[chosen.key], chosen.level, civ.modifiers.unitHpBonus).def
+      tile.occupant = { kind: 'unit', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false }
+    } else {
+      const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level)
+      tile.occupant = { kind: 'building', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false, lifetimeOutput: 0 }
+    }
+  }
+
+  _resolveProduction() {
+    this.data.pendingProduction = Math.max(0, this.data.pendingProduction - 1)
+    this.data.selection = null
+    this._maybeOpenSelection()
+    if (!this.data.selection) this._restartTimer()
+    this._emit()
+  }
+
+  /** End-of-era economic output from deployed buildings (into resources + lifetime). */
+  _accrueBuildingOutputs() {
+    const civ = this.data.civilization
+    let addedFood = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (!occ || occ.kind !== 'building' || occ.damaged) continue
+      for (const o of buildingOutputs(BUILDING_DEFS[occ.key], occ.level, this.data.era)) {
+        if (o.res === 'food') {
+          civ.food.value += o.amount
+          occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + o.amount
+          addedFood += o.amount
+        }
+      }
+    }
+    if (addedFood > 0) this._processThresholds('food', civ.food)
+  }
+
+  // ---------------------------------------------------------------------------
   // Phase machine
   // ---------------------------------------------------------------------------
   _endDevelopment() {
+    this._accrueBuildingOutputs()
     this.data.phase = 'battle'
     this._restartTimer() // stops ticking
   }

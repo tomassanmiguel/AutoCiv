@@ -4,24 +4,32 @@ import { GRID, ROWS, COLS, COLUMN_SPECIALS } from './map.js'
 // Concrete terrain registry. `key` is used internally; `name` shows in the
 // tooltip; `sprite` is the served image path (or null -> flat color fallback).
 // ---------------------------------------------------------------------------
+// `place` = placement class for deploying units/buildings: 'land' | 'coast' | 'sea' | 'space'.
 export const TERRAIN = {
-  plains:     { name: 'Plains',     sprite: '/sprites/tiles/plains.png',     color: '#5a7d3a' },
-  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f' },
-  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b' },
-  coast:      { name: 'Coast',      sprite: '/sprites/tiles/coast.png',      color: '#3a6b7d' },
-  ocean:      { name: 'Ocean',      sprite: '/sprites/tiles/ocean.png',      color: '#1f3a6b' },
-  island:     { name: 'Island',     sprite: '/sprites/tiles/island.png',     color: '#3a6b5a' },
-  space:      { name: 'Space',      sprite: '/sprites/tiles/space.png',      color: '#0a0a1a' },
-  deep_space: { name: 'Deep Space', sprite: '/sprites/tiles/deep-space.png', color: '#05050f' },
-  asteroid:   { name: 'Asteroid',   sprite: '/sprites/tiles/asteroid.png',   color: '#4a4a55' },
-  mars:       { name: 'Mars',       sprite: '/sprites/tiles/mars.png',       color: '#8a4a30' },
-  moon:       { name: 'Moon',       sprite: '/sprites/tiles/moon.png',       color: '#8a8a92' },
-  exohills:   { name: 'Exo Hills',  sprite: '/sprites/tiles/exohills.png',   color: '#6b4a7d' },
-  exoplains:  { name: 'Exo Plains', sprite: '/sprites/tiles/exoplains.png',  color: '#7d5a8a' },
-  exosea:     { name: 'Exo Sea',    sprite: '/sprites/tiles/exosea.png',     color: '#3a4a8a' },
-  planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a' },
-  star:       { name: 'Star',       sprite: '/sprites/tiles/star.png',       color: '#d8b24b' },
-  singularity:{ name: 'Singularity',sprite: '/sprites/tiles/singularity.png',color: '#1a0a2a' },
+  plains:     { name: 'Plains',     sprite: '/sprites/tiles/plains.png',     color: '#5a7d3a', place: 'land' },
+  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land' },
+  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land' },
+  coast:      { name: 'Coast',      sprite: '/sprites/tiles/coast.png',      color: '#3a6b7d', place: 'coast' },
+  ocean:      { name: 'Ocean',      sprite: '/sprites/tiles/ocean.png',      color: '#1f3a6b', place: 'sea' },
+  island:     { name: 'Island',     sprite: '/sprites/tiles/island.png',     color: '#3a6b5a', place: 'land' },
+  space:      { name: 'Space',      sprite: '/sprites/tiles/space.png',      color: '#0a0a1a', place: 'space' },
+  deep_space: { name: 'Deep Space', sprite: '/sprites/tiles/deep-space.png', color: '#05050f', place: 'space' },
+  asteroid:   { name: 'Asteroid',   sprite: '/sprites/tiles/asteroid.png',   color: '#4a4a55', place: 'space' },
+  mars:       { name: 'Mars',       sprite: '/sprites/tiles/mars.png',       color: '#8a4a30', place: 'land' },
+  moon:       { name: 'Moon',       sprite: '/sprites/tiles/moon.png',       color: '#8a8a92', place: 'land' },
+  exohills:   { name: 'Exo Hills',  sprite: '/sprites/tiles/exohills.png',   color: '#6b4a7d', place: 'land' },
+  exoplains:  { name: 'Exo Plains', sprite: '/sprites/tiles/exoplains.png',  color: '#7d5a8a', place: 'land' },
+  exosea:     { name: 'Exo Sea',    sprite: '/sprites/tiles/exosea.png',     color: '#3a4a8a', place: 'sea' },
+  planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a', place: 'space' },
+  star:       { name: 'Star',       sprite: '/sprites/tiles/star.png',       color: '#d8b24b', place: 'space' },
+  singularity:{ name: 'Singularity',sprite: '/sprites/tiles/singularity.png',color: '#1a0a2a', place: 'space' },
+}
+
+/** Whether a unit/building with the given placement rule may deploy on a terrain. */
+export function canPlaceOn(placement, terrainKey) {
+  const cls = TERRAIN[terrainKey]?.place
+  if (!cls) return false
+  return placement === 'any' || placement === cls
 }
 
 // Labels that count as "earth" or "moon/mars" for the Space asteroid adjacency

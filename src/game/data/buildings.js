@@ -17,6 +17,8 @@ export const BUILDING_DEFS = {
     hp: 12, upHp: 4,
     // Dynamic: the effect describes the CURRENT era/level value, not the sequence.
     effect: (level, eraIndex) => `Produces ${pierFood(eraIndex, level)} food at the end of each era.`,
+    // End-of-era economic output, at the current era/level.
+    outputs: (level, eraIndex) => [{ res: 'food', amount: pierFood(eraIndex, level), per: 'era' }],
     eraFood: pierFood,
   },
 }
@@ -29,4 +31,9 @@ export function buildingHp(def, level = 1) {
 /** Current effect text for a building at a level/era (resolves dynamic effects). */
 export function buildingEffect(def, level = 1, eraIndex = 0) {
   return typeof def.effect === 'function' ? def.effect(level, eraIndex) : def.effect
+}
+
+/** Current economic outputs [{ res, amount, per }] for a building, or [] if none. */
+export function buildingOutputs(def, level = 1, eraIndex = 0) {
+  return typeof def.outputs === 'function' ? def.outputs(level, eraIndex) : []
 }

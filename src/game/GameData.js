@@ -23,6 +23,7 @@ export class GameData {
     this.pendingProgress = 0
     this.pendingProduction = 0
     this.selection = null // active choice overlay state machine (see GameManager)
+    this.justFilled = null // { group, index, seq } — last roster slot filled (for the fill animation)
 
     this.tableau = new TableauData(seed)
     this.civilization = new CivilizationData()

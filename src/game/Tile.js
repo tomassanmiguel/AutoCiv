@@ -10,11 +10,14 @@ import { TERRAIN } from './data/terrain.js'
  */
 export class Tile {
   constructor({ row, col, label, terrain, flipX = false }) {
-    this.row = row       // 1..8, bottom -> top
-    this.col = col       // 1..22, left -> right
+    this.row = row       // 1..9, bottom -> top
+    this.col = col       // 1..26, left -> right
     this.label = label   // design label from the sheet (e.g. 'Old World')
     this.terrain = terrain // resolved concrete terrain key (e.g. 'plains')
     this.flipX = flipX   // mirror the sprite horizontally (west-facing coasts)
+    // A deployed unit/building instance, or null. Shape:
+    //   { kind:'unit'|'building', key, level, hp, maxHp, damaged, lifetimeOutput? }
+    this.occupant = null
   }
 
   get def() {
