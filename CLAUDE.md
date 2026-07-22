@@ -149,7 +149,7 @@ AutoCiv/
 │   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
 │   │   │   ├── units.js       # unit defs + stat helpers + unitRole (combatRole ?? types[0])
 │   │   │   ├── enemies.js     # budget-based enemy host generation (threatBudget/unitCost/generateHost)
-│   │   │   ├── buildings.js   # building defs (per-tick outputs, combat auras, underlapping Road) + helpers
+│   │   │   ├── buildings.js   # building defs (per-tick outputs, combat auras, underlaid Road/City) + helpers
 │   │   │   ├── costs.js       # gold cost formulas (repair/upgrade/specialist/mercenary)
 │   │   │   ├── policies.js    # policy defs (name = unlocking advancement); combat + economy effects
 │   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
@@ -325,14 +325,19 @@ exists; extend it as systems land.
   **Language** (Citizen +1 :progress:), **Trade Networks** (Citizen +2 :gold:), **Specialization** (each
   specialist +1 of its highest output); **Ownership** (+2 :gold: per deployed building); **Brewery**
   (+1 :gold: per unit in range); **per-tick output buildings** (`_buildingTickOutputs` → `occ.tickOutput`):
-  **Ranch**/**Farm** food, **Kiln** production, **Mine** gold, **Mint** gold (5/7/9% of current
-  :legitimacy:), **Temple** :legitimacy: (:legitimacy: now accrues **per tick** — `civ.legitimacy.output`);
-  then **Slavery** scales totals (×1.10 :production:, ×0.95 :progress:) and **Weights and Measures**
-  (×1.5 :gold:). **Outputs are tracked as FLOATS** (Slavery/Weights/Mint make them fractional) and
-  **rounded DOWN in the UI** (`fmtDelta` to 1 decimal; resource values + per-tick cards floored).
-  **Food-threshold modifiers** (`civ.modifiers.foodThresholdMult`, ×0.95 each, stacking): **Basket
-  Weaving** and **The Plough**. A `modifier` may also grant an immediate one-off (**Mathematics** →
-  +2 production builds).
+  **Ranch**/**Farm**/**Aqueduct** food (Aqueduct DOUBLES per adjacent Aqueduct), **Kiln**/**Forging**/
+  **Glassworks** production, **Mine** gold, **Mint** gold (5/7/9% of current :legitimacy:), **Temple**
+  :legitimacy: (:legitimacy: now accrues **per tick** — `civ.legitimacy.output`); then a block of
+  **PERCENTAGE output modifiers that are ADDITIVE per resource** (sum the bonuses, then ×(1+bonus) —
+  NOT chained multiplications): **Slavery** (+10% :production:, −5% :progress:), **Democracy** (+20%
+  :progress:), **Weights and Measures** (+50% :gold:). **Outputs are tracked as FLOATS** and **rounded
+  DOWN in the UI** (`fmtDelta` to 1 decimal; resource values + per-tick cards floored). A pop's per-tick
+  output can be **negative** (**Philosopher** −1 :gold:): when `gold.value` goes below 0 the deficit is
+  cleared and legitimacy bleeds 1:1 via `_damageLegitimacy` (which also triggers a **development-phase
+  defeat** if legitimacy hits 0). **Food-threshold modifiers** (`civ.modifiers.foodThresholdMult`, ×0.95
+  each, stacking): **Basket Weaving** and **The Plough**; **progress-threshold**
+  (`progressThresholdMult`, ×0.95): **Alphabet**. A `modifier` may also grant an immediate one-off
+  (**Mathematics** → +2 production builds; **Clothes**/**Concrete** → flat unit/building :defense:).
 - **Threshold resources** (progress/food/production) accumulate `value` toward the current level's
   `threshold`; on reaching it, `value` **resets** (overflow carries), `level` (# thresholds reached)
   increments, and the **per-level threshold grows**: `threshold(N)=threshold(N-1)+X·1.25^E·n·R`
@@ -347,7 +352,10 @@ exists; extend it as systems land.
 - **Pops** (`pops.js`): **Citizen** (generalist: 1 progress/food/production each per tick) plus
   unlockable **specialists** — Builder (+5 production), Farmer (+5 food), Trader (+5 gold), **Shaman**
   (+3 progress, and **+10 legitimacy per Shaman at the end of each combat**, in `_endCombat`), **Scholar**
-  (+6 progress). Start = 1
+  (+6 progress), **Philosopher** (+10 progress, **−1 gold** → legitimacy drain, see above), **Poet**
+  (+1 progress, **+2 per era** via `civ.poetBonus`, applied in `popOutput` and reset to 0 when the Poet is
+  unlocked). Effective per-pop output (incl. policy add-ons and the Poet escalator) is `popOutput(key)`.
+  Start = 1
   Citizen (`STARTING_CITIZENS`). **Growth split** (`addPops`): each new pop alternates by a running
   `growthParity` — **EVEN → a specialist** (cycled bottom-to-top via `specialistCursor`), **ODD →
   citizen**; with no specialists unlocked, all growth is citizens.
@@ -368,8 +376,8 @@ exists; extend it as systems land.
   misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) is the
   registry of which ones actually do something + what they unlock (`kind`: `unit`/`building`/`pop`/
   `policy`/`modifier`) — **this registry + `game/data/` are the source of truth for content; don't
-  re-catalogue every piece here.** All of **Stone** (era 0), **Bronze** (era 1), and **Iron** (era 2)
-  are implemented; later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
+  re-catalogue every piece here.** All of **Stone** (era 0), **Bronze** (era 1), **Iron** (era 2), and
+  **Classical** (era 3) are implemented; later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
   Legitimacy building slot. **A policy's display name matches the advancement that unlocks it**
   (e.g. Language→`language` policy).
 - **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
@@ -412,17 +420,28 @@ exists; extend it as systems land.
     Validity = tile visible this era **and** `canPlaceOn(unit/building.placement, terrain)` (terrain
     `place` class: land/coast/sea/space); Warrior/Wolf/Slinger are land, Pier is coast.
 - **Instances** live on `Tile.occupant` (`{ kind, key, level, hp, maxHp, damaged, lifetimeOutput?,
-  warband?, permDef?, storedProgress?, ranchBonus?, tickOutput? }`) and persist across eras. Buildings output
+  warband?, permDef?, permAtk?, storedProgress?, ranchBonus?, tickOutput? }`) and persist across eras. Buildings output
   in two ways: **per-tick** (`_buildingTickOutputs` → `_recomputeOutputs`; **Ranch** food = `5 +
   ranchBonus` growing +2/3/4/… each combat end, reset if destroyed; **Kiln** production = `2 +
   (level+1)·adjacentBuildings`; **Mine** gold = `8·level`, ×2 on a mountain) or **end-of-combat**
-  (Pier food, flat `200 + 100·(level−1)`; `_accrueBuildingOutputs`).
+  (Pier food, flat `200 + 100·(level−1)`; **Library** progress; `_accrueBuildingOutputs`).
 - **Underlapping buildings** (the **Road** — a Utility building flagged `def.underlap`) live in a
   **separate** `Tile.underlap` slot: they **underlap** the occupant, are **never replaced**, have **no
   HP/combat**, and render as a name-only card in the tile's bottom strip (the occupant card takes the
   top 80%). The Road links every tile it touches into one adjacency group (see Combat → road-augmented
   adjacency). Placement (`_canPlaceHere`/`placementState`/`_createInstance`) treats it as a plain
   (never-replace) placement that ignores the occupant but can't stack a second underlap.
+- **City / multi-building tiles** (the **City** — a Utility building flagged `def.underlaidCity`): lives
+  in its own underlaid `Tile.city` slot (independent of a Road) and lets the tile hold **`extraCap` (2)
+  additional buildings** in `Tile.extras[]`, on top of the primary occupant. Placement fills the occupant
+  first, then extras; **city buildings never replace** (a building occupant on a city tile is protected;
+  extras are additive), and a full city (occupant + 2 extras) is an invalid placement. **Extras are
+  economic-only**: they feed every building-iteration path (via the `_buildingInstances()`/`_buildingsOn()`
+  helpers — used by tick outputs, end-of-combat effects, adjacency counts, brewery/campfire/baths/embassy
+  sources, cave-painting ageing, deployed-building count) but are **NOT combat targets/blockers and never
+  take damage** (only `tile.occupant` fights). Render: on a city tile the occupant + extras show as
+  name-only `strip` `TileCard`s (details on hover) with a corner "City" badge; strips have no inline
+  repair/upgrade button, so **extras can't be individually repaired/upgraded** (a known limitation).
 - **Cave Painting** (progress building, hp 8, **can't be upgraded** via `def.noUpgrade`): carries
   `storedProgress` (starts 5, **doubles each era after combat** in `_ageCavePaintings`, capped 50000).
   When a build is placed on its tile (**overbuilt**, in `_createInstance`), that stored :progress: is
@@ -525,13 +544,15 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   teleporting — a FLIP in `Tableau` (per-occupant `posRef` of last cell) drives a `TileCard` `.tc-slide`.
 - **Stat pipeline** (`_syncUnitStats(inCombat)`, syncs **units AND buildings**): **units** store
   `occ.atk`/`occ.maxHp` — flat hp from **Clothes/Leatherwork** + **Hereditary Rule** + a Baker's
-  permanent **`occ.permDef`**, plus Warband/**Tribalism** (+1 atk/def per other same-key unit), an
-  intrinsic **`packAtk`** (the **Legionnaire**'s +3 :attack: per other same-key unit, always on) and
-  **terrain def** (Forest **+5** / Mountain **+10**, combat only); atk is then multiplied by the
-  **Brewery** aura (×1.1 atk / ×0.9 hp), the **Brothel** aura (+10/15/20% atk, plus −0.5s cooldown via
-  `_effectiveCooldown`), and **Caste System** (×1.25 for level-2+ units). **Buildings** store `occ.maxHp`
-  = `buildingHp(def, level, buildingHpBonus)` (Masonry +10 / Hereditary +1·era) + terrain def (combat
-  only). `occ.atkMult`/`casteActive`/`cdReduce` are stashed so the on-card upgrade preview matches.
+  permanent **`occ.permDef`**; flat atk from Warband/**Tribalism** (+1 atk/def per other same-key unit),
+  an intrinsic **`packAtk`** (the **Legionnaire**'s +3 :attack: per other same-key unit, always on) and
+  a Public Baths' permanent **`occ.permAtk`**; plus **terrain def** (Forest **+5** / Mountain **+10**,
+  combat only); atk is then multiplied by the **Brewery** aura (×1.1 atk / ×0.9 hp), the **Brothel** aura
+  (+10/15/20% atk, plus −0.5s cooldown via `_effectiveCooldown`), **Caste System** (×1.25 for level-2+
+  units), and **Composite Bows** (×1.5 for ranged-role units, incl. Catapult/Trireme). **Buildings** store
+  `occ.maxHp` = `buildingHp(def, level, buildingHpBonus)` (Masonry +10 / **Concrete +12** / Hereditary
+  +1·era) + terrain def (combat only). `occ.atkMult`/`casteActive`/`cdReduce` are stashed so the on-card
+  upgrade preview matches.
   Synced at `_startCombat` **and after any mid-combat move OR Baker buff** (`_combatStep` re-syncs);
   `_effectiveAtk` reads `occ.atk` (enemies fall back to base). A unit's **combat role** = `unitRole(def)`
   = `combatRole ?? types[0]` (naval **Galley** fights as :melee:); **utility** units (**Baker**) never
@@ -540,10 +561,12 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   (`_reachableWithin`/`_adjacentTiles`). Building-output hooks skip `damaged` instances.
 - **End-of-combat effects** (`_endCombat`, survival only — not on defeat) run via `_applyEraEndEffects`,
   which **Festivals** triggers an **additional time** (`festivals ? 2 : 1`): **legitimacy** — each
-  undamaged **Totem** grants `10 + 5·(level−1)`, each **Shaman** +10, **Sacred Grounds** +1 per **empty,
-  visible, land** tile; **Oral Tradition** — gain :gold: + :progress: equal to post-combat :legitimacy:
-  (progress banked, opens next dev); **Hereditary Rule** — permanent +1 :defense: to all units & buildings
-  (`unitHpBonus`/`buildingHpBonus`); **Ranch** food bonus grows (or resets if destroyed); Pier food accrues.
+  undamaged **Totem** grants `10 + 5·(level−1)`, each **Colosseum** +5 per deployed unit, each **Shaman**
+  +10, **Sacred Grounds** +1 per **empty, visible, land** tile; **Oral Tradition** — gain :gold: +
+  :progress: equal to post-combat :legitimacy: (progress banked, opens next dev); **Hereditary Rule** —
+  permanent +1 :defense: to all units & buildings (`unitHpBonus`/`buildingHpBonus`); **Ranch** food bonus
+  grows (or resets if destroyed); **Forging** upgrades a random adjacent unit; **Surveying** lays a Road on
+  a random valid tile; deployed buildings' end-of-combat output accrues (Pier food, Library progress).
 - **Event-triggered policies** (checked via `_hasPolicy`): **Hunting** — a player unit attacking a
   column with **no enemy target** ("unblocked" damage) gains :food: equal to its :attack:, alongside
   the usual gold (in `_resolveAttack`'s empty-column branch); **Burial Rites** — any
@@ -551,6 +574,18 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   mid-combat — progress choices only open in development, so it carries into next era's dev); **Midwivery**
   — creating a unit yields :production: equal to its effective :defense: (in `_createInstance`, during
   development, so it may cross a production threshold and chain another build).
+- **Unblocked-damage bonuses** (empty-column "unblocked" attacks, `_resolveAttack`): a unit's own gold
+  multiplier (**Trireme** ×3 gold) plus a **Lighthouse** bonus (**+200%/+250%/+300%…** to ALL resources a
+  **naval** unit gains in the Lighthouse's contiguous **waters**, `_navalUnblockedBonus`/`_watersTiles`).
+  These **stack ADDITIVELY** (Trireme+Lighthouse ⇒ ×(3+2), not ×3×3). **Siege** units (**Catapult**,
+  `def.splash`) instead strike the **rear** enemy in the column and deal `splash`× damage to its neighbours.
+- **Legitimacy losses** all route through **`_damageLegitimacy(amount)`** (combat empty-column hits,
+  Philosopher gold-drain), which **Democracy** DOUBLES and clamps at 0 (→ defeat); it returns the applied
+  amount for the floating combat number.
+- **Timed-trigger buildings** (crossing an every-N-combat-seconds mark, like Embassy): **Embassy** hires a
+  free mercenary onto an empty adjacent tile every **8s** (`_applyEmbassyMercs`/`_spawnMercAdjacent`);
+  **Public Baths** every **5s** heals adjacent friendlies 50% of max HP and permanently grants adjacent
+  units **+level `occ.permAtk`** (`_applyPublicBaths`).
 - **Campfire** (utility building): each **whole combat-second** it heals each **road-augmented-adjacent**
   friendly (unit or building, below max, not destroyed) by `5/7/9/…%` (per level) of their max HP
   (`_applyCampfireHealing`, floating green `+N` via a `heal` combat event).
