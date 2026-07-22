@@ -53,7 +53,6 @@
 }
 
 .tile-card {
-  transition: filter 0.4s ease; /* fade to gray on death */
   position: relative;
   width: 100%;
   height: 100%;
@@ -69,6 +68,18 @@
   color: #f1e7d1;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Visual content wrapper. The damaged grayscale lives HERE (not on .tile-card)
+   so the sibling action button is never dimmed by the filter cascade. */
+.tc-body {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: filter 0.4s ease; /* fade to gray on death */
 }
 .tile-card-anchor:hover .tile-card {
   border-color: #e6c877;
@@ -86,13 +97,14 @@
   box-shadow: 0 0 12px rgba(255, 100, 80, 0.6);
 }
 
-/* Damaged/slain: shake once, then fade to gray (the filter transition + a one-shot
-   shake both trigger when the .damaged class is added). */
+/* Damaged/slain: shake once, then fade to gray. The shake (transform) stays on the
+   card; the grayscale is applied to the inner content only, so an on-card Repair
+   button remains full-color and clearly clickable. */
 .tile-card.damaged {
-  filter: grayscale(1) brightness(0.68);
   border-color: rgba(150, 150, 150, 0.5);
   animation: death-shake 0.42s ease;
 }
+.tile-card.damaged .tc-body { filter: grayscale(1) brightness(0.68); }
 @keyframes death-shake {
   0%, 100% { transform: translateX(0); }
   15% { transform: translateX(-12%) rotate(-3deg); }
@@ -120,11 +132,19 @@
 }
 .tile-card.enemy .tc-cooldown-fill { background: linear-gradient(90deg, #ff9a7f, #ffd2c2); }
 
+/* Name + level on one in-flow row (no overlap). The name flex-fills and
+   ellipsizes; the level chip sits to its right. */
+.tc-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+}
 .tc-level {
-  position: absolute;
-  top: 2px;
-  right: 3px;
-  font-size: 9px;
+  flex: 0 0 auto;
+  font-size: 8.5px;
   font-weight: 700;
   line-height: 1;
   color: #1a140a;
@@ -133,12 +153,13 @@
   border-radius: 3px;
 }
 .tc-name {
+  flex: 1 1 auto;
   font-weight: 700;
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.05;
   text-align: center;
   color: #f7edd6;
-  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

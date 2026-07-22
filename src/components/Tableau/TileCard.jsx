@@ -93,14 +93,22 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
             lunge remount (which also remounts this wrapper) doesn't re-flash it. */}
         <div className={`tc-fx${!combat && occ.fxSeq ? ' animate ' + (occ.fxKind ?? '') : ''}`} key={`fx-${occ.fxSeq ?? 0}`}>
           <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''} ${occ.mercenary ? 'mercenary' : ''}`}>
-            <div className="tc-level">{occ.level}</div>
-            <div className="tc-name">{def.name}</div>
-            {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
-            <div className="tc-stats">
-              {isUnit && <IconVal src={STAT_ICON.speed}>{stats.speed}</IconVal>}
-              {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
-              <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
-              {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
+            {/* Visual content — grayed out when damaged. The action button lives
+                OUTSIDE this wrapper so the grayscale filter never dims it. */}
+            <div className="tc-body">
+              {/* Name + level share a row (in-flow) so the level badge can't
+                  overlap the name. */}
+              <div className="tc-header">
+                <span className="tc-name">{def.name}</span>
+                <span className="tc-level">{occ.level}</span>
+              </div>
+              {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
+              <div className="tc-stats">
+                {isUnit && <IconVal src={STAT_ICON.speed}>{stats.speed}</IconVal>}
+                {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
+                <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
+                {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
+              </div>
             </div>
             {action && (
               <button
