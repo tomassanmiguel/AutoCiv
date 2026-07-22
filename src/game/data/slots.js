@@ -44,7 +44,7 @@ export const BUILDING_CATEGORIES = [
     description: ':defense: Defense buildings keep the unwanted out' },
   { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
     description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
-  { key: 'supplement', label: 'Supplement', silhouette: '/sprites/ui/utility-building.png',
+  { key: 'supplement', label: 'Supplement', silhouette: null, // no icon — supplements render name-only
     description: 'Supplement buildings underlap other buildings and are never replaced. They shape the board with passive effects but do not fight.' },
 ]
 
