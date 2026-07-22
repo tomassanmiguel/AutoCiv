@@ -238,7 +238,7 @@ class CombatMixin {
     for (const tile of this.data.tableau.tiles.values()) {
       const occ = tile.occupant
       if (occ?.kind === 'building' && occ.key === 'lighthouse' && !occ.damaged && waters.has(`${tile.row},${tile.col}`)) {
-        bonus += BUILDING_DEFS.lighthouse.unblockedBonus
+        bonus += BUILDING_DEFS.lighthouse.unblockedBonus(occ.level)
       }
     }
     return bonus

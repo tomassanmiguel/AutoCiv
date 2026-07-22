@@ -17,6 +17,7 @@ const templeLegit = (level = 1) => level          // :legitimacy: per tick (1 / 
 const mintLegitPct = (level = 1) => 0.05 + 0.02 * Math.max(0, level - 1) // 5% / 7% / 9% … of legitimacy
 const forgingProd = (level = 1) => 3 * (level + 1)      // :production: per tick (6 / 9 / 12 …)
 const libraryProgress = (level = 1) => 200 * (level + 1) // end-of-combat :progress: (400 / 600 / 800 …)
+const lighthouseBonus = (level = 1) => 2 + 0.5 * Math.max(0, level - 1) // +200% then +50%/level (additive)
 // Brothel combat aura: adjacent units' :attack: multiplier by level (+10/15/20%).
 const brothelAtk = (level = 1) => 0.10 + 0.05 * Math.max(0, level - 1)
 
@@ -111,8 +112,8 @@ export const BUILDING_DEFS = {
   lighthouse: {
     key: 'lighthouse', name: 'Lighthouse', types: ['gold'], placement: 'coast',
     hp: 12, upHp: 4,
-    unblockedBonus: 2, // +200% (ADDITIVE) to resources a :naval: unit reaps from unblocked damage in its waters
-    effect: "When a :naval: unit deals unblocked damage in the Lighthouse's waters, resources gained are increased by 200%.",
+    unblockedBonus: lighthouseBonus, // +200%/+250%/+300%… (ADDITIVE) to a :naval: unit's unblocked-damage resources in its waters
+    effect: (level) => `When a :naval: unit deals unblocked damage in the Lighthouse's waters, resources gained are increased by ${Math.round(lighthouseBonus(level) * 100)}%.`,
   },
   temple: {
     key: 'temple', name: 'Temple', types: ['legitimacy'], placement: 'land',
