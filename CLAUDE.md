@@ -457,8 +457,8 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   can't be repaired/upgraded (no sinking gold into a disposable unit). Hire buttons are **hidden
   while a reposition drag is active** so they can't get in the way of the drop.
 - **Reposition** (`canReposition` / `moveUnit`, free): **units** (not buildings) can be **dragged**
-  to a valid **empty** tile during dev/prep — **and while choosing a build's location** (drag a unit
-  aside to make room for the building). Dropping onto **another unit swaps them** (both must fit the
+  to a valid **empty** tile during dev/prep — **and throughout a production selection** (pick or place:
+  rearrange freely, or drag a unit aside to make room to build). Dropping onto **another unit swaps them** (both must fit the
   other's terrain). On grab (past a small threshold) valid tiles flash yellow, the source dims, and a
   labelled ghost follows the cursor (positioned imperatively so ticks don't reset it); an invalid drop
   snaps back. During placement a real drag suppresses the source tile's placement click (via

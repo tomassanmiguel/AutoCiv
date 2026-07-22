@@ -342,9 +342,9 @@ export default function Tableau() {
   const phase = game.data.phase
   const gold = game.data.civilization.gold.value
   const canAct = !combat && !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
-  // Units may be repositioned in dev/prep AND while choosing a build's location
-  // (drag a unit aside to make room for the building being placed).
-  const repositionable = canAct || placing
+  // Units may be repositioned in dev/prep AND throughout a production selection
+  // (pick or place) — rearrange freely, or drag a unit aside to make room to build.
+  const repositionable = canAct || !!(sel && sel.type === 'production')
   const prepping = phase === 'prep'
   const mercCost = prepping ? game.mercCost() : 0
   const tileAction = (tile, occ) => {
