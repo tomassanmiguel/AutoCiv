@@ -388,11 +388,14 @@ exists; extend it as systems land.
   previous era). Units only spawn in columns whose **terrain can host** them (`columnPlaces` +
   `canPlaceOn`); each column is re-ordered **melee/cavalry front, ranged back** (packed from the
   front slot). Enemies never spawn support/buildings. Roster of enemy unit keys per era = `ENEMY_ROSTER`
-  (era **−1** = Bear/Lion/Wolf wildlife; era 0 = Warrior/Slinger/Wolf). Enemies fade after each combat.
+  (only era **−1** = Bear/Lion/Wolf and era 0 = Warrior/Slinger/Wolf are defined so far); a composition
+  whose exact era window has no rostered units **falls back** to all units at/below the current era, so
+  hosts are never empty. Enemies fade after each combat.
 - **Loop:** `_combatStep` runs every 50ms real, advancing combat time by the speed multiplier (the
   speed widget = 1x/3x/5x/10x); a battle is `COMBAT_DURATION = 25` combat-seconds. Attacks resolve
   **bottom-to-top, left-to-right**; each unit attacks on its **cooldown** (fractional, floored at
-  `MIN_COOLDOWN = 1`s). **Melee/cavalry** only strike as the column's front-most friendly; **ranged**
+  `MIN_COOLDOWN = 1`s). **Melee/cavalry** only strike as the column's front-most friendly **unit**
+  (buildings shield the enemy as a front-line target but do NOT block your own melee); **ranged**
   strike the front enemy at any range; an **empty column** yields **gold** (player) / **legitimacy
   damage** (enemy). Buildings are targetable/front-line but don't attack. HP≤0 → `damaged` (inactive
   until repaired). Non-destroyed instances **heal to full** at combat end (damage doesn't persist);
@@ -602,3 +605,9 @@ exists; extend it as systems land.
   survivors heal between combats; Wolf shifts after attacking; legitimacy 0 → **Defeat** screen.
   Enemies render as red `TileCard`s with cooldown bars + remaining-HP (reddening) Def. Model verified
   via a Node sim (host validity/ordering, resolve, defeat, heal). Combat juice is the next slice.
+- **2026-07-21** — Combat-slice review fixes: (1) enemy hosts were EMPTY from Iron on (roster only
+  covers eras −1/0) — `buildPool` now falls back to the nearest rostered units, so no era is a
+  walkover; (2) a friendly building in front zeroed the column's melee — the melee gate now uses a
+  unit-only front row so walls shield without disabling your attackers; (3) Victory/Defeat raised to
+  z-index 200 (above the battle banner); (4) TickCounter shows a dash during the transition phase.
+  Floating combat numbers/thrust/death-shake juice remains the next slice.
