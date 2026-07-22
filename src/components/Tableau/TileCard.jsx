@@ -42,7 +42,7 @@ function defColor(ratio) {
  * level in the tooltip (tinted green). `onGrab` starts a reposition drag.
  * `terrain` is the tile's terrain key (for the Forest combat-def note).
  */
-export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain }) {
+export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null }) {
   const occ = occupant
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
@@ -119,9 +119,16 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
       text={renderTip(showPreview)}
       onMouseDown={onGrab}
     >
-      {/* Keyed by lastAttackSeq so the wrapper REMOUNTS on each attack, replaying
-          the "thrust" lunge toward the enemy. */}
-      <div className={`tc-lunge ${side}`} key={combat ? (occ.lastAttackSeq ?? 0) : 'idle'}>
+      {/* Slide layer: when the unit changed tiles this render (`slide` = old-minus-new
+          pixel offset), it mounts here and animates from the old cell to this one
+          (combat reposition / Wolf shift / shift-back / drag) instead of teleporting. */}
+      <div
+        className={`tc-slide${slide ? ' animate' : ''}`}
+        style={slide ? { '--sx': `${slide.dx}px`, '--sy': `${slide.dy}px` } : undefined}
+      >
+        {/* Keyed by lastAttackSeq so the wrapper REMOUNTS on each attack, replaying
+            the "thrust" lunge toward the enemy. */}
+        <div className={`tc-lunge ${side}`} key={combat ? (occ.lastAttackSeq ?? 0) : 'idle'}>
         {/* fx wrapper — remounts when fxSeq changes, replaying the upgrade/repair/
             hire "pop" (green flash + scale). Suppressed in combat so the per-attack
             lunge remount (which also remounts this wrapper) doesn't re-flash it. */}
@@ -163,6 +170,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
               <div className="tc-cooldown"><div className="tc-cooldown-fill" style={{ width: `${cdFrac * 100}%` }} /></div>
             )}
           </div>
+        </div>
         </div>
       </div>
     </InfoTip>

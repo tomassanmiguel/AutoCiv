@@ -117,7 +117,8 @@ function populationSlots(civ, game, canConvert) {
       }
     }
     const flashSeq = game.data.popFx && game.data.popFx.key === key ? game.data.popFx.seq : 0
-    return { index, kind: 'pop', pop: POP_TYPES[key], count: civ.pops[key] ?? 0, convert, flashSeq }
+    // Effective per-pop output includes policy modifiers (e.g. Language → Citizen +1 progress).
+    return { index, kind: 'pop', pop: POP_TYPES[key], outputs: game.popOutput(key), count: civ.pops[key] ?? 0, convert, flashSeq }
   })
 }
 
@@ -305,7 +306,7 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickab
             const key = s.kind === 'pop' ? `${s.index}:${s.pop.key}` : `${s.index}:${s.name ?? s.kind}`
             const slam = s.index === slamIndex // only the just-filled slot plays the "slam"
             return s.kind === 'pop'
-              ? <PopCard key={key} pop={s.pop} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} slam={slam} />
+              ? <PopCard key={key} pop={s.pop} outputs={s.outputs} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} slam={slam} />
               : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} slam={slam} />
           })}
         </div>
@@ -368,14 +369,14 @@ function SlotRow({ slot, mark, onActivate, slam = false }) {
  * clickable. Specialists carry a `convert` button (spend gold to turn era+1
  * citizens into this type); `flashSeq` replays a green flash when just converted.
  */
-function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0, slam = false }) {
+function PopCard({ pop, outputs = pop.outputs, count, mark, onActivate, convert, flashSeq = 0, slam = false }) {
   const body = (
     <>
       <div className="pop-top">
         <div className="pop-main">
           <div className="pop-name">{pop.name}</div>
           <div className="pop-outputs">
-            {Object.entries(pop.outputs).map(([res, v]) => (
+            {Object.entries(outputs).map(([res, v]) => (
               <span key={res} className="pop-output">
                 <img src={ICON[res]} alt={res} />+{v}
               </span>
@@ -402,10 +403,10 @@ function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0, slam = f
 
   const tip = (
     <>
-      {popTooltipText(pop)}
+      {popTooltipText({ outputs })}
       {pop.note && <><br /><br /><IconText>{pop.note}</IconText></>}
       <br /><br />
-      <strong>Total ({count}):</strong> {popTotalSummary(pop, count).join(', ')} per tick.
+      <strong>Total ({count}):</strong> {popTotalSummary({ outputs }, count).join(', ')} per tick.
       {convert && (
         <><br /><br /><strong>Convert:</strong> {convert.count} citizen{convert.count === 1 ? '' : 's'} → {pop.name} for {convert.cost} gold
           {convert.enoughCitizens ? '' : ' (need more citizens)'}.</>

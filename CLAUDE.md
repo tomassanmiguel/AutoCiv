@@ -474,7 +474,11 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   enemies** flows one column over. **melee/cavalry** → an adjacent column that has enemies and **no
   friendly melee/cavalry** (become its front line). **ranged** → an adjacent column that has enemies
   and friendly **cover** (a defensive building or a melee unit). Moves to an empty, unlocked,
-  terrain-valid tile; if none qualifies it stays (and an enemy-free column still yields gold).
+  terrain-valid tile; if none qualifies it stays (and an enemy-free column still yields gold). At
+  combat end each unit **shifts back** to the tile it started on (`_startCombat` records `homeRow/Col`;
+  `_restoreUnitHomes` restores them in `_endCombat`/`_defeat` and disbands mercenaries). Any unit that
+  changes tiles (reposition / Wolf shift / shift-back / drag) **slides** to the new cell rather than
+  teleporting — a FLIP in `Tableau` (per-occupant `posRef` of last cell) drives a `TileCard` `.tc-slide`.
 - **Stat pipeline** (`_syncUnitStats(inCombat)`, stores `occ.atk`/`occ.maxHp`): flat bonuses Clothes
   (hp), Warband/**Tribalism** (+1 atk/def per other same-key deployed unit), **Forest** (+5 def, tiles
   where `terrain==='forest'`, **combat only**), then the **Brewery** aura multiplier (×1.1 atk / ×0.9
@@ -572,11 +576,13 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
     categories: Progress, Production, Gold, Food, Legitimacy, Defense, Utility (not era-gated).
   - **Hover** any slot for a tooltip (`<InfoTip>`): category name + description. Policies use one
     shared silhouette + description.
-  - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + output icons
-    in the body and the **count** on the far right. Hover shows per-tick output **and the total
-    from that pop type** (`popTotalSummary`). The Citizen starts unlocked; specialists (Builder/
-    Farmer/Trader) unlock via advancements. Each specialist card also has a gold **Convert +N**
-    button (dev/prep only) — see **Gold economy**.
+  - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + **effective**
+    output icons in the body and the **count** on the far right. The output shown is
+    `GameManager.popOutput(key)` — the base pop output **plus any policy modifiers** (e.g. Language
+    gives each Citizen +1 :progress:), which is the same source of truth `_recomputeOutputs` uses,
+    so card and economy always agree. Hover shows per-tick output **and the total from that pop
+    type**. The Citizen starts unlocked; specialists unlock via advancements. Each specialist card
+    also has a gold **Convert +N** button (dev/prep only) — see **Gold economy**.
   - `CivilizationData.units` (9) / `buildings` (7) / `policies` (5) are index-aligned to the
     category lists; `null` = empty slot, else `{ key, level }`.
 

@@ -1,3 +1,8 @@
+/* The unit-slide FLIP (posRef / lastEraRef) intentionally reads the previous-render
+   cell positions during render to compute each moved card's slide offset — the
+   standard FLIP memoization. A stale read can only drop/replay one animation frame
+   (purely cosmetic), never a data bug, so `react-hooks/refs` does not apply here. */
+/* eslint-disable react-hooks/refs */
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
@@ -42,6 +47,21 @@ export default function Tableau() {
   const dragRef = useRef(null)
   const movedRef = useRef(false) // did the last press actually pan? (suppresses the click)
   const [tooltip, setTooltip] = useState(null)
+
+  // FLIP: remember each occupant's content-space cell position last render, so a
+  // unit that moved tiles (combat reposition / Wolf shift / shift-back / drag) can
+  // slide from its old cell instead of teleporting. Cleared on era change (the grid
+  // origin shifts then, which would otherwise read as every card moving).
+  const posRef = useRef(new Map())
+  const lastEraRef = useRef(era)
+  if (lastEraRef.current !== era) { posRef.current = new Map(); lastEraRef.current = era }
+  const curPos = new Map()
+  const slideFor = (occ, x, y) => {
+    curPos.set(occ, { x, y })
+    const prev = posRef.current.get(occ)
+    return prev && (prev.x !== x || prev.y !== y) ? { dx: prev.x - x, dy: prev.y - y } : null
+  }
+  useEffect(() => { posRef.current = curPos }) // commit this render's cell positions
 
   // Unit reposition drag: `repos` (state) is set once a grab passes the move
   // threshold and drives the ghost + valid-tile highlight; the ghost follows the
@@ -349,7 +369,7 @@ export default function Tableau() {
                 onMouseMove={enemy ? undefined : moveTooltip}
                 onMouseLeave={enemy ? undefined : () => setTooltip(null)}
               >
-                {enemy && <TileCard occupant={enemy} era={era} combat={combat} side="enemy" />}
+                {enemy && <TileCard occupant={enemy} era={era} combat={combat} side="enemy" slide={slideFor(enemy, (c - bounds.minCol) * CELL, k * CELL)} />}
               </div>
             )
           }),
@@ -405,6 +425,7 @@ export default function Tableau() {
                   side="player"
                   terrain={tile.terrain}
                   action={tileAction(tile, occ)}
+                  slide={slideFor(occ, j * CELL, i * CELL)}
                   onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
                 />
               )}

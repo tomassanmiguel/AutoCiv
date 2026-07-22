@@ -130,19 +130,25 @@ export class GameManager {
     this._emit()
   }
 
+  /** Effective per-pop, per-tick output for one pop TYPE, including policy modifiers
+   *  (e.g. Language gives each Citizen +1 :progress:). Source of truth for both the
+   *  economy tick and the population card display. */
+  popOutput(key) {
+    const base = { ...(POP_TYPES[key]?.outputs ?? {}) }
+    if (key === 'citizen' && this._hasPolicy('language')) base.progress = (base.progress ?? 0) + 1
+    return base
+  }
+
   /** Recompute each resource's per-tick output from the population. */
   _recomputeOutputs() {
     const civ = this.data.civilization
     const totals = { progress: 0, food: 0, production: 0, gold: 0 }
     for (const [key, count] of Object.entries(civ.pops)) {
-      const pop = POP_TYPES[key]
-      if (!pop) continue
-      for (const [res, per] of Object.entries(pop.outputs)) {
+      if (!POP_TYPES[key]) continue
+      for (const [res, per] of Object.entries(this.popOutput(key))) {
         totals[res] = (totals[res] ?? 0) + per * count
       }
     }
-    // Language policy: each Citizen also yields +1 progress per tick.
-    if (this._hasPolicy('language')) totals.progress += (civ.pops.citizen ?? 0)
     // Ownership policy: every deployed building yields +2 gold per tick.
     if (this._hasPolicy('ownership')) totals.gold += 2 * this._deployedBuildingCount()
     // Breweries: +1 gold per tick per unit within each brewery's range.
@@ -852,7 +858,10 @@ export class GameManager {
     this._syncUnitStats(true) // snapshot combat stats (Warband/Forest/Brewery) for this battle
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
-      if (!occ || occ.damaged) continue
+      if (!occ) continue
+      // Remember each unit's starting tile so it can shift back after the battle.
+      if (occ.kind === 'unit') { occ.homeRow = tile.row; occ.homeCol = tile.col }
+      if (occ.damaged) continue
       occ.hp = occ.maxHp // damage doesn't persist between combats
       if (occ.kind === 'unit') occ.cdTimer = this._effectiveCooldown(occ)
     }
@@ -1166,12 +1175,26 @@ export class GameManager {
     }
   }
 
+  /** After a battle, move every unit back to the tile it started combat on (units
+   *  reposition/shift during combat) and disband mercenaries. Buildings never move. */
+  _restoreUnitHomes() {
+    const t = this.data.tableau
+    const units = []
+    for (const tile of t.visibleTiles(this.data.era)) {
+      if (tile.occupant?.kind === 'unit') { units.push(tile.occupant); tile.occupant = null }
+    }
+    for (const occ of units) {
+      if (occ.mercenary) continue // disbanded — not placed back
+      const home = t.tileAt(occ.homeRow, occ.homeCol)
+      if (home) home.occupant = occ
+    }
+  }
+
   _endCombat() {
+    this._restoreUnitHomes() // shifted units return to their starting tiles; mercs disband
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
-      if (!occ) continue
-      if (occ.mercenary) { tile.occupant = null; continue } // mercenaries disband after the battle
-      if (!occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer }
+      if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer } // survivors heal to full
     }
     // End-of-combat legitimacy: Totems, Shamans, and Sacred Grounds' empty land.
     const civ = this.data.civilization
@@ -1200,11 +1223,9 @@ export class GameManager {
   }
 
   _defeat() {
-    // _endCombat never runs on defeat, so disband mercenaries here too (the enemy
-    // host stays on the board as a record of who won).
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      if (tile.occupant?.mercenary) tile.occupant = null
-    }
+    // _endCombat never runs on defeat, so shift units home + disband mercenaries here
+    // too (the enemy host stays on the board as a record of who won).
+    this._restoreUnitHomes()
     this.data.defeated = true
     this.data.combatTime = COMBAT_DURATION
     this._restartTimer()
