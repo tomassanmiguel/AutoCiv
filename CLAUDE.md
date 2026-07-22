@@ -297,8 +297,10 @@ exists; extend it as systems land.
   enemy-row count), which would teleport every existing tile. On era change the camera is
   **counter-translated by that shift first** (via `prevLayoutRef`) so the current view holds
   still, then the zoom-out animates — no jolt.
-- Hovering an empty tile shows a tooltip from `tile.getTooltip()` (terrain name). Occupied tiles
-  instead show their **on-tile card** (`TileCard`) with its own hover tooltip (see Production/build).
+- Hovering a tile shows a tooltip from `tile.getTooltip()` — the **terrain name + any special
+  effect** (`TERRAIN[key].note`, e.g. Forest's +5 :defense:). This works even when a unit occupies
+  the tile: over the surrounding **terrain** you get the tile tooltip, over the **on-tile card** the
+  card's own tooltip takes over (`tileTip` checks `e.target.closest('.tile-card-anchor')`).
 - During production **placement**, valid tiles flash yellow / occupied red and are click-to-build.
 
 ### Game loop (`GameManager`, `game/data/resources.js`, `game/data/pops.js`)
@@ -440,10 +442,10 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   while a reposition drag is active** so they can't get in the way of the drop.
 - **Reposition** (`canReposition` / `moveUnit`, free): **units** (not buildings) can be **dragged**
   to a valid **empty** tile during dev/prep — **and while choosing a build's location** (drag a unit
-  aside to make room for the building). On grab (past a small threshold) valid tiles flash yellow,
-  the source dims, and a labelled ghost follows the cursor (positioned imperatively so ticks don't
-  reset it); dropping on a valid tile moves the unit, any invalid drop snaps back. You can't displace
-  an occupied tile. During placement a real drag suppresses the source tile's placement click (via
+  aside to make room for the building). Dropping onto **another unit swaps them** (both must fit the
+  other's terrain). On grab (past a small threshold) valid tiles flash yellow, the source dims, and a
+  labelled ghost follows the cursor (positioned imperatively so ticks don't reset it); an invalid drop
+  snaps back. During placement a real drag suppresses the source tile's placement click (via
   `movedRef`), so a plain click still places/replaces but a drag only moves.
 - **CombatPrep** (`components/Prep`): a non-blocking horizontal bar in the **bottom-right** of the
   tableau (mounted in `GameScreen`) shown in the `prep` phase with a prominent **Begin Combat**
@@ -467,7 +469,9 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   `MIN_COOLDOWN = 1`s). **Melee/cavalry** only strike as the column's front-most friendly **unit**
   (buildings shield the enemy as a front-line target but do NOT block your own melee); **ranged**
   strike the front enemy at any range; an **empty column** yields **gold** (player) / **legitimacy
-  damage** (enemy). Buildings are targetable/front-line but don't attack. HP≤0 → `damaged` (inactive
+  damage** (enemy) — but a melee/cavalry that is **obstructed by a friendly unit in front earns no
+  empty-column gold** (only the front unit, or any ranged, does). Buildings are targetable/front-line
+  but don't attack. HP≤0 → `damaged` (inactive
   until repaired). Non-destroyed instances **heal to full** at combat end (damage doesn't persist);
   destroyed ones stay damaged. Wolf `shift`: after attacking, moves to an adjacent empty valid space.
 - **Repositioning** (`_combatReposition`, each step before attacks): a unit whose **own column has no
@@ -508,7 +512,9 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 - **Juice** (driven by `data.combatEvents`, rebuilt each step, keyed by `combatSeq`): `CombatFx`
   (inside `.tableau-content`) floats **damage / gold-gained / legitimacy-lost** numbers over the
   source cell; each unit **thrusts** toward the enemy on attack (a `.tc-lunge` wrapper keyed by
-  `lastAttackSeq` remounts to replay it); destroyed cards **shake then fade to gray** (CSS on
+  `lastAttackSeq` remounts to replay it, and only carries the `.attacking` class — which holds the
+  animation — when it actually attacked THIS step, so entering/leaving combat no longer jerks every
+  card; `_startCombat` clears `lastAttackSeq`); destroyed cards **shake then fade to gray** (CSS on
   `.damaged`); the panel gold/legitimacy values **pulse** as they change during combat.
 
 ### HUD (`components/Hud`)

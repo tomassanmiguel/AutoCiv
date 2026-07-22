@@ -791,24 +791,29 @@ export class GameManager {
     this._emit()
   }
 
-  // --- Free unit repositioning (drag a unit to another valid empty tile) ---
+  // --- Free unit repositioning: drag a unit to an empty valid tile, OR onto
+  // another unit to SWAP places (both must be able to stand on the other's terrain). ---
   canReposition(fromRow, fromCol, toRow, toCol) {
     if (fromRow === toRow && fromCol === toCol) return false
-    const occ = this.data.tableau.tileAt(fromRow, fromCol)?.occupant
+    const from = this.data.tableau.tileAt(fromRow, fromCol)
+    const occ = from?.occupant
     if (!occ || occ.kind !== 'unit') return false
     const to = this.data.tableau.tileAt(toRow, toCol)
-    if (!to || to.occupant) return false // can't replace an occupied tile
-    if (!this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
-    return canPlaceOn(UNIT_DEFS[occ.key].placement, to.terrain)
+    if (!to || !this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
+    if (!canPlaceOn(UNIT_DEFS[occ.key].placement, to.terrain)) return false // moving unit must fit dest
+    if (!to.occupant) return true // move onto an empty tile
+    // Swap: the destination must hold a UNIT that can also stand on the source terrain.
+    return to.occupant.kind === 'unit' && canPlaceOn(UNIT_DEFS[to.occupant.key].placement, from.terrain)
   }
 
   moveUnit(fromRow, fromCol, toRow, toCol) {
     if (!this.canReposition(fromRow, fromCol, toRow, toCol)) return
     const from = this.data.tableau.tileAt(fromRow, fromCol)
     const to = this.data.tableau.tileAt(toRow, toCol)
+    const swapped = to.occupant // null = plain move; a unit = swap
     to.occupant = from.occupant
-    from.occupant = null
-    this._syncUnitStats() // position changed → refresh Brewery-aura membership
+    from.occupant = swapped
+    this._syncUnitStats() // positions changed → refresh Brewery-aura membership
     this._emit()
   }
 
@@ -859,8 +864,9 @@ export class GameManager {
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
       if (!occ) continue
-      // Remember each unit's starting tile so it can shift back after the battle.
-      if (occ.kind === 'unit') { occ.homeRow = tile.row; occ.homeCol = tile.col }
+      // Remember each unit's starting tile (to shift back after the battle) and clear
+      // last-attack so the thrust doesn't replay at combat start (combatSeq is monotonic).
+      if (occ.kind === 'unit') { occ.homeRow = tile.row; occ.homeCol = tile.col; delete occ.lastAttackSeq }
       if (occ.damaged) continue
       occ.hp = occ.maxHp // damage doesn't persist between combats
       if (occ.kind === 'unit') occ.cdTimer = this._effectiveCooldown(occ)
@@ -945,9 +951,12 @@ export class GameManager {
     const role = UNIT_DEFS[c.unit.key].types[0]
     if (c.side === 'player') {
       const front = this._frontEnemyInCol(c.col)
+      const isFrontUnit = c.row === this._frontPlayerUnitRow(c.col, bounds)
       if (!front) {
-        // No enemy target in this column: the attack goes "unblocked" — it yields
-        // gold, and (Hunting) that much :food: too.
+        // No enemy target in this column: melee/cavalry that are OBSTRUCTED by a
+        // friendly unit in front don't act; only the front unit (or any ranged, which
+        // shoots over) collects the "unblocked" gold (+ Hunting food).
+        if (role !== 'ranged' && !isFrontUnit) return false
         this.data.civilization.gold.value += atk
         this._pushEvent({ kind: 'gold', amount: atk, col: c.col, row: c.row })
         if (this._hasPolicy('hunting')) {
@@ -958,7 +967,7 @@ export class GameManager {
         }
         return true
       }
-      if (role === 'ranged' || c.row === this._frontPlayerUnitRow(c.col, bounds)) {
+      if (role === 'ranged' || isFrontUnit) {
         this._pushEvent({ kind: 'attack', side: 'player', col: c.col, row: c.row })
         this._dealDamage(front, atk, 'enemy', { col: front.col, slot: front.slot })
         return true

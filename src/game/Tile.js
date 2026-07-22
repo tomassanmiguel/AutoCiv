@@ -35,7 +35,7 @@ export class Tile {
   getTooltip() {
     return {
       title: this.def?.name ?? this.terrain,
-      lines: [],
+      lines: this.def?.note ? [this.def.note] : [], // terrain's special effect, if any
     }
   }
 }

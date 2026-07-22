@@ -11,6 +11,7 @@ import { UNIT_DEFS } from '../../game/data/units.js'
 import { BUILDING_DEFS } from '../../game/data/buildings.js'
 import TileCard from './TileCard.jsx'
 import CombatFx from './CombatFx.jsx'
+import IconText from '../common/IconText.jsx'
 import './Tableau.css'
 
 const CELL = 96          // base tile size in content-space pixels
@@ -310,9 +311,15 @@ export default function Tableau() {
     if (dragRef.current || reposPendingRef.current?.active) return
     setTooltip({ ...content, x: e.clientX, y: e.clientY })
   }
-  const showTooltip = (tile, e) => showTip(tile.getTooltip(), e)
   const moveTooltip = (e) => {
     setTooltip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t))
+  }
+  // Terrain tooltip for a tile — works even when a unit sits on it: over the on-tile
+  // CARD the card's own tooltip takes over (and we clear the terrain one), but over
+  // the surrounding terrain we still show the tile's terrain/effect tooltip.
+  const tileTip = (tile, e) => {
+    if (e.target.closest?.('.tile-card-anchor')) { setTooltip(null); return }
+    showTip(tile.getTooltip(), e)
   }
 
   const cols = bounds ? range(bounds.minCol, bounds.maxCol) : []
@@ -325,6 +332,7 @@ export default function Tableau() {
 
   // Enemy host (visible during development as a preview, fighting during battle).
   const combat = game.data.phase === 'battle'
+  const combatSeq = game.data.combatSeq // drives the per-attack "thrust" (only when a unit attacked)
   const enemyGrid = new Map()
   for (const e of game.data.enemies) enemyGrid.set(`${e.col}:${e.slot}`, e)
 
@@ -369,7 +377,7 @@ export default function Tableau() {
                 onMouseMove={enemy ? undefined : moveTooltip}
                 onMouseLeave={enemy ? undefined : () => setTooltip(null)}
               >
-                {enemy && <TileCard occupant={enemy} era={era} combat={combat} side="enemy" slide={slideFor(enemy, (c - bounds.minCol) * CELL, k * CELL)} />}
+                {enemy && <TileCard occupant={enemy} era={era} combat={combat} combatSeq={combatSeq} side="enemy" slide={slideFor(enemy, (c - bounds.minCol) * CELL, k * CELL)} />}
               </div>
             )
           }),
@@ -402,9 +410,9 @@ export default function Tableau() {
               data-row={tile.row}
               data-col={tile.col}
               style={{ left: j * CELL, top: i * CELL, width: CELL, height: CELL }}
-              onMouseEnter={occ ? undefined : (e) => showTooltip(tile, e)}
-              onMouseMove={occ ? undefined : moveTooltip}
-              onMouseLeave={occ ? undefined : () => setTooltip(null)}
+              onMouseEnter={(e) => tileTip(tile, e)}
+              onMouseMove={(e) => tileTip(tile, e)}
+              onMouseLeave={() => setTooltip(null)}
               onClick={placeable ? () => { if (!movedRef.current) game.placeAt(tile.row, tile.col) } : undefined}
             >
               {/* Background layer holds the sprite (and the west-coast mirror) so
@@ -422,6 +430,7 @@ export default function Tableau() {
                   era={era}
                   hpBonus={hpBonus}
                   combat={combat}
+                  combatSeq={combatSeq}
                   side="player"
                   terrain={tile.terrain}
                   action={tileAction(tile, occ)}
@@ -457,7 +466,7 @@ export default function Tableau() {
         >
           <div className="tile-tooltip-title">{tooltip.title}</div>
           {tooltip.lines?.map((l, i) => (
-            <div key={i} className="tile-tooltip-line">{l}</div>
+            <div key={i} className="tile-tooltip-line"><IconText>{l}</IconText></div>
           ))}
         </div>
       )}

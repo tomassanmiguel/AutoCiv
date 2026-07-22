@@ -42,7 +42,7 @@ function defColor(ratio) {
  * level in the tooltip (tinted green). `onGrab` starts a reposition drag.
  * `terrain` is the tile's terrain key (for the Forest combat-def note).
  */
-export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null }) {
+export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1 }) {
   const occ = occupant
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
@@ -127,8 +127,9 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
         style={slide ? { '--sx': `${slide.dx}px`, '--sy': `${slide.dy}px` } : undefined}
       >
         {/* Keyed by lastAttackSeq so the wrapper REMOUNTS on each attack, replaying
-            the "thrust" lunge toward the enemy. */}
-        <div className={`tc-lunge ${side}`} key={combat ? (occ.lastAttackSeq ?? 0) : 'idle'}>
+            the "thrust" lunge — but only ANIMATES when the unit actually attacked THIS
+            step (`attacking`), so entering/leaving combat no longer jerks every card. */}
+        <div className={`tc-lunge ${side}${combat && occ.lastAttackSeq != null && occ.lastAttackSeq === combatSeq ? ' attacking' : ''}`} key={occ.lastAttackSeq ?? 0}>
         {/* fx wrapper — remounts when fxSeq changes, replaying the upgrade/repair/
             hire "pop" (green flash + scale). Suppressed in combat so the per-attack
             lunge remount (which also remounts this wrapper) doesn't re-flash it. */}

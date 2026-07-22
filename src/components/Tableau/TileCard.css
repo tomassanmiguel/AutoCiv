@@ -22,8 +22,8 @@
 /* Attack "thrust": the wrapper remounts on each attack (keyed by lastAttackSeq)
    and lunges toward the enemy — player up, enemy down. */
 .tc-lunge { width: 100%; height: 100%; }
-.tc-lunge.player { animation: thrust-up 0.24s ease; }
-.tc-lunge.enemy { animation: thrust-down 0.24s ease; }
+.tc-lunge.attacking.player { animation: thrust-up 0.24s ease; }
+.tc-lunge.attacking.enemy { animation: thrust-down 0.24s ease; }
 @keyframes thrust-up {
   0% { transform: translateY(0); }
   35% { transform: translateY(-26%); }

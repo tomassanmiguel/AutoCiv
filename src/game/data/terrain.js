@@ -5,9 +5,10 @@ import { GRID, ROWS, COLS, COLUMN_SPECIALS } from './map.js'
 // tooltip; `sprite` is the served image path (or null -> flat color fallback).
 // ---------------------------------------------------------------------------
 // `place` = placement class for deploying units/buildings: 'land' | 'coast' | 'sea' | 'space'.
+// `note` (optional) = the terrain's special gameplay effect, shown in its tile tooltip.
 export const TERRAIN = {
   plains:     { name: 'Plains',     sprite: '/sprites/tiles/plains.png',     color: '#5a7d3a', place: 'land' },
-  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land' },
+  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land', note: 'A unit stationed here gains +5 :defense: during combat.' },
   mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land' },
   coast:      { name: 'Coast',      sprite: '/sprites/tiles/coast.png',      color: '#3a6b7d', place: 'coast' },
   ocean:      { name: 'Ocean',      sprite: '/sprites/tiles/ocean.png',      color: '#1f3a6b', place: 'sea' },
