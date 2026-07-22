@@ -161,7 +161,7 @@ AutoCiv/
 │   └── components/
 │       ├── common/{NineSlice,InfoTip,IconText}.jsx/.css # 9-slice frame; tooltip; inline-icon prose
 │       ├── GameScreen.jsx/.css    # composes the in-game view
-│       ├── Tableau/{Tableau,TileCard}.jsx/.css # camera + grid + placement mode + on-tile cards
+│       ├── Tableau/{Tableau,TileCard,CombatFx}.jsx/.css # camera + grid + placement + cards + combat floats
 │       ├── UIPanel/UIPanel.jsx/.css   # resources + accordions + PopCard (+ replace/pick flash, fill juice)
 │       ├── Menu/MenuOverlay.jsx/.css  # framed menu + TEMP era widget
 │       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
@@ -356,7 +356,8 @@ exists; extend it as systems land.
   slots; specialists use population slots **1–4** (Citizen slot 0 is never replaced). Unlocking a
   specialist **converts 1 citizen** to it if ≥2 citizens; **replacing** a specialist splits its pops
   **half → new type, half → citizens** (`floor` to the new type). `modifier` (Clothes → `+5`
-  `modifiers.unitHpBonus`) applies immediately with no slot.
+  `modifiers.unitHpBonus`) applies immediately with no slot **and retroactively bumps the hp/maxHp of
+  units already on the board**.
 - **Resume:** resolving clears the selection and resumes at `data.speed` — the speed selected before
   (or changed during) the selection; the speed control stays clickable (backdrop sits below the HUD).
 
@@ -404,7 +405,12 @@ exists; extend it as systems land.
   stat shows **remaining HP** (reddening via `color-mix` as it drops; full value outside combat) and a
   **cooldown bar** ticks below each unit. `TickCounter` shows battle seconds remaining. **DefeatScreen**
   mirrors Victory (rail **💀** re-summons it). Instances carry combat state on the same object
-  (`hp`/`maxHp`/`damaged`/`cdTimer`); `data.combatEvents` records per-step attacks/damage for future juice.
+  (`hp`/`maxHp`/`damaged`/`cdTimer`/`lastAttackSeq`).
+- **Juice** (driven by `data.combatEvents`, rebuilt each step, keyed by `combatSeq`): `CombatFx`
+  (inside `.tableau-content`) floats **damage / gold-gained / legitimacy-lost** numbers over the
+  source cell; each unit **thrusts** toward the enemy on attack (a `.tc-lunge` wrapper keyed by
+  `lastAttackSeq` remounts to replay it); destroyed cards **shake then fade to gray** (CSS on
+  `.damaged`); the panel gold/legitimacy values **pulse** as they change during combat.
 
 ### HUD (`components/Hud`)
 - **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
@@ -442,9 +448,10 @@ exists; extend it as systems land.
 - **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
   **Buildings (7)**, **Policies (5)**, **Population (5)**. The open accordion **flex-grows to
   fill the remaining panel height**; **empty** slots show a centered type silhouette, while
-  **filled** slots render a compact **item card** — units show name + category + **Speed/Atk/Def
-  stat icons** (`/sprites/icons/{speed,attack,defense}.png`, level-scaled, incl. the Clothes HP
-  bonus); buildings/policies show name + type + effect. Descriptions/effects always report the
+  **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
+  (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
+  units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,
+  level-scaled, incl. the Clothes HP bonus); buildings/policies show the effect. Descriptions/effects always report the
   **current** value for the current era + level (e.g. the Pier's food), never the upgrade sequence
   or per-level deltas. Full descriptions (icon stats for units) on hover. During an advancement **replace**, the active group's accordion force-opens
   and its candidate slots **flash red** and are clickable (`resolveReplace`). `CivilizationData`
@@ -485,10 +492,10 @@ exists; extend it as systems land.
 - [x] Production/build flow: choose a unit/building, placement mode (valid tiles flash), deploy an
   instance onto a tile with an on-tile card; damaged appearance; slot-fill "slam" juice.
 - [x] Battle phase: per-era enemy hosts, 25s combat (cooldowns/targeting/gold/legitimacy), damaged
-  state, Defeat screen. Combat **juice** (attack thrust, floating damage numbers, gold/legitimacy
-  up-animations, death shake→gray) is the next slice; reddening Def + no-persist damage are done.
-- [ ] Battle abilities/policies that need combat: Burial Rites (progress on death), Clothes HP bonus
-  in combat, more unit abilities. Spend gold; repair damaged units; upgrades.
+  state, Defeat screen, and **combat juice** (attack thrust, floating damage/gold/legitimacy numbers,
+  death shake→gray, panel value pulses). Reddening Def + no-persist damage done; Clothes retroactive.
+- [ ] Battle abilities/policies that need combat: Burial Rites (progress on death), more unit
+  abilities. **Spend gold**; **repair** damaged units; **upgrades** (Repair/Upgrade icons added).
 
 ---
 
@@ -611,3 +618,8 @@ exists; extend it as systems land.
   unit-only front row so walls shield without disabling your attackers; (3) Victory/Defeat raised to
   z-index 200 (above the battle banner); (4) TickCounter shows a dash during the transition phase.
   Floating combat numbers/thrust/death-shake juice remains the next slice.
+- **2026-07-21** — **Combat juice** + card polish: `CombatFx` floats damage/gold/legitimacy numbers
+  over the source cell; unit cards **thrust** on attack (keyed by `lastAttackSeq`); destroyed cards
+  **shake→fade to gray**; panel gold/legitimacy **pulse** as they change. Clothes now applies **+5 HP
+  retroactively** to deployed units. Card **type shown as an icon** (dropped the "MELEE"/"POLICY" text
+  + corner watermark so the policy card fits). Selected **speed button** clearly highlighted.
