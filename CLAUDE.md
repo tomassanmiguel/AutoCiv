@@ -233,6 +233,11 @@ AutoCiv/
   loop — a new track fades in while *all* previous tracks fade out and stop, so rapid era
   changes (e.g. dragging the era slider across track boundaries) can't leave two tracks
   playing at once.
+- **`InfoTip` portals its tooltip to `<body>`.** The floating tooltip is `position: fixed` at the
+  cursor; it is rendered through `createPortal` so a **transformed ancestor** (e.g. the on-tile
+  `TileCard` scales 1.42× on hover) can't become its containing block and throw the position off.
+  Keep tooltips out of transformed subtrees this way; don't put `position: fixed` overlays inside
+  a `transform`ed element and expect viewport coordinates.
 
 ---
 
@@ -384,7 +389,9 @@ exists; extend it as systems land.
   the tooltip). **Damaged** instances gray out and read "(damaged)". The tile sprite lives on its own
   `.tile-bg` layer so the west-coast mirror never flips the card.
 - **Fill juice:** filling a roster slot (advancement unlock) sets `data.justFilled`; the panel opens
-  that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation.
+  that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation. The slam
+  is gated to the just-filled slot (a `.slam` class) so merely switching tabs — which now remounts
+  every card, since only the open group renders a body — doesn't replay it.
 - All flashing (replace red / pick yellow / tile placement) is a slow ~1.4s pulse.
 
 ### Gold economy (`game/data/costs.js`, `GameManager`, `Tableau`, `TileCard`, `UIPanel`, `Prep`)
@@ -457,8 +464,10 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   or **seconds remaining** during a battle.
 - **SpeedControl** — framed speed buttons (`paused`/`standard`/`fast`/`super`/`ultra`); the same
   control accelerates combat (as a time multiplier).
-- **TransitionOverlay** — a brief **"Battle"** announcement (combat runs underneath) + the era-
-  transition banner (fade in → **typewriter** delete/type the age → fade out → `completeTransition`).
+- **TransitionOverlay** — a brief **"Battle"** announcement, then the era-transition banner (fade
+  in → **typewriter** delete/type the age → fade out → `completeTransition`). The fight is **held**
+  (`data.combatIntro`) until the "Battle" banner clears — the overlay calls `dismissCombatIntro()`
+  when it finishes, and `_combatStep` no-ops until then, so combat never runs under the banner.
 - **AudioController** subscribes to the manager and crossfades the era track on any track-boundary
   era change (loop or debug jump).
 
@@ -477,15 +486,17 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   so the panel uses a **dark-ink-on-parchment** palette (CSS vars `--ink`/`--ink-soft`/`--brass`
   scoped to `.ui-panel`); slot rows sit on a translucent parchment inset to stay readable.
   Panel width is 400px to fit the ornate border.
-- **Legitimacy** — the civ's "HP": a large centered scalar. **Starts at 50.** Stores
-  `{ value, output }`.
+- **Legitimacy** — the civ's "HP": icon + value on one compact centered row (kept small so the
+  dropdowns get height). **Starts at 50.** Stores `{ value, output }`.
 - **Gold** — icon + value (left) + per-tick delta (right). `{ value, output }`.
 - **Food / Production / Progress** — threshold resources (see Game loop): icon + **level number**
   (# thresholds reached) + **bar** (`value / threshold` toward the current level's requirement) +
   per-tick delta. Shape `{ value, output, level, threshold }`.
 - **Item dropdowns** (accordions, **only one open at a time**, no scrollbars): **Units**,
-  **Buildings (7)**, **Policies (5)**, **Population (5)**. The open accordion **flex-grows to
-  fill the remaining panel height**; **empty** slots show a centered type silhouette, while
+  **Buildings (7)**, **Policies (5)**, **Population (5)**. Closed groups collapse to a **slim
+  clickable tab** (no frame) so the OPEN group — the only one with the dark `Box Dark` frame and a
+  body — **flex-grows to fill the remaining panel height** and its cards get room to fit; **empty**
+  slots show a centered type silhouette, while
   **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
   (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
   units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,
@@ -674,3 +685,12 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   onto a valid empty tile any time in dev/prep (valid tiles flash yellow, invalid drops snap back;
   no displacing). All buttons gray out when gold is short. Added `Repair`/`Upgrade` icons. Model
   verified via a Node sim (29 checks); an adversarial multi-agent review ran over the slice.
+- **2026-07-21** — UI fixes: (1) the on-tile **Repair** button no longer looks grayed on a damaged
+  card — the damaged **grayscale** filter now wraps an inner `.tc-body` so the sibling action button
+  keeps full color; (2) the card **level badge** moved in-flow into a name/level header row so it can
+  no longer **overlap** the name; (3) combat is **held** until the "Battle" banner clears
+  (`data.combatIntro` + `dismissCombatIntro()`), so the fight no longer runs under the popup; (4)
+  `InfoTip` **portals** its tooltip to `<body>` so the hover-scaled tile card (a transformed ancestor)
+  can't misplace it; (5) the civ panel now **collapses closed dropdowns to slim tabs** and shrinks the
+  legitimacy header to a compact row, so the open group fills the height and its cards fit (the fill
+  "slam" is gated to the just-filled slot so tab-switching doesn't replay it).
