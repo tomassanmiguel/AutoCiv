@@ -138,6 +138,7 @@ export class GameManager {
   popOutput(key) {
     const base = { ...(POP_TYPES[key]?.outputs ?? {}) }
     if (key === 'citizen' && this._hasPolicy('language')) base.progress = (base.progress ?? 0) + 1
+    if (key === 'citizen' && this._hasPolicy('trade_networks')) base.gold = (base.gold ?? 0) + 2
     // Specialization: each non-citizen (specialist) pop produces +1 of each of its
     // highest outputs (all tied maxima get +1).
     if (isSpecialist(key) && this._hasPolicy('specialization')) {
@@ -640,6 +641,9 @@ export class GameManager {
     if (unlock.key === 'clothes' || unlock.key === 'leatherwork') {
       civ.modifiers.unitHpBonus += unlock.key === 'clothes' ? 5 : 8
       this._syncUnitStats() // apply retroactively to deployed units (with Warband)
+    } else if (unlock.key === 'masonry') {
+      civ.modifiers.buildingHpBonus += 10
+      this._syncUnitStats() // retroactively toughen deployed buildings
     } else if (unlock.key === 'basket_weaving' || unlock.key === 'plough') {
       civ.modifiers.foodThresholdMult *= 0.95 // −5% food thresholds (stacks)
     }
@@ -969,7 +973,10 @@ export class GameManager {
     return out
   }
 
-  mercCost() { return mercenaryCost(this.data.era) }
+  /** Mercenary hire cost (Hospitality Rites halves it). */
+  mercCost() {
+    return Math.round(mercenaryCost(this.data.era) * (this._hasPolicy('hospitality_rites') ? 0.5 : 1))
+  }
 
   /** True if a mercenary can be hired onto this (empty, valid) tile during prep. */
   mercEligible(row, col) {
@@ -987,7 +994,7 @@ export class GameManager {
     const tile = this.data.tableau.tileAt(row, col)
     const candidates = this._placeableUnitsAt(tile)
     const civ = this.data.civilization
-    const cost = mercenaryCost(this.data.era)
+    const cost = this.mercCost() // includes the Hospitality Rites discount
     if (civ.gold.value < cost) return
     civ.gold.value -= cost
     const pick = candidates[Math.floor(Math.random() * candidates.length)]

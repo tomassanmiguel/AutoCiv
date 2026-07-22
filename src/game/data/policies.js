@@ -49,6 +49,14 @@ export const POLICY_DEFS = {
     key: 'caste_system', name: 'Caste System', type: 'Policy',
     effect: 'Upgraded units (level 2+) deal +25% :attack:.',
   },
+  trade_networks: {
+    key: 'trade_networks', name: 'Trade Networks', type: 'Policy',
+    effect: 'Each Citizen also produces +2 :gold: per tick.',
+  },
+  hospitality_rites: {
+    key: 'hospitality_rites', name: 'Hospitality Rites', type: 'Policy',
+    effect: 'Hiring mercenaries costs 50% less :gold:.',
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',
