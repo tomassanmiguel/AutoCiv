@@ -62,6 +62,51 @@
 .tableau-tile.place-valid .tile-card-anchor,
 .tableau-tile.place-replace .tile-card-anchor { pointer-events: none; }
 
+/* Preparation: empty tiles where a mercenary can be hired get a soft gold ring
+   and a centered Hire button. */
+.tableau-tile.merc-open .tile-bg {
+  box-shadow: inset 0 0 0 2px rgba(230, 200, 120, 0.55);
+  animation: merc-open-pulse 1.8s ease-in-out infinite;
+}
+@keyframes merc-open-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 2px rgba(230, 200, 120, 0.4); }
+  50% { box-shadow: inset 0 0 0 3px rgba(230, 200, 120, 0.85); }
+}
+.merc-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  border: 1px solid rgba(230, 200, 120, 0.75);
+  background: rgba(30, 22, 10, 0.9);
+  color: #f7edd6;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.12s ease;
+}
+.merc-btn:hover:not(.disabled) { transform: translate(-50%, -50%) scale(1.08); filter: brightness(1.15); }
+.merc-btn.disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.6); }
+.merc-btn-label { letter-spacing: 0.02em; }
+.merc-btn-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 9px;
+  font-family: var(--font-body, inherit);
+  font-variant-numeric: tabular-nums;
+}
+.merc-btn-cost img { width: 11px; height: 11px; object-fit: contain; }
+
 .enemy-slot {
   position: absolute;
   background: #1a1410 url("/sprites/tiles/battlefield.png") center / cover;

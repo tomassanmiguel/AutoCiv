@@ -5,8 +5,8 @@ import './TickCounter.css'
 
 const COMBAT_DURATION = 25
 
-/** Ticks remaining in development, seconds remaining in a battle, or "—" while
- *  the era transition banner plays. */
+/** Ticks remaining in development, a crossed-swords glyph during preparation,
+ *  seconds remaining in a battle, or "—" while the era transition banner plays. */
 export default function TickCounter() {
   const game = useGame()
   const phase = game.data.phase
@@ -15,6 +15,10 @@ export default function TickCounter() {
     value = `${Math.max(0, Math.ceil(COMBAT_DURATION - game.data.combatTime))}s`
     title = 'Battle time'
     tip = 'Seconds left in this battle.'
+  } else if (phase === 'prep') {
+    value = '⚔'
+    title = 'Preparation'
+    tip = 'Prepare your forces, then begin combat.'
   } else if (phase === 'development') {
     value = Math.max(0, TICKS_PER_ERA - game.data.tick)
     title = 'Ticks remaining'

@@ -17,6 +17,7 @@ const RES_ICON = {
   progress: '/sprites/icons/progress.png',
   legitimacy: '/sprites/icons/legitimacy.png',
 }
+const ACTION_ICON = { repair: '/sprites/icons/repair.png', upgrade: '/sprites/icons/upgrade.png' }
 const catLabel = (list, typeKey) => list.find((c) => c.key === typeKey)?.label ?? ''
 const clamp01 = (v) => Math.max(0, Math.min(1, v))
 
@@ -34,8 +35,12 @@ function defColor(ratio) {
  * on hover). Level badge; rich tooltip. During combat (`combat`) the Def stat shows
  * REMAINING HP (reddening as it drops) and a cooldown bar ticks below. `side`
  * ('player'|'enemy') styles the frame; damaged instances gray out.
+ *
+ * `action` ({ kind:'repair'|'upgrade', cost, affordable, onClick }) renders a
+ * gold-cost button on the card (repair a damaged instance / upgrade a healthy one).
+ * `onGrab` (player units) starts a reposition drag from this card.
  */
-export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player' }) {
+export default function TileCard({ occupant, era, hpBonus = 0, combat = false, side = 'player', action = null, onGrab }) {
   const occ = occupant
   const damaged = occ.damaged
   const isUnit = occ.kind === 'unit'
@@ -74,23 +79,44 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
   )
 
   return (
-    <InfoTip className="tile-card-anchor" title={def.name + (damaged ? ' (damaged)' : '')} text={tip}>
+    <InfoTip
+      className="tile-card-anchor"
+      title={def.name + (damaged ? ' (damaged)' : occ.mercenary ? ' (mercenary)' : '')}
+      text={tip}
+      onMouseDown={onGrab}
+    >
       {/* Keyed by lastAttackSeq so the wrapper REMOUNTS on each attack, replaying
           the "thrust" lunge toward the enemy. */}
       <div className={`tc-lunge ${side}`} key={combat ? (occ.lastAttackSeq ?? 0) : 'idle'}>
-        <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''}`}>
-          <div className="tc-level">{occ.level}</div>
-          <div className="tc-name">{def.name}</div>
-          {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
-          <div className="tc-stats">
-          {isUnit && <IconVal src={STAT_ICON.speed}>{stats.speed}</IconVal>}
-          {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
-          <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
-          {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
-        </div>
-          {cdFrac != null && (
-            <div className="tc-cooldown"><div className="tc-cooldown-fill" style={{ width: `${cdFrac * 100}%` }} /></div>
-          )}
+        {/* fx wrapper — remounts when fxSeq changes, replaying the upgrade/repair/
+            hire "pop" (green flash + scale). */}
+        <div className={`tc-fx${occ.fxSeq ? ' animate ' + (occ.fxKind ?? '') : ''}`} key={`fx-${occ.fxSeq ?? 0}`}>
+          <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''} ${occ.mercenary ? 'mercenary' : ''}`}>
+            <div className="tc-level">{occ.level}</div>
+            <div className="tc-name">{def.name}</div>
+            {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
+            <div className="tc-stats">
+              {isUnit && <IconVal src={STAT_ICON.speed}>{stats.speed}</IconVal>}
+              {isUnit && <IconVal src={STAT_ICON.atk}>{stats.atk}</IconVal>}
+              <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
+              {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
+            </div>
+            {action && (
+              <button
+                type="button"
+                className={`tc-action ${action.kind}${action.affordable ? '' : ' disabled'}`}
+                disabled={!action.affordable}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); action.onClick() }}
+              >
+                <img className="tc-action-icon" src={ACTION_ICON[action.kind]} alt={action.kind} />
+                <span className="tc-action-cost"><img src={RES_ICON.gold} alt="" />{action.cost}</span>
+              </button>
+            )}
+            {cdFrac != null && (
+              <div className="tc-cooldown"><div className="tc-cooldown-fill" style={{ width: `${cdFrac * 100}%` }} /></div>
+            )}
+          </div>
         </div>
       </div>
     </InfoTip>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
+import { repairCost, upgradeCost } from '../../game/data/costs.js'
 import TileCard from './TileCard.jsx'
 import CombatFx from './CombatFx.jsx'
 import './Tableau.css'
@@ -219,6 +220,23 @@ export default function Tableau() {
   const enemyGrid = new Map()
   for (const e of game.data.enemies) enemyGrid.set(`${e.col}:${e.slot}`, e)
 
+  // Gold actions (repair/upgrade) are offered on deployed instances during
+  // development + preparation (not mid-battle, not during a selection).
+  const phase = game.data.phase
+  const gold = game.data.civilization.gold.value
+  const canAct = !combat && !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
+  const prepping = phase === 'prep'
+  const mercCost = prepping ? game.mercCost() : 0
+  const tileAction = (tile, occ) => {
+    if (!canAct || !occ) return null
+    if (occ.damaged) {
+      const cost = repairCost(occ, era)
+      return { kind: 'repair', cost, affordable: gold >= cost, onClick: () => game.repairOccupant(tile.row, tile.col) }
+    }
+    const cost = upgradeCost(occ, era)
+    return { kind: 'upgrade', cost, affordable: gold >= cost, onClick: () => game.upgradeOccupant(tile.row, tile.col) }
+  }
+
   return (
     <div className="tableau-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
       <div
@@ -252,16 +270,20 @@ export default function Tableau() {
           const occ = tile.occupant
           const pstate = placing ? game.placementState(tile.row, tile.col) : null
           const placeable = pstate === 'valid' || pstate === 'replace'
+          const mercOK = !occ && prepping && game.mercEligible(tile.row, tile.col)
           const cls = [
             'tableau-tile',
             occ ? 'occupied' : '',
             pstate === 'valid' ? 'place-valid' : '',
             pstate === 'replace' ? 'place-replace' : '',
+            mercOK ? 'merc-open' : '',
           ].filter(Boolean).join(' ')
           return (
             <div
               key={`${tile.row},${tile.col}`}
               className={cls}
+              data-row={tile.row}
+              data-col={tile.col}
               style={{ left: j * CELL, top: i * CELL, width: CELL, height: CELL }}
               onMouseEnter={occ ? undefined : (e) => showTooltip(tile, e)}
               onMouseMove={occ ? undefined : moveTooltip}
@@ -277,7 +299,20 @@ export default function Tableau() {
                   backgroundImage: tile.sprite ? `url("${tile.sprite}")` : 'none',
                 }}
               />
-              {occ && <TileCard occupant={occ} era={era} hpBonus={hpBonus} combat={combat} side="player" />}
+              {occ && <TileCard occupant={occ} era={era} hpBonus={hpBonus} combat={combat} side="player" action={tileAction(tile, occ)} />}
+              {mercOK && (
+                <button
+                  type="button"
+                  className={`merc-btn${gold >= mercCost ? '' : ' disabled'}`}
+                  disabled={gold < mercCost}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); game.hireMercenary(tile.row, tile.col) }}
+                  title="Hire a random mercenary for this battle"
+                >
+                  <span className="merc-btn-label">Hire</span>
+                  <span className="merc-btn-cost"><img src="/sprites/icons/gold.png" alt="" />{mercCost}</span>
+                </button>
+              )}
             </div>
           )
         })}
