@@ -202,6 +202,7 @@ export default function UIPanel() {
             onReplace={(i) => game.resolveReplace(i)}
             pickable={buildPicking && (g.key === 'units' || g.key === 'buildings')}
             onPick={(i) => game.pickBuild(g.key, i)}
+            slamIndex={jf && jf.group === g.key ? jf.index : -1}
           />
         ))}
       </div>
@@ -244,7 +245,18 @@ function ResourceBar({ icon, label, res, tip }) {
   )
 }
 
-function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickable, onPick }) {
+function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickable, onPick, slamIndex = -1 }) {
+  // Closed groups collapse to a slim clickable tab so the OPEN group's framed body
+  // can claim (almost) the whole panel height — every card then has room to fit.
+  if (!open) {
+    return (
+      <button className="accordion-tab" onClick={onToggle}>
+        <span className="accordion-caret">▸</span>
+        <span className="accordion-label">{label}</span>
+      </button>
+    )
+  }
+
   const candidateSet = candidates ? new Set(candidates) : null
   // A slot's interactive mark: 'replace' (red) for a replace candidate, 'pick'
   // (yellow) for a buildable item during production. Empty slots never mark.
@@ -256,7 +268,7 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickab
   const activate = (s, mark) => (mark === 'pick' ? () => onPick(s.index) : () => onReplace(s.index))
   return (
     <NineSlice
-      className={`accordion ${open ? 'open' : ''}`}
+      className="accordion open"
       src={FRAME.dark}
       slice={FRAME_SLICE}
       width={DROP_BORDER}
@@ -273,9 +285,10 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickab
             // Key by occupant identity so a slot REMOUNTS when it's filled/replaced,
             // replaying the fill "slam" animation (but not on stat/count changes).
             const key = s.kind === 'pop' ? `${s.index}:${s.pop.key}` : `${s.index}:${s.name ?? s.kind}`
+            const slam = s.index === slamIndex // only the just-filled slot plays the "slam"
             return s.kind === 'pop'
-              ? <PopCard key={key} pop={s.pop} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} />
-              : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} />
+              ? <PopCard key={key} pop={s.pop} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} slam={slam} />
+              : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} slam={slam} />
           })}
         </div>
       </div>
@@ -288,10 +301,10 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickab
  * (name + type + stat/effect line) with the full description on hover. `mark`
  * ('replace' = red / 'pick' = yellow) makes it flash and become clickable.
  */
-function SlotRow({ slot, mark, onActivate }) {
+function SlotRow({ slot, mark, onActivate, slam = false }) {
   const filled = slot.kind === 'item'
   const inner = filled ? (
-    <div className="slot-card">
+    <div className={`slot-card${slam ? ' slam' : ''}`}>
       <div className="slot-card-body">
         {/* Type shown as an ICON next to the name (no "MELEE"/"POLICY" text). */}
         <div className="slot-card-head">
@@ -337,7 +350,7 @@ function SlotRow({ slot, mark, onActivate }) {
  * clickable. Specialists carry a `convert` button (spend gold to turn era+1
  * citizens into this type); `flashSeq` replays a green flash when just converted.
  */
-function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0 }) {
+function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0, slam = false }) {
   const body = (
     <>
       <div className="pop-top">
@@ -384,7 +397,7 @@ function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0 }) {
   if (mark) {
     return (
       <InfoTip
-        className={`pop-card ${mark}-target`}
+        className={`pop-card ${mark}-target${slam ? ' slam' : ''}`}
         title={pop.name}
         text={tip}
         onClick={onActivate}
@@ -396,5 +409,5 @@ function PopCard({ pop, count, mark, onActivate, convert, flashSeq = 0 }) {
       </InfoTip>
     )
   }
-  return <InfoTip className="pop-card" title={pop.name} text={tip}>{body}</InfoTip>
+  return <InfoTip className={`pop-card${slam ? ' slam' : ''}`} title={pop.name} text={tip}>{body}</InfoTip>
 }
