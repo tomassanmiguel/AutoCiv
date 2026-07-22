@@ -557,13 +557,16 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 - **Food / Production / Progress** — threshold resources (see Game loop): icon + **level number**
   (# thresholds reached) + **bar** (`value / threshold` toward the current level's requirement) +
   per-tick delta. Shape `{ value, output, level, threshold }`.
-- **Item groups** are **side tabs** (`.panel-tabs`, a vertical strip on the left of the dropdown
+- **Item groups** are **icon side tabs** (`.panel-tabs`, a vertical strip on the left of the dropdown
   area) — **Units**, **Buildings (7)**, **Policies (5)**, **Population (5)** — **all four always
-  visible**; the **active** tab's slots fill the dark `Box Dark`-framed content body (`.tab-body`,
-  rendered by `SlotList`). `activeTab` is the player's choice, but a **replace** forces the relevant
-  tab active and a **build pick** jumps to Units and makes the pickable **Units/Buildings tabs pulse
-  gold** (`.pick-hl`). A fill/unlock switches to that group's tab (for the slam). **empty** slots show
-  a centered type silhouette, while
+  visible** as `TAB_ICON` images (`ui/{unit,building,policy,pop}.png`); the tabs **split the full
+  height** and extend a few px right (negative margin) to tuck under the content box's 9-slice frame.
+  The **active** tab's slots fill the dark `Box Dark`-framed content body (`.tab-body`, rendered by
+  `SlotList`). `activeTab` is the player's choice, but a **replace** forces the relevant tab active
+  and a **build pick** jumps to Units and makes the pickable **Units/Buildings tabs pulse gold**
+  (`.pick-hl`). A fill/unlock switches to that group's tab (for the slam). Slot boxes are **solid**
+  parchment (so the type icon reads); stat icon+value pairs never shrink/overlap (wrap instead).
+  **empty** slots show a centered type silhouette, while
   **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
   (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
   units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,

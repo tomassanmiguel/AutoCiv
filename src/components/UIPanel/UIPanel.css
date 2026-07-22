@@ -114,57 +114,71 @@
 .panel-tabbed {
   display: flex;
   flex-direction: row;
-  gap: 0.35rem;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/* Vertical strip of always-visible tab buttons on the left. */
+/* Vertical strip of always-visible icon tabs on the left. They extend a few px to
+   the RIGHT, tucking under the content box's (transparent-edged) 9-slice frame so
+   there's no gap — the frame paints over them since it comes later in the DOM. */
 .panel-tabs {
   flex: 0 0 auto;
-  width: 62px;
+  width: 52px;
+  margin-right: -12px;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  z-index: 0;
 }
 .panel-tab {
-  flex: 0 0 auto;
-  padding: 0.5rem 0.2rem;
+  flex: 1 1 0;            /* split the full vertical height evenly */
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.3rem 0.2rem 0.2rem;
   border: 1px solid rgba(90, 65, 25, 0.3);
-  border-radius: 6px 0 0 6px;
+  border-radius: 7px 0 0 7px;
   border-right: none;
-  background: rgba(60, 40, 15, 0.12);
-  color: var(--ink-soft);
-  font-weight: 700;
-  font-size: 0.66rem;
-  line-height: 1.1;
-  letter-spacing: 0.01em;
-  text-align: center;
+  background: rgba(60, 40, 15, 0.14);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
-.panel-tab:hover { background: rgba(60, 40, 15, 0.22); color: var(--ink); }
-/* Active tab: brighter, brass edge, and visually joined to the content body. */
+.panel-tab:hover { background: rgba(60, 40, 15, 0.26); }
+.panel-tab-icon {
+  width: 100%;
+  height: 100%;
+  max-width: 30px;
+  max-height: 30px;
+  object-fit: contain;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.panel-tab:hover .panel-tab-icon { opacity: 0.8; }
+/* Active tab: brighter fill, brass edge, and a fully-lit icon. */
 .panel-tab.active {
-  background: rgba(250, 242, 224, 0.72);
-  color: var(--ink);
+  background: #f2ead2;
   border-color: var(--brass);
-  box-shadow: inset 2px 0 0 var(--brass);
 }
+.panel-tab.active .panel-tab-icon { opacity: 1; transform: scale(1.05); }
 /* During production, the pickable (Units/Buildings) tabs pulse gold. */
 .panel-tab.pick-hl { animation: tab-pick-flash 1.4s ease-in-out infinite; }
+.panel-tab.pick-hl .panel-tab-icon { opacity: 0.95; }
 @keyframes tab-pick-flash {
   0%, 100% { border-color: #d9a520; box-shadow: inset 2px 0 0 rgba(217, 165, 32, 0.7); }
   50% { border-color: #ffcf33; box-shadow: inset 3px 0 0 #ffcf33, 0 0 10px 1px rgba(255, 207, 51, 0.7); }
 }
 
-/* Content body: the Box Dark frame (<NineSlice>) holding the active tab's slots. */
+/* Content body: the Box Dark frame (<NineSlice>) holding the active tab's slots.
+   Sits above the tabs (later in DOM) so its frame edge overlaps their right side. */
 .tab-body {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   display: flex;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .slot-list {
@@ -176,7 +190,7 @@
   padding: 0.1rem 0.15rem 0.25rem;
 }
 
-/* Each slot is a translucent parchment box holding a centered type silhouette. */
+/* Each slot is a SOLID parchment box (opaque so the type icon reads clearly). */
 .slot-row {
   flex: 1 1 0;
   min-height: 0;
@@ -185,17 +199,17 @@
   justify-content: center;
   padding: 0.3rem;
   border-radius: 5px;
-  background: rgba(250, 242, 224, 0.55);
-  border: 1px solid rgba(90, 65, 25, 0.35);
+  background: #efe6cb;
+  border: 1px solid rgba(90, 65, 25, 0.4);
   overflow: hidden;
   cursor: default;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .slot-row.empty:hover {
   border-color: var(--brass);
-  background: rgba(250, 242, 224, 0.8);
+  background: #f5eed8;
 }
-.slot-row.filled { background: rgba(250, 242, 224, 0.72); }
+.slot-row.filled { background: #f3ecd6; }
 
 .slot-silhouette {
   max-height: 84%;
@@ -259,22 +273,26 @@
   overflow: hidden;
 }
 
-/* Stat icon+value trio (Speed / Atk / Def), used on cards and in tooltips. */
+/* Stat icon+value trio (Speed / Atk / Def), used on cards and in tooltips.
+   Wraps rather than letting items overlap when the card is narrow. */
 .slot-card-stats {
   display: flex;
-  gap: 0.45rem;
+  flex-wrap: wrap;
+  gap: 0.12rem 0.5rem;
   align-items: center;
   max-width: 100%;
   min-width: 0;
 }
 .stat {
+  flex: 0 0 auto; /* keep each icon+value intact — never shrink/overlap */
   display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.18rem;
   font-weight: 700;
   font-size: 0.82rem;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 /* Card stat icons sized to sit within the slot frame (tooltip overrides larger). */
 .stat img {

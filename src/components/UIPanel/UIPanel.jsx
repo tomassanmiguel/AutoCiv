@@ -24,6 +24,14 @@ const ICON = {
   progress: '/sprites/icons/progress.png',
 }
 
+// Side-tab icons (one per item group).
+const TAB_ICON = {
+  units: '/sprites/ui/unit.png',
+  buildings: '/sprites/ui/building.png',
+  policies: '/sprites/ui/policy.png',
+  population: '/sprites/ui/pop.png',
+}
+
 // Unit/building stat icons (Speed = cooldown, Atk = damage, Def = health).
 const STAT_ICON = {
   speed: '/sprites/icons/speed.png',
@@ -210,8 +218,10 @@ export default function UIPanel() {
                 key={g.key}
                 className={`panel-tab${isActive ? ' active' : ''}${pickHl ? ' pick-hl' : ''}`}
                 onClick={() => setActiveTab(g.key)}
+                title={g.label}
+                aria-label={g.label}
               >
-                {g.label}
+                <img className="panel-tab-icon" src={TAB_ICON[g.key]} alt={g.label} />
               </button>
             )
           })}
