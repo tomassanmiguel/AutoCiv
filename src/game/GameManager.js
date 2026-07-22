@@ -357,7 +357,19 @@ export class GameManager {
   _markChosen(id) { this.data.civilization.chosenAdvancements.add(id) }
 
   _applyModifier(unlock) {
-    if (unlock.key === 'clothes') this.data.civilization.modifiers.unitHpBonus += 5
+    const civ = this.data.civilization
+    if (unlock.key === 'clothes') {
+      civ.modifiers.unitHpBonus += 5
+      // Apply retroactively to units already deployed on the board.
+      for (const tile of this.data.tableau.tiles.values()) {
+        const occ = tile.occupant
+        if (!occ || occ.kind !== 'unit') continue
+        const newMax = unitStats(UNIT_DEFS[occ.key], occ.level, civ.modifiers.unitHpBonus).def
+        const delta = newMax - occ.maxHp
+        occ.maxHp = newMax
+        occ.hp = Math.min(newMax, (occ.hp ?? newMax) + delta)
+      }
+    }
   }
 
   // --- Slot resolution helpers ---
@@ -605,6 +617,7 @@ export class GameManager {
       if (!c.isUnit || !this._isActive(c) || c.unit.cdTimer > 0) continue
       if (this._resolveAttack(c, bounds)) {
         c.unit.cdTimer += this._effectiveCooldown(c.unit)
+        c.unit.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
         if (UNIT_DEFS[c.unit.key]?.shift) this._shift(c, bounds, enemyRows)
       }
     }
