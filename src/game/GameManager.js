@@ -138,6 +138,15 @@ export class GameManager {
   popOutput(key) {
     const base = { ...(POP_TYPES[key]?.outputs ?? {}) }
     if (key === 'citizen' && this._hasPolicy('language')) base.progress = (base.progress ?? 0) + 1
+    // Specialization: each non-citizen (specialist) pop produces +1 of each of its
+    // highest outputs (all tied maxima get +1).
+    if (isSpecialist(key) && this._hasPolicy('specialization')) {
+      const vals = Object.values(base)
+      if (vals.length) {
+        const max = Math.max(...vals)
+        for (const res of Object.keys(base)) if (base[res] === max) base[res] += 1
+      }
+    }
     return base
   }
 
@@ -160,6 +169,11 @@ export class GameManager {
     totals.food += bt.food
     totals.production += bt.production
     totals.gold += bt.gold
+    // Slavery: +10% :production:, −5% :progress: (kept as floats; UI rounds down).
+    if (this._hasPolicy('slavery')) {
+      totals.production *= 1.10
+      totals.progress *= 0.95
+    }
     civ.progress.output = totals.progress
     civ.food.output = totals.food
     civ.production.output = totals.production
@@ -601,8 +615,8 @@ export class GameManager {
 
   _applyModifier(unlock) {
     const civ = this.data.civilization
-    if (unlock.key === 'clothes') {
-      civ.modifiers.unitHpBonus += 5
+    if (unlock.key === 'clothes' || unlock.key === 'leatherwork') {
+      civ.modifiers.unitHpBonus += unlock.key === 'clothes' ? 5 : 8
       this._syncUnitStats() // apply retroactively to deployed units (with Warband)
     } else if (unlock.key === 'basket_weaving' || unlock.key === 'plough') {
       civ.modifiers.foodThresholdMult *= 0.95 // −5% food thresholds (stacks)

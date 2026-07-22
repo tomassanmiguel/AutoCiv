@@ -37,6 +37,14 @@ export const POLICY_DEFS = {
     key: 'hereditary_rule', name: 'Hereditary Rule', type: 'Policy',
     effect: 'At the end of combat, all units and buildings permanently gain +1 :defense:.',
   },
+  specialization: {
+    key: 'specialization', name: 'Specialization', type: 'Policy',
+    effect: 'Each specialist also produces +1 of its highest output.',
+  },
+  slavery: {
+    key: 'slavery', name: 'Slavery', type: 'Policy',
+    effect: 'All :production: outputs +10%, but all :progress: outputs −5%.',
+  },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',

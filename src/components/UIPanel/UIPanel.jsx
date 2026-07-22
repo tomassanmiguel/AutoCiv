@@ -69,7 +69,9 @@ const RES_TIP = {
   progress: 'A measure of the ingenuity of your civilization. :progress: will unlock new units, buildings, policies, and specialists.',
 }
 
-const fmtDelta = (n) => (n > 0 ? `+${n}` : `${n}`)
+// Per-tick output is shown rounded DOWN (outputs are tracked as floats internally,
+// e.g. Slavery's ±% multipliers).
+const fmtDelta = (n) => { const f = Math.floor(n); return f > 0 ? `+${f}` : `${f}` }
 
 // Keyboard activation for the div-based (role="button") replace-candidate slots.
 const activateKey = (e, fn) => {
