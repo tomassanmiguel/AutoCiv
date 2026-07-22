@@ -174,13 +174,14 @@ export class GameManager {
     totals.production += bt.production
     totals.gold += bt.gold
     totals.legitimacy += bt.legitimacy
-    // Slavery: +10% :production:, −5% :progress: (kept as floats; UI rounds down).
-    if (this._hasPolicy('slavery')) {
-      totals.production *= 1.10
-      totals.progress *= 0.95
-    }
-    // Weights and Measures: +50% :gold: outputs.
-    if (this._hasPolicy('weights_and_measures')) totals.gold *= 1.5
+    // Percentage output modifiers. STACKED PERCENTAGES ARE ADDITIVE per resource:
+    // sum the bonuses, then apply ×(1 + bonus). (Slavery −5% + Democracy +20% progress
+    // → ×1.15, not ×0.95×1.20.) Kept as floats; the UI rounds down.
+    const pct = { progress: 0, food: 0, production: 0, gold: 0, legitimacy: 0 }
+    if (this._hasPolicy('slavery')) { pct.production += 0.10; pct.progress -= 0.05 }
+    if (this._hasPolicy('weights_and_measures')) pct.gold += 0.50
+    if (this._hasPolicy('democracy')) pct.progress += 0.20 // +20% :progress: gain
+    for (const res of Object.keys(pct)) if (pct[res]) totals[res] *= 1 + pct[res]
     civ.progress.output = totals.progress
     civ.food.output = totals.food
     civ.production.output = totals.production
@@ -193,12 +194,14 @@ export class GameManager {
     return this.data.civilization.policies.some((p) => p && p.key === key)
   }
 
-  /** Reduce legitimacy by `amount` (clamped at 0). Democracy doubles ALL losses. */
+  /** Reduce legitimacy by `amount` (clamped at 0). Democracy doubles ALL losses.
+   *  Returns the (post-Democracy) damage applied, for display. */
   _damageLegitimacy(amount) {
-    if (amount <= 0) return
+    if (amount <= 0) return 0
     const civ = this.data.civilization
     const dmg = amount * (this._hasPolicy('democracy') ? 2 : 1)
     civ.legitimacy.value = Math.max(0, civ.legitimacy.value - dmg)
+    return dmg
   }
 
   _deployedBuildingCount() {

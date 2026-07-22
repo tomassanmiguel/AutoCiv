@@ -89,4 +89,10 @@ export const POLICY_DEFS = {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',
     effect: 'Each empty land tile grants +1 :legitimacy: at the end of combat.',
   },
+
+  // --- Classical era ---
+  democracy: {
+    key: 'democracy', name: 'Democracy', type: 'Policy',
+    effect: 'All :progress: outputs +20%, but whenever you lose :legitimacy: you lose double.',
+  },
 }

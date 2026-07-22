@@ -138,6 +138,7 @@ export const IMPLEMENTED = {
   'Glassblowing': { kind: 'building', key: 'glassworks', description: 'Unlocks the Glassworks — a :production: building that grants :legitimacy: whenever you complete another building.' },
   'Entertainment': { kind: 'building', key: 'colosseum', description: 'Unlocks the Colosseum — a :legitimacy: building granting 5 :legitimacy: per unit in your civ at the end of each combat.' },
   'Public Baths': { kind: 'building', key: 'public_baths', description: 'Unlocks the Public Baths — a :utility: building that heals adjacent friendlies and permanently boosts their :attack: every 5 seconds in combat.' },
+  'Democracy':    { kind: 'policy', key: 'democracy', description: 'Unlocks the Democracy policy — +20% :progress: gain, but every :legitimacy: loss is doubled.' },
   'Philosophy':   { kind: 'pop', key: 'philosopher', description: 'Unlocks the Philosopher specialist — +10 :progress: but −1 :gold: per tick (negative :gold: bleeds :legitimacy:).' },
   'Poetry':       { kind: 'pop', key: 'poet', description: 'Unlocks the Poet specialist — +1 :progress:, growing by +2 every era.' },
 }

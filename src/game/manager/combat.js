@@ -178,9 +178,8 @@ class CombatMixin {
     }
     const front = this._frontPlayerInCol(c.col, bounds)
     if (!front) {
-      const legit = this.data.civilization.legitimacy
-      legit.value = Math.max(0, legit.value - atk)
-      this._pushEvent({ kind: 'legit', amount: atk, col: c.col })
+      const lost = this._damageLegitimacy(atk) // Democracy doubles the loss
+      this._pushEvent({ kind: 'legit', amount: lost, col: c.col })
       return true
     }
     if (role === 'ranged' || c.slot === this._frontEnemySlot(c.col)) {
