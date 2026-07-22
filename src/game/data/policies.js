@@ -29,9 +29,13 @@ export const POLICY_DEFS = {
     key: 'ownership', name: 'Ownership', type: 'Policy',
     effect: 'All buildings also produce +2 :gold: per tick.',
   },
-  basket_weaving: {
-    key: 'basket_weaving', name: 'Basket Weaving', type: 'Policy',
-    effect: 'All :food: thresholds are 5% lower.',
+  oral_tradition: {
+    key: 'oral_tradition', name: 'Oral Tradition', type: 'Policy',
+    effect: 'At the end of combat, gain :gold: and :progress: equal to your current :legitimacy:.',
+  },
+  hereditary_rule: {
+    key: 'hereditary_rule', name: 'Hereditary Rule', type: 'Policy',
+    effect: 'At the end of combat, all units and buildings permanently gain +1 :defense:.',
   },
   sacred_grounds: {
     key: 'sacred_grounds', name: 'Sacred Grounds', type: 'Policy',

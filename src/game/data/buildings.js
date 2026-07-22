@@ -32,8 +32,8 @@ export const BUILDING_DEFS = {
   pier: {
     key: 'pier', name: 'Pier', types: ['food'], placement: 'coast',
     hp: 12, upHp: 4,
-    // Flat food by level (era-independent).
-    effect: (level) => `Produces ${pierFood(level)} :food: at the end of each era.`,
+    // Flat food by level (era-independent), granted at the end of combat.
+    effect: (level) => `Produces ${pierFood(level)} :food: at the end of combat.`,
     outputs: (level) => [{ res: 'food', amount: pierFood(level), per: 'era' }],
     eraFood: pierFood,
   },
@@ -51,9 +51,10 @@ export const BUILDING_DEFS = {
   },
 }
 
-/** Effective building HP at a given upgrade level. */
-export function buildingHp(def, level = 1) {
-  return def.hp + Math.max(0, level - 1) * (def.upHp ?? 0)
+/** Effective building HP at a given upgrade level, plus a flat civ-wide bonus
+ *  (Hereditary Rule). Supplement buildings (Road) have no HP. */
+export function buildingHp(def, level = 1, hpBonus = 0) {
+  return def.hp + Math.max(0, level - 1) * (def.upHp ?? 0) + hpBonus
 }
 
 /** Current effect text for a building at a level/era (resolves dynamic effects). */

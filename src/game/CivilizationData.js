@@ -51,7 +51,11 @@ export class CivilizationData {
     this.population[0] = POP_TYPES.citizen.key
 
     // Civilization-wide passives applied by advancements.
-    this.modifiers = { unitHpBonus: 0 }
+    //  unitHpBonus / buildingHpBonus — flat :defense: added to every unit / building
+    //    (Clothes, and +1 each combat from Hereditary Rule).
+    //  foodThresholdMult — multiplies every :food: threshold (Basket Weaving / The
+    //    Plough each ×0.95, stacking).
+    this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1 }
 
     // Advancement bookkeeping.
     this.chosenAdvancements = new Set() // ids chosen (removed from the pool)

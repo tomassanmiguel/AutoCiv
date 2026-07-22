@@ -75,7 +75,7 @@ export const IMPLEMENTED = {
   'Fermentation': { kind: 'building', key: 'brewery', description: 'Unlocks the Brewery — a :gold: building that earns gold from nearby units (which fight harder but frailer in its range).' },
   'Pack Bonding': { kind: 'unit', key: 'wolf', description: 'Unlocks the Wolf — a fast land :cavalry: unit.' },
   'Mud Brick':    { kind: 'building', key: 'mud_wall', description: 'Unlocks the Mud Wall — a sturdy land :defense: building.' },
-  'Basket Weaving': { kind: 'policy', key: 'basket_weaving', description: 'Unlocks the Basket Weaving policy — all :food: thresholds are 5% lower.' },
+  'Basket Weaving': { kind: 'modifier', key: 'basket_weaving', silhouette: '/sprites/ui/food.png', description: 'All :food: thresholds are 5% lower.' },
   'Burial Rites': { kind: 'policy', key: 'burial_rites', description: 'Whenever a unit dies, gain :progress: equal to its :defense:.' },
   'Midwivery':    { kind: 'policy', key: 'midwivery', description: 'Unlocks the Midwivery policy — whenever you create a unit, gain :production: equal to its :defense:.' },
   'Bartering':    { kind: 'pop', key: 'trader', description: 'Unlocks the Trader specialist (+5 :gold: per tick).' },
@@ -83,6 +83,11 @@ export const IMPLEMENTED = {
   'Ownership':    { kind: 'policy', key: 'ownership', description: 'Unlocks the Ownership policy — all buildings also produce +2 :gold: per tick.' },
   'Sacred Grounds': { kind: 'policy', key: 'sacred_grounds', description: 'Unlocks the Sacred Grounds policy — each empty land tile grants +1 :legitimacy: at the end of combat.' },
   'The Sling':    { kind: 'unit', key: 'slinger', description: 'Unlocks the Slinger — a land :ranged: unit.' },
+
+  // --- Bronze era ---
+  'Oral Tradition': { kind: 'policy', key: 'oral_tradition', description: 'Unlocks the Oral Tradition policy — at the end of combat, gain :gold: and :progress: equal to your current :legitimacy:.' },
+  'Hereditary Rule': { kind: 'policy', key: 'hereditary_rule', description: 'Unlocks the Hereditary Rule policy — at the end of combat, all units and buildings permanently gain +1 :defense:.' },
+  'The Plough':   { kind: 'modifier', key: 'plough', silhouette: '/sprites/ui/food.png', description: 'All :food: thresholds are 5% lower.' },
 }
 
 export function isImplemented(name) {

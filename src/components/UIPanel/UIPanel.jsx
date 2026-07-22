@@ -155,8 +155,8 @@ export default function UIPanel() {
   const combat = phase === 'battle' // pulse gold/legitimacy as they change
   // Specialist gold-conversion is offered during development + preparation.
   const canConvert = !sel && (phase === 'development' || phase === 'prep') && !game.data.won && !game.data.defeated
-  // Basket Weaving lowers food thresholds 5% — reflect that in the food bar.
-  const foodThresholdMult = civ.policies.some((p) => p && p.key === 'basket_weaving') ? 0.95 : 1
+  // Basket Weaving / The Plough lower food thresholds — reflect that in the food bar.
+  const foodThresholdMult = civ.modifiers.foodThresholdMult
 
   // Side tabs: all four always visible; the active one's content fills the body.
   // A replace forces the relevant tab active; otherwise it's the player's choice.

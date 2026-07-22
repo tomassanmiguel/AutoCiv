@@ -5,11 +5,12 @@ import { GRID, ROWS, COLS, COLUMN_SPECIALS } from './map.js'
 // tooltip; `sprite` is the served image path (or null -> flat color fallback).
 // ---------------------------------------------------------------------------
 // `place` = placement class for deploying units/buildings: 'land' | 'coast' | 'sea' | 'space'.
-// `note` (optional) = the terrain's special gameplay effect, shown in its tile tooltip.
+// `defBonus` (optional) = flat :defense: a unit OR building stationed here gains during
+//   combat (Forest +5, Mountain +10). `note` = the tooltip line describing that effect.
 export const TERRAIN = {
   plains:     { name: 'Plains',     sprite: '/sprites/tiles/plains.png',     color: '#5a7d3a', place: 'land' },
-  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land', note: 'A unit stationed here gains +5 :defense: during combat.' },
-  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land' },
+  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land', defBonus: 5, note: 'A unit or building here gains +5 :defense: during combat.' },
+  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land', defBonus: 10, note: 'A unit or building here gains +10 :defense: during combat.' },
   coast:      { name: 'Coast',      sprite: '/sprites/tiles/coast.png',      color: '#3a6b7d', place: 'coast' },
   ocean:      { name: 'Ocean',      sprite: '/sprites/tiles/ocean.png',      color: '#1f3a6b', place: 'sea' },
   island:     { name: 'Island',     sprite: '/sprites/tiles/island.png',     color: '#3a6b5a', place: 'land' },
@@ -31,6 +32,11 @@ export function canPlaceOn(placement, terrainKey) {
   const cls = TERRAIN[terrainKey]?.place
   if (!cls) return false
   return placement === 'any' || placement === cls
+}
+
+/** Flat combat :defense: bonus a terrain grants to any unit/building on it. */
+export function terrainDefBonus(terrainKey) {
+  return TERRAIN[terrainKey]?.defBonus ?? 0
 }
 
 // Labels that count as "earth" or "moon/mars" for the Space asteroid adjacency

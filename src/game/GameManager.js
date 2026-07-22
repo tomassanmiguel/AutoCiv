@@ -6,7 +6,7 @@ import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js
 import { UNIT_DEFS, unitStats } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
-import { canPlaceOn } from './data/terrain.js'
+import { canPlaceOn, terrainDefBonus } from './data/terrain.js'
 import { generateHost } from './data/enemies.js'
 import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost } from './data/costs.js'
 
@@ -224,11 +224,14 @@ export class GameManager {
   }
 
   /**
-   * Recompute each deployed unit's effective combat stats and store them on the
-   * occupant (occ.atk / occ.maxHp), folding in every modifier:
-   *   flat  += Clothes (hp), Warband (atk+hp), Forest (+5 hp, combat only)
-   *   mult  ×= Brewery aura (+10% atk, −10% hp) when in a brewery's range
-   * Full-HP units are topped up. `inCombat` gates the Forest bonus (combat only).
+   * Recompute each deployed instance's effective combat stats and store them on the
+   * occupant (units: occ.atk / occ.maxHp; buildings: occ.maxHp), folding in every
+   * modifier:
+   *   units     — flat += Clothes/Hereditary (hp), Warband (atk+hp), terrain (Forest
+   *               +5 / Mountain +10 hp, combat only); mult ×= Brewery aura (+10% atk,
+   *               −10% hp) in range.
+   *   buildings — maxHp = base + Hereditary bonus + terrain def (combat only).
+   * Full-HP instances are topped up; `inCombat` gates the terrain bonus (combat only).
    * Called on every board/policy/upgrade change and (with inCombat) at combat start.
    */
   _syncUnitStats(inCombat = this.data.phase === 'battle') {
@@ -237,26 +240,34 @@ export class GameManager {
     const hpBonus = civ.modifiers.unitHpBonus
     for (const tile of this.data.tableau.tiles.values()) {
       const occ = tile.occupant
-      if (!occ || occ.kind !== 'unit') continue
-      const wb = this._warbandBonus(occ, counts)
-      const forest = (inCombat && tile.terrain === 'forest') ? 5 : 0
-      const brew = this._inBreweryRange(tile.row, tile.col)
-      const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + forest, wb)
-      const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
-      occ.warband = wb
-      occ.forestDef = forest
-      occ.inBrewery = brew
-      occ.atk = Math.round(s.atk * (brew ? 1.1 : 1))
-      occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
-      if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
+      if (!occ) continue
+      const terrainDef = inCombat ? terrainDefBonus(tile.terrain) : 0
+      if (occ.kind === 'unit') {
+        const wb = this._warbandBonus(occ, counts)
+        const brew = this._inBreweryRange(tile.row, tile.col)
+        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef, wb)
+        const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
+        occ.warband = wb
+        occ.terrainDef = terrainDef
+        occ.inBrewery = brew
+        occ.atk = Math.round(s.atk * (brew ? 1.1 : 1))
+        occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
+        if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
+      } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.supplement) {
+        const newMax = buildingHp(BUILDING_DEFS[occ.key], occ.level, civ.modifiers.buildingHpBonus) + terrainDef
+        const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
+        occ.maxHp = Math.max(1, newMax)
+        if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
+      }
     }
   }
 
-  /** Cross any thresholds this resource has reached this tick. Basket Weaving lowers
-   *  food thresholds by 5% (applied to the compared/subtracted requirement). */
+  /** Cross any thresholds this resource has reached this tick. Basket Weaving / The
+   *  Plough lower food thresholds via civ.modifiers.foodThresholdMult (applied to the
+   *  compared/subtracted requirement). */
   _processThresholds(type, res) {
     const cfg = RESOURCE_CONFIG[type]
-    const mult = (type === 'food' && this._hasPolicy('basket_weaving')) ? 0.95 : 1
+    const mult = type === 'food' ? this.data.civilization.modifiers.foodThresholdMult : 1
     let guard = 0
     while (res.value >= res.threshold * mult && guard++ < 1000) {
       res.value -= res.threshold * mult // carry the overflow into the next level
@@ -367,7 +378,7 @@ export class GameManager {
       case 'building': return catSil(BUILDING_CATEGORIES, BUILDING_DEFS[unlock.key].types[0])
       case 'pop': return '/sprites/ui/pop.png'
       case 'policy': return '/sprites/ui/policy.png'
-      case 'modifier': return '/sprites/ui/defense.png'
+      case 'modifier': return unlock.silhouette ?? '/sprites/ui/defense.png'
       default: return null
     }
   }
@@ -471,6 +482,8 @@ export class GameManager {
     if (unlock.key === 'clothes') {
       civ.modifiers.unitHpBonus += 5
       this._syncUnitStats() // apply retroactively to deployed units (with Warband)
+    } else if (unlock.key === 'basket_weaving' || unlock.key === 'plough') {
+      civ.modifiers.foodThresholdMult *= 0.95 // −5% food thresholds (stacks)
     }
   }
 
@@ -633,7 +646,7 @@ export class GameManager {
       const hp = unitStats(UNIT_DEFS[chosen.key], chosen.level, civ.modifiers.unitHpBonus).def
       tile.occupant = { kind: 'unit', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false }
     } else {
-      const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level)
+      const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level, civ.modifiers.buildingHpBonus)
       tile.occupant = { kind: 'building', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false, lifetimeOutput: 0 }
       if (chosen.key === 'cave_painting') tile.occupant.storedProgress = BUILDING_DEFS.cave_painting.storedBase
     }
@@ -719,7 +732,7 @@ export class GameManager {
     const oldMax = occ.maxHp
     const newMax = occ.kind === 'unit'
       ? unitStats(UNIT_DEFS[occ.key], occ.level, civ.modifiers.unitHpBonus).def
-      : buildingHp(BUILDING_DEFS[occ.key], occ.level)
+      : buildingHp(BUILDING_DEFS[occ.key], occ.level, civ.modifiers.buildingHpBonus)
     occ.maxHp = newMax
     occ.hp = Math.min(newMax, (occ.hp ?? oldMax) + (newMax - oldMax))
     if (occ.kind === 'unit') this._syncUnitStats() // re-fold in any Warband bonus
@@ -823,8 +836,7 @@ export class GameManager {
   // Phase machine
   // ---------------------------------------------------------------------------
   _endDevelopment() {
-    if (this.data.phase !== 'development') return // guard against double-accrue
-    this._accrueBuildingOutputs()
+    if (this.data.phase !== 'development') return
     this._startPrep()
   }
 
@@ -1214,7 +1226,21 @@ export class GameManager {
       }
     }
     if (legit > 0) civ.legitimacy.value += legit
-    this._syncUnitStats(false) // combat over: drop the Forest bonus, disband mercs' warband
+    // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy:
+    // (progress banked like Burial Rites — its choices open in next era's development).
+    if (this._hasPolicy('oral_tradition')) {
+      const L = Math.floor(civ.legitimacy.value)
+      civ.gold.value += L
+      civ.progress.value += L
+    }
+    // Hereditary Rule: permanently toughen every unit & building (+1 :defense: / era).
+    if (this._hasPolicy('hereditary_rule')) {
+      civ.modifiers.unitHpBonus += 1
+      civ.modifiers.buildingHpBonus += 1
+    }
+    // End-of-combat building outputs (e.g. Pier food) accrue now (= "end of era").
+    this._accrueBuildingOutputs()
+    this._syncUnitStats(false) // combat over: drop terrain bonus, fold in Hereditary Rule
     this.data.enemies = [] // undefeated enemies fade away
     this.data.combatTime = 0
     this.data.combatEvents = []

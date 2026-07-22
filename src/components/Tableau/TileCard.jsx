@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingOutputs, buildingHp } from '../../game/data/buildings.js'
+import { TERRAIN, terrainDefBonus } from '../../game/data/terrain.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import InfoTip from '../common/InfoTip.jsx'
 import IconText from '../common/IconText.jsx'
@@ -99,7 +100,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
         </span>
         <span className="tc-tip-lv"> · Lv {lvl}</span>
         {/* Terrain / aura notes (current view only). */}
-        {!isPrev && isUnit && terrain === 'forest' && <><br /><IconText>{'+5 :defense: in combat (Forest).'}</IconText></>}
+        {!isPrev && terrainDefBonus(terrain) > 0 && <><br /><IconText>{`+${terrainDefBonus(terrain)} :defense: in combat (${TERRAIN[terrain]?.name}).`}</IconText></>}
         {!isPrev && isUnit && occ.inBrewery && <><br /><IconText>{'+10% :attack:, −10% :defense: (Brewery).'}</IconText></>}
         {!isPrev && isUnit && wb > 0 && <><br /><IconText>{`+${wb} :attack: & :defense: (Tribalism).`}</IconText></>}
         {!isUnit && !isPrev && <><br />Total produced: {occ.lifetimeOutput ?? 0} {bOuts[0] && <img className="itext-icon" src={RES_ICON[bOuts[0].res]} alt="" />}</>}
