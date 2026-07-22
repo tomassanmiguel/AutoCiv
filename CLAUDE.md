@@ -66,8 +66,8 @@ Core pillars:
 - `Sprites/Map Tiles/` — 14 terrain tiles (`Plains`, `Forest`, `Mountain`, `Coast`, `Ocean`,
   `Island`, `Space`, `Deep Space`, `Asteroid`, `Mars`, `Moon`, `Exohills`, `ExoPlains`,
   `Exosea`).
-- `Sprites/Icons/` — 8 icons: 5 resources (`Legitimacy`, `Gold`, `Food`, `Production`, `Progress`)
-  + 3 unit/building stats (`Speed`, `Attack`, `Defense`).
+- `Sprites/Icons/` — 10 icons: 5 resources (`Legitimacy`, `Gold`, `Food`, `Production`, `Progress`)
+  + 3 unit/building stats (`Speed`, `Attack`, `Defense`) + 2 gold actions (`Repair`, `Upgrade`).
 
 **Served copies** are what the game actually loads, under `public/` with normalized
 lowercase-hyphen names:
@@ -154,6 +154,7 @@ AutoCiv/
 │   │   │   ├── units.js       # unit defs (Warrior/Wolf/Slinger + era-1 Bear/Lion) + stat helpers
 │   │   │   ├── enemies.js     # enemy host generation (Horde/Elite/Group) + ENEMY_ROSTER
 │   │   │   ├── buildings.js   # building defs (Mud Wall/Pier) + hp/effect/outputs helpers
+│   │   │   ├── costs.js       # gold cost formulas (repair/upgrade/specialist/mercenary)
 │   │   │   ├── policies.js    # policy defs (Burial Rites)
 │   │   │   └── pops.js        # pop types (Citizen + specialists) + output/tooltip helpers
 │   │   ├── audio/AudioManager.js  # era-driven cross-fading music
@@ -167,6 +168,7 @@ AutoCiv/
 │       ├── Hud/{EraBanner,TickCounter,SpeedControl,TransitionOverlay}.jsx/.css # top HUD + banners
 │       ├── Progress/ProgressOverlay.jsx/.css # advancement chooser (cards/confirm/replace)
 │       ├── Production/ProductionPrompt.jsx/.css # build flow prompt (pick / place, Back / Skip)
+│       ├── Prep/CombatPrep.jsx/.css   # combat-preparation banner (Begin Combat button)
 │       ├── Victory/{VictoryScreen,DefeatScreen}.jsx/.css # end-game popups (Victory / Defeat)
 │       ├── Widgets/WidgetRail.jsx/.css # far-right widget rail (trophy/flask re-summon overlays)
 │       └── AudioController.jsx        # syncs the App-owned AudioManager to the era
@@ -298,9 +300,10 @@ exists; extend it as systems land.
 - During production **placement**, valid tiles flash yellow / occupied red and are click-to-build.
 
 ### Game loop (`GameManager`, `game/data/resources.js`, `game/data/pops.js`)
-- Each era runs: **development** (timer-driven ticks) → **battle** (25s of combat) →
-  **transition** (banner) → next era, until the last era (`won`) or legitimacy 0 (`defeated`).
-  State on `GameData`: `phase` (`development`/`battle`/`transition`), `tick` (0..65), `speed`.
+- Each era runs: **development** (timer-driven ticks) → **preparation** (spend gold /
+  arrange the board) → **battle** (25s of combat) → **transition** (banner) → next era,
+  until the last era (`won`) or legitimacy 0 (`defeated`). State on `GameData`: `phase`
+  (`development`/`prep`/`battle`/`transition`), `tick` (0..65), `speed`.
 - **Development:** **65 ticks/era**, **paused by default**. A speed widget sets
   `paused`/`standard`(1/s)/`fast`(3/s)/`super`(5/s)/`ultra`(10/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
@@ -320,9 +323,11 @@ exists; extend it as systems land.
   Citizen (`STARTING_CITIZENS`). **Growth split** (`addPops`): each new pop alternates by a running
   `growthParity` — **EVEN → a specialist** (cycled bottom-to-top via `specialistCursor`), **ODD →
   citizen**; with no specialists unlocked, all growth is citizens.
-- **Phase machine:** dev ends at 65 ticks → `_startCombat` (`phase='battle'`, 25s combat, see
-  below) → `_endCombat` → `phase='transition'` → the `TransitionOverlay` typewriter →
-  `completeTransition()` → next era (paused). Completing the **final era (Infinity)** sets
+- **Phase machine:** dev ends at 65 ticks → `_startPrep` (`phase='prep'`; no ticking — the
+  player spends gold and arranges the board, then presses **Begin Combat** → `beginCombat` →
+  `_startCombat`) → `phase='battle'`, 25s combat (see below) → `_endCombat` →
+  `phase='transition'` → the `TransitionOverlay` typewriter → `completeTransition()` → next
+  era (paused). Completing the **final era (Infinity)** sets
   `data.won = true` (Victory); legitimacy hitting 0 sets `data.defeated = true` (Defeat) and freezes
   the game. The temporary era slider calls `setEra` (instant debug jump; resets `won`/`defeated`,
   regenerates the enemy host).
@@ -382,6 +387,38 @@ exists; extend it as systems land.
   that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation.
 - All flashing (replace red / pick yellow / tile placement) is a slow ~1.4s pulse.
 
+### Gold economy (`game/data/costs.js`, `GameManager`, `Tableau`, `TileCard`, `UIPanel`, `Prep`)
+Gold (accrued per tick + from empty combat columns) is spent in five ways. All costs live
+in `costs.js` (E = 0-based era, L = current level, rounded): unit upgrade `50·1.25^E·L^1.5`;
+building upgrade `100·1.25^E·L^1.5`; unit repair `25+15E`; building repair `40+20E`;
+specialist convert `(75+25E)·1.25^E`; mercenary hire `(50+25E)·1.25^E` (mercenary cost is
+**not** in the design brief — chosen to sit between a repair and a specialist). Every spend
+button is **grayed out when gold is insufficient**; the mutator re-checks and deducts.
+- **Repair / Upgrade** (`repairOccupant` / `upgradeOccupant`): each deployed **on-tile card**
+  (`TileCard`) shows one gold-cost action button — **Repair** (`:defense:` restore, repair
+  icon) on a **damaged** instance, else **Upgrade** (upgrade icon, `level+1` → higher Atk/HP,
+  HP recomputed + topped up). Offered during **development + preparation** only (`_canEconomize`:
+  not battle/transition, no open selection, not won/defeated). Both replay a **green flash +
+  grow/shrink** "pop" on the card (`occ.fxSeq`/`fxKind`, `_fxTag`; suppressed in combat).
+- **Specialist convert** (`convertSpecialistWithGold` / `specialistConvertInfo`): each unlocked
+  specialist **PopCard** carries a **Convert +N** button (N = `era+1`) that spends gold to turn
+  N citizens into that specialist. Disabled without N citizens or enough gold; flashes green
+  (`data.popFx`). Citizen slot never shows it.
+- **Mercenaries** (`hireMercenary` / `mercEligible`): during **prep**, every empty tile that can
+  host ≥1 of your unlocked roster units shows a **Hire** button (+ a gold ring when the hire is
+  affordable). Clicking spawns a **random valid roster unit** (at that slot's level) flagged
+  `mercenary` (dashed frame) — it fights this one battle and **disbands when the battle ends**
+  (removed in `_endCombat`, and in `_defeat` so a lost battle leaves no stragglers). Mercenaries
+  can't be repaired/upgraded (no sinking gold into a disposable unit).
+- **Reposition** (`canReposition` / `moveUnit`, free): **units** (not buildings) can be **dragged**
+  to a valid **empty** tile during dev/prep. On grab (past a small threshold) valid tiles flash
+  yellow, the source dims, and a labelled ghost follows the cursor (positioned imperatively so
+  ticks don't reset it); dropping on a valid tile moves the unit, any invalid drop snaps back.
+  You can't displace an occupied tile.
+- **CombatPrep** (`components/Prep`): a non-blocking banner (mounted in `GameScreen`) shown in the
+  `prep` phase with a prominent **Begin Combat** button; the tableau + panel stay interactive so
+  all the above can happen. The enemy host is visible on the battlefield throughout prep.
+
 ### Combat (`GameManager` combat methods, `game/data/enemies.js`, `Tableau/TileCard`)
 - **Enemy host** (`generateHost`, regenerated each era, visible as a preview during development):
   one composition — **Horde** (Classical+, units 1–5 eras ago, 50% of the battlefield), **Elite**
@@ -416,7 +453,8 @@ exists; extend it as systems land.
 - **Top-row HUD** (`.top-hud`): its own strip at the top of the tableau window (does NOT overlap
   the tiles — `.tableau-window` is a column, HUD strip then tableau). Order: **EraBanner
   (`"<Era> Age"`) → menu button → TickCounter → SpeedControl**, horizontal.
-- **TickCounter** — ticks remaining in development (65→0), or **seconds remaining** during a battle.
+- **TickCounter** — ticks remaining in development (65→0), a **⚔** glyph during preparation,
+  or **seconds remaining** during a battle.
 - **SpeedControl** — framed speed buttons (`paused`/`standard`/`fast`/`super`/`ultra`); the same
   control accelerates combat (as a time multiplier).
 - **TransitionOverlay** — a brief **"Battle"** announcement (combat runs underneath) + the era-
@@ -470,7 +508,8 @@ exists; extend it as systems land.
   - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + output icons
     in the body and the **count** on the far right. Hover shows per-tick output **and the total
     from that pop type** (`popTotalSummary`). The Citizen starts unlocked; specialists (Builder/
-    Farmer/Trader) unlock via advancements.
+    Farmer/Trader) unlock via advancements. Each specialist card also has a gold **Convert +N**
+    button (dev/prep only) — see **Gold economy**.
   - `CivilizationData.units` (9) / `buildings` (7) / `policies` (5) are index-aligned to the
     category lists; `null` = empty slot, else `{ key, level }`.
 
@@ -494,8 +533,10 @@ exists; extend it as systems land.
 - [x] Battle phase: per-era enemy hosts, 25s combat (cooldowns/targeting/gold/legitimacy), damaged
   state, Defeat screen, and **combat juice** (attack thrust, floating damage/gold/legitimacy numbers,
   death shake→gray, panel value pulses). Reddening Def + no-persist damage done; Clothes retroactive.
+- [x] Gold economy: a **preparation** phase; **repair**/**upgrade** deployed instances; **buy
+  specialists**; **hire mercenaries**; **drag-reposition** units. (Spend gold is live.)
 - [ ] Battle abilities/policies that need combat: Burial Rites (progress on death), more unit
-  abilities. **Spend gold**; **repair** damaged units; **upgrades** (Repair/Upgrade icons added).
+  abilities.
 
 ---
 
@@ -623,3 +664,13 @@ exists; extend it as systems land.
   **shake→fade to gray**; panel gold/legitimacy **pulse** as they change. Clothes now applies **+5 HP
   retroactively** to deployed units. Card **type shown as an icon** (dropped the "MELEE"/"POLICY" text
   + corner watermark so the policy card fits). Selected **speed button** clearly highlighted.
+- **2026-07-21** — **Gold economy** (makes gold useful). Added `game/data/costs.js` (repair / upgrade /
+  specialist / mercenary formulas) and a new **preparation phase** between development and battle
+  (`_startPrep` → `CombatPrep` banner → **Begin Combat**). Gold now buys: **repair** a damaged
+  unit/building, **upgrade** a healthy one (both via a gold-cost button on the on-tile card, with a
+  green flash + grow/shrink pop), **specialists** (a **Convert +N** button on each specialist PopCard
+  turns era+1 citizens into that type), and **mercenaries** (hire a random valid roster unit onto an
+  empty tile during prep; flagged `mercenary`, disbands in `_endCombat`). **Units drag to reposition**
+  onto a valid empty tile any time in dev/prep (valid tiles flash yellow, invalid drops snap back;
+  no displacing). All buttons gray out when gold is short. Added `Repair`/`Upgrade` icons. Model
+  verified via a Node sim (29 checks); an adversarial multi-agent review ran over the slice.
