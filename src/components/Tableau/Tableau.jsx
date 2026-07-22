@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
+import TileCard from './TileCard.jsx'
 import './Tableau.css'
 
 const CELL = 96          // base tile size in content-space pixels
@@ -203,6 +204,11 @@ export default function Tableau() {
   const cols = bounds ? range(bounds.minCol, bounds.maxCol) : []
   const tiles = bounds ? tableau.visibleTiles(era) : []
 
+  // Production placement mode: valid tiles flash yellow, occupied ones red.
+  const sel = game.data.selection
+  const placing = !!(sel && sel.type === 'production' && sel.stage === 'place')
+  const hpBonus = game.data.civilization.modifiers.unitHpBonus
+
   return (
     <div className="tableau-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
       <div
@@ -233,22 +239,36 @@ export default function Tableau() {
         {tiles.map((tile) => {
           const j = tile.col - bounds.minCol
           const i = enemyRows + (bounds.maxRow - tile.row)
+          const occ = tile.occupant
+          const pstate = placing ? game.placementState(tile.row, tile.col) : null
+          const placeable = pstate === 'valid' || pstate === 'replace'
+          const cls = [
+            'tableau-tile',
+            occ ? 'occupied' : '',
+            pstate === 'valid' ? 'place-valid' : '',
+            pstate === 'replace' ? 'place-replace' : '',
+          ].filter(Boolean).join(' ')
           return (
             <div
               key={`${tile.row},${tile.col}`}
-              className={`tableau-tile ${tile.flipX ? 'flip-x' : ''}`}
-              style={{
-                left: j * CELL,
-                top: i * CELL,
-                width: CELL,
-                height: CELL,
-                backgroundColor: tile.color,
-                backgroundImage: tile.sprite ? `url("${tile.sprite}")` : 'none',
-              }}
-              onMouseEnter={(e) => showTooltip(tile, e)}
-              onMouseMove={moveTooltip}
-              onMouseLeave={() => setTooltip(null)}
-            />
+              className={cls}
+              style={{ left: j * CELL, top: i * CELL, width: CELL, height: CELL }}
+              onMouseEnter={occ ? undefined : (e) => showTooltip(tile, e)}
+              onMouseMove={occ ? undefined : moveTooltip}
+              onMouseLeave={occ ? undefined : () => setTooltip(null)}
+              onClick={placeable ? () => game.placeAt(tile.row, tile.col) : undefined}
+            >
+              {/* Background layer holds the sprite (and the west-coast mirror) so
+                  the on-tile card is never flipped/mirrored. */}
+              <div
+                className={`tile-bg ${tile.flipX ? 'flip-x' : ''}`}
+                style={{
+                  backgroundColor: tile.color,
+                  backgroundImage: tile.sprite ? `url("${tile.sprite}")` : 'none',
+                }}
+              />
+              {occ && <TileCard occupant={occ} era={era} hpBonus={hpBonus} />}
+            </div>
           )
         })}
       </div>

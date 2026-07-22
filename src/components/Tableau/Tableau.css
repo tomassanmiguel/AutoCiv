@@ -21,18 +21,45 @@
 
 .tableau-tile {
   position: absolute;
-  background-size: cover;
-  background-position: center;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
   transition: filter 0.12s ease;
 }
+/* Background/sprite lives on its own layer so on-tile cards aren't transformed. */
+.tile-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
 /* West-facing coasts: mirror the sprite so land/water orient toward the continent. */
-.tableau-tile.flip-x { transform: scaleX(-1); }
+.tile-bg.flip-x { transform: scaleX(-1); }
 .tableau-tile:hover {
   filter: brightness(1.12);
   box-shadow: inset 0 0 0 2px var(--accent-light), 0 0 12px var(--accent-glow);
   z-index: 2;
 }
+/* Occupied tiles highlight the card, not the terrain, on hover (keep the z lift). */
+.tableau-tile.occupied:hover {
+  filter: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/* Production placement: slow yellow (build) / red (replace) tile flashes. */
+.tableau-tile.place-valid,
+.tableau-tile.place-replace { cursor: pointer; }
+.tableau-tile.place-valid { animation: tile-valid-flash 1.4s ease-in-out infinite; }
+.tableau-tile.place-replace { animation: tile-replace-flash 1.4s ease-in-out infinite; }
+@keyframes tile-valid-flash {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: inset 0 0 0 3px #d9a520, 0 0 12px rgba(217, 165, 32, 0.6); }
+}
+@keyframes tile-replace-flash {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+  50% { box-shadow: inset 0 0 0 3px #c0392b, 0 0 12px rgba(192, 57, 43, 0.6); }
+}
+/* During placement, let clicks fall through the card to the tile underneath. */
+.tableau-tile.place-valid .tile-card-anchor,
+.tableau-tile.place-replace .tile-card-anchor { pointer-events: none; }
 
 .enemy-slot {
   position: absolute;
