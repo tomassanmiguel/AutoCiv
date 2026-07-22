@@ -640,12 +640,12 @@ export class GameManager {
         this._pushEvent({ kind: 'gold', amount: atk, col: c.col, row: c.row })
         return true
       }
-      if (role === 'ranged' || c.row === this._frontPlayerRow(c.col, bounds)) {
+      if (role === 'ranged' || c.row === this._frontPlayerUnitRow(c.col, bounds)) {
         this._pushEvent({ kind: 'attack', side: 'player', col: c.col, row: c.row })
         this._dealDamage(front, atk, 'enemy', { col: front.col, slot: front.slot })
         return true
       }
-      return false // melee/cavalry blocked behind a friendly
+      return false // melee/cavalry blocked behind a friendly UNIT (buildings don't block)
     }
     const front = this._frontPlayerInCol(c.col, bounds)
     if (!front) {
@@ -690,6 +690,15 @@ export class GameManager {
   _frontPlayerRow(col, bounds) {
     const f = this._frontPlayerInCol(col, bounds)
     return f ? f.row : NaN
+  }
+  // Front-most friendly UNIT (buildings excluded — they shield the enemy but don't
+  // block your own melee/cavalry from striking the front enemy).
+  _frontPlayerUnitRow(col, bounds) {
+    for (let r = bounds.maxRow; r >= bounds.minRow; r--) {
+      const occ = this.data.tableau.tileAt(r, col)?.occupant
+      if (occ && !occ.damaged && occ.kind === 'unit') return r
+    }
+    return NaN
   }
 
   _effectiveAtk(unit) { return unitStats(UNIT_DEFS[unit.key], unit.level).atk }

@@ -23,6 +23,13 @@ function eraRangeKeys(lo, hi) {
   return [...set]
 }
 
+// Fallback pool: every rostered enemy unit at or below the current era. Only a few
+// eras have unit defs so far, so a composition whose exact era window is empty
+// falls back to this (keeps combat populated until more eras are implemented).
+function allKeysUpTo(era) {
+  return eraRangeKeys(-1, era)
+}
+
 /** Pick a composition type applicable at this era. */
 function pickComposition(era, rng) {
   const options = ['elite', 'group']
@@ -32,18 +39,19 @@ function pickComposition(era, rng) {
 
 /** Unit pool [{key, level}] + fill fraction for a composition. */
 function buildPool(type, era, rng) {
+  const orFallback = (keys) => (keys.length ? keys : allKeysUpTo(era))
   if (type === 'horde') {
     // Units from 1–5 eras ago, at base level, filling half the space.
-    return { pool: eraRangeKeys(era - 5, era - 1).map((key) => ({ key, level: 1 })), fraction: 0.5 }
+    return { pool: orFallback(eraRangeKeys(era - 5, era - 1)).map((key) => ({ key, level: 1 })), fraction: 0.5 }
   }
   if (type === 'elite') {
     // Current-era units +1 upgrade, OR last-era units +2 upgrades. 10% of space.
     const useCurrent = rng() < 0.5
-    const keys = useCurrent ? eraRangeKeys(era, era) : eraRangeKeys(era - 1, era - 1)
+    const keys = orFallback(useCurrent ? eraRangeKeys(era, era) : eraRangeKeys(era - 1, era - 1))
     return { pool: keys.map((key) => ({ key, level: useCurrent ? 2 : 3 })), fraction: 0.1 }
   }
   // group: current + previous era, base level, 25% of space.
-  return { pool: eraRangeKeys(era - 1, era).map((key) => ({ key, level: 1 })), fraction: 0.25 }
+  return { pool: orFallback(eraRangeKeys(era - 1, era)).map((key) => ({ key, level: 1 })), fraction: 0.25 }
 }
 
 /**
