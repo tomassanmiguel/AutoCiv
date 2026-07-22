@@ -148,7 +148,7 @@ AutoCiv/
 │   │   │   ├── resources.js   # threshold config + T(N) formula + rubber band
 │   │   │   ├── advancements.js# 560-entry progress pool (per era) + IMPLEMENTED registry
 │   │   │   ├── units.js       # unit defs + stat helpers + unitRole (combatRole ?? types[0])
-│   │   │   ├── enemies.js     # enemy host generation (Horde/Elite/Group) + ENEMY_ROSTER
+│   │   │   ├── enemies.js     # budget-based enemy host generation (threatBudget/unitCost/generateHost)
 │   │   │   ├── buildings.js   # building defs (per-tick outputs, combat auras, underlapping Road) + helpers
 │   │   │   ├── costs.js       # gold cost formulas (repair/upgrade/specialist/mercenary)
 │   │   │   ├── policies.js    # policy defs (name = unlocking advancement); combat + economy effects
@@ -368,8 +368,8 @@ exists; extend it as systems land.
   misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) is the
   registry of which ones actually do something + what they unlock (`kind`: `unit`/`building`/`pop`/
   `policy`/`modifier`) — **this registry + `game/data/` are the source of truth for content; don't
-  re-catalogue every piece here.** All of **Stone** (era 0) and **Bronze** (era 1), plus most of **Iron**
-  (era 2), are implemented; later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
+  re-catalogue every piece here.** All of **Stone** (era 0), **Bronze** (era 1), and **Iron** (era 2)
+  are implemented; later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
   Legitimacy building slot. **A policy's display name matches the advancement that unlocks it**
   (e.g. Language→`language` policy).
 - **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
@@ -485,14 +485,17 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
 
 ### Combat (`GameManager` combat methods, `game/data/enemies.js`, `Tableau/TileCard`)
 - **Enemy host** (`generateHost`, regenerated each era, visible as a preview during development):
-  one composition — **Horde** (Classical+, units 1–5 eras ago, 50% of the battlefield), **Elite**
-  (10%; current-era units +1 upgrade OR last-era units +2 upgrades), or **Group** (25%; current +
-  previous era). Units only spawn in columns whose **terrain can host** them (`columnPlaces` +
-  `canPlaceOn`); each column is re-ordered **melee/cavalry front, ranged back** (packed from the
-  front slot). Enemies never spawn support/buildings. Roster of enemy unit keys per era = `ENEMY_ROSTER`
-  (only era **−1** = Bear/Lion/Wolf and era 0 = Warrior/Slinger/Wolf are defined so far); a composition
-  whose exact era window has no rostered units **falls back** to all units at/below the current era, so
-  hosts are never empty. Enemies fade after each combat.
+  a **budget-based** system (`enemies.js`). Each era gets a **threat budget** `B0·growth^era`
+  (`BUDGET_BASE`/`BUDGET_GROWTH` — the two tuning knobs) that is **spent buying enemy units**. The
+  candidate pool is the player's own **combat** `UNIT_DEFS` (no utility/support) from `era−ERA_SPREAD`
+  up to **era+1** (a rare next-era peek), weighted toward recent eras (falling back to all units ≤ era+1
+  when later eras aren't implemented yet). A unit's **cost** ≈ its combat value `atk·(25/cooldown) + def`
+  at its level; older units arrive as higher-level **veterans** (`rollLevel`). The buy loop fills bodies
+  into valid columns (terrain via `columnPlaces`+`canPlaceOn`) until the board is full or budget runs
+  out; **leftover budget levels up placed enemies**, so late-era hosts are FEWER-but-STRONGER (a full
+  board of high-level units). Columns are re-ordered **melee/cavalry front, ranged back**. Enemies never
+  spawn support/buildings; they fade after each combat. (`ENEMY_ROSTER` and the old Horde/Elite/Group
+  fraction compositions are retired.)
 - **Loop:** `_combatStep` runs every 50ms real, advancing combat time by the speed multiplier (the
   speed widget = 1x/3x/5x/10x); a battle is `COMBAT_DURATION = 25` combat-seconds. Attacks resolve
   **bottom-to-top, left-to-right**; each unit attacks on its **cooldown** (fractional, floored at
