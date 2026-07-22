@@ -310,19 +310,24 @@ exists; extend it as systems land.
 - Each era runs: **development** (timer-driven ticks) → **preparation** (spend gold /
   arrange the board) → **battle** (25s of combat) → **transition** (banner) → next era,
   until the last era (`won`) or legitimacy 0 (`defeated`). State on `GameData`: `phase`
-  (`development`/`prep`/`battle`/`transition`), `tick` (0..65), `speed`.
-- **Development:** **65 ticks/era**, **paused by default**. A speed widget sets
+  (`development`/`prep`/`battle`/`transition`), `tick` (0..`ticksPerEra()`), `speed`.
+- **Development:** **65 ticks/era** (the **Calendar** policy adds 5, via `ticksPerEra()`),
+  **paused by default**. A speed widget sets
   `paused`/`standard`(1/s)/`fast`(3/s)/`super`(5/s)/`ultra`(10/s); `GameManager` runs a
   `setInterval` at the chosen rate. Each tick: recompute per-tick `output` from population,
-  add it to each threshold resource's `value`, then cross any reached thresholds. Policy/building
-  add-ons to per-tick `output` (`_recomputeOutputs`): pop-output policies **Language** (Citizen
-  +1 :progress:), **Trade Networks** (Citizen +2 :gold:), **Specialization** (each specialist +1 of its
-  highest output); **Ownership** (+2 :gold: per deployed building); **Brewery** (+1 :gold: per unit in
-  range); **per-tick output buildings** (`_buildingTickOutputs` → `occ.tickOutput`): **Ranch** food,
-  **Kiln** production, **Mine** gold; then **Slavery** scales the totals (×1.10 :production:,
-  ×0.95 :progress:). **Outputs are tracked as FLOATS** (Slavery makes them fractional) and **rounded
-  DOWN in the UI** (`fmtDelta` to 1 decimal; resource values floored). **Food-threshold modifiers**
-  (`civ.modifiers.foodThresholdMult`, ×0.95 each, stacking): **Basket Weaving** and **The Plough**.
+  add it to each threshold resource's `value` (and `gold`/`legitimacy`), then cross any reached
+  thresholds. Policy/building add-ons to per-tick `output` (`_recomputeOutputs`): pop-output policies
+  **Language** (Citizen +1 :progress:), **Trade Networks** (Citizen +2 :gold:), **Specialization** (each
+  specialist +1 of its highest output); **Ownership** (+2 :gold: per deployed building); **Brewery**
+  (+1 :gold: per unit in range); **per-tick output buildings** (`_buildingTickOutputs` → `occ.tickOutput`):
+  **Ranch**/**Farm** food, **Kiln** production, **Mine** gold, **Mint** gold (5/7/9% of current
+  :legitimacy:), **Temple** :legitimacy: (:legitimacy: now accrues **per tick** — `civ.legitimacy.output`);
+  then **Slavery** scales totals (×1.10 :production:, ×0.95 :progress:) and **Weights and Measures**
+  (×1.5 :gold:). **Outputs are tracked as FLOATS** (Slavery/Weights/Mint make them fractional) and
+  **rounded DOWN in the UI** (`fmtDelta` to 1 decimal; resource values + per-tick cards floored).
+  **Food-threshold modifiers** (`civ.modifiers.foodThresholdMult`, ×0.95 each, stacking): **Basket
+  Weaving** and **The Plough**. A `modifier` may also grant an immediate one-off (**Mathematics** →
+  +2 production builds).
 - **Threshold resources** (progress/food/production) accumulate `value` toward the current level's
   `threshold`; on reaching it, `value` **resets** (overflow carries), `level` (# thresholds reached)
   increments, and the **per-level threshold grows**: `threshold(N)=threshold(N-1)+X·1.25^E·n·R`
@@ -358,8 +363,8 @@ exists; extend it as systems land.
   misspellings kept), each with a stable `id` and `eraIndex`. `IMPLEMENTED` (keyed by name) is the
   registry of which ones actually do something + what they unlock (`kind`: `unit`/`building`/`pop`/
   `policy`/`modifier`) — **this registry + `game/data/` are the source of truth for content; don't
-  re-catalogue every piece here.** All of **Stone** (era 0) and **Bronze** (era 1) are implemented;
-  later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
+  re-catalogue every piece here.** All of **Stone** (era 0) and **Bronze** (era 1), plus most of **Iron**
+  (era 2), are implemented; later eras are filled a batch at a time. Warrior is pre-unlocked in the Melee unit slot and **Totem** in the
   Legitimacy building slot. **A policy's display name matches the advancement that unlocks it**
   (e.g. Language→`language` policy).
 - **Trigger:** crossing a progress threshold sets `data.selection` (a small state machine) and holds
@@ -500,14 +505,18 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   friendly melee/cavalry** (become its front line); **ranged** → a column with friendly **cover** (a
   defensive building or a melee unit). Without a road this is exactly the same-row neighbour (a LATERAL
   step — never a jump to a distant row/region); a **Road** bridges it to any of the network's ports, so
-  roads let units reposition farther. Otherwise it stays (an enemy-free column still yields gold). At
+  roads let units reposition farther. A unit flagged **`longSupport`** (the **Horseman**) instead
+  supports **any column on its landmass** that lacks a melee/cavalry front (`_landmassSupportDest` over
+  `_landmassTiles`, a visible-land connected component — a sea gap blocks it). Otherwise it stays (an
+  enemy-free column still yields gold). At
   combat end each unit **shifts back** to the tile it started on (`_startCombat` records `homeRow/Col`;
   `_restoreUnitHomes` restores them in `_endCombat`/`_defeat` and disbands mercenaries). Any unit that
   changes tiles (reposition / Wolf shift / shift-back / drag) **slides** to the new cell rather than
   teleporting — a FLIP in `Tableau` (per-occupant `posRef` of last cell) drives a `TileCard` `.tc-slide`.
 - **Stat pipeline** (`_syncUnitStats(inCombat)`, syncs **units AND buildings**): **units** store
   `occ.atk`/`occ.maxHp` — flat hp from **Clothes/Leatherwork** + **Hereditary Rule** + a Baker's
-  permanent **`occ.permDef`**, plus Warband/**Tribalism** (+1 atk/def per other same-key unit) and
+  permanent **`occ.permDef`**, plus Warband/**Tribalism** (+1 atk/def per other same-key unit), an
+  intrinsic **`packAtk`** (the **Legionnaire**'s +3 :attack: per other same-key unit, always on) and
   **terrain def** (Forest **+5** / Mountain **+10**, combat only); atk is then multiplied by the
   **Brewery** aura (×1.1 atk / ×0.9 hp), the **Brothel** aura (+10/15/20% atk, plus −0.5s cooldown via
   `_effectiveCooldown`), and **Caste System** (×1.25 for level-2+ units). **Buildings** store `occ.maxHp`
@@ -519,11 +528,12 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   attack — on their cooldown they "act" (`_utilityAct`: grant permanent +def to adjacent units), earning
   no gold and not repositioning. "**Range X**" / adjacency = **road-augmented** graph distance
   (`_reachableWithin`/`_adjacentTiles`). Building-output hooks skip `damaged` instances.
-- **End-of-combat effects** (`_endCombat`, survival only — not on defeat): **legitimacy** — each
+- **End-of-combat effects** (`_endCombat`, survival only — not on defeat) run via `_applyEraEndEffects`,
+  which **Festivals** triggers an **additional time** (`festivals ? 2 : 1`): **legitimacy** — each
   undamaged **Totem** grants `10 + 5·(level−1)`, each **Shaman** +10, **Sacred Grounds** +1 per **empty,
   visible, land** tile; **Oral Tradition** — gain :gold: + :progress: equal to post-combat :legitimacy:
   (progress banked, opens next dev); **Hereditary Rule** — permanent +1 :defense: to all units & buildings
-  (`unitHpBonus`/`buildingHpBonus`). **Ranch** food bonus grows (or resets if destroyed). Pier food accrues.
+  (`unitHpBonus`/`buildingHpBonus`); **Ranch** food bonus grows (or resets if destroyed); Pier food accrues.
 - **Event-triggered policies** (checked via `_hasPolicy`): **Hunting** — a player unit attacking a
   column with **no enemy target** ("unblocked" damage) gains :food: equal to its :attack:, alongside
   the usual gold (in `_resolveAttack`'s empty-column branch); **Burial Rites** — any
@@ -581,7 +591,8 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   scoped to `.ui-panel`); slot rows sit on a translucent parchment inset to stay readable.
   Panel width is 400px to fit the ornate border.
 - **Legitimacy** — the civ's "HP": icon + value on one compact centered row (kept small so the
-  dropdowns get height). **Starts at 100.** Stores `{ value, output }`.
+  dropdowns get height), with a **+N/t delta** when it has per-tick income (Temples). **Starts at 100.**
+  Stores `{ value, output }` — `output` now accrues per tick (see Game loop).
 - **Gold** — icon + value (left) + per-tick delta (right). `{ value, output }`.
 - **Food / Production / Progress** — threshold resources (see Game loop): icon + **level number**
   (# thresholds reached) + **bar** (`value / threshold` toward the current level's requirement) +
