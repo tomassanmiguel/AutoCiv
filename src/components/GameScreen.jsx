@@ -9,6 +9,7 @@ import TickCounter from './Hud/TickCounter.jsx'
 import SpeedControl from './Hud/SpeedControl.jsx'
 import TransitionOverlay from './Hud/TransitionOverlay.jsx'
 import ProgressOverlay from './Progress/ProgressOverlay.jsx'
+import ProductionPrompt from './Production/ProductionPrompt.jsx'
 import VictoryScreen from './Victory/VictoryScreen.jsx'
 import WidgetRail from './Widgets/WidgetRail.jsx'
 import AudioController from './AudioController.jsx'
@@ -44,6 +45,7 @@ export default function GameScreen({ seed, audio, onExit }) {
           <WidgetRail victoryHidden={victoryHidden} onShowVictory={() => setVictoryHidden(false)} />
           <TransitionOverlay />
           <ProgressOverlay />
+          <ProductionPrompt />
           <VictoryScreen hidden={victoryHidden} onHide={() => setVictoryHidden(true)} onExit={onExit} />
         </div>
         <UIPanel />

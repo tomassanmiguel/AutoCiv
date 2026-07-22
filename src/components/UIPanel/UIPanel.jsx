@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
 import {
@@ -126,11 +126,27 @@ export default function UIPanel() {
   const era = game.era
   const sel = game.data.selection
   const replacing = sel && sel.type === 'progress' && sel.stage === 'replace' ? sel.pending : null
+  const buildPicking = !!(sel && sel.type === 'production' && sel.stage === 'pick')
 
   // Accordion: at most one group open at a time. Replace mode forces the relevant
-  // group open so its candidate slots are visible and pickable.
+  // group open; build-picking forces Units open unless Buildings already is.
   const [openGroup, setOpenGroup] = useState('units')
-  const effectiveOpen = replacing ? replacing.group : openGroup
+  const effectiveOpen = replacing
+    ? replacing.group
+    : buildPicking
+      ? (openGroup === 'buildings' ? 'buildings' : 'units')
+      : openGroup
+
+  // When a roster slot is filled (advancement unlock), open its tab so the
+  // fill "slam" animation is visible.
+  const jf = game.data.justFilled
+  const lastFillSeq = useRef(-1)
+  useEffect(() => {
+    if (jf && jf.seq !== lastFillSeq.current) {
+      lastFillSeq.current = jf.seq
+      setOpenGroup(jf.group)
+    }
+  }, [jf])
 
   const groups = [
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
@@ -165,6 +181,8 @@ export default function UIPanel() {
             onToggle={() => setOpenGroup((cur) => (cur === g.key ? null : g.key))}
             candidates={replacing && replacing.group === g.key ? replacing.candidates : null}
             onReplace={(i) => game.resolveReplace(i)}
+            pickable={buildPicking && (g.key === 'units' || g.key === 'buildings')}
+            onPick={(i) => game.pickBuild(g.key, i)}
           />
         ))}
       </div>
@@ -201,8 +219,16 @@ function ResourceBar({ icon, label, res, tip }) {
   )
 }
 
-function Accordion({ label, slots, open, onToggle, candidates, onReplace }) {
+function Accordion({ label, slots, open, onToggle, candidates, onReplace, pickable, onPick }) {
   const candidateSet = candidates ? new Set(candidates) : null
+  // A slot's interactive mark: 'replace' (red) for a replace candidate, 'pick'
+  // (yellow) for a buildable item during production. Empty slots never mark.
+  const markOf = (s) => {
+    if (candidateSet && candidateSet.has(s.index)) return 'replace'
+    if (pickable && s.kind === 'item') return 'pick'
+    return null
+  }
+  const activate = (s, mark) => (mark === 'pick' ? () => onPick(s.index) : () => onReplace(s.index))
   return (
     <NineSlice
       className={`accordion ${open ? 'open' : ''}`}
@@ -217,10 +243,14 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace }) {
       <div className="accordion-body">
         <div className="slot-list">
           {slots.map((s) => {
-            const flashing = candidateSet ? candidateSet.has(s.index) : false
+            const mark = markOf(s)
+            const onActivate = mark ? activate(s, mark) : null
+            // Key by occupant identity so a slot REMOUNTS when it's filled/replaced,
+            // replaying the fill "slam" animation (but not on stat/count changes).
+            const key = s.kind === 'pop' ? `${s.index}:${s.pop.key}` : `${s.index}:${s.name ?? s.kind}`
             return s.kind === 'pop'
-              ? <PopCard key={s.index} pop={s.pop} count={s.count} flashing={flashing} onReplace={() => onReplace(s.index)} />
-              : <SlotRow key={s.index} slot={s} flashing={flashing} onReplace={() => onReplace(s.index)} />
+              ? <PopCard key={key} pop={s.pop} count={s.count} mark={mark} onActivate={onActivate} />
+              : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} />
           })}
         </div>
       </div>
@@ -230,10 +260,10 @@ function Accordion({ label, slots, open, onToggle, candidates, onReplace }) {
 
 /**
  * One slot. Empty -> centered category silhouette. Filled -> a compact item card
- * (name + type + stat/effect line) with the full description on hover. When it is
- * a replacement candidate it flashes red and becomes clickable.
+ * (name + type + stat/effect line) with the full description on hover. `mark`
+ * ('replace' = red / 'pick' = yellow) makes it flash and become clickable.
  */
-function SlotRow({ slot, flashing, onReplace }) {
+function SlotRow({ slot, mark, onActivate }) {
   const filled = slot.kind === 'item'
   const inner = filled ? (
     <div className="slot-card">
@@ -250,16 +280,16 @@ function SlotRow({ slot, flashing, onReplace }) {
     slot.silhouette && <img className="slot-silhouette" src={slot.silhouette} alt={slot.name} />
   )
 
-  if (flashing) {
-    // Keep the tooltip (so the player can see what they'd overwrite) and support
-    // keyboard activation, while flashing + clickable.
+  if (mark) {
+    // Keep the tooltip (so the player sees the item) and support keyboard
+    // activation, while flashing + clickable.
     return (
       <InfoTip
-        className="slot-row filled replace-target"
+        className={`slot-row filled ${mark}-target`}
         title={slot.name}
         text={slot.tip}
-        onClick={onReplace}
-        onKeyDown={(e) => activateKey(e, onReplace)}
+        onClick={onActivate}
+        onKeyDown={(e) => activateKey(e, onActivate)}
         role="button"
         tabIndex={0}
       >
@@ -276,9 +306,9 @@ function SlotRow({ slot, flashing, onReplace }) {
 
 /**
  * A population pop card: name + per-pop output icons and the count. Hover shows
- * per-pop and total output. A replacement candidate flashes red and is clickable.
+ * per-pop and total output. A replacement candidate (`mark`) flashes and is clickable.
  */
-function PopCard({ pop, count, flashing, onReplace }) {
+function PopCard({ pop, count, mark, onActivate }) {
   const body = (
     <>
       <div className="pop-main">
@@ -303,14 +333,14 @@ function PopCard({ pop, count, flashing, onReplace }) {
     </>
   )
 
-  if (flashing) {
+  if (mark) {
     return (
       <InfoTip
-        className="pop-card replace-target"
+        className={`pop-card ${mark}-target`}
         title={pop.name}
         text={tip}
-        onClick={onReplace}
-        onKeyDown={(e) => activateKey(e, onReplace)}
+        onClick={onActivate}
+        onKeyDown={(e) => activateKey(e, onActivate)}
         role="button"
         tabIndex={0}
       >
