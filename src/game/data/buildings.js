@@ -10,6 +10,9 @@ const pierFood = (level = 1) => 200 + 100 * Math.max(0, level - 1)
 const campfireHeal = (level = 1) => 5 + 2 * Math.max(0, level - 1) // 5 / 7 / 9 / ...
 // Totem legitimacy granted at the end of each combat (per level).
 const totemLegit = (level = 1) => 10 + 5 * Math.max(0, level - 1) // 10 / 15 / 20 / ...
+// Per-tick output buildings (resolved with instance/tile context in GameManager):
+const kilnPerAdjacent = (level = 1) => level + 1 // +2 / +3 / +4 … :production: per adjacent building
+const mineGold = (level = 1) => 8 * level         // :gold: per tick (×2 on a mountain)
 
 export const BUILDING_DEFS = {
   mud_wall: {
@@ -48,6 +51,25 @@ export const BUILDING_DEFS = {
     hp: 8, upHp: 0, noUpgrade: true,
     storedBase: 5, storedMax: 50000, // starts at 5 :progress:, doubles each era, capped
     effect: 'When overbuilt, grants its stored :progress: (starts at 5, doubles each era after combat, max 50000).',
+  },
+  ranch: {
+    key: 'ranch', name: 'Ranch', types: ['food'], placement: 'land',
+    hp: 8, upHp: 4,
+    // Per-tick food = 5 + an era-growth bonus (occ.ranchBonus); grows +2/3/4/… at each
+    // combat end, resets if destroyed (see GameManager _buildingTickOutputs / _endCombat).
+    effect: 'Produces :food: each tick (starts at 5, +2/3/4/… at the end of each combat). If it is destroyed, the bonus resets.',
+  },
+  kiln: {
+    key: 'kiln', name: 'Kiln', types: ['production'], placement: 'land',
+    hp: 5, upHp: 3,
+    perAdjacent: kilnPerAdjacent,
+    effect: (level) => `Produces 2 :production: per tick, plus ${kilnPerAdjacent(level)} for each adjacent building.`,
+  },
+  mine: {
+    key: 'mine', name: 'Mine', types: ['gold'], placement: 'land',
+    hp: 12, upHp: 6,
+    goldPerTick: mineGold,
+    effect: (level) => `Produces ${mineGold(level)} :gold: per tick — doubled when placed on a mountain.`,
   },
   // Supplement building: no HP, no combat. Lives in tile.supplement (underlaps the
   // occupant), never replaced. Links every tile it touches into one adjacency group.

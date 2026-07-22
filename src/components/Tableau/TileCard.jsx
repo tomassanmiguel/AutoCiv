@@ -76,6 +76,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
   const cdFrac = combat && isUnit && occ.cdTimer != null ? clamp01(occ.cdTimer / cooldown) : null
 
   const outs = isUnit ? [] : buildingOutputs(def, occ.level, era)
+  const tickOut = isUnit ? null : occ.tickOutput // live per-tick output (Ranch/Kiln/Mine)
   const stored = occ.storedProgress // Cave Painting's banked progress, if any
 
   // Effective unit stats at a level (Clothes + Warband, then Brewery aura), matching
@@ -107,6 +108,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
           {isUnit && <IconVal src={STAT_ICON.atk}>{dispAtk}</IconVal>}
           <IconVal src={STAT_ICON.def} style={isPrev ? undefined : defStyle}>{dispDef}</IconVal>
           {bOuts.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
+          {tickOut && !isPrev && <IconVal src={RES_ICON[tickOut.res]}>{tickOut.amount}/t</IconVal>}
           {stored != null && !isPrev && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
         </span>
         <span className="tc-tip-lv"> · Lv {lvl}</span>
@@ -114,7 +116,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
         {!isPrev && terrainDefBonus(terrain) > 0 && <><br /><IconText>{`+${terrainDefBonus(terrain)} :defense: in combat (${TERRAIN[terrain]?.name}).`}</IconText></>}
         {!isPrev && isUnit && occ.inBrewery && <><br /><IconText>{'+10% :attack:, −10% :defense: (Brewery).'}</IconText></>}
         {!isPrev && isUnit && wb > 0 && <><br /><IconText>{`+${wb} :attack: & :defense: (Tribalism).`}</IconText></>}
-        {!isUnit && !isPrev && <><br />Total produced: {occ.lifetimeOutput ?? 0} {bOuts[0] && <img className="itext-icon" src={RES_ICON[bOuts[0].res]} alt="" />}</>}
+        {!isUnit && !isPrev && (bOuts[0] || tickOut) && <><br />Total produced: {occ.lifetimeOutput ?? 0} <img className="itext-icon" src={RES_ICON[bOuts[0]?.res ?? tickOut.res]} alt="" /></>}
       </>
     )
   }
@@ -162,6 +164,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, combat = false, s
                 {isUnit && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
+                {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{tickOut.amount}</IconVal>}
                 {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
               </div>
             </div>

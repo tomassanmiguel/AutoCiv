@@ -118,6 +118,7 @@ export class GameManager {
       this._processThresholds(type, res)
     }
     civ.gold.value += civ.gold.output
+    this._accrueBuildingTickLifetime() // per-tick buildings track a lifetime total
 
     // Count the tick (resources accrue exactly once per tick), then open any owed
     // choice (which pauses the game). Development ends only once nothing is
@@ -153,6 +154,11 @@ export class GameManager {
     if (this._hasPolicy('ownership')) totals.gold += 2 * this._deployedBuildingCount()
     // Breweries: +1 gold per tick per unit within each brewery's range.
     totals.gold += this._breweryGold()
+    // Per-tick building outputs (Ranch food, Kiln production, Mine gold).
+    const bt = this._buildingTickOutputs()
+    totals.food += bt.food
+    totals.production += bt.production
+    totals.gold += bt.gold
     civ.progress.output = totals.progress
     civ.food.output = totals.food
     civ.production.output = totals.production
@@ -183,6 +189,36 @@ export class GameManager {
       }
     }
     return g
+  }
+
+  /** Per-tick resource output from deployed buildings (Ranch food, Kiln production,
+   *  Mine gold). Also stashes each building's current output on occ.tickOutput so the
+   *  on-tile card can display it. */
+  _buildingTickOutputs() {
+    const totals = { food: 0, production: 0, gold: 0 }
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (!occ || occ.kind !== 'building') continue
+      if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
+      const def = BUILDING_DEFS[occ.key]
+      let out = null
+      if (occ.key === 'ranch') out = { res: 'food', amount: 5 + (occ.ranchBonus ?? 0) }
+      else if (occ.key === 'kiln') out = { res: 'production', amount: 2 + def.perAdjacent(occ.level) * this._adjacentBuildingCount(tile.row, tile.col) }
+      else if (occ.key === 'mine') out = { res: 'gold', amount: def.goldPerTick(occ.level) * (tile.terrain === 'mountain' ? 2 : 1) }
+      occ.tickOutput = out
+      if (out) totals[out.res] += out.amount
+    }
+    return totals
+  }
+
+  /** Count of adjacent (road-augmented) tiles holding a real, active building. */
+  _adjacentBuildingCount(r, c) {
+    let n = 0
+    for (const tile of this._adjacentTiles(r, c)) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && !occ.damaged && !BUILDING_DEFS[occ.key]?.supplement) n++
+    }
+    return n
   }
 
   // --- Road-augmented adjacency ---------------------------------------------------
@@ -743,8 +779,10 @@ export class GameManager {
       const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level, civ.modifiers.buildingHpBonus)
       tile.occupant = { kind: 'building', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false, lifetimeOutput: 0 }
       if (chosen.key === 'cave_painting') tile.occupant.storedProgress = BUILDING_DEFS.cave_painting.storedBase
+      if (chosen.key === 'ranch') { tile.occupant.ranchBonus = 0; tile.occupant.ranchStep = 2 }
     }
     this._syncUnitStats() // board changed → refresh Warband bonuses
+    this._recomputeOutputs() // …and per-tick building outputs (Ranch/Kiln/Mine/Brewery)
     // Midwivery: creating a unit yields production equal to its (effective) defense.
     // In development, so crossing a production threshold opens a build (may chain).
     if (chosen.kind === 'unit' && this._hasPolicy('midwivery')) {
@@ -757,6 +795,17 @@ export class GameManager {
     this.data.pendingProduction = Math.max(0, this.data.pendingProduction - 1)
     this.data.selection = null
     this._afterResolve()
+  }
+
+  /** Add each per-tick building's current output to its lifetime total (once per dev
+   *  tick; occ.tickOutput was just refreshed by _recomputeOutputs). */
+  _accrueBuildingTickLifetime() {
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.occupant
+      if (occ?.kind === 'building' && !occ.damaged && occ.tickOutput) {
+        occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + occ.tickOutput.amount
+      }
+    }
   }
 
   /** End-of-era economic output from deployed buildings (into resources + lifetime). */
@@ -807,6 +856,7 @@ export class GameManager {
     civ.gold.value -= cost
     occ.damaged = false
     occ.hp = occ.maxHp
+    this._recomputeOutputs() // a repaired building resumes producing
     this._fxTag(occ, 'repair')
     this._emit()
   }
@@ -830,6 +880,7 @@ export class GameManager {
     occ.maxHp = newMax
     occ.hp = Math.min(newMax, (occ.hp ?? oldMax) + (newMax - oldMax))
     if (occ.kind === 'unit') this._syncUnitStats() // re-fold in any Warband bonus
+    this._recomputeOutputs() // Mine/Kiln/Brewery output scales with level
     this._fxTag(occ, 'upgrade')
     this._emit()
   }
@@ -896,6 +947,7 @@ export class GameManager {
     const hp = unitStats(UNIT_DEFS[pick.key], pick.level, civ.modifiers.unitHpBonus).def
     tile.occupant = { kind: 'unit', key: pick.key, level: pick.level, hp, maxHp: hp, damaged: false, mercenary: true }
     this._syncUnitStats() // the merc counts toward Warband (and vice versa)
+    this._recomputeOutputs() // …and Brewery gold (a new unit may be in range)
     this._fxTag(tile.occupant, 'hire')
     this._emit()
   }
@@ -923,6 +975,7 @@ export class GameManager {
     to.occupant = from.occupant
     from.occupant = swapped
     this._syncUnitStats() // positions changed → refresh Brewery-aura membership
+    this._recomputeOutputs() // …and Brewery gold (units-in-range changed)
     this._emit()
   }
 
@@ -1304,6 +1357,16 @@ export class GameManager {
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       const occ = tile.occupant
       if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer } // survivors heal to full
+    }
+    // Ranch: grow its per-tick food bonus (+2/3/4/…) if it survived; reset if destroyed.
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const occ = tile.occupant
+      if (occ?.kind !== 'building' || occ.key !== 'ranch') continue
+      if (occ.damaged) { occ.ranchBonus = 0; occ.ranchStep = 2 }
+      else {
+        occ.ranchBonus = (occ.ranchBonus ?? 0) + (occ.ranchStep ?? 2)
+        occ.ranchStep = (occ.ranchStep ?? 2) + 1
+      }
     }
     // End-of-combat legitimacy: Totems, Shamans, and Sacred Grounds' empty land.
     const civ = this.data.civilization

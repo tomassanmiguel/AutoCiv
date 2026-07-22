@@ -17,7 +17,11 @@ const POOL = {
   classical: ['Urbanization', 'Democracy', 'Concrete', 'Philosophy', 'Arches', 'Glassblowing', 'Machinery', 'Public Baths', 'Entertainment', 'Poetry', 'Monotheism', 'Census', 'Defensive Pact', 'Rhetoric', 'Pharmacology', 'Citizenship', 'Warships', 'Professional Soldiers', 'Fresco', 'Dressage'],
   early_medieval: ['Feudalism', 'Armor', 'Metallurgy', 'Crop Rotation', 'Trial by Jury', 'Pilgrimage', 'Milling', 'Stirrups', 'Vassalage', 'Castles', 'Schism', 'Civil Service', 'Horseshoes', 'Clinker Construction', 'Algebra', 'Optics', 'Monastic Order', 'Counterweights', 'Manor System', 'Hedgerows'],
   late_medieval: ['Compass', 'Absolute Monarchy', 'Alchemy', 'Longbow', 'Mercenaries', 'Flying Butress', 'Inquisition', 'University', 'Diplomatic Corps', 'Stained Glass', 'Troubadours', 'Guilds', 'Gunpowder', 'Common Law', 'Physics', 'Quarantine', 'Cofferdams', 'Tithing', 'Crusades', 'Branding'],
-  renaissance: ['Perspective', 'Printing Press', 'Canons', 'Scientific Method', 'Maritime Law', 'Banking', 'Economics', 'Calculus', 'Astronomy', 'Star Forts', 'Humanism', 'Machiavellianism', 'Joint Stock Company', 'Tolerance', 'Patronage', 'Domestication', 'Brocade', 'Anatomy', 'Clocks', 'Masquerades'],
+  // NOTE: the design sheet lists "Domestication" in BOTH Bronze and Renaissance.
+  // Since IMPLEMENTED is name-keyed, that collision would light up both eras once
+  // Bronze's Domestication is implemented — so the Renaissance duplicate is renamed
+  // "Husbandry" (era-appropriate) to keep names unique.
+  renaissance: ['Perspective', 'Printing Press', 'Canons', 'Scientific Method', 'Maritime Law', 'Banking', 'Economics', 'Calculus', 'Astronomy', 'Star Forts', 'Humanism', 'Machiavellianism', 'Joint Stock Company', 'Tolerance', 'Patronage', 'Husbandry', 'Brocade', 'Anatomy', 'Clocks', 'Masquerades'],
   exploration: ['Deepwater Navigation', 'Colombian Exchange', 'Reformation', 'Shipbuilding', 'Muskets', 'Creole Culture', 'Colonialism', 'Native Diplomacy', 'Scurvy Prevention', 'Natural History', 'Evangelism', 'Coffee', 'Cartography', 'Opera', 'Mercantilism', 'Patents', 'Potatoes', 'Dragoons', 'Indentured Servitude', 'Circumnavigation'],
   revolution: ['Constitution', 'Levee en Masse', 'Theory of Evolution', 'Nationalism', 'Bayonets', 'Newspaper', 'Paper Money', 'Statistics', 'Metric System', 'Inoculation', 'Gas Light', 'Free Press', 'Abolition', 'Rifling', 'Chemistry', 'Canning', 'Hydraulic Press', 'Native Integration', 'Napoleonic Code', 'Zooly'],
   steam: ['Telegraph', 'Mass Production', 'Electricity', 'Railroad', 'Machine Guns', 'Public Schooling', 'Germ Theory', 'Public Health', 'Gunboat Diplomacy', 'Steel Hulls', 'Canals', 'Industrial Agriculture', 'Incorporation', 'Dynamite', 'Income Tax', 'Reforestation', 'Suspension Bridge', 'Restaurants', 'Contraception', 'Archaeology'],
@@ -86,6 +90,9 @@ export const IMPLEMENTED = {
 
   // --- Bronze era ---
   'The Wheel':    { kind: 'building', key: 'road', description: 'Unlocks the Road — a Supplement building that underlaps others and links every adjacent tile, extending building ranges and unit movement.' },
+  'Domestication': { kind: 'building', key: 'ranch', description: 'Unlocks the Ranch — a :food: building that produces food each tick and grows stronger after every combat (reset if destroyed).' },
+  'Pottery':      { kind: 'building', key: 'kiln', description: 'Unlocks the Kiln — a :production: building fed by each adjacent building.' },
+  'Mining':       { kind: 'building', key: 'mine', description: 'Unlocks the Mine — a :gold: building, doubled when placed on a mountain.' },
   'Oral Tradition': { kind: 'policy', key: 'oral_tradition', description: 'Unlocks the Oral Tradition policy — at the end of combat, gain :gold: and :progress: equal to your current :legitimacy:.' },
   'Hereditary Rule': { kind: 'policy', key: 'hereditary_rule', description: 'Unlocks the Hereditary Rule policy — at the end of combat, all units and buildings permanently gain +1 :defense:.' },
   'The Plough':   { kind: 'modifier', key: 'plough', silhouette: '/sprites/ui/food.png', description: 'All :food: thresholds are 5% lower.' },
