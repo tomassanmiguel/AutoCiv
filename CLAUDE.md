@@ -427,9 +427,10 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   reset it); dropping on a valid tile moves the unit, any invalid drop snaps back. You can't displace
   an occupied tile. During placement a real drag suppresses the source tile's placement click (via
   `movedRef`), so a plain click still places/replaces but a drag only moves.
-- **CombatPrep** (`components/Prep`): a non-blocking banner (mounted in `GameScreen`) shown in the
-  `prep` phase with a prominent **Begin Combat** button; the tableau + panel stay interactive so
-  all the above can happen. The enemy host is visible on the battlefield throughout prep.
+- **CombatPrep** (`components/Prep`): a non-blocking horizontal bar pinned to the **bottom** of the
+  tableau (mounted in `GameScreen`) shown in the `prep` phase with a prominent **Begin Combat**
+  button; kept at the bottom so it never covers the enemy formation up top. The tableau + panel stay
+  interactive so all the above can happen. The enemy host is visible on the battlefield throughout prep.
 
 ### Combat (`GameManager` combat methods, `game/data/enemies.js`, `Tableau/TileCard`)
 - **Enemy host** (`generateHost`, regenerated each era, visible as a preview during development):

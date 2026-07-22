@@ -1,7 +1,8 @@
-/* Non-blocking preparation banner below the HUD (tiles/panel stay interactive). */
+/* Non-blocking preparation bar pinned to the BOTTOM (so it never covers the enemy
+   formation at the top); tiles/panel stay interactive. */
 .prep-wrap {
   position: absolute;
-  top: 64px;
+  bottom: 14px;
   left: 0;
   right: 0;
   z-index: 18;
@@ -11,31 +12,33 @@
   animation: prep-in 0.28s ease;
 }
 @keyframes prep-in {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* A compact horizontal bar: message on the left, gold, then Begin Combat. */
 .prep-panel {
-  --fw: 22px;
+  --fw: 20px;
   pointer-events: auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.7rem 1.4rem 0.9rem;
-  text-align: center;
-  max-width: 90%;
+  gap: 1.1rem;
+  padding: 0.45rem 1.1rem;
+  text-align: left;
+  max-width: 92%;
 }
 
-/* Primary action, at the top of the panel. */
+/* Primary action, on the right of the bar. */
 .prep-begin {
-  --fw: 14px;
-  min-height: 44px;
-  padding: 0.2rem 1.8rem;
+  --fw: 13px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0.2rem 1.5rem;
   color: #2f2512;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   letter-spacing: 0.02em;
   cursor: pointer;
   transition: transform 0.1s ease, filter 0.15s ease;
@@ -47,18 +50,20 @@
   50% { filter: drop-shadow(0 0 9px rgba(230, 200, 120, 0.85)); }
 }
 
-.prep-body { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.prep-body { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-width: 0; }
 .prep-title {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: #6e4f16;
 }
-.prep-hint { font-size: 0.8rem; color: #5b4626; max-width: 30rem; }
+.prep-hint { font-size: 0.78rem; color: #5b4626; max-width: 28rem; }
 .prep-gold {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   font-weight: 700;
+  font-size: 1.05rem;
   color: #6e4f16;
   font-variant-numeric: tabular-nums;
 }
