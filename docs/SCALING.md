@@ -144,8 +144,10 @@ Targets the **lowest-HP enemy in range**. Turn order: bottom-to-top, left-to-rig
 surfaces: Moon/Mars/exoplanet land), **Water** (coast/ocean/sea/exosea), **Space** (space/deep space/
 asteroid/star-adjacent). Defaults: land units deploy+move **Land**; Naval **Water**; Astral **Space**;
 Aerial deploy **Land** but *move* widens by tier (early = Land, Hovercraft +Water, X-Wing +Space).
-The **Combustion / Mass Drivers / FTL** techs extend a unit's `move` to cross **ocean / space / deep
-space** respectively (so a land army can't hop a sea gap until Combustion, etc.).
+A unit's `move` is fixed by its type and governs **in-combat** repositioning only. Separately,
+**between battles (prep phase)** relocating your army **across region gaps** — ocean / space / deep
+space — is gated by the **Combustion / Mass Drivers / FTL** techs respectively. Until you unlock them,
+a region cut off by water or space **must supply its own defenders** (you can't ferry reinforcements over).
 
 **Calibration anchors** `[proposed]`: era-0 attack anchor **Melee 5 · Ranged 4 · Cavalry 5 · Siege 8
 (2-turn cd, AoE) · Naval 4 · Aerial 5 · Astral 4**; a tier unlocked at era E gets

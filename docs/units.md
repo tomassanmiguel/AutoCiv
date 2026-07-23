@@ -103,16 +103,18 @@ Signature units; several key off **legitimacy** (pairs with the uncapped-legitim
 | Tier | Era (E) | atk | def | r | P | cd | deploy/move | Ability |
 |---|---|--|--|--|--|--|--|---|
 | Hunter | Stone (0) | 5 | 2 | 1 | 1 | 0 | Land | gain **food on kill** |
-| War Elephant | Classical (3) | 8 | 4 | 1 | 2 | 0 | Land | on attack **pushes** the enemy back, then pursues |
-| Warrior Monk | Renaissance (6) | =legit | 6 | 1 | 0 | 0 | Land | atk **∝ legitimacy**; gain **progress when damaged** |
+| War Elephant | Classical (3) | 8 | 2 | 1 | 2 | 0 | Land | on attack **pushes** the enemy back, then pursues |
+| Warrior Monk | Renaissance (6) | =10% legit | 4 | 1 | 0 | 0 | Land | atk = **10% of legitimacy**; gain **progress when damaged** |
 | Pirate | Revolution (8) | 15 | 2 | 1 | 1 | 0 | **Water** | melee naval; **gold on attack** |
 | Mustard Man | Modern (11) | 12 | 1 | 2 | 0 | 0 | Land | applies **poison** (5% of enemy max HP / turn) |
-| Zealot | Intelligence (15) | =legit | 3 | 1 | 1 | 0 | Land | **gain legitimacy on attack**; atk = legitimacy |
+| Zealot | Liminite (20) | =legit | 3 | 1 | 1 | 0 | Land | **gain legitimacy on attack**; atk = legitimacy |
 | Cryo Specialist | Frontier (19) | 57 | 1 | 3 | 0 | 2 | Land | **freezes** the target for 2 turns |
-| Timelord | Utopian (25) | 165 | 2 | 2 | 0 | 0 | Land | **teleports** to a random available tile when killed |
+| Timelord | Time (26) | 189 | 2 | 2 | 0 | 0 | Land | **teleports** to a random available tile when killed |
 
-> `=legit` = attack equals your current legitimacy (uncapped), so the Warrior Monk / Zealot scale with
-> how much you've invested in legitimacy — a whole build-around axis.
+> Legitimacy-scaling: **Warrior Monk** attacks for **10% of legitimacy**, **Zealot** for the **full**
+> value (uncapped) — both scale with how much you've invested in legitimacy, a whole build-around axis.
+> (Auxiliary units are independent specials, not an upgrade chain, so their era order is free — hence
+> Cryo at Frontier sitting before Zealot at Liminite.)
 
 ---
 
