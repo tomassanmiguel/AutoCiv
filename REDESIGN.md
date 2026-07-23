@@ -62,8 +62,13 @@ A tile may simultaneously hold **1 unit + 1 building + 1 underlay** (road / city
 ## 3. Economy & legitimacy
 
 - **Units no longer produce gold by default** (empty-column gold is gone with the combat rewrite).
-  Surviving gold sources: Trader-type specialist, Mine, Mint, Brewery, Ownership-type policy.
-- **Legitimacy hard-clamps at 100.** Every gain path clamps; overflow is lost.
+  Surviving gold sources: Trader-type specialist, Mint/Market-line, Bank, Merchant Navy, etc.
+- **Legitimacy is UNCAPPED and has NO per-tick production** (reversal of the earlier hard-100 cap).
+  It is a *stock you invest in*: gained only via discrete events — completing legitimacy buildings
+  (Shrine +10 … Elysium +50), end-of-era effects (Cathedral, Stonehenge, Priest), and policies
+  (Theocracy, Organized Religion) — and *leveraged* by legitimacy-scaling buildings/wonders
+  (Elysium gold = legitimacy, Monastery progress = legitimacy/20, Hagia Sophia). Every increase must
+  be earned, so it stays scarce.
 - **Terrain base yields for buildings** — any building gains a per-tick base yield from its terrain:
   - **Plains → food, Forest → progress, Mountain → production, Sea/Space → gold.**
   - Plus **terrain-dependent buildings** (require/prefer a terrain, extending the existing
