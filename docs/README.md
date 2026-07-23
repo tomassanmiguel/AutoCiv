@@ -11,7 +11,7 @@ challenge them freely.
 |---|---|---|
 | `SCALING.md` | The math: era growth, upgrade levels, legitimacy, terrain/threshold/reroll/wonder formulas, all schemas, the category + slot taxonomy | **draft (pass 1)** |
 | `units.md` | Every unit: atk/def/range/pursuit/cooldown/deploy/move + ability, by category | **done (all 8 categories)** |
-| `buildings.md` | Military + civilian buildings | not started |
+| `buildings.md` | Military (Traps/Command/Spawners/Walls) + Civilian (Progress/Production/Food/Gold/Legitimacy/Support) | **done** |
 | `specialists.md` | Population + specialist chains + prefixes | not started |
 | `policies.md` | Policies + bonus/modifier advancements | not started |
 | `wonders.md` | Wonders + build-cost (N) | not started |
