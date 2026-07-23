@@ -301,6 +301,9 @@
 .tc-action.disabled { opacity: 0.42; cursor: not-allowed; filter: grayscale(0.6); }
 .tc-action img { width: 10px; height: 10px; object-fit: contain; }
 .tc-action-cost { display: inline-flex; align-items: center; gap: 1px; }
+/* Compact icon-only action on a city-strip primary occupant (no cost label — hover title carries it). */
+.tc-action.strip { flex: 0 0 auto; margin-top: 0; padding: 0 2px; }
+.tc-action.strip img { width: 9px; height: 9px; }
 
 /* Tooltip stat line (screen-space, larger & readable). */
 .tc-tip-stats {

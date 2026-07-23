@@ -422,6 +422,14 @@ export class GameManager {
     const counts = this._deployedUnitCounts()
     const hpBonus = civ.modifiers.unitHpBonus
     for (const tile of this.data.tableau.tiles.values()) {
+      // City extras are economic-only (never fight, never take terrain/combat bonuses), but
+      // refresh their maxHp so buildingHpBonus growth (Concrete/Hereditary) shows on the strip.
+      if (tile.extras) for (const ex of tile.extras) {
+        const nm = Math.max(1, buildingHp(BUILDING_DEFS[ex.key], ex.level, civ.modifiers.buildingHpBonus))
+        const wasFull = ex.hp == null || ex.maxHp == null || ex.hp >= ex.maxHp
+        ex.maxHp = nm
+        if (!ex.damaged) ex.hp = wasFull ? nm : Math.min(nm, ex.hp)
+      }
       const occ = tile.occupant
       if (!occ) continue
       const terrainDef = inCombat ? terrainDefBonus(tile.terrain) : 0
@@ -772,6 +780,7 @@ export class GameManager {
     civ.population[slotIndex] = key
     civ.pops[key] = (civ.pops[key] ?? 0) + toNew
     civ.pops.citizen = (civ.pops.citizen ?? 0) + toCitizen
+    if (key === 'poet') civ.poetBonus = 0 // fresh Poet baseline, same as _unlockSpecialist (replace path)
     this._convertCitizenToSpecialist(key)
   }
 

@@ -137,6 +137,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
 
   // City-tile buildings (and the primary occupant) render as compact, name-only
   // "road style" strips — details on hover (the same rich tooltip as a full card).
+  // The primary occupant still carries its gold action (repair/upgrade) as a small
+  // trailing icon button, since it can be combat-damaged; extras pass no action.
   if (strip) {
     return (
       <InfoTip
@@ -148,6 +150,18 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         <div className={`tile-card strip ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''}`}>
           <span className="tc-name">{def.name}</span>
           <span className="tc-level">{occ.level}</span>
+          {action && (
+            <button
+              type="button"
+              className={`tc-action strip ${action.kind}${action.affordable ? '' : ' disabled'}`}
+              disabled={!action.affordable}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); action.onClick() }}
+              title={`${action.kind} (${action.cost} gold)`}
+            >
+              <img className="tc-action-icon" src={ACTION_ICON[action.kind]} alt={action.kind} />
+            </button>
+          )}
         </div>
       </InfoTip>
     )

@@ -435,11 +435,14 @@ export default function Tableau() {
                         key={`${b.key}-${k}`}
                         occupant={b}
                         era={era}
+                        hpBonus={hpBonus}
+                        buildingHpBonus={buildingHpBonus}
                         combat={combat}
                         combatSeq={combatSeq}
                         side="player"
                         terrain={tile.terrain}
                         strip
+                        action={b === occ ? tileAction(tile, b) : null}
                         onGrab={repositionable && b.kind === 'unit' && b === occ ? (e) => onUnitGrab(e, tile) : undefined}
                       />
                     ))}
