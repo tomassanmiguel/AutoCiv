@@ -139,9 +139,18 @@ Targets the **lowest-HP enemy in range**. Turn order: bottom-to-top, left-to-rig
 | **Astral** | Ranged w/ cavalry move; **space only** | 1–4 | |
 | **Auxiliary** | Unique-ability specials | varies | |
 
-**Calibration anchors** `[proposed]`: era-0 attack anchor **Melee 5 · Ranged 4 · Cavalry 5**; a tier
-unlocked at era E gets `atk = round(anchor · 1.15^E)`. `def` sits near the low end of its band, drifting
-up ~1 across a chain. See `units.md`.
+**Deployment & movement domains.** Two more fields govern *where a unit can be placed* (`deploy`) and
+*which domains it can reposition through in combat* (`move`). Domains: **Land** (terrain + planetary
+surfaces: Moon/Mars/exoplanet land), **Water** (coast/ocean/sea/exosea), **Space** (space/deep space/
+asteroid/star-adjacent). Defaults: land units deploy+move **Land**; Naval **Water**; Astral **Space**;
+Aerial deploy **Land** but *move* widens by tier (early = Land, Hovercraft +Water, X-Wing +Space).
+The **Combustion / Mass Drivers / FTL** techs extend a unit's `move` to cross **ocean / space / deep
+space** respectively (so a land army can't hop a sea gap until Combustion, etc.).
+
+**Calibration anchors** `[proposed]`: era-0 attack anchor **Melee 5 · Ranged 4 · Cavalry 5 · Siege 8
+(2-turn cd, AoE) · Naval 4 · Aerial 5 · Astral 4**; a tier unlocked at era E gets
+`atk = round(anchor · 1.15^E)`. `def` sits near the low end of its band, drifting up ~1 across a chain.
+See `units.md`.
 
 ---
 
@@ -157,15 +166,15 @@ resource) · **`upgradeTarget`** (output | range | def) · **`placement`** (terr
 - **Spawners** — periodically create your best unit of a type (Stables / Drydock / Aircraft Carrier / Spaceport)
 - **Walls** — pure blockers (Mud Brick → Stone Wall → Castle → Shield Matrix; Great Wall)
 
-**Civilian infrastructure** (6 categories, by output axis)
-- **Progress** — Library → School → Laboratory → Space Telescope → Cogitorium → Black Hole Station
-- **Production** — Workshop → Forge → Factory → 3D Printer → Vacuum Assembly → Dyson Sphere
-- **Food** — Farm → Aqueduct → Hospital → Hydroponicist → Xenocultivator → Cloning Bay
-- **Gold** — Market → Mint → Stock Exchange → Data Center → Asteroid Mine → Spice Extractor
+**Civilian infrastructure** (6 categories). Every building lands in the category of its **core output**;
+only genuinely structural buildings (no resource output) go in Support.
+- **Progress** — Library→…→Black Hole Station · Cave Painting · Theater · Observatory (mountain) · Museum
+- **Production** — Workshop→…→Dyson Sphere · Glassworks · Harbor · Solar Array · Lumber Mill (forest)
+- **Food** — Farm→…→Cloning Bay · Ranch · Pier
+- **Gold** — Market→…→Spice Extractor · Arena · Caravansary · Lighthouse · Bank
 - **Legitimacy** — Shrine → Temple → Monastery → Cathedral → Elysium
-- **Support** — everything else: Power (Windmill/Coal/Fusion), Scaling (Cave Painting/Ranch/Glassworks),
-  End-of-era (Arena/Theater) + multiples (Caravansary/Solar Array), Naval-economy (Pier/Harbor/Lighthouse/
-  Artificial Island), Terrain-specific (Observatory/Lumber Mill), and Museum/Bank/City/Roads/Tleilaxu/Artificial Planet
+- **Support** (structural / no output) — Power (Windmill/Coal/Fusion), Roads, City, Artificial Island,
+  Artificial Planet, Tleilaxu Tanks (population)
 
 **Wonders** get their own dedicated slot (see §7).
 

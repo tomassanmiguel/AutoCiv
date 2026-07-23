@@ -10,7 +10,7 @@ challenge them freely.
 | Doc | Covers | Status |
 |---|---|---|
 | `SCALING.md` | The math: era growth, upgrade levels, legitimacy, terrain/threshold/reroll/wonder formulas, all schemas, the category + slot taxonomy | **draft (pass 1)** |
-| `units.md` | Every unit: base atk/def/range/pursuit/cooldown + ability, by category | **pass 1: Melee/Ranged/Cavalry done; rest stubbed** |
+| `units.md` | Every unit: atk/def/range/pursuit/cooldown/deploy/move + ability, by category | **done (all 8 categories)** |
 | `buildings.md` | Military + civilian buildings | not started |
 | `specialists.md` | Population + specialist chains + prefixes | not started |
 | `policies.md` | Policies + bonus/modifier advancements | not started |
