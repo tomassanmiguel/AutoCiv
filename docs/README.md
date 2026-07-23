@@ -24,24 +24,26 @@ challenge them freely.
 1. **Legitimacy: UNCAPPED, no per-tick production.** Gained only from building-completion, end-of-era
    effects, and policies; leveraged by legit-scaling buildings/wonders. (Reverses the old 100 cap.)
 2. **E is 0-based** (Stone = 0 … Infinity = 27). Growth is `base · g^E`.
-3. **Different domains scale at different rates** (e.g. food gentler than progress). Building output
-   base ≈ **3/tick** in Stone, general growth **g = 1.15**. Enemy **HP** grows faster at **g = 1.25**;
-   enemy legitimacy-damage grows **+1/era** (linear). So raw stats fall behind on purpose — players
-   must compound upgrades + buffs + terrain + wonders.
+3. **Growth is `base·g^E`.** Building output base ≈ **3/tick** in Stone, growth **g = 1.15** (unit
+   attack too). Enemy **HP** grows faster at **g = 1.25**; enemy legitimacy-damage **+1/era** (linear).
+   So raw stats fall behind on purpose. **Thresholds are already coded** (`resources.js`) — food gentler
+   than progress via per-resource `X`/`targetPerEra`, not a new exponent.
 4. **Upgrade levels are ADDITIVE** (+25% per level to the stat the entity's upgrade targets). Some
    entities upgrade **output**, others **range** (declared per entity). "Effect level" = upgrade level.
    Power buildings / policies / wonders grant **free** upgrade levels (don't raise upgrade cost).
 5. **Unit properties:** `atk`, `def` (= HP), `range`, `pursuit` (if an enemy is within `range+pursuit`,
    move toward it, then attack), `abilities`, `cooldown` (turns between attacks, usually 0).
-6. **Terrain flat bonuses scale with era** so they stay relevant (a late `+500` is big but not a step
-   change).
+6. **Terrain bonuses are FLAT** (no era scaling). Relevance comes from *availability* — the big
+   bonuses (Exosea/Planet) only exist in the late eras you reach them in.
 7. **Evolved / Cyborg / Psychic** population prefixes add **+food / +production / +progress** respectively.
 8. **Multi-tile entities supported** (Great Wall 4×1, Death Star 2×2, Titan 2×2, Flagship 4×2, …).
 9. **Target ~10 advancements/era** (more is fine), **front-loaded** (late eras lean on earlier
    unchosen picks). Not the old 20/era.
 10. **Gold rerolls progress options** by default (exponential cost, resets each pick).
-11. **Two building tabs in the UI:** **Military** infrastructure vs **Civilian** infrastructure.
+11. **Two building tabs:** **Military** (Traps / Command / **Spawners** / Walls) and **Civilian**
+    (Progress / Production / Food / Gold / Legitimacy / Support). Wonders have their own slot.
     **Support units removed** (folded into command buildings).
+12. **Wonders:** N = 3 builds-to-finish for all, rebalance later.
 
 ## Open TBDs (flagged inline as we hit them)
 

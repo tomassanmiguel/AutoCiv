@@ -20,8 +20,8 @@ Legend: `r` = range, `P` = pursuit, `cd` = cooldown. Melee anchor 5, Ranged 4, C
 | Musketman | Exploration (7) | 13 | 3 | 1 | 0 | 0 | — |
 | Rifleman | Steam (9) | 18 | 3 | 1 | 0 | 0 | — |
 | Infantryman | Modern (11) | 23 | 4 | 1 | 0 | 0 | — |
-| Terminator | Silicon (13) | 31 | 4 | 1 | 0 | 0 | robot (immune to population prefixes) |
-| Space Marine | Invasion (17) | 54 | 4 | 1 | 0 | 0 | deployable in space |
+| Terminator | Silicon (13) | 31 | 4 | 1 | 0 | 0 | — |
+| Space Marine | Invasion (17) | 54 | 4 | 1 | 0 | 0 | just a very strong late-game melee unit |
 | Ascendant | Time (26) | 189 | 4 | 1 | **2** | 0 | also has Cavalry behavior; space-capable |
 
 ## Ranged `[def 1 · attack from range]`
@@ -30,13 +30,13 @@ Legend: `r` = range, `P` = pursuit, `cd` = cooldown. Melee anchor 5, Ranged 4, C
 |---|---|--|--|--|--|--|---|
 | Slinger | Stone (0) | 4 | 1 | 2 | 0 | 0 | — |
 | Archer | Bronze (1) | 5 | 1 | 2 | 0 | 0 | — |
-| Crossbowman | Classical (3) | 6 | 1 | 2 | 0 | 0 | — |
-| Cannoneer | Renaissance (6) | 9 | 1 | 3 | 0 | 0 | — |
-| Mortar Squad | Steam (9) | 14 | 1 | 3 | 0 | 0 | — |
-| Railgunner | Atomic (12) | 21 | 1 | 4 | 0 | 0 | — |
+| Crossbowman | Early Medieval (4) | 7 | 1 | 2 | 0 | 0 | — |
+| Cannoneer | Exploration (7) | 11 | 1 | 3 | 0 | 0 | — |
+| Mortar Squad | Atomic (12) | 21 | 1 | 4 | 0 | 0 | — |
+| Railgunner | Lunar (14) | 28 | 1 | 4 | 0 | 0 | — |
 | Plasmer | Intelligence (15) | 33 | 1 | 4 | 0 | 0 | — |
-| Psyker | Exodus (18) | 50 | 1 | 4 | 0 | 0 | — |
-| Tachyon Lancer | Evolution (22) | 86 | 1 | 6 | 0 | 0 | hits every enemy in a straight **line** to range |
+| Psyker | Exodus (18) | 50 | 1 | 5 | 0 | 0 | — |
+| Tachyon Lancer | Evolution (22) | 87 | 1 | 6 | 0 | 0 | hits every enemy in a straight **line** to range |
 | Sun Launcher | Time (26) | 151 | 1 | ∞ | 0 | 0 | **infinite range, multi-attack**; buildable only on ★ Stars |
 
 ## Cavalry `[def 2–3 · attack adjacent · pursue within range+pursuit]`
@@ -61,7 +61,10 @@ Legend: `r` = range, `P` = pursuit, `cd` = cooldown. Melee anchor 5, Ranged 4, C
 
 ## Remaining categories — chains & era targets (stats next pass)
 
-Statting these once you're happy with the land-unit curve. Chains + special rules captured so nothing's lost:
+Statting these once you're happy with the land-unit curve. Chains + special rules captured so nothing's lost.
+**Pursuit** gets assigned per type where it fits the fantasy — e.g. Aerial (fast flankers), Astral
+Spaceship/Valkyrie (cavalry movement), and mobile Auxiliary (War Elephant, Timelord) get pursuit;
+stationary ones (Star Destroyer, Satellite) and pure artillery (Siege) don't.
 
 - **Siege** `[def 1 · ranged + splash · 2-turn cooldown]`:
   Ballista (single-target, **pushes back**) → Catapult → Trebuchet → Artillery → Missile Launcher

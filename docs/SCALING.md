@@ -27,14 +27,20 @@ unlock era**, so a tier unlocked later is simply stronger; you rarely list more 
 
 | Domain | growth `g` | Notes |
 |---|---|---|
-| Building output (production/gold reference) | **1.15** | ~3/tick Stone base |
-| Unit attack | **1.15** | tracks output so towers keep pace with economy |
-| Food output/threshold | **1.10** `[proposed]` | gentler (per user) |
-| Progress output/threshold | **1.18** `[proposed]` | harshest |
-| Gold output | **1.15** `[proposed]` | |
+| Building output (all resources) | **1.15** | ~3/tick Stone base; a building authored at era E has base `≈ 3·1.15^E` |
+| Unit attack | **1.15** | tracks output so towers keep pace with the economy |
 | **Enemy HP** | **1.25** | outpaces player attack on purpose |
 | Enemy attack (vs blockers) | flat base `[proposed]` | plus per-type unit/building multipliers |
 | Enemy legitimacy-damage (on breach) | **+1/era** (linear) | `legit = base_legit + E` |
+
+**Thresholds are already defined in code** (`src/game/data/resources.js`) — don't re-invent them:
+`threshold(N) = threshold(N-1) + X · 1.25^E · n · R`, per-resource `{T0, X, targetPerEra}` =
+progress `{10, 5.6, 5}` · food `{15, 13.3, 3}` · production `{20, 7.4, 4}`. The per-resource *pace*
+difference lives in `X` (jump size) and `targetPerEra` (levels expected per era), so **food is gentler**
+(targetPerEra 3, big jumps) and **progress fastest** (targetPerEra 5) — no separate per-resource
+exponent needed. Note thresholds grow at `1.25^E` while output grows at `1.15^E`, so requirements
+pull ahead of raw per-tick output — more of the "keep investing" pressure. `TICKS_PER_ERA = 65` (base;
+Calendar-line techs extend it).
 
 **The central tension:** a same-tier unit's attack (`·1.15^E`) falls behind a same-era enemy's HP
 (`·1.25^E`), so a **raw** unit needs more and more hits over time. Players close the gap with **upgrade
@@ -77,12 +83,12 @@ point is bought, legitimacy is a deliberate investment axis, not a passive trick
 
 ## 5. Terrain
 
-- **Economy bonus** (per-tick output a building gets from its tile) **scales with era**:
-  `bonus(E) = base · 1.15^E` `[proposed]`. Listed base magnitudes (Plains +1 … Planet +500) are
-  **era-0-normalized**; the very large late-terrain values may need re-basing so they don't explode —
-  flagged for the terrain pass.
-- **Combat modifier** (Forest +1 def, Mountain +1 range, Planet +5 range / +100% dmg) is **flat** (no
-  era scaling — it's a battlefield property, not economy).
+**All terrain bonuses are FLAT — they do not scale with era.** The listed magnitudes are absolute
+(Plains +1/tick … Exosea +100 … Planet +500). Relevance is preserved by *availability*, not scaling:
+early terrains give small flat bonuses, and the huge ones (Exosea, Planet) only exist in the late
+eras where you actually reach them.
+- **Economy bonus:** flat per-tick output a building gains from its tile (by resource type).
+- **Combat modifier:** flat too (Forest +1 def, Mountain +1 range, Planet +5 range / +100% dmg).
 
 ---
 
@@ -98,9 +104,9 @@ Spending gold rerolls the current advancement offer. Cost of the `k`-th reroll t
 
 A wonder occupies the dedicated **Wonder slot**, unlocks a placeable **incomplete** building, and needs
 **N additional production-builds** to finish (does nothing until complete; only one wonder in flight;
-destroyed → restart). `N` is authored per wonder `[proposed]`: single-tile ≈ 3, large/multi-tile ≈ 5–8.
-Monumentality / Megastructure Engineering halve `N`; Pilgrimage / Tourism / Star Hopping boost finished
-wonder yields.
+destroyed → restart). **N = 3 for every wonder to start** (regardless of size); we rebalance per-wonder
+later. Monumentality / Megastructure Engineering halve `N`; Pilgrimage / Tourism / Star Hopping boost
+finished wonder yields.
 
 ---
 
@@ -145,20 +151,21 @@ Fields: **`def`** (= HP, low) · optional **`atk`/`range`** (towers only) · **`
 resource) · **`upgradeTarget`** (output | range | def) · **`placement`** (terrain class / special) ·
 **`footprint`** · **`effect`**. Buildings normally don't attack. Split into two UI tabs:
 
-**Military infrastructure**
+**Military infrastructure** (4 categories)
 - **Traps** — manipulate/damage enemies (Caltrops, Powder Magazine, Decoy, Sea Mine, Discombobulator, Singularity)
-- **Command** — buff allies + unit-spawners (Command Post, Psy-Link, Watchtower, Radar, Chronobooster, Fort, Deflector Array, Armory, Stables/Drydock/Aircraft Carrier/Spaceport)
+- **Command** — buff allies (Command Post, Psy-Link, Watchtower, Radar, Chronobooster, Fort, Deflector Array, Armory)
+- **Spawners** — periodically create your best unit of a type (Stables / Drydock / Aircraft Carrier / Spaceport)
 - **Walls** — pure blockers (Mud Brick → Stone Wall → Castle → Shield Matrix; Great Wall)
 
-**Civilian infrastructure**
-- **Output** — Progress / Production / Food / Gold lines
+**Civilian infrastructure** (6 categories, by output axis)
+- **Progress** — Library → School → Laboratory → Space Telescope → Cogitorium → Black Hole Station
+- **Production** — Workshop → Forge → Factory → 3D Printer → Vacuum Assembly → Dyson Sphere
+- **Food** — Farm → Aqueduct → Hospital → Hydroponicist → Xenocultivator → Cloning Bay
+- **Gold** — Market → Mint → Stock Exchange → Data Center → Asteroid Mine → Spice Extractor
 - **Legitimacy** — Shrine → Temple → Monastery → Cathedral → Elysium
-- **Naval (economy)** — Pier, Harbor, Lighthouse, Artificial Island
-- **Power** — Windmill / Coal / Fusion (free upgrade levels in range)
-- **Scaling** — Cave Painting, Ranch, Glassworks
-- **End-of-era** — Arena, Theater; multiples: Caravansary, Solar Array
-- **Terrain-specific** — Observatory (mountain), Lumber Mill (forest), etc.
-- **Special** — Museum, Bank, City (underlaid), Roads (underlaid), Tleilaxu Tanks, Artificial Planet
+- **Support** — everything else: Power (Windmill/Coal/Fusion), Scaling (Cave Painting/Ranch/Glassworks),
+  End-of-era (Arena/Theater) + multiples (Caravansary/Solar Array), Naval-economy (Pier/Harbor/Lighthouse/
+  Artificial Island), Terrain-specific (Observatory/Lumber Mill), and Museum/Bank/City/Roads/Tleilaxu/Artificial Planet
 
 **Wonders** get their own dedicated slot (see §7).
 
