@@ -1194,6 +1194,16 @@ export class GameManager {
       civ.production.value += inst.maxHp ?? 0
       this._processThresholds('production', civ.production)
     }
+    // Galactic Legion: producing a unit copies it onto a random adjacent empty valid tile.
+    // Place the copy directly (NOT via _createInstance) so it doesn't recurse endlessly.
+    if (chosen.kind === 'unit' && this._activeEffectDefs().some((d) => d.special === 'copy_unit_on_build')) {
+      const udef = UNIT_DEFS[chosen.key]
+      const spots = this._adjacentTiles(tile.row, tile.col).filter((t) => !t.occupant && canPlaceOn(udef.placement, t.terrain))
+      if (spots.length) {
+        spots[Math.floor(Math.random() * spots.length)].occupant = this._makeInstance({ kind: 'unit', key: chosen.key, level: chosen.level })
+        this._syncUnitStats()
+      }
+    }
   }
 
   _resolveProduction() {

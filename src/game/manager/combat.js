@@ -98,6 +98,7 @@ class CombatMixin {
     const bounds = this.data.tableau.visibleBounds(this.data.era)
     if (!bounds) { this._endCombat(); return }
 
+    this._applyPoison() // Nanite Warfare: 5% max-HP poison to all enemies each turn
     this._playerPhase()
     this._enemyPhase(bounds)
 
@@ -176,6 +177,15 @@ class CombatMixin {
         (e.hp === best.hp && (e.row < best.row || (e.row === best.row && e.col < best.col)))) best = e
     }
     return best
+  }
+
+  /** Nanite Warfare: each turn, poison every live enemy for 5% of its max HP. */
+  _applyPoison() {
+    if (!this._activeEffectDefs().some((d) => d.special === 'poison_on_start')) return
+    for (const e of this.data.enemies) {
+      if (e.damaged || e.breached) continue
+      this._dealDamageToEnemy(e, Math.max(1, Math.round(e.maxHp * 0.05)))
+    }
   }
 
   _dealDamageToEnemy(e, amount) {

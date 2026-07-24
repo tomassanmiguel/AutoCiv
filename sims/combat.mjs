@@ -438,5 +438,36 @@ console.log('TEST 22: Native Collaboration — spawns 3 free mercs on New-World 
   g.stop()
 }
 
+console.log('TEST 23: Nanite Warfare — each turn poisons all enemies for 5% max HP')
+{
+  const g = new GameManager(21); g.setEra(11)
+  g.data.civilization.policies[0] = { key: 'nanite_warfare' }
+  g.data.enemies = [
+    { key: 'warrior', row: 5, col: 5, hp: 1000, maxHp: 1000, damaged: false, breached: false },
+    { key: 'warrior', row: 6, col: 6, hp: 200, maxHp: 200, damaged: false, breached: false },
+  ]
+  g._applyPoison()
+  console.log(`  after 1 poison turn: ${g.data.enemies.map((e) => e.hp).join(', ')} (expect 950, 190)`)
+  assert(g.data.enemies[0].hp === 950, `1000-HP enemy loses 50 (5%) (got ${1000 - g.data.enemies[0].hp})`)
+  assert(g.data.enemies[1].hp === 190, `200-HP enemy loses 10 (5%) (got ${200 - g.data.enemies[1].hp})`)
+  g.stop()
+}
+
+console.log('TEST 24: Galactic Legion — producing a unit copies it to an adjacent tile')
+{
+  const g = new GameManager(22); g.setEra(6)
+  // A tile with empty land neighbours to receive the copy.
+  const tile = g.data.tableau.visibleTiles(6).find((t) => t.def?.place === 'land' && !t.occupant &&
+    g._adjacentTiles(t.row, t.col).some((n) => !n.occupant && n.def?.place === 'land'))
+  assert(!!tile, 'found a land tile with an empty land neighbour')
+  g.data.civilization.policies[0] = { key: 'galactic_legion' }
+  const before = g.data.tableau.visibleTiles(6).filter((t) => t.unit).length
+  g._createInstance({ kind: 'unit', key: 'warrior', level: 1 }, tile)
+  const after = g.data.tableau.visibleTiles(6).filter((t) => t.unit).length
+  console.log(`  units on board ${before} → ${after} (expect +2: the built unit + a copy)`)
+  assert(after - before === 2, `Galactic Legion adds the unit + 1 copy (got +${after - before})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
