@@ -327,5 +327,36 @@ console.log('TEST 15: Poetry — end-of-era :progress: = total attack of survivi
   g.stop()
 }
 
+console.log('TEST 16: Lunar Defense Stratagem — Moon-terrain units deal +100% attack')
+{
+  const g = new GameManager(12); g.setEra(14)
+  const b = g.data.tableau.visibleBounds(14)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol)
+  t.terrain = 'plains'
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true); const a0 = t.unit.atk
+  t.terrain = 'moon'
+  g.data.civilization.policies[0] = { key: 'lunar_defense_stratagem' }
+  g._syncUnitStats(true); const a1 = t.unit.atk
+  console.log(`  Warrior atk ${a0} (plains) → ${a1} (moon + Lunar Defense)`)
+  assert(a1 === a0 * 2, `Moon units +100% atk (got ${a1} vs ${a0 * 2})`)
+  g.stop()
+}
+
+console.log('TEST 17: Defensive Pact — mercenaries gain +1 defense')
+{
+  const g = new GameManager(13); g.setEra(4)
+  const b = g.data.tableau.visibleBounds(4)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol)
+  t.terrain = 'plains'
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false, mercenary: true }
+  g._syncUnitStats(false); const d0 = t.unit.maxHp
+  g.data.civilization.policies[0] = { key: 'defensive_pact' }
+  g._syncUnitStats(false); const d1 = t.unit.maxHp
+  console.log(`  merc Warrior def ${d0} → ${d1} with Defensive Pact`)
+  assert(d1 - d0 === 1, `Defensive Pact +1 merc def (got +${d1 - d0})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -221,5 +221,17 @@ console.log('TEST 17: Genome Mapping grants +20 population on unlock')
   assert(after - before === 20, `Genome Mapping +20 population (got +${after - before})`)
 }
 
+console.log('TEST 18: Merchant Navy — each naval unit produces +2 gold per tick')
+{
+  const g = new GameManager(8); g.setEra(5)
+  const tile = g.data.tableau.visibleTiles(5).find((t) => !t.building && !t.unit)
+  tile.unit = { kind: 'unit', key: 'galley', level: 1, hp: 10, maxHp: 10, damaged: false }
+  g._recomputeOutputs(); const gold0 = g.data.civilization.gold.output
+  g.data.civilization.policies[0] = { key: 'merchant_navy' }
+  g._recomputeOutputs(); const gold1 = g.data.civilization.gold.output
+  console.log(`  gold/tick ${gold0} → ${gold1} with Merchant Navy + 1 Galley`)
+  assert(gold1 - gold0 === 2, `Merchant Navy +2 gold/naval unit (got +${gold1 - gold0})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

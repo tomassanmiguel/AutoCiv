@@ -212,6 +212,8 @@ export class GameManager {
     if (this._hasPolicy('ownership')) totals.gold += 2 * this._deployedBuildingCount()
     // Breweries: +1 gold per tick per unit within each brewery's range.
     totals.gold += this._breweryGold()
+    // Merchant Navy: +2 gold per tick per deployed naval unit.
+    totals.gold += this._navalUnitGold()
     // Per-tick building outputs (v2 generic def.output + v1 Ranch/Kiln/Mine/… specials).
     const bt = this._buildingTickOutputs()
     totals.progress += bt.progress
@@ -269,6 +271,17 @@ export class GameManager {
     let n = 0
     for (const { occ } of this._buildingInstances()) if (!occ.damaged) n++ // destroyed buildings don't produce
     return n
+  }
+
+  /** Merchant Navy: +2 gold/tick per deployed (non-destroyed) naval unit. */
+  _navalUnitGold() {
+    if (!this._activeEffectDefs().some((d) => d.special === 'naval_gold_flat')) return 0
+    let g = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      const u = tile.unit
+      if (u && !u.damaged && UNIT_DEFS[u.key]?.types.includes('naval')) g += 2
+    }
+    return g
   }
 
   /** Total per-tick gold from all breweries (+1 per unit within each brewery's range). */
@@ -511,6 +524,13 @@ export class GameManager {
     // so summing only policies here avoids double-counting.
     let policyBuildingDef = 0
     for (const p of civ.policies) { const d = p && POLICY_DEFS[p.key]; if (d?.buildingDefBonus) policyBuildingDef += d.buildingDefBonus }
+    // Special combat modifiers read once: Defensive Pact (+1 :defense: to mercenaries),
+    // Lunar Defense Stratagem (+100% :attack: to units on Moon terrain).
+    let mercDef = 0, moonAtk = false
+    for (const def of this._activeEffectDefs()) {
+      if (def.special === 'merc_def_bonus') mercDef += 1
+      if (def.special === 'moon_atk') moonAtk = true
+    }
     for (const tile of this.data.tableau.tiles.values()) {
       // City extras are economic-only (never fight, never take terrain/combat bonuses), but
       // refresh their maxHp so buildingHpBonus growth (Concrete/Hereditary) shows on the strip.
@@ -541,6 +561,8 @@ export class GameManager {
         }
         // Fascism: a desperation doctrine — +100% :attack: while legitimacy is below 50.
         if (this._hasPolicy('fascism') && civ.legitimacy.value < 50) dmgBonus += 1.0
+        // Lunar Defense Stratagem: units standing on Moon terrain deal +100% :attack:.
+        if (moonAtk && tile.terrain === 'moon') dmgBonus += 1.0
         // Flat attack from special effects: Bayonets (+5 :melee:), Gunboat Diplomacy (+15 :naval:).
         // Read via _activeEffectDefs so both policies and bonus-techs (civ.bonuses) count.
         const uTypes = UNIT_DEFS[occ.key].types
@@ -551,7 +573,8 @@ export class GameManager {
         }
         // occ.permDef / occ.permAtk = permanent :defense: (Baker) / :attack: (Public Baths)
         // granted mid-combat; both persist across combats.
-        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb + pack + (occ.permAtk ?? 0) + flatAtk)
+        const mercBonus = occ.mercenary ? mercDef : 0 // Defensive Pact: mercenaries +1 :defense:
+        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0) + mercBonus, wb + pack + (occ.permAtk ?? 0) + flatAtk)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         const posMult = (brew ? 1.1 : 1) * brothel.atkMult * (1 + dmgBonus) // Brewery × Brothel × v2 damage %
         occ.warband = wb
