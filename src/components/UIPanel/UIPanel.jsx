@@ -32,15 +32,16 @@ const TAB_ICON = {
   population: '/sprites/ui/pop.png',
 }
 
-// Unit/building stat icons (Speed = cooldown, Atk = damage, Def = health).
+// Unit/building stat icons. v2: the first slot shows RANGE (Manhattan diamond); the
+// speed icon is reused for it until a dedicated range icon exists. Atk = damage, Def = health.
 const STAT_ICON = {
   speed: '/sprites/icons/speed.png',
   atk: '/sprites/icons/attack.png',
   def: '/sprites/icons/defense.png',
 }
-const STAT_LABEL = { speed: 'Speed', atk: 'Attack', def: 'Defense' }
+const STAT_LABEL = { speed: 'Range', atk: 'Attack', def: 'Defense' }
 
-/** A row of stat icon+value pairs (default order: Speed, Atk, Def). Utility units pass
+/** A row of stat icon+value pairs (default order: Range, Atk, Def). Utility units pass
  *  keys without 'atk' since they don't attack. */
 function StatIcons({ stats, keys = ['speed', 'atk', 'def'], className = 'slot-card-stats' }) {
   return (
