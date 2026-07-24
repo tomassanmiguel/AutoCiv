@@ -1,5 +1,6 @@
 // Headless test of the v2 turn-based combat engine.
 const { GameManager } = await import('../src/game/GameManager.js')
+const { ENEMY_DEFS } = await import('../src/game/data/enemies.js')
 
 function mkEnemy(key, name, col, row, hp, atk) {
   return { key, name, col, row, hp, maxHp: hp, atk, damaged: false, breached: false }
@@ -189,6 +190,29 @@ console.log('TEST 8: unit-death trigger — Nationalism grants :gold: = the dead
   const delta = g.data.civilization.gold.value - gold0
   console.log(`  gold +${delta} (dead Warrior atk = 5)`)
   assert(delta === 5, `Nationalism grants +5 gold on the Warrior's death (got ${delta})`)
+  g.stop()
+}
+
+// ---------------------------------------------------------------------------
+console.log('TEST 9: hand-authored enemy host scales HP ×1.25^E and breach atk +E (elites ×2)')
+{
+  const era = 4
+  const g = new GameManager(9); g.setEra(era)
+  const scale = Math.pow(1.25, era)
+  let ok = g.data.enemies.length > 0
+  for (const e of g.data.enemies) {
+    const base = ENEMY_DEFS[e.key]
+    if (!base) { ok = false; console.log(`  ✗ ${e.key} not in ENEMY_DEFS`); continue }
+    const m = e.elite ? 2 : 1
+    const expHp = Math.max(1, Math.round(base.def * scale)) * m
+    const expAtk = (base.atk + era) * m
+    if (e.maxHp !== expHp || e.atk !== expAtk) { ok = false; console.log(`  ✗ ${e.key} hp ${e.maxHp}≠${expHp} atk ${e.atk}≠${expAtk}`) }
+    if (base.era > era) { ok = false; console.log(`  ✗ ${e.key} from future era ${base.era}`) }
+    if (base.boss) { ok = false; console.log(`  ✗ boss ${e.key} in a normal wave`) }
+  }
+  const e0 = g.data.enemies[0]
+  console.log(`  era-${era} host: ${g.data.enemies.length} enemies; e.g. ${e0?.name} HP ${e0?.maxHp} atk ${e0?.atk}`)
+  assert(ok, 'every enemy is a non-boss ≤era with era-scaled HP/atk')
   g.stop()
 }
 

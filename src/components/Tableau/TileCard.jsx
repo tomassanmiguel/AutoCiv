@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
+import { ENEMY_DEFS } from '../../game/data/enemies.js'
 import { BUILDING_DEFS, buildingEffect, buildingOutputs, buildingHp } from '../../game/data/buildings.js'
 import { TERRAIN, terrainDefBonus } from '../../game/data/terrain.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
@@ -48,7 +49,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
   const isUnit = occ.kind === 'unit'
-  const def = isUnit ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
+  // Enemies use their own ENEMY_DEFS roster (keys aren't in UNIT_DEFS).
+  const def = isUnit ? (UNIT_DEFS[occ.key] ?? ENEMY_DEFS[occ.key]) : BUILDING_DEFS[occ.key]
 
   // Underlapping buildings (Road): a minimal name-only card in its own bottom strip, no
   // stats/combat/actions. Its own tooltip still explains the effect.
@@ -111,7 +113,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
       <>
         {isPrev && <div className="tc-tip-upg">Upgrade → Lv {lvl}</div>}
         <IconText>{`:${def.types[0]}:`}</IconText> {type}
-        <br /><IconText>{isUnit ? def.description : buildingEffect(def, lvl, era)}</IconText>
+        <br /><IconText>{isUnit ? (def.description ?? '') : buildingEffect(def, lvl, era)}</IconText>
         {isUnit && def.ability ? <><br /><br /><strong>Ability:</strong> <IconText>{def.ability}</IconText></> : null}
         <br /><br />
         <span className="tc-tip-stats">

@@ -187,7 +187,7 @@ class CombatMixin {
     const blocker = (below?.unit && !below.unit.damaged) ? below.unit
       : (below?.building && !below.building.damaged) ? below.building : null
     if (blocker) {
-      const chip = UNIT_DEFS[e.key]?.chip ?? 1
+      const chip = e.chip ?? 1 // per-enemy blocker chip (Barbarian 2, …); baked at generation
       this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
       this._chipBlocker(blocker, chip, below)
       return
