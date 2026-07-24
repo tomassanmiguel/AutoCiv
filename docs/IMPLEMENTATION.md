@@ -1,5 +1,14 @@
 # v2 Implementation Tracker
 
+> **STATUS (feature-complete):** every major v2 pillar is implemented + verified — turn-based TD
+> combat (splash/doctrines/cooldowns/abilities), split tile model, PROGRESSION-accurate unlockable
+> content (324/351 advancements), data-driven economy (terrain yields, legit-leverage, specialist
+> gold-upgrade chains), hand-authored scaled enemy roster, the wonder system (incl. Manhattan
+> Project/Fallout), and the pre-game civ/difficulty screen. `node sims/verify.mjs` = 0 problems.
+> Remaining = incremental polish: 65 stubbed policy/enemy `special` abilities, roster no-replace
+> versioning, multi-tile wonders/bosses, the trap/command/spawner slot tab-split, and balance tuning.
+
+
 Strategy (per the user): **implement the new mechanics slice by slice → wipe v1 content → re-add v2
 content batch by batch.** Each slice is its own commit; keep `npm run build` + `eslint` green; validate
 model logic with headless node `sim_*.mjs`. Docs (`PROGRESSION.md` = era/name source of truth; the
