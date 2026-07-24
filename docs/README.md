@@ -15,7 +15,7 @@ challenge them freely.
 | `specialists.md` | Population + specialist chains + prefixes + special pops | **done** |
 | `policies.md` | Policies (combat/economy/legit/terrain/colonial/upgrade/meta) + bonus/modifier techs | **done** |
 | `wonders.md` | 18 Wonders + build-cost (N=3) + footprints | **done** |
-| `enemies.md` | Enemy roster + wave/budget rules + bosses | not started |
+| `enemies.md` | 27 ordinary enemies + 3 bosses + wave/budget rules + scripted waves | **done** |
 | `terrain.md` | Terrain yields + combat modifiers | not started |
 | `PROGRESSION.md` | The master advancement tree distributed across the 28 eras (~10/era, front-loaded) | not started (final pass) |
 
