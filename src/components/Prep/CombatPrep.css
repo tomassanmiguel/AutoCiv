@@ -61,6 +61,8 @@
   color: #6e4f16;
 }
 .prep-hint { font-size: 0.78rem; color: #5b4626; max-width: 22rem; }
+/* P=NP projected legitimacy-loss readout (danger accent). */
+.prep-proj { font-size: 0.82rem; font-weight: 700; color: #a3341f; margin-top: 0.2rem; }
 .prep-gold {
   flex: 0 0 auto;
   display: inline-flex;

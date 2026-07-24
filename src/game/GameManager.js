@@ -1013,6 +1013,32 @@ export class GameManager {
     return m
   }
 
+  /** True when the P=NP bonus is active (combat prep shows projected :legitimacy: loss). */
+  hasProjectedLegit() { return this._activeEffectDefs().some((d) => d.special === 'projected_legit') }
+
+  /** Estimated :legitimacy: the player would lose if combat started now: each undamaged
+   *  enemy in a column with no undamaged friendly blocker breaches for round(atk × Firewall)
+   *  × Democracy. Mirrors the real breach rule (_enemyAct → _damageLegitimacy). Read-only;
+   *  returns null when P=NP is inactive so the UI can hide the readout. */
+  projectedLegitLoss() {
+    if (!this.hasProjectedLegit()) return null
+    const era = this.data.era
+    if (!this.data.tableau.visibleBounds(era)) return 0
+    const blocked = new Set()
+    for (const tile of this.data.tableau.visibleTiles(era)) {
+      const occ = (tile.unit && !tile.unit.damaged) ? tile.unit : (tile.building && !tile.building.damaged ? tile.building : null)
+      if (occ) blocked.add(tile.col)
+    }
+    const fw = this._hasPolicy('firewall') ? 0.75 : 1
+    const dem = this._hasPolicy('democracy') ? 2 : 1
+    let loss = 0
+    for (const e of (this.data.enemies || [])) {
+      if (e.damaged || e.breached || blocked.has(e.col)) continue
+      loss += Math.round(e.atk * fw) * dem
+    }
+    return loss
+  }
+
   // --- Slot resolution helpers ---
   // Returns { group, multiFill, slotIndices }. slotIndices are the item's target
   // slots and (when full) the replace candidates; multiFill = fill EVERY empty

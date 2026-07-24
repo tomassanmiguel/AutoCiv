@@ -647,5 +647,32 @@ console.log('TEST 33: Adjacency bridging (Combustion ocean, isolation, Reuseable
   g.stop(); g2.stop(); g3.stop()
 }
 
+console.log('TEST 34: P=NP projected legitimacy loss')
+{
+  const g = new GameManager(43)
+  assert(g.projectedLegitLoss() === null && g.hasProjectedLegit() === false, 'null when P=NP inactive')
+  g.data.civilization.bonuses.push('p_np')
+  assert(g.hasProjectedLegit() === true, 'active after bonus')
+  const b = g.data.tableau.visibleBounds(0)
+  g.data.enemies = [
+    mkEnemy('warrior', 'A', b.minCol, b.maxRow + 1, 100, 7),     // blocked column
+    mkEnemy('warrior', 'B', b.minCol + 1, b.maxRow + 1, 100, 4), // open column
+  ]
+  g.data.tableau.tileAt(b.minRow, b.minCol).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  const l0 = g.data.civilization.legitimacy.value
+  assert(g.projectedLegitLoss() === 4, `only open-column enemy (atk 4) counts (got ${g.projectedLegitLoss()})`)
+  g.data.civilization.policies.push({ key: 'firewall' })
+  assert(g.projectedLegitLoss() === 3, `Firewall ×0.75 → 3 (got ${g.projectedLegitLoss()})`)
+  g.data.civilization.policies.pop()
+  g.data.civilization.policies.push({ key: 'democracy' })
+  assert(g.projectedLegitLoss() === 8, `Democracy ×2 → 8 (got ${g.projectedLegitLoss()})`)
+  g.data.civilization.policies.pop()
+  g.data.enemies[1].damaged = true
+  assert(g.projectedLegitLoss() === 0, 'damaged enemy excluded')
+  assert(g.data.civilization.legitimacy.value === l0, 'projection is read-only')
+  console.log('  projection mirrors breach math (blockers, Firewall, Democracy); read-only')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

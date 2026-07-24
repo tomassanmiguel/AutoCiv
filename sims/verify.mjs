@@ -76,7 +76,7 @@ const WIRED_SPECIALS = new Set(['low_legit_atk', 'melee_flat_atk', 'gunboat_flat
   'combat_atk_ramp', 'water_gold_bonus', 'free_progress_upgrade', 'new_world_mercs', 'alien_ranged_mercs',
   'poison_on_start', 'copy_unit_on_build', 'pursuit_range', 'build_on_water', 'build_on_asteroid',
   'keep_upgrade_levels_unit', 'keep_upgrade_levels_building', 'double_upgrade_levels_unit',
-  'bridge_ocean', 'bridge_space', 'bridge_deep_space', 'moon_earth_adjacent'])
+  'bridge_ocean', 'bridge_space', 'bridge_deep_space', 'moon_earth_adjacent', 'projected_legit'])
 // v1-name policies wired by hardcoded _hasPolicy(key) checks rather than a structured field.
 const HARDCODED_WIRED = new Set(['slavery', 'weights_and_measures', 'ownership', 'specialization',
   'language', 'festivals', 'tribalism', 'caste_system', 'calendar', 'code_of_laws', 'diplomatic_marriage', 'midwivery',

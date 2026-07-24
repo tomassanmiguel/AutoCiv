@@ -14,6 +14,7 @@ export default function CombatPrep() {
   const game = useGame()
   if (game.data.phase !== 'prep') return null
   const gold = Math.floor(game.data.civilization.gold.value)
+  const projLegit = game.projectedLegitLoss() // null unless the P=NP bonus is active
 
   return (
     <div className="prep-wrap">
@@ -23,6 +24,11 @@ export default function CombatPrep() {
           <div className="prep-hint">
             <IconText>{'Spend :gold: on repairs, upgrades, specialists & mercenaries.'}</IconText>
           </div>
+          {projLegit != null && (
+            <div className="prep-proj">
+              <IconText>{`Projected :legitimacy: loss: ${projLegit}`}</IconText>
+            </div>
+          )}
         </div>
         <div className="prep-gold">
           <img src="/sprites/icons/gold.png" alt="Gold" />{gold}
