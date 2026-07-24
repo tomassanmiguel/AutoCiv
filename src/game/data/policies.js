@@ -182,7 +182,7 @@ export const POLICY_DEFS = {
   native_collaboration: { key: 'native_collaboration', name: 'Native Collaboration', era: 8, tech: 'Native Collaboration', slot: true, special: 'new_world_mercs', description: 'Before combat, spawn 3 free random mercenaries in the New World.' },
 
   // --- Era 9: Steam ---
-  combustion: { key: 'combustion', name: 'Combustion', era: 9, tech: 'Combustion', slot: false, special: 'bridge_ocean', description: 'Units may reposition bridging across ocean.' },
+  combustion: { key: 'combustion', name: 'Combustion', era: 9, tech: 'Combustion', slot: false, special: 'bridge_ocean', description: 'Ocean no longer breaks adjacency — building auras and ranges bridge across water.' },
   industrial_agriculture: { key: 'industrial_agriculture', name: 'Industrial Agriculture', era: 9, tech: 'Industrial Agriculture', slot: false, thresholdMult: { res: 'food', mult: 0.92 }, description: 'Reduce :food: threshold by 8%.' },
   railroad: { key: 'railroad', name: 'Railroad', era: 9, tech: 'Railroad', slot: false, thresholdMult: { res: 'production', mult: 0.93 }, description: 'Reduce :production: threshold by 7%.' },
   telegram: { key: 'telegram', name: 'Telegram', era: 9, tech: 'Telegram', slot: false, rangedReach: 1, description: '+1 range to all :ranged: effects.' },
@@ -255,7 +255,7 @@ export const POLICY_DEFS = {
   reinforced_construction: { key: 'reinforced_construction', name: 'Reinforced Construction', era: 17, tech: 'Reinforced Construction', slot: true, buildingDefBonus: 2, description: 'All buildings gain +2 :defense:.' },
 
   // --- Era 18: Exodus ---
-  mass_drivers: { key: 'mass_drivers', name: 'Mass Drivers', era: 18, tech: 'Mass Drivers', slot: false, special: 'bridge_space', description: 'Units may reposition bridging across space.' },
+  mass_drivers: { key: 'mass_drivers', name: 'Mass Drivers', era: 18, tech: 'Mass Drivers', slot: false, special: 'bridge_space', description: 'Space no longer breaks adjacency — auras and ranges bridge across space.' },
   occlusion: { key: 'occlusion', name: 'Occlusion', era: 18, tech: 'Occlusion', slot: false, unitDefBonus: 1, buildingDefBonus: 1, special: 'space_only', description: 'All units and buildings in space gain +1 :defense:.' },
   cosmic_myth: { key: 'cosmic_myth', name: 'Cosmic Myth', era: 18, tech: 'Cosmic Myth', slot: true, unitDeath: { res: 'legitimacy', flat: 1 }, description: 'Whenever a unit dies, gain +1 :legitimacy:.' },
   deepfaked_reality: { key: 'deepfaked_reality', name: 'Deepfaked Reality', era: 18, tech: 'Deepfaked Reality', slot: true, legitPerEra: 50, description: 'At the end of each era, gain +50 :legitimacy:.' },
@@ -286,7 +286,7 @@ export const POLICY_DEFS = {
   futurization: { key: 'futurization', name: 'Futurization', era: 22, tech: 'Futurization', slot: true, upgradeMult: 0.4, description: 'Upgrade costs 60% less :gold:.' },
 
   // --- Era 23: Early Galactic ---
-  ftl: { key: 'ftl', name: 'FTL', era: 23, tech: 'FTL', slot: false, special: 'bridge_deep_space', description: 'Units may reposition bridging across deep space.' },
+  ftl: { key: 'ftl', name: 'FTL', era: 23, tech: 'FTL', slot: false, special: 'bridge_deep_space', description: 'Deep Space no longer breaks adjacency — auras and ranges bridge across deep space.' },
   galactic_legion: { key: 'galactic_legion', name: 'Galactic Legion', era: 23, tech: 'Galactic Legion', slot: true, special: 'copy_unit_on_build', description: 'Producing a unit copies it onto a random adjacent tile.' },
   spaceflight_tactics: { key: 'spaceflight_tactics', name: 'Spaceflight Tactics', era: 23, tech: 'Spaceflight Tactics', slot: true, doctrine: { role: 'astral', pct: 0.50 }, description: ':astral: units deal +50% :attack:.' },
 

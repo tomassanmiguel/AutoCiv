@@ -44,6 +44,10 @@ export function canPlaceOn(placement, terrainKey) {
   return placement === 'any' || placement === cls
 }
 
+/** The original Earth land/coast terrains (excludes Mars and Moon, which are separate
+ *  bodies). Used by Reuseable Rocketry to bridge all Moon tiles to all Earth tiles. */
+export const EARTH_TERRAINS = new Set(['plains', 'forest', 'mountain', 'coast', 'island'])
+
 /** Flat combat :defense: bonus a terrain grants to any unit/building on it. */
 export function terrainDefBonus(terrainKey) {
   return TERRAIN[terrainKey]?.defBonus ?? 0

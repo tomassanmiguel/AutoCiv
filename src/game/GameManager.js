@@ -9,7 +9,7 @@ import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
-import { canPlaceOn, terrainDefBonus, terrainEconYield } from './data/terrain.js'
+import { canPlaceOn, terrainDefBonus, terrainEconYield, EARTH_TERRAINS } from './data/terrain.js'
 import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost } from './data/costs.js'
 import { installCombat, SPEED_TPS, COMBAT_INTERVAL_MS } from './manager/combat.js'
 
@@ -54,7 +54,7 @@ export class GameManager {
     this._listeners = new Set()
     this._version = 0
     this._timer = null
-    this._roadNetsCache = null // memoized _roadPortSets(); invalidated when a Road is placed
+    this._netsCache = null // memoized _portNets() (roads + bridges); invalidated on road/era/bridge change
     this.difficultyMult = difficultyMult(options.difficulty) // enemy budget scaler (pre-game)
 
     this.subscribe = (fn) => {
@@ -400,28 +400,27 @@ export class GameManager {
    *  their orthogonal neighbours. Any two tiles in one set are adjacent (distance 1).
    *  Memoized (roads only change on placement) so a whole combat step / stat sync reuses
    *  one computation instead of rescanning the grid per query. */
-  _roadPortSets() {
-    if (this._roadNetsCache) return this._roadNetsCache
+  _componentPortSets(isMember) {
     const t = this.data.tableau
     const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
-    const roadKeys = []
-    for (const tile of t.tiles.values()) if (tile.underlap?.key === 'road') roadKeys.push(`${tile.row},${tile.col}`)
-    if (roadKeys.length === 0) { this._roadNetsCache = []; return this._roadNetsCache }
-    const roadSet = new Set(roadKeys)
+    const memberKeys = []
+    for (const tile of t.tiles.values()) if (isMember(tile)) memberKeys.push(`${tile.row},${tile.col}`)
+    if (memberKeys.length === 0) return []
+    const memberSet = new Set(memberKeys)
     const seen = new Set()
     const nets = []
-    for (const rk of roadKeys) {
-      if (seen.has(rk)) continue
+    for (const mk of memberKeys) {
+      if (seen.has(mk)) continue
       const comp = []
-      const stack = [rk]
-      seen.add(rk)
+      const stack = [mk]
+      seen.add(mk)
       while (stack.length) {
         const cur = stack.pop()
         comp.push(cur)
         const [r, c] = cur.split(',').map(Number)
         for (const [dr, dc] of NBRS) {
           const nk = `${r + dr},${c + dc}`
-          if (roadSet.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk) }
+          if (memberSet.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk) }
         }
       }
       const ports = new Set()
@@ -432,8 +431,37 @@ export class GameManager {
       }
       nets.push(ports)
     }
-    this._roadNetsCache = nets
     return nets
+  }
+
+  /** Road networks as port sets (flood-fill over tiles carrying a Road underlay). */
+  _roadPortSets() { return this._componentPortSets((tile) => tile.underlap?.key === 'road') }
+
+  /** Bridge networks from active terrain-transparency policies: Combustion (ocean), Mass
+   *  Drivers (space), FTL (deep space) each turn their terrain into one adjacency network;
+   *  Reuseable Rocketry makes all Moon + Earth tiles one mutually-adjacent set. */
+  _bridgePortSets() {
+    const defs = this._activeEffectDefs()
+    const nets = []
+    if (defs.some((d) => d.special === 'bridge_ocean')) nets.push(...this._componentPortSets((t) => t.terrain === 'ocean'))
+    if (defs.some((d) => d.special === 'bridge_space')) nets.push(...this._componentPortSets((t) => t.terrain === 'space'))
+    if (defs.some((d) => d.special === 'bridge_deep_space')) nets.push(...this._componentPortSets((t) => t.terrain === 'deep_space'))
+    if (defs.some((d) => d.special === 'moon_earth_adjacent')) {
+      const set = new Set()
+      for (const tile of this.data.tableau.tiles.values()) {
+        if (tile.terrain === 'moon' || EARTH_TERRAINS.has(tile.terrain)) set.add(`${tile.row},${tile.col}`)
+      }
+      if (set.size) nets.push(set)
+    }
+    return nets
+  }
+
+  /** Memoized combined adjacency networks: road port sets + active bridge port sets.
+   *  Invalidated (_netsCache = null) on road placement, era change, and bridge-bonus gain. */
+  _portNets() {
+    if (this._netsCache) return this._netsCache
+    this._netsCache = [...this._roadPortSets(), ...this._bridgePortSets()]
+    return this._netsCache
   }
 
   /** Map "r,c" -> step distance for every tile within `range` steps of (sr, sc), where
@@ -441,7 +469,7 @@ export class GameManager {
   _reachableWithin(sr, sc, range) {
     const t = this.data.tableau
     const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
-    const nets = this._roadPortSets()
+    const nets = this._portNets()
     const dist = new Map([[`${sr},${sc}`, 0]])
     const q = [[sr, sc]]
     let head = 0
@@ -925,6 +953,9 @@ export class GameManager {
     // Policy-slot expansion (Socialism +3, Technocracy +1, Omnicracy +1): grow the
     // policy roster so more policies can be equipped. Guarded so it can't double-add.
     if (def.policySlots && isNew) for (let k = 0; k < def.policySlots; k++) civ.policies.push(null)
+    // Adjacency-bridge bonuses (Combustion/Mass Drivers/FTL/Reuseable Rocketry) change the
+    // port-net graph → drop the memo so the bridge takes effect immediately.
+    this._netsCache = null
     if (def.thresholdMult) {
       const { res, mult } = def.thresholdMult
       if (res === 'food') civ.modifiers.foodThresholdMult *= mult
@@ -1216,7 +1247,7 @@ export class GameManager {
     // Road: an underlapping utility in the tile's own underlap slot (adjacency only).
     if (bdef?.underlap) {
       tile.underlap = { kind: 'building', key: chosen.key, level: chosen.level }
-      this._roadNetsCache = null // road topology changed → drop the memoized port sets
+      this._netsCache = null // road topology changed → drop the memoized port sets
       this._recomputeOutputs() // roads change brewery/kiln ranges
       this._syncUnitStats()    // and brewery-aura membership
       return
@@ -1495,7 +1526,7 @@ export class GameManager {
     if (cands.length === 0) return
     const tile = cands[Math.floor(Math.random() * cands.length)]
     tile.underlap = { kind: 'building', key: 'road', level: 1 }
-    this._roadNetsCache = null // road topology changed
+    this._netsCache = null // road topology changed
   }
 
   /** True if a mercenary can be hired onto this (empty, valid) tile during prep. */

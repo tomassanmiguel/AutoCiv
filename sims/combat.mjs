@@ -615,5 +615,37 @@ console.log('TEST 32: Region upgrade-levels via WONDER (Happy Valley, Mars +8)')
   g.stop()
 }
 
+console.log('TEST 33: Adjacency bridging (Combustion ocean, isolation, Reuseable Rocketry moon↔earth)')
+{
+  const key = (t) => `${t.row},${t.col}`
+  // Combustion: an ocean tile between two land tiles bridges them.
+  const g = new GameManager(40); g.setEra(14)
+  const b = g.data.tableau.visibleBounds(14)
+  const A = g.data.tableau.tileAt(b.minRow, b.minCol)
+  const C = g.data.tableau.tileAt(b.minRow, b.minCol + 1)
+  const B = g.data.tableau.tileAt(b.minRow, b.minCol + 2)
+  A.terrain = 'plains'; C.terrain = 'ocean'; B.terrain = 'plains'; g._netsCache = null
+  assert(!g._reachableWithin(A.row, A.col, 1).has(key(B)), 'A–B not adjacent across ocean (baseline)')
+  g._applyModifier({ kind: 'modifier', key: 'combustion' })
+  assert(g._reachableWithin(A.row, A.col, 1).has(key(B)), 'Combustion bridges A–B across ocean')
+  // Isolation: Mass Drivers bridges space, NOT ocean.
+  const g2 = new GameManager(41); g2.setEra(14)
+  const b2 = g2.data.tableau.visibleBounds(14)
+  const A2 = g2.data.tableau.tileAt(b2.minRow, b2.minCol), C2 = g2.data.tableau.tileAt(b2.minRow, b2.minCol + 1), B2 = g2.data.tableau.tileAt(b2.minRow, b2.minCol + 2)
+  A2.terrain = 'plains'; C2.terrain = 'ocean'; B2.terrain = 'plains'
+  g2._applyModifier({ kind: 'modifier', key: 'mass_drivers' })
+  assert(!g2._reachableWithin(A2.row, A2.col, 1).has(key(B2)), 'Mass Drivers does NOT bridge ocean')
+  // Reuseable Rocketry: any moon tile becomes adjacent to any earth tile.
+  const g3 = new GameManager(42); g3.setEra(14)
+  const b3 = g3.data.tableau.visibleBounds(14)
+  const M = g3.data.tableau.tileAt(b3.minRow, b3.minCol); M.terrain = 'moon'
+  const E = g3.data.tableau.tileAt(b3.maxRow, b3.maxCol); E.terrain = 'plains'; g3._netsCache = null
+  assert(!g3._reachableWithin(M.row, M.col, 1).has(key(E)), 'moon–earth not adjacent (baseline)')
+  g3._applyModifier({ kind: 'modifier', key: 'reuseable_rocketry' })
+  console.log(`  Combustion/Mass Drivers isolation OK; moon↔earth bridged = ${g3._reachableWithin(M.row, M.col, 1).has(key(E))}`)
+  assert(g3._reachableWithin(M.row, M.col, 1).has(key(E)), 'Reuseable Rocketry: moon adjacent to earth')
+  g.stop(); g2.stop(); g3.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
