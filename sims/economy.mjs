@@ -267,5 +267,30 @@ console.log('TEST 21: Geneva Convention — reduces enemy host budget by 5%')
   assert(Math.abs(b2 - b1 * 0.95) < 1e-6, `budget scales linearly with the multiplier`)
 }
 
+console.log('TEST 22: Evangelism — each Priest grants +1 more legitimacy per era')
+{
+  const g = new GameManager(11); g.setEra(4)
+  g.data.civilization.pops.priest = 3
+  const l0 = g.data.civilization.legitimacy.value
+  g._applyEraEndEffects(); const base = g.data.civilization.legitimacy.value - l0 // 3 Priests × 1
+  g.data.civilization.legitimacy.value = l0
+  g.data.civilization.policies[0] = { key: 'evangelism' }
+  g._applyEraEndEffects(); const withEv = g.data.civilization.legitimacy.value - l0 // 3 × 2
+  console.log(`  3 Priests: +${base} legit → +${withEv} with Evangelism`)
+  assert(base === 3 && withEv === 6, `Evangelism doubles Priest legit (3→6, got ${base}→${withEv})`)
+  g.stop()
+}
+
+console.log('TEST 23: Replicant Rights — Replicant progress +200% (×3)')
+{
+  const g = new GameManager(12); g.setEra(20)
+  const p0 = g.popOutput('replicant').progress
+  g.data.civilization.policies[0] = { key: 'replicant_rights' }
+  const p1 = g.popOutput('replicant').progress
+  console.log(`  Replicant progress ${p0} → ${p1} with Replicant Rights`)
+  assert(p1 === p0 * 3, `Replicant Rights ×3 progress (got ${p1} vs ${p0 * 3})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

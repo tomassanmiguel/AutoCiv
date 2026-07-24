@@ -358,5 +358,21 @@ console.log('TEST 17: Defensive Pact — mercenaries gain +1 defense')
   g.stop()
 }
 
+console.log('TEST 18: Elder Awareness — +50% damage vs Azazoth')
+{
+  const g = new GameManager(14); g.setEra(27)
+  const mkEnemy = () => ({ key: 'azazoth', row: 1, col: 1, hp: 1000, maxHp: 1000, damaged: false })
+  const e0 = mkEnemy(); g._dealDamageToEnemy(e0, 100)
+  const other = { key: 'warrior', row: 1, col: 2, hp: 1000, maxHp: 1000, damaged: false }
+  g.data.civilization.policies[0] = { key: 'elder_awareness' }
+  const e1 = mkEnemy(); g._dealDamageToEnemy(e1, 100)
+  g._dealDamageToEnemy(other, 100) // non-Azazoth: unaffected
+  console.log(`  100 dmg vs Azazoth: ${1000 - e0.hp} (base) → ${1000 - e1.hp} (Elder Awareness); vs other ${1000 - other.hp}`)
+  assert(1000 - e0.hp === 100, `base Azazoth dmg 100 (got ${1000 - e0.hp})`)
+  assert(1000 - e1.hp === 150, `Elder Awareness +50% vs Azazoth = 150 (got ${1000 - e1.hp})`)
+  assert(1000 - other.hp === 100, `non-Azazoth unaffected (got ${1000 - other.hp})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

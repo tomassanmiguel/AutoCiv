@@ -174,6 +174,8 @@ class CombatMixin {
   }
 
   _dealDamageToEnemy(e, amount) {
+    // Elder Awareness: +50% damage vs the Azazoth boss (applies to direct + splash hits).
+    if (e.key === 'azazoth' && this._activeEffectDefs().some((d) => d.special === 'azazoth_damage')) amount = Math.round(amount * 1.5)
     e.hp -= amount
     const killed = e.hp <= 0
     if (killed) { e.hp = 0; e.damaged = true }
@@ -331,7 +333,9 @@ class CombatMixin {
       else if (occ.key === 'colosseum') legit += 5 * deployedUnits
     }
     legit += (POP_TYPES.shaman?.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
-    legit += (POP_TYPES.priest?.legitPerEra ?? 1) * (civ.pops.priest ?? 0) // v2 Priest
+    // v2 Priest — legitPerEra, +1 more each with Evangelism.
+    const priestLegit = (POP_TYPES.priest?.legitPerEra ?? 1) + (this._activeEffectDefs().some((d) => d.special === 'evangelism') ? 1 : 0)
+    legit += priestLegit * (civ.pops.priest ?? 0)
     if (this._hasWonder('stonehenge')) legit += 25 // Stonehenge wonder: +25 legit/era
     if (this._hasPolicy('sacred_grounds')) {
       for (const tile of this.data.tableau.visibleTiles(this.data.era)) {

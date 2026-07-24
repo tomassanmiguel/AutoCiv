@@ -184,6 +184,8 @@ export class GameManager {
       if (isCitizen && def.special === 'citizen_progress_production_trade') { base.progress = (base.progress ?? 0) + 2; base.production = (base.production ?? 0) - 1 }
       // Transhumanism (Psychology): +1 to each pop's highest output.
       if (def.special === 'pop_highest_plus') highestPlus += 1
+      // Replicant Rights: Replicant :progress: +200% (×3).
+      if (key === 'replicant' && def.special === 'replicant_progress' && base.progress) base.progress *= 3
     }
     if (spec && specBoost > 0) {
       const vals = Object.values(base)
