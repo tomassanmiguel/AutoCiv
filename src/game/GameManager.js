@@ -494,6 +494,8 @@ export class GameManager {
           if (def.unitAtkPct) dmgBonus += def.unitAtkPct
           if (def.doctrine && def.doctrine.role === role) dmgBonus += def.doctrine.pct
         }
+        // Fascism: a desperation doctrine — +100% :attack: while legitimacy is below 50.
+        if (this._hasPolicy('fascism') && civ.legitimacy.value < 50) dmgBonus += 1.0
         // occ.permDef / occ.permAtk = permanent :defense: (Baker) / :attack: (Public Baths)
         // granted mid-combat; both persist across combats.
         const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb + pack + (occ.permAtk ?? 0))

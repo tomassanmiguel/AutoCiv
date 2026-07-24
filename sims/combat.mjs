@@ -236,5 +236,22 @@ console.log('TEST 10: Siege splash — Catapult hits the target in full + neighb
   g.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 11: Fascism — +100% atk while legitimacy < 50')
+{
+  const g = new GameManager(7); g.setEra(11)
+  const b = g.data.tableau.visibleBounds(11)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol)
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g.data.civilization.policies[0] = { key: 'fascism' }
+  g.data.civilization.legitimacy.value = 100
+  g._syncUnitStats(true); const high = t.unit.atk
+  g.data.civilization.legitimacy.value = 30
+  g._syncUnitStats(true); const low = t.unit.atk
+  console.log(`  Warrior atk: legit 100 → ${high}, legit 30 → ${low}`)
+  assert(low === high * 2, `Fascism doubles atk below 50 legit (got ${low} vs ${high})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
