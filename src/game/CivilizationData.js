@@ -58,6 +58,11 @@ export class CivilizationData {
     //    Plough each ×0.95, stacking).
     this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1, progressThresholdMult: 1, productionThresholdMult: 1, bonusTicks: 0 }
 
+    // Applied bonus techs (slot-less ✦ modifiers) by key — their ongoing structured
+    // effects (citizenOutput/popOutputFlat/legitPerEra/…) are read alongside active
+    // policies via GameManager._activeEffectDefs().
+    this.bonuses = []
+
     // Poet escalator: +2 :progress: per Poet added at each era end (reset to 0 when the
     // Poet specialist is first unlocked so a fresh Poet starts at its base +1).
     this.poetBonus = 0

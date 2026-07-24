@@ -139,18 +139,26 @@ export class GameManager {
    *  economy tick and the population card display. */
   popOutput(key) {
     const base = { ...(POP_TYPES[key]?.outputs ?? {}) }
-    if (key === 'citizen' && this._hasPolicy('language')) base.progress = (base.progress ?? 0) + 1
-    if (key === 'citizen' && this._hasPolicy('trade_networks')) base.gold = (base.gold ?? 0) + 2
+    const isCitizen = key === 'citizen'
+    const spec = isSpecialist(key)
+    const robot = !!POP_TYPES[key]?.robot
+    // v1 holdover policies (hardcoded — their defs carry no structured fields).
+    if (isCitizen && this._hasPolicy('language')) base.progress = (base.progress ?? 0) + 1
+    if (isCitizen && this._hasPolicy('trade_networks')) base.gold = (base.gold ?? 0) + 2
     // Poet: +2 :progress: per era elapsed since it was unlocked (civ.poetBonus).
     if (key === 'poet') base.progress = (base.progress ?? 0) + (this.data.civilization.poetBonus ?? 0)
-    // Specialization: each non-citizen (specialist) pop produces +1 of each of its
-    // highest outputs (all tied maxima get +1).
-    if (isSpecialist(key) && this._hasPolicy('specialization')) {
+    // v2 structured effects (active policies + applied bonuses): per-Citizen boosters,
+    // flat per-pop boosters (Alzheimer's, non-robot prefixes Evolved/Cyborg/Psychic), and
+    // the specialist-output escalator (+N to each highest output).
+    let specBoost = spec && this._hasPolicy('specialization') ? 1 : 0 // v1 Specialization
+    for (const def of this._activeEffectDefs()) {
+      if (isCitizen && def.citizenOutput) base[def.citizenOutput.res] = (base[def.citizenOutput.res] ?? 0) + def.citizenOutput.amount
+      if (!robot && def.popOutputFlat) base[def.popOutputFlat.res] = (base[def.popOutputFlat.res] ?? 0) + def.popOutputFlat.amount
+      if (spec && def.specialistOutput) specBoost += def.specialistOutput
+    }
+    if (spec && specBoost > 0) {
       const vals = Object.values(base)
-      if (vals.length) {
-        const max = Math.max(...vals)
-        for (const res of Object.keys(base)) if (base[res] === max) base[res] += 1
-      }
+      if (vals.length) { const max = Math.max(...vals); for (const res of Object.keys(base)) if (base[res] === max) base[res] += specBoost }
     }
     return base
   }
@@ -183,11 +191,9 @@ export class GameManager {
     if (this._hasPolicy('slavery')) { pct.production += 0.10; pct.progress -= 0.05 }
     if (this._hasPolicy('weights_and_measures')) pct.gold += 0.50
     if (this._hasPolicy('democracy')) pct.progress += 0.20 // +20% :progress: gain
-    // v2 generic policy % modifiers: additive per-resource outputPct + totalGoldPct
+    // v2 generic policy/bonus % modifiers: additive per-resource outputPct + totalGoldPct
     // (v1 policies above have no such fields, so no double-count).
-    for (const p of civ.policies) {
-      const def = p && POLICY_DEFS[p.key]
-      if (!def) continue
+    for (const def of this._activeEffectDefs()) {
       if (def.outputPct) for (const res of Object.keys(pct)) if (def.outputPct[res]) pct[res] += def.outputPct[res]
       if (def.totalGoldPct) pct.gold += def.totalGoldPct
     }
@@ -202,6 +208,16 @@ export class GameManager {
   /** True if an unlocked policy with this key is in a policy slot. */
   _hasPolicy(key) {
     return this.data.civilization.policies.some((p) => p && p.key === key)
+  }
+
+  /** POLICY_DEFS of every active effect source — policies in slots + applied ✦ bonuses —
+   *  so structured fields (outputPct/citizenOutput/legitPerEra/…) are read uniformly. */
+  _activeEffectDefs() {
+    const civ = this.data.civilization
+    const out = []
+    for (const p of civ.policies) { const d = p && POLICY_DEFS[p.key]; if (d) out.push(d) }
+    for (const key of civ.bonuses ?? []) { const d = POLICY_DEFS[key]; if (d) out.push(d) }
+    return out
   }
 
   /** Reduce legitimacy by `amount` (clamped at 0). Democracy doubles ALL losses.
@@ -244,6 +260,9 @@ export class GameManager {
       if (def.output && def.output.when === 'tick' && totals[def.output.res] != null) {
         out = { res: def.output.res, amount: buildingTickAmount(def, occ.level) }
       }
+      // v2 legit-leverage buildings (per-tick output scales with current legitimacy).
+      else if (occ.key === 'monastery') out = { res: 'progress', amount: Math.floor(civ.legitimacy.value / 20) }
+      else if (occ.key === 'elysium') out = { res: 'gold', amount: Math.floor(civ.legitimacy.value) }
       else if (occ.key === 'ranch') out = { res: 'food', amount: 5 + (occ.ranchBonus ?? 0) }
       else if (occ.key === 'kiln') out = { res: 'production', amount: 2 + def.perAdjacent(occ.level) * this._adjacentBuildingCount(tile.row, tile.col) }
       else if (occ.key === 'mine') out = { res: 'gold', amount: def.goldPerTick(occ.level) * (tile.terrain === 'mountain' ? 2 : 1) }
@@ -705,6 +724,9 @@ export class GameManager {
     const civ = this.data.civilization
     const def = POLICY_DEFS[unlock.key]
     if (!def) return
+    // Track the bonus so its ongoing structured effects are read by _activeEffectDefs
+    // (one-time fields below are applied once here and never re-read).
+    if (!civ.bonuses.includes(unlock.key)) civ.bonuses.push(unlock.key)
     if (def.thresholdMult) {
       const { res, mult } = def.thresholdMult
       if (res === 'food') civ.modifiers.foodThresholdMult *= mult
@@ -963,8 +985,11 @@ export class GameManager {
     else tile.occupant = inst
     this._syncUnitStats() // board changed → refresh Warband bonuses
     this._recomputeOutputs() // …and per-tick building outputs (Ranch/Kiln/Mine/Brewery)
-    // Glassworks: completing any building grants legitimacy per OTHER deployed Glassworks.
     if (chosen.kind === 'building') {
+      // v2: a legitimacy building grants a flat legit bonus on completion (Shrine +10,
+      // Monastery +30, Cathedral +40, Elysium +50).
+      if (bdef.legitOnComplete) civ.legitimacy.value += bdef.legitOnComplete
+      // Glassworks: completing any building grants legitimacy per OTHER deployed Glassworks.
       let legit = 0
       for (const { occ: g } of this._buildingInstances()) {
         if (g.key === 'glassworks' && !g.damaged && g !== inst) legit += BUILDING_DEFS.glassworks.legitOnBuild(g.level)

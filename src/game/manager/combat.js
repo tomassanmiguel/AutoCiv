@@ -279,12 +279,21 @@ class CombatMixin {
       else if (occ.key === 'colosseum') legit += 5 * deployedUnits
     }
     legit += (POP_TYPES.shaman?.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
+    legit += (POP_TYPES.priest?.legitPerEra ?? 1) * (civ.pops.priest ?? 0) // v2 Priest
     if (this._hasPolicy('sacred_grounds')) {
       for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
         if (!tile.unit && !tile.building && tile.def?.place === 'land') legit += 1
       }
     }
     if (legit > 0) civ.legitimacy.value += legit
+    // v2 policy/bonus end-of-era effects (snapshot gold/legit so they don't compound).
+    const goldNow = Math.floor(civ.gold.value)
+    const legitNow = Math.floor(civ.legitimacy.value)
+    for (const def of this._activeEffectDefs()) {
+      if (def.legitPerEra) civ.legitimacy.value += def.legitPerEra // Theocracy/Propaganda/Deepfaked Reality
+      if (def.goldInterest) civ.gold.value += Math.floor(goldNow * def.goldInterest) // Usury/QE/Perfect Trade
+      if (def.endEraGoldFromLegit) civ.gold.value += Math.floor(legitNow * def.endEraGoldFromLegit) // Schism
+    }
     // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy:.
     if (this._hasPolicy('oral_tradition')) {
       const L = Math.floor(civ.legitimacy.value)
