@@ -499,5 +499,49 @@ console.log('TEST 26: Marine Construction / Gravboots — land buildings on wate
   g.stop()
 }
 
+console.log('TEST 27: Wonder-yield multiplier (Pilgrimage/Tourism/Star Hopping)')
+{
+  const g = new GameManager(30)
+  assert(g._wonderYieldMult() === 1, `default multiplier 1 (got ${g._wonderYieldMult()})`)
+  g.data.civilization.policies[0] = { key: 'pilgrimage' }
+  assert(g._wonderYieldMult() === 1.5, `Pilgrimage ×1.5 (got ${g._wonderYieldMult()})`)
+  g.data.civilization.policies[1] = { key: 'star_hopping' }; g.data.civilization.policies[2] = { key: 'tourism' }
+  assert(g._wonderYieldMult() === 3, `max wins → ×3 (got ${g._wonderYieldMult()})`)
+  g.stop()
+}
+
+console.log('TEST 28: Stonehenge legit/era scales with wonder-yield')
+{
+  const mk = (policy) => {
+    const g = new GameManager(31); g.setEra(4)
+    g.data.civilization.pops = {} // remove other legit sources (shaman/priest)
+    g.data.civilization.completedWonders.push('stonehenge')
+    if (policy) g.data.civilization.policies[0] = { key: policy }
+    const l0 = g.data.civilization.legitimacy.value
+    g._endCombat()
+    g.stop(); return g.data.civilization.legitimacy.value - l0
+  }
+  const base = mk(null), boosted = mk('pilgrimage')
+  console.log(`  Stonehenge legit/era: base +${base}, Pilgrimage +${boosted}`)
+  assert(base === 25, `base Stonehenge +25 (got +${base})`)
+  assert(boosted === 37.5, `Pilgrimage ×1.5 → +37.5 (got +${boosted})`)
+}
+
+console.log('TEST 29: Hagia Sophia completion legit scales with wonder-yield')
+{
+  const mk = (policy) => {
+    const g = new GameManager(32); g.setEra(5)
+    g.data.civilization.wonder = { key: 'hagia_sophia', buildsLeft: 1 }
+    g.data.civilization.legitimacy.value = 100
+    if (policy) g.data.civilization.policies[0] = { key: policy }
+    g._advanceWonder() // completes it → _completeWonder
+    g.stop(); return g.data.civilization.legitimacy.value
+  }
+  const base = mk(null), boosted = mk('tourism')
+  console.log(`  Hagia completion legit (from 100): base ${base}, Tourism ${boosted}`)
+  assert(base === 200, `base ×2 → 200 (got ${base})`)
+  assert(boosted === 300, `Tourism ×(1+2) → 300 (got ${boosted})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

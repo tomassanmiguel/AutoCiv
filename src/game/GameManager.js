@@ -196,7 +196,7 @@ export class GameManager {
       if (vals.length) { const max = Math.max(...vals); for (const res of Object.keys(base)) if (base[res] === max) base[res] += highestPlus }
     }
     // Eiffel Tower wonder: all specialists +50% effective output.
-    if (spec && this._hasWonder('eiffel_tower')) for (const res of Object.keys(base)) base[res] = Math.round(base[res] * 1.5)
+    if (spec && this._hasWonder('eiffel_tower')) { const wm = this._wonderYieldMult(); for (const res of Object.keys(base)) base[res] = Math.round(base[res] * (1 + 0.5 * wm)) }
     return base
   }
 
@@ -918,13 +918,21 @@ export class GameManager {
     civ.completedWonders.push(key)
     civ.wonder = null
     // Immediate (on-completion) effects; ongoing effects are read via _hasWonder().
-    if (key === 'hagia_sophia') civ.legitimacy.value *= 2 // double current legitimacy
+    if (key === 'hagia_sophia') civ.legitimacy.value *= (1 + this._wonderYieldMult()) // +100% legit (×2), boosted by wonder-yield policies
     this._recomputeOutputs()
     this._syncUnitStats()
   }
 
   /** True once a wonder is completed (its ongoing effect is active). */
   _hasWonder(key) { return this.data.civilization.completedWonders.includes(key) }
+
+  /** Best (max) finished-wonder yield multiplier from active policies (Pilgrimage ×1.5,
+   *  Tourism ×2, Star Hopping ×3); default 1 when none active. Scales wonder numeric yields. */
+  _wonderYieldMult() {
+    let m = 1
+    for (const def of this._activeEffectDefs()) if (def.wonderYieldMult != null) m = Math.max(m, def.wonderYieldMult)
+    return m
+  }
 
   // --- Slot resolution helpers ---
   // Returns { group, multiFill, slotIndices }. slotIndices are the item's target

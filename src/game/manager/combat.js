@@ -356,7 +356,7 @@ class CombatMixin {
     // v2 Priest — legitPerEra, +1 more each with Evangelism.
     const priestLegit = (POP_TYPES.priest?.legitPerEra ?? 1) + (this._activeEffectDefs().some((d) => d.special === 'evangelism') ? 1 : 0)
     legit += priestLegit * (civ.pops.priest ?? 0)
-    if (this._hasWonder('stonehenge')) legit += 25 // Stonehenge wonder: +25 legit/era
+    if (this._hasWonder('stonehenge')) legit += 25 * this._wonderYieldMult() // Stonehenge: +25 legit/era (×wonder-yield)
     if (this._hasPolicy('sacred_grounds')) {
       for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
         if (!tile.unit && !tile.building && tile.def?.place === 'land') legit += 1
