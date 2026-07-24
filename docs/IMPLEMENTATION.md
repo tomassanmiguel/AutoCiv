@@ -8,12 +8,17 @@
 > Remaining = incremental polish: **20 stubbed** policy/enemy `special` abilities (effect-wiring
 > coverage now **146/166** reachable policies+bonuses WIRED, per `node sims/verify.mjs`), roster
 > no-replace versioning, multi-tile wonders/bosses, the trap/command/spawner slot tab-split, and
-> balance tuning. The remaining stubs are the genuinely architectural ones — region upgrade-levels
-> (colonialism/martian_freedom/skyscrapers/empire_of_the_stars/hive_mind), bridging/repositioning
-> (combustion/mass_drivers/ftl/reuseable_rocketry), policy-slot expansion (socialism/technocracy/omnicracy), free
-> rerolls (state_alchemists/autonomous_governance/chronoscopy), wonderYieldMult
-> (pilgrimage/tourism/star_hopping/cosmic_celebration), traps/poison
-> (guerilla_warfare trap damage) — deferred as a group.
+> balance tuning. **All 20 remaining stubs are genuinely architectural** — each needs a new
+> subsystem, not a hook, so they are deferred as a group (every clean/engine-feasible effect is now
+> wired): region upgrade-levels (colonialism/martian_freedom/skyscrapers/empire_of_the_stars/hive_mind
+> — a per-region unit/building level-boost system), bridging (combustion/mass_drivers/ftl/
+> reuseable_rocketry — cross-terrain adjacency so units/roads span ocean/space gaps), policy-slot
+> expansion (socialism/technocracy/omnicracy — variable-length policy array + UI), free advancement
+> rerolls (state_alchemists/autonomous_governance/chronoscopy — a reroll control in ProgressOverlay),
+> wonderYieldMult (pilgrimage/tourism/star_hopping — a uniform multiplier threaded through every
+> bespoke wonder-effect site), traps (guerilla_warfare — a place-trap/trigger-on-enter mechanic), and
+> a prep-screen projection readout (p_np — UI-only projected :legitimacy: loss). Each is a deliberate
+> next-phase feature, not a missed hook.
 
 
 Strategy (per the user): **implement the new mechanics slice by slice → wipe v1 content → re-add v2
