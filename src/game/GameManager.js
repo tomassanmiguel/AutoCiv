@@ -173,14 +173,25 @@ export class GameManager {
     // flat per-pop boosters (Alzheimer's, non-robot prefixes Evolved/Cyborg/Psychic), and
     // the specialist-output escalator (+N to each highest output).
     let specBoost = spec && this._hasPolicy('specialization') ? 1 : 0 // v1 Specialization
+    let highestPlus = 0
     for (const def of this._activeEffectDefs()) {
       if (isCitizen && def.citizenOutput) base[def.citizenOutput.res] = (base[def.citizenOutput.res] ?? 0) + def.citizenOutput.amount
       if (!robot && def.popOutputFlat) base[def.popOutputFlat.res] = (base[def.popOutputFlat.res] ?? 0) + def.popOutputFlat.amount
       if (spec && def.specialistOutput) specBoost += def.specialistOutput
+      // Prohibition: each Citizen +2 to every non-:gold: output, −1 :gold:.
+      if (isCitizen && def.special === 'prohibition') { base.progress = (base.progress ?? 0) + 2; base.food = (base.food ?? 0) + 2; base.production = (base.production ?? 0) + 2; base.gold = (base.gold ?? 0) - 1 }
+      // Video Games: each Citizen +2 :progress:, −1 :production:.
+      if (isCitizen && def.special === 'citizen_progress_production_trade') { base.progress = (base.progress ?? 0) + 2; base.production = (base.production ?? 0) - 1 }
+      // Transhumanism (Psychology): +1 to each pop's highest output.
+      if (def.special === 'pop_highest_plus') highestPlus += 1
     }
     if (spec && specBoost > 0) {
       const vals = Object.values(base)
       if (vals.length) { const max = Math.max(...vals); for (const res of Object.keys(base)) if (base[res] === max) base[res] += specBoost }
+    }
+    if (highestPlus > 0) {
+      const vals = Object.values(base)
+      if (vals.length) { const max = Math.max(...vals); for (const res of Object.keys(base)) if (base[res] === max) base[res] += highestPlus }
     }
     // Eiffel Tower wonder: all specialists +50% effective output.
     if (spec && this._hasWonder('eiffel_tower')) for (const res of Object.keys(base)) base[res] = Math.round(base[res] * 1.5)
@@ -1167,9 +1178,14 @@ export class GameManager {
     occ.fxKind = kind
   }
 
-  /** Repair cost for a damaged occupant, with the Code of Laws discount (−75%). */
+  /** Repair cost for a damaged occupant: Code of Laws (−75%, both) × the best matching v2
+   *  repair reducer (Blueprints/Rapid Reconstruction for buildings; Levee en Masse/Cortical
+   *  Stacks for units). */
   repairCostFor(occ) {
-    return Math.round(repairCost(occ, this.data.era) * (this._hasPolicy('code_of_laws') ? 0.25 : 1))
+    let mult = this._hasPolicy('code_of_laws') ? 0.25 : 1
+    const want = occ.kind === 'building' ? 'building_repair' : 'unit_repair'
+    for (const def of this._activeEffectDefs()) if (def.repairMult != null && def.special === want) mult = Math.min(mult, def.repairMult)
+    return Math.round(repairCost(occ, this.data.era) * mult)
   }
 
   /** Repair a damaged unit/building back to full HP for gold. */
