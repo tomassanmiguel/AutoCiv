@@ -455,6 +455,11 @@ export class GameManager {
     const civ = this.data.civilization
     const counts = this._deployedUnitCounts()
     const hpBonus = civ.modifiers.unitHpBonus
+    // v2 building def bonus from active POLICIES (Reinforced Construction +2). Bonus techs
+    // (Cement/Occlusion) already fold into civ.modifiers.buildingHpBonus via _applyModifier,
+    // so summing only policies here avoids double-counting.
+    let policyBuildingDef = 0
+    for (const p of civ.policies) { const d = p && POLICY_DEFS[p.key]; if (d?.buildingDefBonus) policyBuildingDef += d.buildingDefBonus }
     for (const tile of this.data.tableau.tiles.values()) {
       // City extras are economic-only (never fight, never take terrain/combat bonuses), but
       // refresh their maxHp so buildingHpBonus growth (Concrete/Hereditary) shows on the strip.
@@ -474,18 +479,25 @@ export class GameManager {
         const brew = this._inBreweryRange(tile.row, tile.col)
         const brothel = this._brothelAura(tile.row, tile.col) // { atkMult, cd }
         const caste = (this._hasPolicy('caste_system') && occ.level > 1) ? 1.25 : 1 // upgraded units +25% atk
-        // Composite Bows: +50% :attack: to ranged-role units (incl. Catapult/Trireme).
-        const rangedBoost = (this._hasPolicy('composite_bows') && unitRole(UNIT_DEFS[occ.key]) === 'ranged') ? 1.5 : 1
+        // v2 additive damage %: unit-wide atk% bonuses (Steel/Composites/Liminite/Antimatter)
+        // + a matching category doctrine (+50% to its role, e.g. Compound Bow → ranged). These
+        // stack ADDITIVELY (SCALING §3), then multiply the base attack.
+        const role = unitRole(UNIT_DEFS[occ.key])
+        let dmgBonus = 0
+        for (const def of this._activeEffectDefs()) {
+          if (def.unitAtkPct) dmgBonus += def.unitAtkPct
+          if (def.doctrine && def.doctrine.role === role) dmgBonus += def.doctrine.pct
+        }
         // occ.permDef / occ.permAtk = permanent :defense: (Baker) / :attack: (Public Baths)
         // granted mid-combat; both persist across combats.
         const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb + pack + (occ.permAtk ?? 0))
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
-        const posMult = (brew ? 1.1 : 1) * brothel.atkMult * rangedBoost // level-independent atk mult (Brewery × Brothel × Composite Bows)
+        const posMult = (brew ? 1.1 : 1) * brothel.atkMult * (1 + dmgBonus) // Brewery × Brothel × v2 damage %
         occ.warband = wb
         occ.packAtk = pack
         occ.terrainDef = terrainDef
         occ.inBrewery = brew
-        occ.rangedBoost = rangedBoost > 1
+        occ.dmgBonus = dmgBonus // v2 additive damage % (doctrine + atk-% policies/bonuses)
         occ.cdReduce = brothel.cd
         occ.atkMult = posMult // stored for the upgrade preview (level-independent part)
         occ.casteActive = this._hasPolicy('caste_system')
@@ -493,7 +505,7 @@ export class GameManager {
         occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
       } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.underlap) {
-        const newMax = buildingHp(BUILDING_DEFS[occ.key], occ.level, civ.modifiers.buildingHpBonus) + terrainDef
+        const newMax = buildingHp(BUILDING_DEFS[occ.key], occ.level, civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         occ.maxHp = Math.max(1, newMax)
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)

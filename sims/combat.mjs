@@ -153,5 +153,25 @@ console.log('TEST 6: Siege cooldown — a Ballista (cd 2) fires every 3rd turn')
   g.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 7: combat damage modifiers — Bushido (+50% melee) + Steel (+15% all), additive')
+{
+  const g = new GameManager(4)
+  g.setEra(2)
+  const b = g.data.tableau.visibleBounds(2)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol)
+  t.unit = { kind: 'unit', key: 'spearman', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true); const base = t.unit.atk
+  g.data.civilization.policies[0] = { key: 'bushido' } // melee doctrine +50%
+  g._syncUnitStats(true); const withDoc = t.unit.atk
+  g._applyModifier({ key: 'steel' }) // +15% all units
+  g._syncUnitStats(true); const withBoth = t.unit.atk
+  console.log(`  spearman atk: base ${base} → +Bushido ${withDoc} → +Steel ${withBoth}`)
+  assert(base === 6, `base atk 6 (got ${base})`)
+  assert(withDoc === 9, `Bushido +50% → round(6*1.5)=9 (got ${withDoc})`)
+  assert(withBoth === 10, `+Steel additive → round(6*1.65)=10 (got ${withBoth})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
