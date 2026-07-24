@@ -149,7 +149,10 @@ class CombatMixin {
     if (occ.kind === 'unit') {
       const def = UNIT_DEFS[occ.key]
       if (!def || def.bakerDef) return 0
-      return def.range ?? DEFAULT_RANGE[unitRole(def)] ?? 1
+      let range = def.range ?? DEFAULT_RANGE[unitRole(def)] ?? 1
+      // Telegram / Tightbeams: +1 range to ranged-role units.
+      if (unitRole(def) === 'ranged') for (const d of this._activeEffectDefs()) if (d.rangedReach) range += d.rangedReach
+      return range
     }
     return BUILDING_DEFS[occ.key]?.range ?? 0
   }
@@ -346,6 +349,17 @@ class CombatMixin {
       if (occ.damaged) continue
       const g = BUILDING_DEFS[occ.key]?.endEraGoldFromLegit
       if (g) civ.gold.value += Math.floor(legitNow * g)
+    }
+    // Eugenics: permanently +2 :attack: to all units each era (folded into _syncUnitStats).
+    if (this._hasPolicy('eugenics')) civ.modifiers.unitAtkFlat = (civ.modifiers.unitAtkFlat ?? 0) + 2
+    // Poetry / Prediction Markets: :progress: / :gold: equal to the total :attack: of surviving units.
+    if (this._hasPolicy('poetry') || this._hasPolicy('prediction_markets')) {
+      let survAtk = 0
+      for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+        if (tile.unit && !tile.unit.damaged) survAtk += this._effectiveAtk(tile.unit)
+      }
+      if (this._hasPolicy('poetry')) civ.progress.value += survAtk
+      if (this._hasPolicy('prediction_markets')) civ.gold.value += survAtk
     }
     // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy:.
     if (this._hasPolicy('oral_tradition')) {

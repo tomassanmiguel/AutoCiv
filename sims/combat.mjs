@@ -296,5 +296,36 @@ console.log('TEST 13: Bayonets bonus — melee units +5 flat attack')
   g.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 14: Eugenics — end-of-era permanent +2 attack to all units')
+{
+  const g = new GameManager(9); g.setEra(10)
+  const b = g.data.tableau.visibleBounds(10)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol)
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g.data.civilization.policies[0] = { key: 'eugenics' }
+  g._syncUnitStats(true); const a0 = t.unit.atk
+  g._applyEraEndEffects() // +2 permanent
+  g._syncUnitStats(true); const a1 = t.unit.atk
+  console.log(`  Warrior atk ${a0} → ${a1} after one era with Eugenics`)
+  assert(a1 - a0 === 2, `Eugenics +2 atk/era (got +${a1 - a0})`)
+  g.stop()
+}
+
+console.log('TEST 15: Poetry — end-of-era :progress: = total attack of surviving units')
+{
+  const g = new GameManager(10); g.setEra(3)
+  const b = g.data.tableau.visibleBounds(3)
+  g.data.tableau.tileAt(b.minRow, b.minCol).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g.data.civilization.policies[0] = { key: 'poetry' }
+  g._syncUnitStats(true)
+  const p0 = g.data.civilization.progress.value
+  g._applyEraEndEffects()
+  const dp = g.data.civilization.progress.value - p0
+  console.log(`  Poetry progress +${dp} (surviving Warrior atk 5)`)
+  assert(dp === 5, `Poetry grants progress = surviving atk 5 (got +${dp})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

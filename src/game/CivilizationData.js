@@ -61,7 +61,7 @@ export class CivilizationData {
     //    (Clothes, and +1 each combat from Hereditary Rule).
     //  foodThresholdMult — multiplies every :food: threshold (Basket Weaving / The
     //    Plough each ×0.95, stacking).
-    this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1, progressThresholdMult: 1, productionThresholdMult: 1, bonusTicks: 0 }
+    this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, unitAtkFlat: 0, foodThresholdMult: 1, progressThresholdMult: 1, productionThresholdMult: 1, bonusTicks: 0 }
 
     // Applied bonus techs (slot-less ✦ modifiers) by key — their ongoing structured
     // effects (citizenOutput/popOutputFlat/legitPerEra/…) are read alongside active

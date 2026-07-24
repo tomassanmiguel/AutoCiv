@@ -64,8 +64,10 @@ console.log('3. Effect-wiring coverage (policies + bonuses)')
 const WIRED_FIELDS = ['outputPct', 'totalGoldPct', 'citizenOutput', 'popOutputFlat', 'specialistOutput',
   'thresholdMult', 'instantBuilds', 'unitDefBonus', 'buildingDefBonus', 'ticksPerEra', 'legitPerEra',
   'goldInterest', 'endEraGoldFromLegit', 'unitDeath', 'doctrine', 'unitAtkPct', 'wonderCostReduce', 'upgradeMult',
-  'terrainDouble']
-const WIRED_SPECIALS = new Set(['low_legit_atk', 'melee_flat_atk', 'gunboat_flat_atk', 'building_production_flat', 'enemy_atk_reduce'])
+  'terrainDouble', 'repairMult', 'mercCostMult', 'mercLevels', 'rangedReach']
+const WIRED_SPECIALS = new Set(['low_legit_atk', 'melee_flat_atk', 'gunboat_flat_atk', 'building_production_flat',
+  'enemy_atk_reduce', 'prohibition', 'citizen_progress_production_trade', 'pop_highest_plus', 'eugenics_atk',
+  'end_era_progress_from_atk', 'end_combat_gold_from_atk'])
 // v1-name policies wired by hardcoded _hasPolicy(key) checks rather than a structured field.
 const HARDCODED_WIRED = new Set(['slavery', 'weights_and_measures', 'ownership', 'specialization',
   'language', 'festivals', 'tribalism', 'caste_system', 'calendar', 'code_of_laws', 'diplomatic_marriage', 'midwivery'])

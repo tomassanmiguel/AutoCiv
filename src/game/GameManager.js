@@ -544,7 +544,7 @@ export class GameManager {
         // Flat attack from special effects: Bayonets (+5 :melee:), Gunboat Diplomacy (+15 :naval:).
         // Read via _activeEffectDefs so both policies and bonus-techs (civ.bonuses) count.
         const uTypes = UNIT_DEFS[occ.key].types
-        let flatAtk = 0
+        let flatAtk = civ.modifiers.unitAtkFlat ?? 0 // Eugenics: permanent +2/era to all units
         for (const def of this._activeEffectDefs()) {
           if (def.special === 'melee_flat_atk' && uTypes.includes('melee')) flatAtk += 5
           if (def.special === 'gunboat_flat_atk' && uTypes.includes('naval')) flatAtk += 15
@@ -1303,14 +1303,19 @@ export class GameManager {
     return out
   }
 
-  /** Mercenary hire cost (Hospitality Rites halves it). */
+  /** Mercenary hire cost: the best mercCostMult (United Nations ×0.4, Multiversal Army ×0.25). */
   mercCost() {
-    return Math.round(mercenaryCost(this.data.era) * (this._hasPolicy('hospitality_rites') ? 0.5 : 1))
+    let mult = this._hasPolicy('hospitality_rites') ? 0.5 : 1
+    for (const def of this._activeEffectDefs()) if (def.mercCostMult != null) mult = Math.min(mult, def.mercCostMult)
+    return Math.round(mercenaryCost(this.data.era) * mult)
   }
 
-  /** Level a mercenary spawns at (Diplomatic Marriage adds 3 levels). */
+  /** Level a mercenary spawns at: Diplomatic Marriage +3, plus mercLevels bonuses
+   *  (Embassies +4, Omniplomacy +6). */
   _mercLevel(baseLevel) {
-    return baseLevel + (this._hasPolicy('diplomatic_marriage') ? 3 : 0)
+    let lv = baseLevel + (this._hasPolicy('diplomatic_marriage') ? 3 : 0)
+    for (const def of this._activeEffectDefs()) if (def.mercLevels) lv += def.mercLevels
+    return lv
   }
 
   /** Surveying: lay a Road (underlap) on a random visible land tile that has none. */
