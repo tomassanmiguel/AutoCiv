@@ -421,6 +421,9 @@
 }
 .pop-convert:hover:not(.disabled) { filter: brightness(1.08); border-color: #7aa64f; }
 .pop-convert.disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.5); }
+/* v2 chain-upgrade button: a blue/brass accent to distinguish it from Convert. */
+.pop-upgrade { margin-top: 0.2rem; border-color: rgba(90, 120, 170, 0.75); background: rgba(45, 70, 100, 0.34); color: #1e3247; }
+.pop-upgrade:hover:not(.disabled) { border-color: #5a86c0; }
 .pop-convert-label { font-family: var(--font-display); }
 .pop-convert-cost {
   display: inline-flex;

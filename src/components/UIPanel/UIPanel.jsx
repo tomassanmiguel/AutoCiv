@@ -127,6 +127,7 @@ function populationSlots(civ, game, canConvert) {
     }
     // Specialists can be bought (era+1 citizens -> this type) for gold.
     let convert = null
+    let upgrade = null
     if (canConvert && POP_TYPES[key].specialist) {
       const info = game.specialistConvertInfo(key)
       convert = {
@@ -136,10 +137,13 @@ function populationSlots(civ, game, canConvert) {
         enoughCitizens: info.enoughCitizens,
         onClick: () => game.convertSpecialistWithGold(key),
       }
+      // v2: upgrade this whole pop type up its chain (Astrologer → Scholar) for gold.
+      const uinfo = game.specialistUpgradeInfo(key)
+      if (uinfo) upgrade = { nextName: uinfo.nextName, cost: uinfo.cost, enabled: uinfo.canAfford, onClick: () => game.upgradeSpecialistChain(key) }
     }
     const flashSeq = game.data.popFx && game.data.popFx.key === key ? game.data.popFx.seq : 0
     // Effective per-pop output includes policy modifiers (e.g. Language → Citizen +1 progress).
-    return { index, kind: 'pop', pop: POP_TYPES[key], outputs: game.popOutput(key), count: civ.pops[key] ?? 0, convert, flashSeq }
+    return { index, kind: 'pop', pop: POP_TYPES[key], outputs: game.popOutput(key), count: civ.pops[key] ?? 0, convert, upgrade, flashSeq }
   })
 }
 
@@ -312,7 +316,7 @@ function SlotList({ slots, candidates, onReplace, pickable, onPick, slamIndex = 
         const key = s.kind === 'pop' ? `${s.index}:${s.pop.key}` : `${s.index}:${s.name ?? s.kind}`
         const slam = s.index === slamIndex // only the just-filled slot plays the "slam"
         return s.kind === 'pop'
-          ? <PopCard key={key} pop={s.pop} outputs={s.outputs} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} flashSeq={s.flashSeq} slam={slam} />
+          ? <PopCard key={key} pop={s.pop} outputs={s.outputs} count={s.count} mark={mark} onActivate={onActivate} convert={s.convert} upgrade={s.upgrade} flashSeq={s.flashSeq} slam={slam} />
           : <SlotRow key={key} slot={s} mark={mark} onActivate={onActivate} slam={slam} />
       })}
     </div>
@@ -380,7 +384,7 @@ function SlotRow({ slot, mark, onActivate, slam = false }) {
  * clickable. Specialists carry a `convert` button (spend gold to turn era+1
  * citizens into this type); `flashSeq` replays a green flash when just converted.
  */
-function PopCard({ pop, outputs = pop.outputs, count, mark, onActivate, convert, flashSeq = 0, slam = false }) {
+function PopCard({ pop, outputs = pop.outputs, count, mark, onActivate, convert, upgrade, flashSeq = 0, slam = false }) {
   const body = (
     <>
       <div className="pop-top">
@@ -406,6 +410,18 @@ function PopCard({ pop, outputs = pop.outputs, count, mark, onActivate, convert,
         >
           <span className="pop-convert-label">Convert +{convert.count}</span>
           <span className="pop-convert-cost"><img src={ICON.gold} alt="" />{convert.cost}</span>
+        </button>
+      )}
+      {upgrade && (
+        <button
+          type="button"
+          className={`pop-convert pop-upgrade${upgrade.enabled ? '' : ' disabled'}`}
+          disabled={!upgrade.enabled}
+          onClick={(e) => { e.stopPropagation(); upgrade.onClick() }}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <span className="pop-convert-label">▲ {upgrade.nextName}</span>
+          <span className="pop-convert-cost"><img src={ICON.gold} alt="" />{upgrade.cost}</span>
         </button>
       )}
       {flashSeq ? <span key={flashSeq} className="pop-flash-overlay" /> : null}

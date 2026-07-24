@@ -1144,6 +1144,38 @@ export class GameManager {
     this._emit()
   }
 
+  /** Info for upgrading a specialist type UP ITS CHAIN (Astrologer → Scholar → …) for gold:
+   *  a one-way conversion of every pop of that type to the next tier. Null if not upgradeable
+   *  (no next tier, not an unlocked slot, or zero pops). Cost = round(15·1.18^E) per pop. */
+  specialistUpgradeInfo(popKey) {
+    const def = POP_TYPES[popKey]
+    if (!def?.next || !POP_TYPES[def.next]) return null
+    const civ = this.data.civilization
+    const slotIndex = civ.population.indexOf(popKey)
+    const count = civ.pops[popKey] ?? 0
+    if (slotIndex < 0 || count <= 0) return null
+    const perPop = Math.round(15 * Math.pow(1.18, this.data.era))
+    const cost = perPop * count
+    return { next: def.next, nextName: POP_TYPES[def.next].name, count, cost, canAfford: civ.gold.value >= cost, slotIndex }
+  }
+
+  /** Spend gold to upgrade a specialist type to its next chain tier (one-way; converts ALL
+   *  pops of that type and moves the roster slot to the new tier). */
+  upgradeSpecialistChain(popKey) {
+    if (!this._canEconomize()) return
+    const info = this.specialistUpgradeInfo(popKey)
+    if (!info || !info.canAfford) return
+    const civ = this.data.civilization
+    civ.gold.value -= info.cost
+    civ.pops[info.next] = (civ.pops[info.next] ?? 0) + info.count
+    delete civ.pops[popKey]
+    civ.population[info.slotIndex] = info.next // the roster slot now holds the upgraded tier
+    this._recomputeOutputs()
+    this._fxSeq = (this._fxSeq ?? 0) + 1
+    this.data.popFx = { key: info.next, seq: this._fxSeq }
+    this._emit()
+  }
+
   /** Unlocked roster units that could be hired as a mercenary onto this tile's terrain.
    *  Excludes utility units (e.g. Baker) — a mercenary is a disposable COMBAT unit. */
   _placeableUnitsAt(tile) {

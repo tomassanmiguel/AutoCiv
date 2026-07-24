@@ -166,5 +166,21 @@ console.log('TEST 13: terrain base-yield — a building also produces its terrai
   assert(dg === 7 && dp === 1, `Market 7 gold + Forest 1 progress (got gold ${dg}, progress ${dp})`)
 }
 
+console.log('TEST 14: specialist gold-upgrade chain — Astrologer → Scholar (one-way, all pops)')
+{
+  const g = new GameManager(1); g.setEra(5)
+  const civ = g.data.civilization
+  civ.population[1] = 'astrologer'; civ.pops.astrologer = 3
+  civ.gold.value = 100000
+  const info = g.specialistUpgradeInfo('astrologer')
+  assert(info && info.next === 'scholar', `Astrologer upgrades to Scholar (got ${info?.next})`)
+  g.upgradeSpecialistChain('astrologer')
+  assert((civ.pops.astrologer ?? 0) === 0 && civ.pops.scholar === 3, `all 3 Astrologers → Scholars (got scholar ${civ.pops.scholar})`)
+  assert(civ.population[1] === 'scholar', `roster slot now holds Scholar (got ${civ.population[1]})`)
+  const out = g.popOutput('scholar')
+  console.log(`  cost ${info.cost} gold; 3 Scholars now produce ${out.progress}/pop progress`)
+  assert(out.progress === 8, `Scholar produces 8 progress/pop (got ${out.progress})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
