@@ -25,21 +25,37 @@ per-item docs = stats/effects) are the spec.
   elites/bosses, per-enemy `chip`/behaviours); legitimacy uncapped + drop per-tick legit; flat terrain
   base-yields for buildings (plains→food, forest→progress, mountain→production, sea/space→gold).
 
-## Content phase (the bulk — start here next)
+## Content phase (in progress)
 
-Order that keeps each commit green + runnable:
-1. **Define v2 def shapes** (schema) then **wipe to a minimal seed** — reduce units.js/buildings.js/
-   pops.js/policies.js + advancements `IMPLEMENTED` to a tiny clean set (Warrior + Citizen + 1–2
-   buildings) with v2 fields (`range`, `chip`, terrain-yield, tower `attack`, wonder `N`, etc.); strip
-   the v1 ability hooks in GameManager/combat that reference wiped keys. One commit, build green.
-2. **Re-add content batch by batch** from `PROGRESSION.md` (era/name source of truth) + per-item docs
-   (`units.md`/`buildings.md`/`specialists.md`/`policies.md`/`wonders.md`) using SCALING.md formulas.
-   Wire the advancement→unlock registry (`IMPLEMENTED`). **DELEGATE** per-era or per-category data
-   generation in parallel (independent files) then integrate. Manhattan Project → new **Fallout** tile
-   (`Sprites/Map Tiles/Fallout.png`; copy to `public/sprites/tiles/fallout.png`).
-3. **New systems:** Wonder slot + one-in-flight gate + N-build completion; roster no-replace + version
-   cycling; specialist gold-upgrade chains; civilizations + difficulty + pre-game screen.
-4. **Verify** each PROGRESSION entry is implemented to spec; sim-test combat/economy.
+Evolving the def files in place (rather than a big-bang wipe) keeps every commit green; the end state
+is still the full v2 content set. Progress:
+
+- [x] **Units → v2** (`units.js`): full roster (~55) from `units.md` with the v2 schema (atk/def/range/
+  pursuit/cooldown/deploy/move/tech/ability). `unitStats` = +25% atk/level, flat def/range. Combat honors
+  range + Siege cooldown. UI shows Range. `baker`/`legionnaire`/`horseman` kept as v1 holdovers until the
+  registry reconciliation prunes them. Verified live (v2 units render as player + enemies).
+- [ ] **Buildings → v2** (`buildings.js`) — from `buildings.md`/SCALING §10: hp(low) + upgradeTarget;
+  per-tick `output` = round(3.5·1.18^E·lateBoost), gold base 5.25, end-of-era lump = 50×; **towers**
+  (atk/range); **walls** (blocker def); **traps**/**commands**/**spawners**; terrain base-yields
+  (plains→food, forest→progress, mountain→production, sea/space→gold). Two tabs (Military/Civilian).
+- [ ] **Economy pass** — legitimacy uncapped + no per-tick legit; drop empty-column unit-gold remnants;
+  wire terrain base-yields into `_buildingTickOutputs`; data-drive `_recomputeOutputs`.
+- [ ] **Advancement reconciliation** — rebuild the `POOL` + `IMPLEMENTED` registry in `advancements.js`
+  to match `PROGRESSION.md` (era/name source of truth). This is what makes the v2 content unlockable
+  in-game with the right tech names. Prune v1 holdovers. Do era-by-era; keep every draw resolvable.
+- [ ] **Pops/specialists → v2** (`pops.js`): Citizen 1/1/1; gold-upgrade chains (Astrologer→…),
+  prefixes (Evolved/Cyborg/Psychic), Priest/Soldier/Replicant. **Specialist gold-upgrade** mechanic.
+- [ ] **Policies → v2** (`policies.js`): additive % modifiers, flat adds, combat triggers per `policies.md`.
+- [ ] **Wonders** (`wonders.js` new): dedicated slot + one-in-flight gate + N=3-build completion;
+    Manhattan Project uses the **Fallout** tile (`public/sprites/tiles/fallout.png`, already staged).
+- [ ] **Enemies → v2**: hand-authored roster (atk=breach-legit, def=HP·1.25^E, elites/bosses, per-enemy
+  `chip`/behaviours) replacing the transitional draw-from-player-pool host.
+- [ ] **New systems:** roster no-replace + version cycling; civilizations + difficulty + pre-game screen.
+- [ ] **Combat abilities** (incremental): splash (Siege), pursuit (cavalry/aerial), push/freeze/poison,
+  legit-scaling atk (Warrior Monk/Zealot), line/multi hits — flags already on the unit defs.
+- [ ] **Verify** each PROGRESSION entry to spec; expand `sims/`.
+
+Tip: DELEGATE independent per-era/per-category data generation from the docs in parallel, then integrate.
 
 ## Notes
 - The `occupant` shim (Tile.js) is the bridge; remove it once placement + all render/econ paths use
