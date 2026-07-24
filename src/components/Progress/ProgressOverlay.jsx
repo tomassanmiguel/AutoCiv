@@ -5,6 +5,7 @@ import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingHp } from '../../game/data/buildings.js'
 import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES } from '../../game/data/pops.js'
+import { WONDER_DEFS } from '../../game/data/wonders.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import IconText from '../common/IconText.jsx'
 import './ProgressOverlay.css'
@@ -92,6 +93,18 @@ function UnlockDetail({ opt, era }) {
         <div className="pc-type"><IconText>:pop: Specialist</IconText></div>
         <div className="pc-rules"><IconText>{popRules(pop)}</IconText></div>
         {pop.note ? <div className="pc-rules"><IconText>{pop.note}</IconText></div> : null}
+      </>
+    )
+  }
+
+  if (u.kind === 'wonder') {
+    const def = WONDER_DEFS[u.key]
+    return (
+      <>
+        <div className="pc-unlocks">Unlocks {def.name}</div>
+        <div className="pc-type">⭐ Wonder</div>
+        <div className="pc-rules"><IconText>{def.effect}</IconText></div>
+        <div className="pc-rules"><IconText>Costs 3 :production: builds to complete.</IconText></div>
       </>
     )
   }
