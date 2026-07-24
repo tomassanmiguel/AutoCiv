@@ -100,7 +100,13 @@ is still the full v2 content set. Progress:
   REMAINING: the ~24 enemy `special` abilities (heal/pathing/spawn/ranged-chip/pierce/split/teleport/
   self-destruct/…), multi-tile bosses (Titan 2×2, Flagship 4×2, Azazoth row-span), scripted waves,
   difficulty selection.
-- [ ] **New systems:** roster no-replace + version cycling; civilizations + difficulty + pre-game screen.
+- [x] **Wonder system** — `civ.wonder`/`completedWonders`; unlock (kind wonder) → sacrifice N=3
+  production-builds (auto-advanced by `_maybeOpenSelection` intercept) → complete → ongoing effect;
+  one-in-flight gate; wonder card in ProgressOverlay. Effects wired: Stonehenge/Eiffel/Pyramids/Hagia
+  Sophia + **Manhattan Project** (combat-start nuke 2000 + permanent **Fallout** tile dealing 100 to
+  enemies entering). Other 15 wonders unlock+complete but their effects are stubs (incremental).
+  REMAINING (New systems): roster no-replace + version cycling; **civilizations + difficulty +
+  pre-game screen**; multi-tile wonders (Great Wall/Death Star/Hadron); a wonder-in-progress UI indicator.
 - [x] **Policy/bonus effect wiring** — economy: `_activeEffectDefs()` (policies + `civ.bonuses`),
   generalized `popOutput` (citizenOutput/specialistOutput/popOutputFlat + Evolved/Cyborg/Psychic
   prefixes w/ robot exemption), `%`-loop over both; end-of-era (legitPerEra/goldInterest/
