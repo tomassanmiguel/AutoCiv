@@ -103,6 +103,9 @@ export const POLICY_DEFS = {
   // is the display text (readable via policyEffect()). Not yet registry-wired.
   // ============================================================================
 
+  // --- Era 0: Stone ---
+  basket_weaving: { key: 'basket_weaving', name: 'Basket Weaving', era: 0, tech: 'Basket Weaving', slot: false, thresholdMult: { res: 'food', mult: 0.95 }, description: 'Reduce :food: threshold by 5%.' },
+
   // --- Era 1: Bronze ---
   mining: { key: 'mining', name: 'Mining', era: 1, tech: 'Mining', slot: false, thresholdMult: { res: 'production', mult: 0.95 }, description: 'Reduce :production: threshold by 5%.' },
   writing: { key: 'writing', name: 'Writing', era: 1, tech: 'Writing', slot: false, thresholdMult: { res: 'progress', mult: 0.95 }, description: 'Reduce :progress: threshold by 5%.' },

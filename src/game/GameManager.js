@@ -73,7 +73,7 @@ export class GameManager {
   get eraInfo() { return ERAS[this.data.era] }
 
   /** Development ticks this era (Calendar policy adds 5). */
-  ticksPerEra() { return TICKS_PER_ERA + (this._hasPolicy('calendar') ? 5 : 0) }
+  ticksPerEra() { return TICKS_PER_ERA + (this._hasPolicy('calendar') ? 5 : 0) + (this.data.civilization.modifiers.bonusTicks ?? 0) }
 
   // ---------------------------------------------------------------------------
   // Speed / ticking (development phase)
@@ -488,7 +488,7 @@ export class GameManager {
   _processThresholds(type, res) {
     const cfg = RESOURCE_CONFIG[type]
     const m = this.data.civilization.modifiers
-    const mult = type === 'food' ? m.foodThresholdMult : type === 'progress' ? m.progressThresholdMult : 1
+    const mult = type === 'food' ? m.foodThresholdMult : type === 'progress' ? m.progressThresholdMult : type === 'production' ? (m.productionThresholdMult ?? 1) : 1
     let guard = 0
     while (res.value >= res.threshold * mult && guard++ < 1000) {
       res.value -= res.threshold * mult // carry the overflow into the next level
@@ -698,21 +698,25 @@ export class GameManager {
 
   _markChosen(id) { this.data.civilization.chosenAdvancements.add(id) }
 
+  /** Apply a bonus/modifier's immediate/permanent effect. v2 bonuses are POLICY_DEFS
+   *  entries (slot:false) with structured fields; unhandled fields (combat modifiers,
+   *  special-tagged effects) simply no-op here and are wired in later passes. */
   _applyModifier(unlock) {
     const civ = this.data.civilization
-    if (unlock.key === 'clothes' || unlock.key === 'leatherwork') {
-      civ.modifiers.unitHpBonus += unlock.key === 'clothes' ? 5 : 8
-      this._syncUnitStats() // apply retroactively to deployed units (with Warband)
-    } else if (unlock.key === 'masonry' || unlock.key === 'concrete') {
-      civ.modifiers.buildingHpBonus += unlock.key === 'masonry' ? 10 : 12
-      this._syncUnitStats() // retroactively toughen deployed buildings
-    } else if (unlock.key === 'basket_weaving' || unlock.key === 'plough') {
-      civ.modifiers.foodThresholdMult *= 0.95 // −5% food thresholds (stacks)
-    } else if (unlock.key === 'alphabet') {
-      civ.modifiers.progressThresholdMult *= 0.95 // −5% progress thresholds (stacks)
-    } else if (unlock.key === 'mathematics') {
-      this.data.pendingProduction += 2 // "produce twice" — two immediate build opportunities
+    const def = POLICY_DEFS[unlock.key]
+    if (!def) return
+    if (def.thresholdMult) {
+      const { res, mult } = def.thresholdMult
+      if (res === 'food') civ.modifiers.foodThresholdMult *= mult
+      else if (res === 'progress') civ.modifiers.progressThresholdMult *= mult
+      else if (res === 'production') civ.modifiers.productionThresholdMult *= mult
     }
+    if (def.instantBuilds) this.data.pendingProduction += def.instantBuilds
+    if (def.unitDefBonus) { civ.modifiers.unitHpBonus += def.unitDefBonus; this._syncUnitStats() }
+    if (def.buildingDefBonus) { civ.modifiers.buildingHpBonus += def.buildingDefBonus; this._syncUnitStats() }
+    if (def.ticksPerEra) civ.modifiers.bonusTicks = (civ.modifiers.bonusTicks ?? 0) + def.ticksPerEra
+    // Not yet applied here (later passes): unitAtkPct, rangedReach, policySlots, wonder*,
+    // mercLevels, freeRerolls, terrainDouble, and every `special`-tagged effect.
   }
 
   // --- Slot resolution helpers ---

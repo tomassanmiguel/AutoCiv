@@ -56,7 +56,7 @@ export class CivilizationData {
     //    (Clothes, and +1 each combat from Hereditary Rule).
     //  foodThresholdMult — multiplies every :food: threshold (Basket Weaving / The
     //    Plough each ×0.95, stacking).
-    this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1, progressThresholdMult: 1 }
+    this.modifiers = { unitHpBonus: 0, buildingHpBonus: 0, foodThresholdMult: 1, progressThresholdMult: 1, productionThresholdMult: 1, bonusTicks: 0 }
 
     // Poet escalator: +2 :progress: per Poet added at each era end (reset to 0 when the
     // Poet specialist is first unlocked so a fresh Poet starts at its base +1).

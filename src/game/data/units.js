@@ -97,7 +97,7 @@ export const UNIT_DEFS = {
   // ---------------- v1 holdovers (kept until the registry reconciliation prunes them) ----------------
   baker:       { key: 'baker', name: 'Baker', era: 1, types: ['utility'], placement: 'land', move: ['land'], atk: 0, def: 10, range: 0, bakerDef: (level = 1) => level + 1, ability: 'When it acts, adjacent units permanently gain :defense:.', description: 'A :utility: support that toughens nearby units.' },
   legionnaire: { key: 'legionnaire', name: 'Legionnaire', era: 2, types: ['melee'], placement: 'land', move: ['land'], atk: 7, def: 3, range: 1, packAtk: 3, ability: 'Gains +3 :attack: per other Legionnaire.', description: 'A disciplined :melee: legionnaire.' },
-  horseman:    { key: 'horseman', name: 'Horseman', era: 2, types: ['cavalry'], placement: 'land', move: ['land'], tech: 'Horseback Riding', atk: 7, def: 3, range: 1, pursuit: 2, longSupport: true, ability: 'Supports any column on its landmass.', description: 'A swift :cavalry: rider.' },
+  horseman:    { key: 'horseman', name: 'Horseman', era: 2, types: ['cavalry'], placement: 'land', move: ['land'], atk: 7, def: 3, range: 1, pursuit: 2, longSupport: true, ability: 'Supports any column on its landmass.', description: 'A swift :cavalry: rider.' },
 
   // ---------------- Era -1 wildlife (enemy-only) ----------------
   bear: { key: 'bear', name: 'Bear', era: -1, types: ['melee'], placement: 'land', move: ['land'], atk: 8, def: 6, range: 1, description: 'A hulking :melee: beast.' },
