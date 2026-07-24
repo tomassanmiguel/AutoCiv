@@ -161,6 +161,8 @@ class CombatMixin {
       let range = def.range ?? DEFAULT_RANGE[unitRole(def)] ?? 1
       // Telegram / Tightbeams: +1 range to ranged-role units.
       if (unitRole(def) === 'ranged') for (const d of this._activeEffectDefs()) if (d.rangedReach) range += d.rangedReach
+      // Automobile: +1 attack (pursuit) range to ALL units.
+      if (this._activeEffectDefs().some((d) => d.special === 'pursuit_range')) range += 1
       return range
     }
     return BUILDING_DEFS[occ.key]?.range ?? 0

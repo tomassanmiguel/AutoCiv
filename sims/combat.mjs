@@ -469,5 +469,35 @@ console.log('TEST 24: Galactic Legion — producing a unit copies it to an adjac
   g.stop()
 }
 
+console.log('TEST 25: Automobile — all units gain +1 attack (pursuit) range')
+{
+  const g = new GameManager(23); g.setEra(11)
+  const occ = { kind: 'unit', key: 'warrior', level: 1 }
+  const r0 = g._pieceRange(occ)
+  g.data.civilization.bonuses.push('automobile')
+  const r1 = g._pieceRange(occ)
+  console.log(`  Warrior range ${r0} → ${r1} with Automobile`)
+  assert(r1 - r0 === 1, `Automobile +1 range (got +${r1 - r0})`)
+  g.stop()
+}
+
+console.log('TEST 26: Marine Construction / Gravboots — land buildings on water / asteroid')
+{
+  const g = new GameManager(24); g.setEra(14)
+  const water = g.data.tableau.visibleTiles(14).find((t) => !t.occupant && g.data.tableau.isUnlocked(t.row, t.col, 14))
+  water.terrain = 'ocean' // a sea tile
+  const rock = g.data.tableau.visibleTiles(14).find((t) => t !== water && !t.occupant && g.data.tableau.isUnlocked(t.row, t.col, 14))
+  rock.terrain = 'asteroid'
+  const totem = { kind: 'building', key: 'totem', level: 1 }
+  assert(!g._canPlaceHere(totem, water), 'land building blocked on water by default')
+  assert(!g._canPlaceHere(totem, rock), 'land building blocked on asteroid by default')
+  g.data.civilization.bonuses.push('marine_construction')
+  g.data.civilization.policies[0] = { key: 'gravboots' }
+  assert(g._canPlaceHere(totem, water), 'Marine Construction allows land building on water')
+  assert(g._canPlaceHere(totem, rock), 'Gravboots allows land building on asteroid')
+  console.log('  land building placeable on water (Marine Construction) + asteroid (Gravboots)')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

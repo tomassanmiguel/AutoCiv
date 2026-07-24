@@ -1087,7 +1087,7 @@ export class GameManager {
   _canPlaceHere(chosen, tile) {
     if (!this.data.tableau.isUnlocked(tile.row, tile.col, this.data.era)) return false
     const def = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
-    if (!canPlaceOn(def.placement, tile.terrain)) return false
+    if (!canPlaceOn(def.placement, tile.terrain) && !this._buildAllowedByPolicy(chosen, def, tile)) return false
     // Underlaid buildings coexist with the occupant but can't stack (one per slot).
     if (chosen.kind === 'building' && def.underlap) return !tile.underlap
     if (chosen.kind === 'building' && def.underlaidCity) return !tile.city
@@ -1098,6 +1098,16 @@ export class GameManager {
       return !tile.occupant || tile.occupant.kind === 'unit'
     }
     return true
+  }
+
+  /** Marine Construction / Gravboots: a plain LAND building (placement 'land', no other
+   *  terrain requirement) may also be built on water / Asteroid terrain. */
+  _buildAllowedByPolicy(chosen, def, tile) {
+    if (chosen.kind !== 'building' || def.placement !== 'land') return false
+    const place = tile.def?.place
+    if ((place === 'sea' || place === 'coast') && this._activeEffectDefs().some((d) => d.special === 'build_on_water')) return true
+    if (tile.terrain === 'asteroid' && this._activeEffectDefs().some((d) => d.special === 'build_on_asteroid')) return true
+    return false
   }
 
   /** Free extra-building slots remaining on a city tile (0 on a non-city tile). */
