@@ -2,7 +2,8 @@
 
 Per-pop, per-tick output. The **Citizen** is the auto-unlocked generalist; specialists are unlocked as
 advancements and you **spend gold to upgrade your pops up a chain** (Astrologer → Scholar → …), a
-one-way conversion of that pop type.
+one-way conversion of that pop type. Each item lists its **unlocking tech** (which differs from the pop
+name).
 
 **Per-pop output scales LINEARLY across tiers** (a flat step per tier, NOT era-scaled). The economy's
 exponential growth comes from **population COUNT** — later-era food thresholds yield more pops per
@@ -19,68 +20,73 @@ Non-gold chains step by **+4/tier**; gold steps by **+6/tier** (the same ×1.5 g
 
 ## Progress — Astrologer → … → Superintelligence
 
-| Tier | Era | progress/t |
-|---|--|--|
-| Astrologer | Bronze (1) | 4 |
-| Scholar | Late Medieval (5) | 8 |
-| Scientist | Steam (9) | 12 |
-| Mentat | Intelligence (15) | 16 |
-| Superintelligence | Evolution (22) | 20 |
+| Tier | Era | Tech | progress/t |
+|---|--|--|--|
+| Astrologer | Bronze (1) | Astrology | 4 |
+| Scholar | Late Medieval (5) | University | 8 |
+| Scientist | Revolution (8) | Scientific Method | 12 |
+| Mentat | Xenotic (21) | Neuropartitioning | 16 |
+| Superintelligence | Evolution (22) | Superintelligence | 20 |
 
 ## Production — Builder → … → Nanomancer
 
-| Tier | Era | production/t |
-|---|--|--|
-| Builder | Bronze (1) | 4 |
-| Blacksmith | Early Medieval (4) | 8 |
-| Inventor | Revolution (8) | 12 |
-| Engineer | Silicon (13) | 16 |
-| Nanomancer | Frontier (20) | 20 |
+| Tier | Era | Tech | production/t |
+|---|--|--|--|
+| Builder | Stone (0) | Tools | 4 |
+| Blacksmith | Early Medieval (4) | Blacksmithing | 8 |
+| Inventor | Steam (9) | Hydraulic Press | 12 |
+| Software Engineer | Atomic (12) | Computers | 16 |
+| Nanomancer | Xenotic (21) | Adamantium | 20 |
 
 ## Food — Farmer → … → Abioticist
 
-| Tier | Era | food/t |
-|---|--|--|
-| Farmer | Stone (0) | 4 |
-| Baker | Classical (3) | 8 |
-| Doctor | Steam (9) | 12 |
-| Geneticist | Intelligence (15) | 16 |
-| Abioticist | Evolution (22) | 20 |
+| Tier | Era | Tech | food/t |
+|---|--|--|--|
+| Farmer | Stone (0) | Agriculture | 4 |
+| Baker | Classical (3) | Baking | 8 |
+| Doctor | Steam (9) | Germ Theory | 12 |
+| Geneticist | Intelligence (15) | In-Vitro Editing | 16 |
+| Abioticist | Evolution (22) | Abiogenesis | 20 |
 
 ## Gold — Trader → … → Plutarch `[+6/tier]`
 
-| Tier | Era | gold/t |
-|---|--|--|
-| Trader | Iron (2) | 6 |
-| Merchant | Late Medieval (5) | 12 |
-| Banker | Steam (9) | 18 |
-| Statistician | Silicon (13) | 24 |
-| Investor | Exodus (18) | 30 |
-| Plutarch | Early Galactic (23) | 36 |
+| Tier | Era | Tech | gold/t |
+|---|--|--|--|
+| Trader | Iron (2) | Bartering | 6 |
+| Merchant | Exploration (7) | Economics | 12 |
+| Banker | Steam (9) | Income Tax | 18 |
+| Statistician | Exploration (7) | Statistics | 24 |
+| Investor | Silicon (13) | High Frequency Trading | 30 |
+| Plutarch | Early Galactic (23) | Universal Currency | 36 |
+
+> Note: Statistician (Exploration/7, Statistics) unlocks in the same era as Merchant but sits a tier
+> higher in the chain; the per-tier output ordering (Trader → Merchant → Banker → Statistician →
+> Investor → Plutarch) is preserved even though its unlock era precedes Banker's.
 
 ---
 
 ## Special populations
 
-| Pop | Era | Output | Growth | Notes |
-|---|--|---|---|---|
-| **Priest** | Classical (3) | — | normal | End of each era: **+1 legitimacy per Priest** — a rare legit income (fits no-per-tick-legit). |
-| **Soldier** | Late Medieval (5) | — | normal | Every friendly **unit gains +1 attack per Soldier** (global). Scales with Soldier count. |
-| **Replicant** | Intelligence (15) | 1 production + 1 gold + 1 progress /t (flat) | **count DOUBLES each era end** (not a Festivals-doubled "end-of-era effect"); does NOT grow via normal pop growth | Gain 1 on unlock. The doubling *count* is the mechanic; Replicant Rights policy boosts their progress. Its unlock era bounds the doubling — tune it. |
+| Pop | Era | Tech | Output | Growth | Notes |
+|---|--|--|---|---|---|
+| **Priest** | Classical (3) | Monotheism | — | normal | End of each era: **+1 legitimacy per Priest** — a rare legit income (fits no-per-tick-legit). |
+| **Soldier** | Classical (3) | Professional Soldiers | — | normal | Every friendly **unit gains +1 attack per Soldier** (global). Scales with Soldier count. |
+| **Replicant** | Intelligence (15) | Robotic Labor | 1 production + 1 gold + 1 progress /t (flat) | **count DOUBLES each era end** (not a Festivals-doubled "end-of-era effect"); does NOT grow via normal pop growth | Gain 1 on unlock. The doubling *count* is the mechanic; Replicant Rights policy boosts their progress. Its unlock era bounds the doubling — tune it. |
 
 ---
 
 ## Population prefixes (mutually exclusive civ-defining techs)
 
-Three exclusive techs each stamp a permanent prefix on **all non-robot** population, adding an output:
+Three exclusive techs each stamp a permanent prefix on **all non-robot** population, adding an output.
+All three unlock at **Evolution (22)**:
 
-| Tech | Prefix | Adds (per pop, per tick) |
-|---|---|---|
-| Forced Evolution | **Evolved** | **+food** |
-| Machine Synthesis | **Cyborg** | **+production** |
-| Psychic Awakening | **Psychic** | **+progress** |
+| Tech | Era | Prefix | Adds (per pop, per tick) |
+|---|--|---|---|
+| Forced Evolution | Evolution (22) | **Evolved** | **+4 food** |
+| Machine Synthesis | Evolution (22) | **Cyborg** | **+4 production** |
+| Psychic Awakening | Evolution (22) | **Psychic** | **+4 progress** |
 
-`[proposed]` magnitude: **+2** of the resource per non-robot pop (flat — scaling comes from pop count,
+`[proposed]` magnitude: **+4** of the resource per non-robot pop (flat — scaling comes from pop count,
 like the specialists). Tell me if you want it bigger/smaller or a %, and **which pops are "robot"**
 (exempt — likely just the Replicant).
 
