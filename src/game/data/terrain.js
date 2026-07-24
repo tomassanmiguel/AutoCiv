@@ -7,24 +7,32 @@ import { GRID, ROWS, COLS, COLUMN_SPECIALS } from './map.js'
 // `place` = placement class for deploying units/buildings: 'land' | 'coast' | 'sea' | 'space'.
 // `defBonus` (optional) = flat :defense: a unit OR building stationed here gains during
 //   combat (Forest +5, Mountain +10). `note` = the tooltip line describing that effect.
+// `econYield` (v2) = a FLAT per-tick resource a building on this terrain also produces
+//   (Plains→food, Forest→progress, Mountain→production, sea/space→gold; SCALING §5). Flat,
+//   not era-scaled — small for early terrains, large for the rare late ones (Exosea/Planet).
 export const TERRAIN = {
-  plains:     { name: 'Plains',     sprite: '/sprites/tiles/plains.png',     color: '#5a7d3a', place: 'land' },
-  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land', defBonus: 5, note: 'A unit or building here gains +5 :defense: during combat.' },
-  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land', defBonus: 10, note: 'A unit or building here gains +10 :defense: during combat.' },
-  coast:      { name: 'Coast',      sprite: '/sprites/tiles/coast.png',      color: '#3a6b7d', place: 'coast' },
-  ocean:      { name: 'Ocean',      sprite: '/sprites/tiles/ocean.png',      color: '#1f3a6b', place: 'sea' },
-  island:     { name: 'Island',     sprite: '/sprites/tiles/island.png',     color: '#3a6b5a', place: 'land' },
-  space:      { name: 'Space',      sprite: '/sprites/tiles/space.png',      color: '#0a0a1a', place: 'space' },
-  deep_space: { name: 'Deep Space', sprite: '/sprites/tiles/deep-space.png', color: '#05050f', place: 'space' },
-  asteroid:   { name: 'Asteroid',   sprite: '/sprites/tiles/asteroid.png',   color: '#4a4a55', place: 'space' },
-  mars:       { name: 'Mars',       sprite: '/sprites/tiles/mars.png',       color: '#8a4a30', place: 'land' },
-  moon:       { name: 'Moon',       sprite: '/sprites/tiles/moon.png',       color: '#8a8a92', place: 'land' },
-  exohills:   { name: 'Exo Hills',  sprite: '/sprites/tiles/exohills.png',   color: '#6b4a7d', place: 'land' },
-  exoplains:  { name: 'Exo Plains', sprite: '/sprites/tiles/exoplains.png',  color: '#7d5a8a', place: 'land' },
-  exosea:     { name: 'Exo Sea',    sprite: '/sprites/tiles/exosea.png',     color: '#3a4a8a', place: 'sea' },
-  planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a', place: 'space' },
-  star:       { name: 'Star',       sprite: '/sprites/tiles/star.png',       color: '#d8b24b', place: 'space' },
-  singularity:{ name: 'Singularity',sprite: '/sprites/tiles/singularity.png',color: '#1a0a2a', place: 'space' },
+  plains:     { name: 'Plains',     sprite: '/sprites/tiles/plains.png',     color: '#5a7d3a', place: 'land', econYield: { res: 'food', amount: 1 } },
+  forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land', defBonus: 5, note: 'A unit or building here gains +5 :defense: during combat.', econYield: { res: 'progress', amount: 1 } },
+  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land', defBonus: 10, note: 'A unit or building here gains +10 :defense: during combat.', econYield: { res: 'production', amount: 1 } },
+  coast:      { name: 'Coast',      sprite: '/sprites/tiles/coast.png',      color: '#3a6b7d', place: 'coast', econYield: { res: 'gold', amount: 1 } },
+  ocean:      { name: 'Ocean',      sprite: '/sprites/tiles/ocean.png',      color: '#1f3a6b', place: 'sea', econYield: { res: 'gold', amount: 2 } },
+  island:     { name: 'Island',     sprite: '/sprites/tiles/island.png',     color: '#3a6b5a', place: 'land', econYield: { res: 'food', amount: 3 } },
+  space:      { name: 'Space',      sprite: '/sprites/tiles/space.png',      color: '#0a0a1a', place: 'space', econYield: { res: 'gold', amount: 3 } },
+  deep_space: { name: 'Deep Space', sprite: '/sprites/tiles/deep-space.png', color: '#05050f', place: 'space', econYield: { res: 'gold', amount: 5 } },
+  asteroid:   { name: 'Asteroid',   sprite: '/sprites/tiles/asteroid.png',   color: '#4a4a55', place: 'space', econYield: { res: 'gold', amount: 8 } },
+  mars:       { name: 'Mars',       sprite: '/sprites/tiles/mars.png',       color: '#8a4a30', place: 'land', econYield: { res: 'production', amount: 10 } },
+  moon:       { name: 'Moon',       sprite: '/sprites/tiles/moon.png',       color: '#8a8a92', place: 'land', econYield: { res: 'gold', amount: 8 } },
+  exohills:   { name: 'Exo Hills',  sprite: '/sprites/tiles/exohills.png',   color: '#6b4a7d', place: 'land', econYield: { res: 'production', amount: 25 } },
+  exoplains:  { name: 'Exo Plains', sprite: '/sprites/tiles/exoplains.png',  color: '#7d5a8a', place: 'land', econYield: { res: 'food', amount: 25 } },
+  exosea:     { name: 'Exo Sea',    sprite: '/sprites/tiles/exosea.png',     color: '#3a4a8a', place: 'sea', econYield: { res: 'gold', amount: 100 } },
+  planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a', place: 'space', econYield: { res: 'food', amount: 500 } },
+  star:       { name: 'Star',       sprite: '/sprites/tiles/star.png',       color: '#d8b24b', place: 'space', econYield: { res: 'production', amount: 200 } },
+  singularity:{ name: 'Singularity',sprite: '/sprites/tiles/singularity.png',color: '#1a0a2a', place: 'space', econYield: { res: 'progress', amount: 200 } },
+}
+
+/** Flat per-tick economic yield a building on this terrain also produces (v2), or null. */
+export function terrainEconYield(terrainKey) {
+  return TERRAIN[terrainKey]?.econYield ?? null
 }
 
 /** Whether a unit/building with the given placement rule may deploy on a terrain. */

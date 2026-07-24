@@ -151,5 +151,20 @@ console.log('TEST 12: Temple — +20 legit on build, end-era gold = 3× legit, N
   assert(goldDelta === 300, `Temple end-era gold = 3×100 = 300 (got ${goldDelta})`)
 }
 
+console.log('TEST 13: terrain base-yield — a building also produces its terrain resource')
+{
+  const g = new GameManager(4); g.setEra(2)
+  const tile = g.data.tableau.visibleTiles(2).find((t) => !t.building && !t.unit)
+  tile.terrain = 'forest' // Forest → +1 progress
+  const p0 = g.data.civilization.progress.output
+  const gold0 = g.data.civilization.gold.output
+  tile.building = { kind: 'building', key: 'market', level: 1, hp: 10, maxHp: 10, damaged: false }
+  g._recomputeOutputs()
+  const dp = g.data.civilization.progress.output - p0
+  const dg = g.data.civilization.gold.output - gold0
+  console.log(`  Market on Forest: +${dg} gold (Market 7) + ${dp} progress (Forest terrain)`)
+  assert(dg === 7 && dp === 1, `Market 7 gold + Forest 1 progress (got gold ${dg}, progress ${dp})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

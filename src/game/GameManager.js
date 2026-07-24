@@ -7,7 +7,7 @@ import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
-import { canPlaceOn, terrainDefBonus } from './data/terrain.js'
+import { canPlaceOn, terrainDefBonus, terrainEconYield } from './data/terrain.js'
 import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost } from './data/costs.js'
 import { installCombat, SPEED_TPS, COMBAT_INTERVAL_MS } from './manager/combat.js'
 
@@ -275,6 +275,11 @@ export class GameManager {
       else if (occ.key === 'glassworks') out = { res: 'production', amount: 10 }
       occ.tickOutput = out
       if (out) totals[out.res] += out.amount
+      // v2: every building ALSO gains a flat per-tick base yield from its terrain
+      // (Plains→food, Forest→progress, Mountain→production, sea/space→gold).
+      const ty = terrainEconYield(tile.terrain)
+      if (ty && totals[ty.res] != null) { totals[ty.res] += ty.amount; occ.terrainYield = ty }
+      else occ.terrainYield = null
     }
     return totals
   }
