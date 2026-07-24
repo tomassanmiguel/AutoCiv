@@ -9,32 +9,40 @@ per-item docs = stats/effects) are the spec.
 
 - [x] **1. Tile model** — `Tile` holds `unit` + `building` + `underlay` simultaneously; transitional
   `occupant`/`underlap`/`city` getter/setter shim keeps v1 code running. *(build green)*
-  - [ ] 1b. Migrate placement (`_canPlaceHere`/`placementState`/`_createInstance`) to route units →
-    `tile.unit`, buildings → `tile.building` (allow both on a tile); render both.
-- [ ] **2. Turn-based combat** — replace `combat.js`'s 50ms time-loop with a discrete turn engine:
-  - Enemies live on the shared grid at `(col, y)` and **march down one tile/turn** (y→bottom); off the
-    bottom = **breach** → `_damageLegitimacy(enemy.atk)` then remove.
-  - Turn order bottom-to-top, left-to-right. Each turn: player pieces act, then enemies act, then check end.
-  - Player piece acts: attack the **lowest-HP enemy within Manhattan-diamond `range`** (deal `atk` to its HP).
-  - Enemy acts: if a blocker (unit before building) sits in the tile below, deal the **1/turn chip**
-    (per-enemy overrides later); else march down one tile.
-  - End when **all enemies dead OR all breached**. Reuse the `_pushEvent`/`combatEvents` juice pipeline
-    and the FLIP slide (Tableau) for marching.
-- [ ] **3. Enemy model** — rewrite `enemies.js`: hand-authored `ENEMY_DEFS` (atk = breach-legit, def =
-  HP), `def·1.25^E` HP scaling, HP-budget wave gen, 5% elites (×2 stats), pathing rules, bosses.
-- [ ] **4. Economy** — legitimacy **uncapped + no per-tick production** (gains only from building
-  completion / end-of-era / policies); flat terrain base-yields into `_buildingTickOutputs`; drop the
-  empty-column unit-gold.
+- [x] **2. Turn-based combat** — `combat.js` is now a discrete turn engine: player towers strike the
+  lowest-HP enemy in Manhattan-diamond range; enemies march down one tile/turn, chip a blocker in the
+  path (unit→building) for a flat 1, or breach off the bottom (−atk legitimacy). Ends when all
+  enemies slain/breached (500-turn cap). Node-sim tested (`scratchpad/sim_combat.mjs`, 11/11).
+- [x] **2b. Enemy rendering** — enemies render at `(row,col)` on the unified grid (`i = enemyRows +
+  maxRow − row`), preview in the battlefield backdrop, march down with the FLIP slide. TickCounter
+  shows enemies-remaining.
+- [ ] **1b. Placement dual-slot** — the `occupant` setter shim ALREADY routes unit→`tile.unit`,
+  building→`tile.building`, so data coexistence works. Remaining: `_canPlaceHere`/`placementState`
+  should treat unit and building slots independently (a building isn't a "replace" over a unit and
+  vice-versa). **Best done AFTER the content wipe** simplifies the city/extras/underlap paths.
+- [ ] **3+4. Enemy content + economy** — folded into the content phase below (both entangle with v1
+  content that's about to be wiped): hand-authored enemy roster (atk=breach-legit, def=HP·1.25^E,
+  elites/bosses, per-enemy `chip`/behaviours); legitimacy uncapped + drop per-tick legit; flat terrain
+  base-yields for buildings (plains→food, forest→progress, mountain→production, sea/space→gold).
 
-## Content (after mechanics)
+## Content phase (the bulk — start here next)
 
-- [ ] Wipe v1 `game/data/` content (units/buildings/policies/advancements IMPLEMENTED/etc.).
-- [ ] Re-add v2 content batch by batch from the docs (data files: units.js, buildings.js, specialists.js,
-  policies.js, wonders.js, enemies.js, terrain yields, and the advancement→unlock registry from
-  `PROGRESSION.md`).
-- [ ] Roster: no-replace + version cycling + specialist gold-upgrade; pre-game civ + difficulty screen.
+Order that keeps each commit green + runnable:
+1. **Define v2 def shapes** (schema) then **wipe to a minimal seed** — reduce units.js/buildings.js/
+   pops.js/policies.js + advancements `IMPLEMENTED` to a tiny clean set (Warrior + Citizen + 1–2
+   buildings) with v2 fields (`range`, `chip`, terrain-yield, tower `attack`, wonder `N`, etc.); strip
+   the v1 ability hooks in GameManager/combat that reference wiped keys. One commit, build green.
+2. **Re-add content batch by batch** from `PROGRESSION.md` (era/name source of truth) + per-item docs
+   (`units.md`/`buildings.md`/`specialists.md`/`policies.md`/`wonders.md`) using SCALING.md formulas.
+   Wire the advancement→unlock registry (`IMPLEMENTED`). **DELEGATE** per-era or per-category data
+   generation in parallel (independent files) then integrate. Manhattan Project → new **Fallout** tile
+   (`Sprites/Map Tiles/Fallout.png`; copy to `public/sprites/tiles/fallout.png`).
+3. **New systems:** Wonder slot + one-in-flight gate + N-build completion; roster no-replace + version
+   cycling; specialist gold-upgrade chains; civilizations + difficulty + pre-game screen.
+4. **Verify** each PROGRESSION entry is implemented to spec; sim-test combat/economy.
 
 ## Notes
-- The `occupant` shim (Tile.js) is the bridge; remove it once combat + placement + rendering all use
+- The `occupant` shim (Tile.js) is the bridge; remove it once placement + all render/econ paths use
   `unit`/`building` directly.
-- Combat rewrite is the big one — do the engine as a model first (node-sim tested) before wiring render.
+- Validate model logic with headless node `scratchpad/sim_*.mjs` before/along UI.
+- Stacked % modifiers are ADDITIVE per resource (sum then ×(1+total)), never chained.
