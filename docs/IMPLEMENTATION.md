@@ -43,8 +43,15 @@ is still the full v2 content set. Progress:
   proportional/growth/convert effects (tagged by `special`); exotic-terrain placement classes
   (mountain/space/asteroid/exoplanet/star/singularity/deepspace/moon) + new slot categories
   (trap/command/spawner/wall/support) in `slots.js`.
-- [ ] **Economy pass** — legitimacy uncapped + no per-tick legit; drop empty-column unit-gold remnants;
-  terrain base-yields; legit-on-complete (Shrine +10 …) + legit-leverage (Monastery/Elysium/Temple).
+- [~] **Economy pass** — DONE: legitimacy uncapped + **no per-tick legit** (Temple retuned to
+  legitOnComplete +20 + end-era gold 3×legit); legit-on-complete (Shrine/Monastery/Cathedral/Elysium) +
+  legit-leverage (Monastery/Elysium per-tick); empty-column unit-gold already gone with the combat
+  rewrite. REMAINING: flat **terrain base-yields** for buildings (plains→food/forest→progress/mountain→
+  production/sea·space→gold) into `_buildingTickOutputs`.
+- [~] **Slots** — walls now buildable via the existing **Defense** slot (Mud Brick→Stone→Castle→Shield
+  Matrix). REMAINING: Military/Civilian tab split in UIPanel to slot trap/command/spawner/support
+  (currently filler); their placement classes (mountain/space/asteroid/…) too.
+- [x] **Unit-death triggers** — Burial Rites→progress, Nationalism→gold, Cosmic Myth→+1 legit (`_onUnitDeath`).
 - [ ] **Advancement reconciliation** (NEXT — the big unblock) — rebuild `POOL` + `IMPLEMENTED` in
   `advancements.js` to match `PROGRESSION.md`. Now easy: every UNIT_DEFS/BUILDING_DEFS/POP_TYPES/
   POLICY_DEFS entry carries `tech`, so build a `tech → { kind, key }` map by scanning the four
