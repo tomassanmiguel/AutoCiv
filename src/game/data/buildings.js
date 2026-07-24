@@ -173,7 +173,8 @@ export const BUILDING_DEFS = {
 }
 
 /** Effective building HP at a given upgrade level, plus a flat civ-wide bonus
- *  (Hereditary Rule / Masonry). Underlapping buildings (Road) have no HP. */
+ *  (Hereditary Rule / Masonry). Underlapping buildings (Road) have no HP. Walls grow
+ *  HP via upHp (upgradeTarget 'def'); output buildings keep a flat HP. */
 export function buildingHp(def, level = 1, hpBonus = 0) {
   return def.hp + Math.max(0, level - 1) * (def.upHp ?? 0) + hpBonus
 }
@@ -183,7 +184,23 @@ export function buildingEffect(def, level = 1, eraIndex = 0) {
   return typeof def.effect === 'function' ? def.effect(level, eraIndex) : def.effect
 }
 
-/** Current economic outputs [{ res, amount, per }] for a building, or [] if none. */
+/** v2 per-tick output amount for a building with a generic `output` (when: 'tick'),
+ *  scaled +25% per upgrade level (upgradeTarget 'output'); 0 otherwise. Terrain base
+ *  yields are added separately by the economy engine. */
+export function buildingTickAmount(def, level = 1) {
+  if (!def.output || def.output.when !== 'tick') return 0
+  const mult = def.upgradeTarget === 'output' ? 1 + 0.25 * Math.max(0, level - 1) : 1
+  return Math.round(def.output.amount * mult)
+}
+
+/** Current economic outputs [{ res, amount, per }] for a building's card display.
+ *  Prefers a v1-style `outputs(level)` function; else derives from a v2 `output` whose
+ *  timing is 'eraEnd' (per-tick outputs are shown live via occ.tickOutput instead). */
 export function buildingOutputs(def, level = 1, eraIndex = 0) {
-  return typeof def.outputs === 'function' ? def.outputs(level, eraIndex) : []
+  if (typeof def.outputs === 'function') return def.outputs(level, eraIndex)
+  if (def.output && def.output.when === 'eraEnd') {
+    const mult = def.upgradeTarget === 'output' ? 1 + 0.25 * Math.max(0, level - 1) : 1
+    return [{ res: def.output.res, amount: Math.round(def.output.amount * mult), per: 'era' }]
+  }
+  return []
 }

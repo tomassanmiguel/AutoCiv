@@ -4,7 +4,7 @@ import { RESOURCE_CONFIG, TICKS_PER_ERA, nextThreshold, rubberBand } from './dat
 import { POP_TYPES, isSpecialist } from './data/pops.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
-import { BUILDING_DEFS, buildingHp, buildingOutputs } from './data/buildings.js'
+import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
 import { canPlaceOn, terrainDefBonus } from './data/terrain.js'
 import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost } from './data/costs.js'
@@ -168,8 +168,9 @@ export class GameManager {
     if (this._hasPolicy('ownership')) totals.gold += 2 * this._deployedBuildingCount()
     // Breweries: +1 gold per tick per unit within each brewery's range.
     totals.gold += this._breweryGold()
-    // Per-tick building outputs (Ranch/Farm food, Kiln production, Mine/Mint gold, Temple legitimacy).
+    // Per-tick building outputs (v2 generic def.output + v1 Ranch/Kiln/Mine/… specials).
     const bt = this._buildingTickOutputs()
+    totals.progress += bt.progress
     totals.food += bt.food
     totals.production += bt.production
     totals.gold += bt.gold
@@ -224,12 +225,17 @@ export class GameManager {
    *  on-tile card can display it. */
   _buildingTickOutputs() {
     const civ = this.data.civilization
-    const totals = { food: 0, production: 0, gold: 0, legitimacy: 0 }
+    const totals = { progress: 0, food: 0, production: 0, gold: 0, legitimacy: 0 }
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
       const def = BUILDING_DEFS[occ.key]
       let out = null
-      if (occ.key === 'ranch') out = { res: 'food', amount: 5 + (occ.ranchBonus ?? 0) }
+      // v2 data-driven per-tick output (generic). v1 buildings without def.output fall
+      // through to the key-specific cases below (Ranch growth, Kiln adjacency, etc.).
+      if (def.output && def.output.when === 'tick' && totals[def.output.res] != null) {
+        out = { res: def.output.res, amount: buildingTickAmount(def, occ.level) }
+      }
+      else if (occ.key === 'ranch') out = { res: 'food', amount: 5 + (occ.ranchBonus ?? 0) }
       else if (occ.key === 'kiln') out = { res: 'production', amount: 2 + def.perAdjacent(occ.level) * this._adjacentBuildingCount(tile.row, tile.col) }
       else if (occ.key === 'mine') out = { res: 'gold', amount: def.goldPerTick(occ.level) * (tile.terrain === 'mountain' ? 2 : 1) }
       else if (occ.key === 'mint') out = { res: 'gold', amount: def.legitPct(occ.level) * civ.legitimacy.value }
