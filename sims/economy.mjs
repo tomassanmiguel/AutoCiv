@@ -351,5 +351,37 @@ console.log('TEST 27: Alphabet — building a progress building upgrades it once
   g.stop()
 }
 
+console.log('TEST 28: Entropic Reversal — a gold upgrade advances a unit by 2 levels')
+{
+  const g = new GameManager(25); g.setEra(6)
+  const b = g.data.tableau.visibleBounds(6)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol); t.terrain = 'plains'
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g.data.civilization.gold.value = 100000
+  g.data.civilization.policies[0] = { key: 'entropic_reversal' }
+  g.upgradeOccupant(t.row, t.col)
+  console.log(`  Warrior level after one upgrade: ${t.unit.level} (expect 3)`)
+  assert(t.unit.level === 3, `Entropic Reversal +2 levels per upgrade (got ${t.unit.level})`)
+  g.stop()
+}
+
+console.log('TEST 29: Military / Architectural Tradition — overbuilding keeps upgrade levels')
+{
+  const g = new GameManager(26); g.setEra(6)
+  const b = g.data.tableau.visibleBounds(6)
+  const t1 = g.data.tableau.tileAt(b.minRow, b.minCol); t1.terrain = 'plains'
+  const t2 = g.data.tableau.tileAt(b.minRow, b.minCol + 1); t2.terrain = 'plains'
+  t1.unit = { kind: 'unit', key: 'warrior', level: 4, hp: 10, maxHp: 10, damaged: false }
+  t2.building = { kind: 'building', key: 'totem', level: 3, hp: 20, maxHp: 20, damaged: false }
+  g.data.civilization.policies[0] = { key: 'military_tradition' }
+  g.data.civilization.policies[1] = { key: 'architectural_tradition' }
+  g._createInstance({ kind: 'unit', key: 'warrior', level: 1 }, t1)
+  g._createInstance({ kind: 'building', key: 'totem', level: 1 }, t2)
+  console.log(`  overbuilt unit lvl ${t1.unit.level} (expect 4), building lvl ${t2.building.level} (expect 3)`)
+  assert(t1.unit.level === 4, `Military Tradition keeps unit level 4 (got ${t1.unit.level})`)
+  assert(t2.building.level === 3, `Architectural Tradition keeps building level 3 (got ${t2.building.level})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

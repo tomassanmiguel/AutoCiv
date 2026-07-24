@@ -1176,6 +1176,20 @@ export class GameManager {
       this._processThresholds('progress', civ.progress) // may queue advancement choices
     }
     const inst = this._makeInstance(chosen)
+    // Military / Architectural Tradition: overbuilding a unit/building keeps the replaced
+    // piece's (higher) upgrade level — the invested upgrades carry over to the new piece.
+    if (prev && prev.kind === chosen.kind && (prev.level ?? 1) > inst.level) {
+      const keep = chosen.kind === 'unit'
+        ? this._activeEffectDefs().some((d) => d.special === 'keep_upgrade_levels_unit')
+        : this._activeEffectDefs().some((d) => d.special === 'keep_upgrade_levels_building')
+      if (keep) {
+        inst.level = prev.level
+        const nm = chosen.kind === 'unit'
+          ? unitStats(UNIT_DEFS[chosen.key], inst.level, civ.modifiers.unitHpBonus).def
+          : Math.max(1, buildingHp(BUILDING_DEFS[chosen.key], inst.level, civ.modifiers.buildingHpBonus))
+        inst.hp = nm; inst.maxHp = nm
+      }
+    }
     if (toExtra) (tile.extras ??= []).push(inst)
     else tile.occupant = inst
     // Alphabet: building a :progress: building upgrades it once for free (on creation).
@@ -1309,7 +1323,9 @@ export class GameManager {
     const civ = this.data.civilization
     if (civ.gold.value < cost) return
     civ.gold.value -= cost
-    occ.level += 1
+    // Entropic Reversal: each gold upgrade advances a unit by 2 levels instead of 1.
+    const step = (occ.kind === 'unit' && this._activeEffectDefs().some((d) => d.special === 'double_upgrade_levels_unit')) ? 2 : 1
+    occ.level += step
     const oldMax = occ.maxHp
     const newMax = occ.kind === 'unit'
       ? unitStats(UNIT_DEFS[occ.key], occ.level, civ.modifiers.unitHpBonus).def
