@@ -260,22 +260,22 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Ballistics** | 🗡 | Missile Launcher — Siege; bigger AoE |
 | **Fission** | ⭐ | Hadron Collider — +2200 progress each era (scaling) |
 
-### E13 · Silicon — 7
+### E13 · Silicon — 6
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **3d Printing** | ✦ | 3d Printing — reduce production threshold -8% |
-| **Cell Phones** | ✦ | Microprocessors — reduce progress threshold -10% |
-| **Microprocessors** | 🏛 | 3D Printer — 39 production/t |
+| **Microprocessors** | ✦ | Microprocessors — reduce progress threshold -10% |
 | **The Cloud** | 🏛 | Data Center — 75 gold/t |
 | **High Frequency Trading** | 👤 | Investor — +30 :gold:/tick pop |
 | **Stealth** | 🗡 | Raptor — Aerial; atk 35 range 2 |
 | **Space Station** | ⭐ | Intl. Space Station — space unit creation copies it |
 
-### E14 · Lunar — 5
+### E14 · Lunar — 6
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **3d printing** | 🏛 | 3D Printer — 39 production/t |
 | **Discombobulator** | 🏛 | Discombobulator — Trap: enemies skip next turn |
 | **Lunar Defense Stratagem** | 📜 | Lunar Defense Stratagem — Moon units +100% atk |
 | **Drone Warfare** | 🗡 | Drone — Cavalry; high range, fragile |
@@ -450,4 +450,4 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Elder Awareness** | 📜 | Elder Awareness — +50% damage vs Azazoth |
 
 
-## Density: 0:16 · 1:18 · 2:15 · 3:17 · 4:19 · 5:17 · 6:16 · 7:17 · 8:9 · 9:13 · 10:12 · 11:13 · 12:9 · 13:7 · 14:5 · 15:8 · 16:9 · 17:8 · 18:7 · 19:8 · 20:7 · 21:9 · 22:11 · 23:9 · 24:13 · 25:7 · 26:5 · 27:1
+## Density: 0:16 · 1:18 · 2:15 · 3:17 · 4:19 · 5:17 · 6:16 · 7:17 · 8:9 · 9:13 · 10:12 · 11:13 · 12:9 · 13:6 · 14:6 · 15:8 · 16:9 · 17:8 · 18:7 · 19:8 · 20:7 · 21:9 · 22:11 · 23:9 · 24:13 · 25:7 · 26:5 · 27:1
