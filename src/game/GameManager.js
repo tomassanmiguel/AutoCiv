@@ -214,6 +214,8 @@ export class GameManager {
     totals.gold += this._breweryGold()
     // Merchant Navy: +2 gold per tick per deployed naval unit.
     totals.gold += this._navalUnitGold()
+    // Columbian Exchange: +6 gold per tick per New-World unit or building.
+    totals.gold += this._newWorldGold()
     // Per-tick building outputs (v2 generic def.output + v1 Ranch/Kiln/Mine/… specials).
     const bt = this._buildingTickOutputs()
     totals.progress += bt.progress
@@ -280,6 +282,18 @@ export class GameManager {
     for (const tile of this.data.tableau.tiles.values()) {
       const u = tile.unit
       if (u && !u.damaged && UNIT_DEFS[u.key]?.types.includes('naval')) g += 2
+    }
+    return g
+  }
+
+  /** Columbian Exchange: +6 gold/tick per (non-destroyed) unit or building on a New-World tile. */
+  _newWorldGold() {
+    if (!this._activeEffectDefs().some((d) => d.special === 'new_world_gold')) return 0
+    let g = 0
+    for (const tile of this.data.tableau.tiles.values()) {
+      if (tile.label !== 'New World') continue
+      if (tile.unit && !tile.unit.damaged) g += 6
+      if (tile.building && !tile.building.damaged) g += 6
     }
     return g
   }
@@ -706,8 +720,11 @@ export class GameManager {
     const impl = avail.filter((a) => isImplemented(a.name))
     const unimpl = avail.filter((a) => !isImplemented(a.name))
     const weight = (a) => Math.pow(2, a.eraIndex)
-    const picks = weightedSample(impl, weight, 3)
-    if (picks.length < 3) picks.push(...weightedSample(unimpl, weight, 3 - picks.length))
+    // Game Theory: +1 advancement option per progress pick.
+    let count = 3
+    for (const def of this._activeEffectDefs()) if (def.special === 'extra_advancement_option') count += 1
+    const picks = weightedSample(impl, weight, count)
+    if (picks.length < count) picks.push(...weightedSample(unimpl, weight, count - picks.length))
     return picks.map((a) => this._makeOption(a))
   }
 

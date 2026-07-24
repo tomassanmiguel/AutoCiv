@@ -36,7 +36,10 @@ class CombatMixin {
     const era = this.data.era
     const t = this.data.tableau
     const bounds = t.visibleBounds(era)
-    const host = generateHost(era, bounds, t.enemyRowCount(era), t.columnPlaces(era), Math.random, this.difficultyMult ?? 1)
+    let mult = this.difficultyMult ?? 1
+    // Geneva Convention: reduce the enemy host budget by 5%.
+    for (const def of this._activeEffectDefs()) if (def.special === 'enemy_budget_reduce') mult *= 0.95
+    const host = generateHost(era, bounds, t.enemyRowCount(era), t.columnPlaces(era), Math.random, mult)
     this.data.enemies = host.units
     this.data.enemyHostType = host.type
   }

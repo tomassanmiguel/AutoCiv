@@ -1,5 +1,6 @@
 // Headless test of the v2 data-driven building output engine (def.output).
 const { GameManager } = await import('../src/game/GameManager.js')
+const { waveBudget } = await import('../src/game/data/enemies.js')
 
 let pass = 0, fail = 0
 const assert = (cond, msg) => { if (cond) { pass++ } else { fail++; console.log('  ✗ FAIL:', msg) } }
@@ -231,6 +232,39 @@ console.log('TEST 18: Merchant Navy — each naval unit produces +2 gold per tic
   g._recomputeOutputs(); const gold1 = g.data.civilization.gold.output
   console.log(`  gold/tick ${gold0} → ${gold1} with Merchant Navy + 1 Galley`)
   assert(gold1 - gold0 === 2, `Merchant Navy +2 gold/naval unit (got +${gold1 - gold0})`)
+}
+
+console.log('TEST 19: Columbian Exchange — New-World units/buildings produce +6 gold each per tick')
+{
+  const g = new GameManager(9); g.setEra(7)
+  const tiles = g.data.tableau.visibleTiles(7).filter((t) => !t.building && !t.unit)
+  tiles[0].label = 'New World'; tiles[0].unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  tiles[1].label = 'New World'; tiles[1].building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  g._recomputeOutputs(); const gold0 = g.data.civilization.gold.output
+  g.data.civilization.policies[0] = { key: 'columbian_exchange' }
+  g._recomputeOutputs(); const gold1 = g.data.civilization.gold.output
+  console.log(`  gold/tick ${gold0} → ${gold1} (1 New-World unit + 1 New-World building)`)
+  assert(gold1 - gold0 === 12, `Columbian Exchange +6/each = +12 (got +${gold1 - gold0})`)
+}
+
+console.log('TEST 20: Game Theory — draws +1 advancement option')
+{
+  const g = new GameManager(10); g.setEra(12)
+  const base = g._pickProgressOptions().length
+  g.data.civilization.bonuses.push('game_theory')
+  const boosted = g._pickProgressOptions().length
+  console.log(`  options ${base} → ${boosted} with Game Theory`)
+  assert(boosted === base + 1, `Game Theory +1 option (got ${boosted} vs ${base + 1})`)
+}
+
+console.log('TEST 21: Geneva Convention — reduces enemy host budget by 5%')
+{
+  // Host generation is unseeded, so verify the budget scaler Geneva threads (×0.95
+  // into generateHost's difficulty arg) rather than comparing two noisy live hosts.
+  const b1 = waveBudget(11, 1)
+  const b2 = waveBudget(11, 0.95)
+  console.log(`  wave budget era 11: ${Math.round(b1)} → ${Math.round(b2)} at ×0.95`)
+  assert(Math.abs(b2 - b1 * 0.95) < 1e-6, `budget scales linearly with the multiplier`)
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
