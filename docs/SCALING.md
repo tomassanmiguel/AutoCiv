@@ -27,8 +27,8 @@ unlock era**, so a tier unlocked later is simply stronger; you rarely list more 
 
 | Domain | growth `g` | Notes |
 |---|---|---|
-| Building output | **1.15** | see **Output values** below (base 3.5, gold ×1.5, late-game boost) |
-| Unit attack | **1.15** | tracks output so towers keep pace with the economy |
+| Building output | **1.18** | steeper than combat — see **Output values** below (base 3.5, gold ×1.5, late boost) |
+| Unit attack | **1.15** | combat curve (kept below the economy curve on purpose) |
 | **Enemy HP** | **1.25** | outpaces player attack on purpose |
 | Enemy attack (vs blockers) | flat base `[proposed]` | plus per-type unit/building multipliers |
 | Enemy legitimacy-damage (on breach) | **+1/era** (linear) | `legit = base_legit + E` |
@@ -38,12 +38,12 @@ unlock era**, so a tier unlocked later is simply stronger; you rarely list more 
 progress `{10, 5.6, 5}` · food `{15, 13.3, 3}` · production `{20, 7.4, 4}`. The per-resource *pace*
 difference lives in `X` (jump size) and `targetPerEra` (levels expected per era), so **food is gentler**
 (targetPerEra 3, big jumps) and **progress fastest** (targetPerEra 5) — no separate per-resource
-exponent needed. Note thresholds grow at `1.25^E` while output grows at `1.15^E`, so requirements
-pull ahead of raw per-tick output — more of the "keep investing" pressure. `TICKS_PER_ERA = 65` (base;
+exponent needed. Note thresholds grow at `1.25^E` while output grows at `1.18^E`, so requirements
+still pull ahead of raw per-tick output — the "keep investing" pressure. `TICKS_PER_ERA = 65` (base;
 Calendar-line techs extend it).
 
 **Output values.** A per-tick output building unlocked at era E produces
-`round(3.5 · 1.15^E · lateBoost(E))` of its resource — **except GOLD buildings, which use base 5.25**
+`round(3.5 · 1.18^E · lateBoost(E))` of its resource — **except GOLD buildings, which use base 5.25**
 (≈50% more, since gold buys upgrades/mercs/rerolls rather than crossing thresholds).
 `lateBoost(E) = 1 + 0.1·max(0, E−10)` (1× through Gilded, ramping to ~2.7× by Infinity) so **late-era
 buildings punch harder** — they have fewer eras left to pay off against a much steeper threat.
