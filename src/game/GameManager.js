@@ -318,6 +318,8 @@ export class GameManager {
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
       const def = BUILDING_DEFS[occ.key]
+      // Neocolonialism: buildings on Exoplanet terrain produce +150% :gold: (×2.5).
+      const exoGold = tile.terrain?.startsWith('exo') && this._activeEffectDefs().some((d) => d.special === 'exoplanet_gold') ? 2.5 : 1
       let out = null
       // v2 data-driven per-tick output (generic). v1 buildings without def.output fall
       // through to the key-specific cases below (Ranch growth, Kiln adjacency, etc.).
@@ -337,6 +339,10 @@ export class GameManager {
       else if (occ.key === 'forging') out = { res: 'production', amount: def.prodPerTick(occ.level) }
       else if (occ.key === 'aqueduct') out = { res: 'food', amount: def.base(occ.level) * Math.pow(2, this._adjacentAqueductCount(tile)) }
       else if (occ.key === 'glassworks') out = { res: 'production', amount: 10 }
+      // Artificial Meat: :food: buildings double output and produce :production: instead.
+      if (out && out.res === 'food' && this._activeEffectDefs().some((d) => d.special === 'artificial_meat')) out = { res: 'production', amount: out.amount * 2 }
+      // Neocolonialism: boost a building's own :gold: output on Exoplanet terrain.
+      if (out && out.res === 'gold' && exoGold !== 1) out = { res: 'gold', amount: Math.round(out.amount * exoGold) }
       occ.tickOutput = out
       if (out) totals[out.res] += out.amount
       // v2: every building ALSO gains a flat per-tick base yield from its terrain
@@ -349,7 +355,7 @@ export class GameManager {
         for (const def of this._activeEffectDefs()) {
           if (def.terrainDouble && (def.terrainDouble === 'all' || def.terrainDouble === tile.terrain)) tmult *= (def.terrainDouble === 'asteroid' ? 3 : 2)
         }
-        const amt = ty.amount * tmult
+        const amt = ty.res === 'gold' ? Math.round(ty.amount * tmult * exoGold) : ty.amount * tmult
         totals[ty.res] += amt
         occ.terrainYield = { res: ty.res, amount: amt }
       } else occ.terrainYield = null

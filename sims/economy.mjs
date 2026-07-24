@@ -292,5 +292,38 @@ console.log('TEST 23: Replicant Rights — Replicant progress +200% (×3)')
   g.stop()
 }
 
+console.log('TEST 24: Artificial Meat — food buildings double output as production')
+{
+  const g = new GameManager(13); g.setEra(2)
+  const tile = g.data.tableau.visibleTiles(2).find((t) => !t.building && !t.unit && t.terrain === 'plains')
+  tile.building = { kind: 'building', key: 'ranch', level: 1, hp: 10, maxHp: 10, damaged: false, ranchBonus: 0 }
+  g._recomputeOutputs()
+  const food0 = g.data.civilization.food.output, prod0 = g.data.civilization.production.output
+  g.data.civilization.policies[0] = { key: 'artificial_meat' }
+  g._recomputeOutputs()
+  const food1 = g.data.civilization.food.output, prod1 = g.data.civilization.production.output
+  console.log(`  Ranch: food ${food0}→${food1}, production ${prod0}→${prod1} with Artificial Meat`)
+  // Ranch base food = 5 → becomes +10 production, and food from the Ranch drops by 5.
+  assert(prod1 - prod0 === 10, `Ranch 5 food → 10 production (got +${prod1 - prod0})`)
+  assert(food0 - food1 === 5, `Ranch food removed (got -${food0 - food1})`)
+  g.stop()
+}
+
+console.log('TEST 25: Neocolonialism — Exoplanet buildings produce +150% gold (×2.5)')
+{
+  const g = new GameManager(14); g.setEra(20)
+  const tile = g.data.tableau.visibleTiles(20).find((t) => !t.building && !t.unit && t.terrain?.startsWith('exo'))
+  assert(!!tile, 'an Exoplanet tile is visible at era 20')
+  // Elysium yields gold = floor(legitimacy); with 100 legit that's a clean 100 gold/tick.
+  tile.building = { kind: 'building', key: 'elysium', level: 1, hp: 20, maxHp: 20, damaged: false }
+  g.data.civilization.legitimacy.value = 100
+  g._recomputeOutputs(); const gold0 = g.data.civilization.gold.output
+  g.data.civilization.policies[0] = { key: 'neocolonialism' }
+  g._recomputeOutputs(); const gold1 = g.data.civilization.gold.output
+  console.log(`  Exoplanet gold/tick ${gold0} → ${gold1} with Neocolonialism (all tile gold ×2.5)`)
+  assert(gold0 > 0 && Math.abs(gold1 - gold0 * 2.5) < 0.01, `Neocolonialism ×2.5 Exoplanet gold (got ${gold0}→${gold1})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
