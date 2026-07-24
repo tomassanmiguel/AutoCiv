@@ -75,6 +75,9 @@ export class CivilizationData {
     // Advancement bookkeeping.
     this.chosenAdvancements = new Set() // ids chosen (removed from the pool)
     this.askBeforeReplace = true        // "are you sure" before overwriting a full slot
+    // Free advancement rerolls granted by reroll policies (State Alchemists / Autonomous
+    // Governance / Chronoscopy); spent in the progress-choose stage via rerollAdvancement().
+    this.freeRerolls = 0
 
     // Population-growth split state (see GameManager.addPops): every EVEN pop
     // gained becomes a specialist (cycled bottom-to-top), every ODD a citizen.

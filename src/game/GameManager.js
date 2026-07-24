@@ -810,6 +810,18 @@ export class GameManager {
     this._emit()
   }
 
+  /** Discard the current advancement options and draw a fresh set, spending one free
+   *  reroll. No-op unless we're in the progress 'choose' stage with rerolls available.
+   *  Rerolled options are NOT marked chosen, so any of them may re-appear in the draw. */
+  rerollAdvancement() {
+    const sel = this.data.selection
+    if (!sel || sel.type !== 'progress' || sel.stage !== 'choose') return
+    if (this.data.civilization.freeRerolls <= 0) return
+    this.data.civilization.freeRerolls -= 1
+    sel.options = this._pickProgressOptions()
+    this._emit()
+  }
+
   confirmReplace(dontAskAgain) {
     const sel = this.data.selection
     if (!sel || sel.stage !== 'confirm') return
@@ -985,9 +997,15 @@ export class GameManager {
     const civ = this.data.civilization
     if (group === 'units') civ.units[i] = { key: unlock.key, level: 1 }
     else if (group === 'buildings') civ.buildings[i] = { key: unlock.key, level: 1 }
-    else if (group === 'policies') { civ.policies[i] = { key: unlock.key }; this._syncUnitStats() }
+    else if (group === 'policies') { civ.policies[i] = { key: unlock.key }; this._grantPolicyUnlock(unlock.key); this._syncUnitStats() }
     else if (group === 'population') this._unlockSpecialist(i, unlock.key)
     this._markFilled(group, i)
+  }
+
+  /** Apply a policy's on-unlock one-time grants (currently: free advancement rerolls). */
+  _grantPolicyUnlock(key) {
+    const def = POLICY_DEFS[key]
+    if (def?.freeRerolls) this.data.civilization.freeRerolls += def.freeRerolls
   }
 
   _replaceSlot(group, i, unlock) {
@@ -995,7 +1013,7 @@ export class GameManager {
     if (group === 'population') { this._replaceSpecialist(i, unlock.key); this._markFilled(group, i); return }
     if (group === 'units') civ.units[i] = { key: unlock.key, level: 1 }
     else if (group === 'buildings') civ.buildings[i] = { key: unlock.key, level: 1 }
-    else if (group === 'policies') { civ.policies[i] = { key: unlock.key }; this._syncUnitStats() }
+    else if (group === 'policies') { civ.policies[i] = { key: unlock.key }; this._grantPolicyUnlock(unlock.key); this._syncUnitStats() }
     this._markFilled(group, i)
   }
 

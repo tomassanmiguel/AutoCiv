@@ -122,6 +122,7 @@ function UnlockDetail({ opt, era }) {
 export default function ProgressOverlay() {
   const game = useGame()
   const sel = game.data.selection
+  const freeRerolls = game.data.civilization.freeRerolls ?? 0
   const [dontAsk, setDontAsk] = useState(false)
   if (!sel || sel.type !== 'progress') return null
 
@@ -185,9 +186,18 @@ export default function ProgressOverlay() {
             </button>
           ))}
         </div>
-        <button className="progress-btn frame-box-dark progress-hide" onClick={() => game.hideSelection()}>
-          Hide
-        </button>
+        <div className="progress-actions">
+          <button className="progress-btn frame-box-dark progress-hide" onClick={() => game.hideSelection()}>
+            Hide
+          </button>
+          <button
+            className="progress-btn frame-box-dark progress-reroll"
+            disabled={freeRerolls === 0}
+            onClick={() => game.rerollAdvancement()}
+          >
+            Reroll{freeRerolls > 0 ? ` (${freeRerolls})` : ''}
+          </button>
+        </div>
       </div>
     </div>
   )

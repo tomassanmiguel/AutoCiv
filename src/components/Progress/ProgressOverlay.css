@@ -157,6 +157,10 @@
 }
 .progress-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
 .progress-hide { align-self: center; }
+/* Choose-stage footer: Hide + Reroll side by side. */
+.progress-actions { display: flex; gap: 0.6rem; justify-content: center; align-items: center; }
+.progress-btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; transform: none; }
+.progress-btn:disabled:hover { transform: none; filter: none; }
 
 /* Confirm ("are you sure") window. */
 .confirm-window {

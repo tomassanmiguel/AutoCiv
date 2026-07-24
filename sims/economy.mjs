@@ -405,5 +405,32 @@ console.log('TEST 30: Policy-slot expansion (Socialism/Technocracy/Omnicracy)')
   g.stop()
 }
 
+console.log('TEST 31: Advancement rerolls (State Alchemists / Autonomous Governance / Chronoscopy)')
+{
+  const g = new GameManager(34); g.setEra(26); const civ = g.data.civilization
+  assert(civ.freeRerolls === 0, `starts at 0 (got ${civ.freeRerolls})`)
+  g._fillSlot('policies', 0, { kind: 'policy', key: 'state_alchemists' })
+  assert(civ.freeRerolls === 1, `State Alchemists +1 (got ${civ.freeRerolls})`)
+  g._fillSlot('policies', 1, { kind: 'policy', key: 'chronoscopy' })
+  assert(civ.freeRerolls === 4, `+Chronoscopy +3 → 4 (got ${civ.freeRerolls})`)
+  g._replaceSlot('policies', 0, { kind: 'policy', key: 'autonomous_governance' })
+  assert(civ.freeRerolls === 6, `+Autonomous Governance +2 via replace → 6 (got ${civ.freeRerolls})`)
+  // Reroll redraws options and decrements; rerolled options are not marked chosen.
+  g.data.selection = { type: 'progress', stage: 'choose', hidden: false, pending: null, options: g._pickProgressOptions() }
+  const before = g.data.selection.options.map((o) => o.id)
+  g.rerollAdvancement()
+  assert(civ.freeRerolls === 5, `reroll spends one (got ${civ.freeRerolls})`)
+  assert(before.every((id) => !civ.chosenAdvancements.has(id)), 'rerolled options stay in the pool')
+  // Guard: no-op at 0 rerolls, and outside the choose stage.
+  civ.freeRerolls = 0; const opts = g.data.selection.options
+  g.rerollAdvancement()
+  assert(g.data.selection.options === opts && civ.freeRerolls === 0, 'no-op at 0 rerolls')
+  civ.freeRerolls = 1; g.data.selection.stage = 'replace'
+  g.rerollAdvancement()
+  assert(civ.freeRerolls === 1, 'no-op outside choose stage')
+  console.log('  grant (fill+replace, stacking), spend, and guards all correct')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
