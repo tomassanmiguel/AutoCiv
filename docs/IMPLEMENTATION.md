@@ -105,8 +105,12 @@ is still the full v2 content set. Progress:
   one-in-flight gate; wonder card in ProgressOverlay. Effects wired: Stonehenge/Eiffel/Pyramids/Hagia
   Sophia + **Manhattan Project** (combat-start nuke 2000 + permanent **Fallout** tile dealing 100 to
   enemies entering). Other 15 wonders unlock+complete but their effects are stubs (incremental).
-  REMAINING (New systems): roster no-replace + version cycling; **civilizations + difficulty +
-  pre-game screen**; multi-tile wonders (Great Wall/Death Star/Hadron); a wonder-in-progress UI indicator.
+  REMAINING (New systems): roster no-replace + version cycling; multi-tile wonders (Great Wall/
+  Death Star/Hadron); a wonder-in-progress UI indicator.
+- [x] **Civilizations + difficulty + pre-game screen** — `civilizations.js` (5 civs: marquee policy +
+  starting unit/building; 3 difficulties scaling the enemy wave budget). `PreGameScreen` (title→pregame→
+  game); `GameManager(seed, {civ, difficulty})` applies the head-start + scales `generateHost`. Verified
+  by sim TEST 6. REMAINING: unique per-civ guaranteed progressions; a wonder-progress UI indicator.
 - [x] **Policy/bonus effect wiring** — economy: `_activeEffectDefs()` (policies + `civ.bonuses`),
   generalized `popOutput` (citizenOutput/specialistOutput/popOutputFlat + Evolved/Cyborg/Psychic
   prefixes w/ robot exemption), `%`-loop over both; end-of-era (legitPerEra/goldInterest/
