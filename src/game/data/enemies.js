@@ -1,10 +1,16 @@
-// Enemy host generation — a BUDGET-based system. Each era gets a threat budget that
-// grows with the era; that budget is spent buying enemy units (drawn from a mix of
-// eras, at a mix of levels) into the battlefield slots. Once the board is full, any
-// leftover budget is spent LEVELLING UP placed enemies — so late-era hosts are fewer
-// but far stronger. Enemies never field utility/support units or buildings; each unit
-// only goes in a column whose terrain can host it, and columns are re-ordered so
-// melee/cavalry sit in FRONT of ranged (nearest the player).
+// Enemy host generation (v2 turn-based tower defense). A BUDGET-based system: each era
+// gets a threat budget that grows with the era; the budget buys enemy BODIES that spawn
+// in the battlefield zone above the grid and MARCH DOWN one tile per turn toward the
+// player. Once the board is full, leftover budget levels up placed enemies — so late-era
+// hosts are fewer but far stronger.
+//
+// v2 enemy instance: { key, name, col, row, hp, maxHp, atk, damaged, breached }
+//   - row  : current marching row (spawns high in the battlefield zone, decreases each turn).
+//   - atk  : LEGITIMACY DAMAGE dealt if the enemy breaches off the bottom (NOT per-turn chip).
+//   - hp/maxHp : the enemy's health (what player towers chew through).
+// A blocked enemy deals a flat chip (default 1/turn) to whatever is in its path — it never
+// targets the backline. Enemies drawn (transitionally) from the player UNIT_DEFS pool; a
+// hand-authored unique/boss roster replaces this in the enemy-content batch.
 
 import { UNIT_DEFS, unitStats, unitRole } from './units.js'
 
@@ -12,31 +18,24 @@ import { UNIT_DEFS, unitStats, unitRole } from './units.js'
 const BUDGET_BASE = 120     // B0: era-0 threat budget
 const BUDGET_GROWTH = 1.2   // per-era multiplier
 const STRENGTH_VARIANCE = 0.25 // ±25% random swing on a host's budget
-const COMBAT_DURATION = 25  // matches GameManager's battle length (for the DPS term)
 const ERA_SPREAD = 5        // how many eras back the enemy pool reaches
 const OLD_DECAY = 0.75      // pick-weight multiplier per era older than the current one
 const NEXT_ERA_WEIGHT = 0.15 // pick-weight for (rare) next-era units
-
-// Roles that count as "front" (nearer the player) vs "back".
-const isFront = (role) => role !== 'ranged'
 
 /** Threat budget for an era: B0 · growth^era. */
 export function threatBudget(era) {
   return BUDGET_BASE * Math.pow(BUDGET_GROWTH, era)
 }
 
-/** A (key, level) enemy's budget cost ≈ its combat value: damage-over-a-battle
- *  (atk × battles-worth-of-attacks) + durability. */
+/** A (key, level) enemy's budget cost ≈ its combat value: durability (HP) + breach threat. */
 export function unitCost(key, level) {
-  const def = UNIT_DEFS[key]
-  const s = unitStats(def, level)
-  return s.atk * (COMBAT_DURATION / Math.max(1, def.cooldown)) + s.def
+  const s = unitStats(UNIT_DEFS[key], level)
+  return s.def + s.atk * 3
 }
 
 /** Weighted candidate enemy keys for an era: combat units from (era − spread) up to
- *  era + 1 (a rare next-era peek), favouring recent eras. If no units are implemented
- *  in that window yet (later eras still unbuilt), fall back to ALL combat units at or
- *  below era+1 — the newest available, which `rollLevel` scales up as veterans. */
+ *  era + 1 (a rare next-era peek), favouring recent eras. Falls back to ALL combat units
+ *  at or below era+1 when that window is empty (later eras still unbuilt). */
 function enemyPool(era) {
   const combat = Object.entries(UNIT_DEFS).filter(([, def]) => unitRole(def) !== 'utility' && def.era <= era + 1)
   let pool = combat.filter(([, def]) => def.era >= era - ERA_SPREAD)
@@ -56,8 +55,7 @@ function weightedPick(cands, rng) {
 }
 
 /** Random upgrade spread: each extra level is a repeated 50% coin flip, so a unit has
- *  P(≥k upgrades) = 0.5^k (≈1/32 reach +5). Independent of era — the budget grows the
- *  body count, and the leftover-levelling phase scales a full board up. */
+ *  P(≥k upgrades) = 0.5^k (≈1/32 reach +5). */
 function rollLevel(rng) {
   let level = 1
   while (rng() < 0.5) level++
@@ -66,18 +64,19 @@ function rollLevel(rng) {
 
 /**
  * Compose an enemy host for an era by spending a threat budget.
- * @param era      current era index.
- * @param rows     number of battlefield (enemy) slot rows.
- * @param columns  [{ col, places: Set<placementClass> }] for each visible column.
- * @param rng      () => [0,1). Call once per era so the preview is stable.
- * @returns { type, units: [{ key, level, role, col, slot, hp, maxHp, damaged }] }
- *          slot 0 = back (far from player), rows-1 = front (nearest the player).
+ * @param era       current era index.
+ * @param bounds    { minRow, maxRow, minCol, maxCol } of the visible player grid.
+ * @param spawnRows number of battlefield spawn rows above the grid.
+ * @param columns   [{ col, places: Set<placementClass> }] for each visible column.
+ * @param rng       () => [0,1). Call once per era so the preview is stable.
+ * @returns { type, units: [{ key, name, col, row, hp, maxHp, atk, damaged, breached }] }
+ *          Spawn rows run maxRow+1 (front, nearest the player) .. maxRow+spawnRows (back).
  */
-export function generateHost(era, rows, columns, rng = Math.random) {
-  if (columns.length === 0 || rows <= 0) return { type: 'mixed', units: [] }
-  const capacity = rows * columns.length
+export function generateHost(era, bounds, spawnRows, columns, rng = Math.random) {
+  if (!bounds || columns.length === 0 || spawnRows <= 0) return { type: 'mixed', units: [] }
+  const capacity = spawnRows * columns.length
 
-  // Candidate keys that can actually be placed somewhere on this map.
+  // Candidate keys that can actually be placed somewhere on this map's columns.
   const candidates = enemyPool(era).filter(({ key }) =>
     columns.some((c) => c.places.has(UNIT_DEFS[key].placement)))
   if (candidates.length === 0) return { type: 'mixed', units: [] }
@@ -88,19 +87,16 @@ export function generateHost(era, rows, columns, rng = Math.random) {
   let budget = threatBudget(era) * (1 - STRENGTH_VARIANCE + rng() * 2 * STRENGTH_VARIANCE)
 
   // --- Phase 1: buy bodies until the board is full or the budget can't afford any. ---
-  // Skip a roll that can't be placed/afforded but keep trying cheaper/placeable rolls,
-  // so the budget buys as many BODIES as possible before levelling begins (misses = a
-  // run of consecutive unspendable rolls → nothing left affordable).
   let placed = 0, misses = 0
   while (placed < capacity && budget > 0 && misses < 40) {
     const key = weightedPick(candidates, rng)
     const def = UNIT_DEFS[key]
-    const valid = columns.filter((c) => c.places.has(def.placement) && perCol.get(c.col).length < rows)
+    const valid = columns.filter((c) => c.places.has(def.placement) && perCol.get(c.col).length < spawnRows)
     const level = rollLevel(rng)
     const cost = unitCost(key, level)
     if (valid.length === 0 || (cost > budget && placed > 0)) { misses++; continue }
     const c = valid[Math.floor(rng() * valid.length)]
-    const entry = { key, level, role: unitRole(def), col: c.col }
+    const entry = { key, level, col: c.col }
     perCol.get(c.col).push(entry)
     placedList.push(entry)
     budget -= cost
@@ -108,7 +104,7 @@ export function generateHost(era, rows, columns, rng = Math.random) {
     misses = 0
   }
 
-  // --- Phase 2: spend the leftover budget levelling up placed enemies. ---
+  // --- Phase 2: spend leftover budget levelling up placed enemies. ---
   misses = 0
   while (budget > 0 && placedList.length > 0 && misses < placedList.length + 5) {
     const e = placedList[Math.floor(rng() * placedList.length)]
@@ -119,14 +115,24 @@ export function generateHost(era, rows, columns, rng = Math.random) {
     misses = 0
   }
 
-  // --- Order each column (melee/cavalry front, ranged back) and emit. ---
+  // --- Emit: stack each column's buyers into spawn rows (front-most nearest the player). ---
   const units = []
   for (const [col, list] of perCol) {
-    if (list.length === 0) continue
-    list.sort((a, b) => (isFront(a.role) ? 0 : 1) - (isFront(b.role) ? 0 : 1))
     list.forEach((u, idx) => {
-      const maxHp = unitStats(UNIT_DEFS[u.key], u.level).def
-      units.push({ key: u.key, level: u.level, role: u.role, col, slot: rows - 1 - idx, hp: maxHp, maxHp, damaged: false })
+      const def = UNIT_DEFS[u.key]
+      const s = unitStats(def, u.level)
+      units.push({
+        key: u.key,
+        name: def.name,
+        level: u.level,
+        col,
+        row: bounds.maxRow + 1 + idx, // idx 0 = front (maxRow+1), stacking upward
+        hp: s.def,
+        maxHp: s.def,
+        atk: s.atk,
+        damaged: false,
+        breached: false,
+      })
     })
   }
   return { type: 'mixed', units }

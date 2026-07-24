@@ -1,57 +1,65 @@
-// Combat subsystem of GameManager, split out to keep GameManager.js manageable.
-// The methods live in a mixin class (so no object-literal comma churn) and are copied
-// onto GameManager.prototype by installCombat() — `this` is the GameManager instance,
-// so they call the manager's other methods/state directly.
+// Combat subsystem of GameManager (v2 — turn-based tower defense), split out to keep
+// GameManager.js manageable. The methods live in a mixin class copied onto
+// GameManager.prototype by installCombat(); `this` is the GameManager instance, so they
+// call the manager's other methods/state directly.
+//
+// Model: combat is DISCRETE TURNS. Each turn — (1) every player piece (a stationary
+// "tower") strikes the lowest-HP enemy within its Manhattan-diamond range; (2) every
+// enemy acts, marching DOWN one tile toward the player, or — if a blocker sits in the
+// tile directly below — dealing a flat 1-damage chip to it (the unit first, then the
+// building). An enemy that marches off the bottom BREACHES: it subtracts its `atk` from
+// legitimacy and is removed. Combat ends when all enemies are slain or have breached.
 import { UNIT_DEFS, unitStats, unitRole } from '../data/units.js'
 import { BUILDING_DEFS } from '../data/buildings.js'
 import { POP_TYPES } from '../data/pops.js'
-import { canPlaceOn } from '../data/terrain.js'
 import { generateHost } from '../data/enemies.js'
 
-// Ticks per second per speed setting (also the combat time-multiplier). 0 = paused.
+// Turns-per-second per speed setting (0 = paused). The battle timer fires every
+// COMBAT_INTERVAL_MS of real time and advances the turn accumulator by tps·interval;
+// one discrete turn runs each time it crosses 1.
 export const SPEED_TPS = { paused: 0, standard: 1, fast: 3, super: 5, ultra: 10 }
-// A battle lasts COMBAT_DURATION combat-seconds; the loop steps every COMBAT_INTERVAL_MS
-// of real time, advancing combat time by the speed multiplier.
-export const COMBAT_DURATION = 25
 export const COMBAT_INTERVAL_MS = 50
-const MIN_COOLDOWN = 1 // cooldowns can be reduced, but never below 1s
+export const COMBAT_DURATION = 25 // legacy export (kept for HUD compat)
+const MIN_COOLDOWN = 1
+const MAX_TURNS = 500 // stalemate safety cap (a held line that can't kill ends as a win)
+
+// Default attack range (Manhattan diamond) by combat role, when a def omits `range`.
+const DEFAULT_RANGE = {
+  melee: 1, cavalry: 2, ranged: 3, siege: 4, naval: 2, aerial: 3, astral: 3,
+}
 
 class CombatMixin {
   // ---------------------------------------------------------------------------
-  // Combat (battle phase). Lasts COMBAT_DURATION combat-seconds. Units attack on
-  // cooldown vs. the era's enemy host. Melee/cavalry only strike when they are the
-  // front-most friendly in the column; ranged strike the front enemy at any range;
-  // an empty column yields gold (player) / legitimacy damage (enemy). Attacks are
-  // resolved bottom-to-top, left-to-right. Non-destroyed instances heal between
-  // combats; destroyed ones stay `damaged` until repaired.
+  // Host generation + battle setup
   // ---------------------------------------------------------------------------
   _generateEnemies() {
     const era = this.data.era
     const t = this.data.tableau
-    const host = generateHost(era, t.enemyRowCount(era), t.columnPlaces(era))
-    this.data.enemies = host.units.map((u) => ({ ...u, kind: 'unit', cdTimer: 0 }))
+    const bounds = t.visibleBounds(era)
+    const host = generateHost(era, bounds, t.enemyRowCount(era), t.columnPlaces(era))
+    this.data.enemies = host.units
     this.data.enemyHostType = host.type
   }
 
   _startCombat() {
-    this._syncUnitStats(true) // snapshot combat stats (Warband/Forest/Brewery) for this battle
+    this._syncUnitStats(true) // snapshot combat stats for this battle
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (!occ) continue
-      // Remember each unit's starting tile (to shift back after the battle) and clear
-      // last-attack so the thrust doesn't replay at combat start (combatSeq is monotonic).
-      if (occ.kind === 'unit') { occ.homeRow = tile.row; occ.homeCol = tile.col; delete occ.lastAttackSeq }
-      if (occ.damaged) continue
-      occ.hp = occ.maxHp // damage doesn't persist between combats
-      if (occ.kind === 'unit') occ.cdTimer = this._effectiveCooldown(occ)
+      for (const occ of [tile.unit, tile.building]) {
+        if (!occ || occ.damaged) continue
+        occ.hp = occ.maxHp // damage doesn't persist between combats
+        delete occ.lastAttackSeq
+      }
     }
     for (const e of this.data.enemies) {
-      if (e.damaged) continue
       e.hp = e.maxHp
-      e.cdTimer = this._effectiveCooldown(e)
+      e.damaged = false
+      e.breached = false
     }
+    this.data.combatTurn = 0
+    this.data.combatAccum = 0
     this.data.combatTime = 0
     this.data.combatEvents = []
+    this.data.combatSeq = 0
     this.data.combatIntro = true // hold the fight until the "Battle" banner clears
     this.data.phase = 'battle'
     this._restartTimer()
@@ -64,514 +72,173 @@ class CombatMixin {
     this._emit()
   }
 
+  // ---------------------------------------------------------------------------
+  // Turn loop
+  // ---------------------------------------------------------------------------
   _combatStep() {
     if (this.data.phase !== 'battle' || this.data.combatIntro) return
-    const mult = SPEED_TPS[this.data.speed] || 0
-    if (mult <= 0) return
-    const dt = (COMBAT_INTERVAL_MS / 1000) * mult
-    const before = this.data.combatTime
-    this.data.combatTime += dt
+    const tps = SPEED_TPS[this.data.speed] || 0
+    if (tps <= 0) return
+    this.data.combatAccum += tps * (COMBAT_INTERVAL_MS / 1000)
+    if (this.data.combatAccum < 1) return
+    this.data.combatAccum -= 1
+    this._runTurn()
+  }
+
+  /** Execute one discrete combat turn: player towers fire, then enemies act. */
+  _runTurn() {
     this.data.combatSeq++
     this.data.combatEvents = []
-
+    this.data.combatTurn++
     const bounds = this.data.tableau.visibleBounds(this.data.era)
-    const enemyRows = this.data.tableau.enemyRowCount(this.data.era)
-    // Flow idle units toward reachable enemies; re-sync so their Forest/Brewery
-    // bonuses reflect the NEW tile (stats are stored per-occupant by _syncUnitStats).
-    if (this._combatReposition(bounds)) this._syncUnitStats(true)
-    const list = this._combatants(bounds, enemyRows)
-    list.sort((a, b) => a.y - b.y || a.col - b.col) // bottom-to-top, left-to-right
+    if (!bounds) { this._endCombat(); return }
 
-    for (const c of list) if (c.isUnit && this._isActive(c)) c.unit.cdTimer -= dt
-
-    let shifted = false
-    let buffed = false
-    for (const c of list) {
-      if (!c.isUnit || !this._isActive(c) || c.unit.cdTimer > 0) continue
-      // Utility units (Baker) "act" instead of attacking — buff neighbours, no lunge/gold.
-      if (this._isUtilityActor(c)) {
-        this._utilityAct(c)
-        c.unit.cdTimer += this._effectiveCooldown(c.unit)
-        buffed = true
-        continue
-      }
-      if (this._resolveAttack(c, bounds)) {
-        c.unit.cdTimer += this._effectiveCooldown(c.unit)
-        c.unit.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
-        if (UNIT_DEFS[c.unit.key]?.shift && this._shift(c, bounds, enemyRows)) shifted = true
-      }
-    }
-    if (shifted || buffed) this._syncUnitStats(true) // a Wolf shift or Baker buff changed unit stats
-
-    // Campfire auras heal adjacent friendlies once per whole combat-second crossed.
-    const secs = Math.floor(this.data.combatTime) - Math.floor(before)
-    if (secs > 0) {
-      this._applyCampfireHealing(secs)
-      this._applyEmbassyMercs(before, this.data.combatTime)
-      if (this._applyPublicBaths(before, this.data.combatTime)) this._syncUnitStats(true) // permAtk changed
-    }
+    this._playerPhase()
+    this._enemyPhase(bounds)
 
     const civ = this.data.civilization
     if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
-    if (this.data.combatTime >= COMBAT_DURATION) { this._endCombat(); return }
+    const remaining = this.data.enemies.some((e) => !e.damaged && !e.breached)
+    if (!remaining || this.data.combatTurn > MAX_TURNS) { this._endCombat(); return }
     this._emit()
   }
 
-  _combatants(bounds, enemyRows) {
-    const out = []
+  /** All player pieces act: each fires at the lowest-HP enemy in range. Processed
+   *  bottom-to-top, left-to-right. Units always fire; buildings only if they're towers. */
+  _playerPhase() {
+    const pieces = []
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (!occ) continue
-      out.push({ side: 'player', unit: occ, col: tile.col, row: tile.row, y: tile.row, isUnit: occ.kind === 'unit' })
+      if (tile.unit && !tile.unit.damaged) pieces.push({ occ: tile.unit, row: tile.row, col: tile.col })
+      if (tile.building && !tile.building.damaged) pieces.push({ occ: tile.building, row: tile.row, col: tile.col })
     }
-    for (const e of this.data.enemies) {
-      out.push({ side: 'enemy', unit: e, col: e.col, slot: e.slot, y: bounds.maxRow + (enemyRows - e.slot), isUnit: true })
-    }
-    return out
+    pieces.sort((a, b) => a.row - b.row || a.col - b.col)
+    for (const p of pieces) this._pieceAttack(p)
   }
 
-  _isActive(c) { return !c.unit.damaged }
-
-  _resolveAttack(c, bounds) {
-    const atk = this._effectiveAtk(c.unit)
-    const role = unitRole(UNIT_DEFS[c.unit.key])
-    if (c.side === 'player') {
-      const front = this._frontEnemyInCol(c.col)
-      const isFrontUnit = c.row === this._frontPlayerUnitRow(c.col, bounds)
-      if (!front) {
-        // No enemy target in this column: melee/cavalry that are OBSTRUCTED by a
-        // friendly unit in front don't act; only the front unit (or any ranged, which
-        // shoots over) collects the "unblocked" gold (+ Hunting food).
-        if (role !== 'ranged' && !isFrontUnit) return false
-        // Additive % bonuses to unblocked-damage resources: the unit's own gold bonus
-        // (Trireme, gold only) + Lighthouse (+200% to ALL resources for a :naval: unit in
-        // its waters). Additive, NOT multiplicative.
-        const lighthouse = this._navalUnblockedBonus(c)
-        const gold = Math.round(atk * ((UNIT_DEFS[c.unit.key].unblockedGoldMult ?? 1) + lighthouse))
-        this.data.civilization.gold.value += gold
-        this._pushEvent({ kind: 'gold', amount: gold, col: c.col, row: c.row })
-        if (this._hasPolicy('hunting')) {
-          const foodGain = Math.round(atk * (1 + lighthouse))
-          const food = this.data.civilization.food
-          food.value += foodGain
-          this._processThresholds('food', food)
-          this._pushEvent({ kind: 'food', amount: foodGain, col: c.col, row: c.row })
-        }
-        return true
-      }
-      if (UNIT_DEFS[c.unit.key].splash != null) {
-        // Siege (Catapult): lob over the front line onto the REAR-most enemy, then
-        // deal `splash`× damage to its (col/slot) neighbours.
-        const back = this._backEnemyInCol(c.col)
-        this._pushEvent({ kind: 'attack', side: 'player', col: c.col, row: c.row })
-        this._dealDamage(back, atk, 'enemy', { col: back.col, slot: back.slot })
-        const splash = Math.round(atk * UNIT_DEFS[c.unit.key].splash)
-        if (splash > 0) for (const nb of this._enemyNeighbors(back)) this._dealDamage(nb, splash, 'enemy', { col: nb.col, slot: nb.slot })
-        return true
-      }
-      if (role === 'ranged' || isFrontUnit) {
-        this._pushEvent({ kind: 'attack', side: 'player', col: c.col, row: c.row })
-        this._dealDamage(front, atk, 'enemy', { col: front.col, slot: front.slot })
-        return true
-      }
-      return false // melee/cavalry blocked behind a friendly UNIT (buildings don't block)
-    }
-    const front = this._frontPlayerInCol(c.col, bounds)
-    if (!front) {
-      const lost = this._damageLegitimacy(atk) // Democracy doubles the loss
-      this._pushEvent({ kind: 'legit', amount: lost, col: c.col })
-      return true
-    }
-    if (role === 'ranged' || c.slot === this._frontEnemySlot(c.col)) {
-      this._pushEvent({ kind: 'attack', side: 'enemy', col: c.col, slot: c.slot })
-      this._dealDamage(front.occ, atk, 'player', { col: c.col, row: front.row })
-      return true
-    }
-    return false
+  /** One tower's attack: strike the lowest-HP enemy within its range. */
+  _pieceAttack(p) {
+    const range = this._pieceRange(p.occ)
+    if (range <= 0) return
+    const target = this._lowestHpEnemyInRange(p.row, p.col, range)
+    if (!target) return
+    const atk = this._effectiveAtk(p.occ)
+    this._pushEvent({ kind: 'attack', side: 'player', col: p.col, row: p.row })
+    p.occ.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
+    this._dealDamageToEnemy(target, atk)
   }
 
-  _dealDamage(target, amount, side, loc) {
-    target.hp -= amount
-    const killed = target.hp <= 0
-    if (killed) { target.hp = 0; target.damaged = true }
-    this._pushEvent({ kind: 'damage', side, amount, killed, ...loc })
-    // Burial Rites: any unit that dies yields :progress: equal to its :defense: (maxHp).
-    // Banked to progress.value (NOT crossed here) — progress choices only open in
-    // development, and pending choices are dropped at era change; the banked value
-    // carries into next era's dev and opens the choices there.
-    if (killed && this._hasPolicy('burial_rites')) {
-      const p = target.maxHp ?? 0
-      this.data.civilization.progress.value += p
-      this._pushEvent({ kind: 'progress', amount: p, ...loc })
+  /** Attack range for a player piece (0 = doesn't attack). Utility units never attack;
+   *  buildings attack only when their def declares a `range` (they are "towers"). */
+  _pieceRange(occ) {
+    if (occ.kind === 'unit') {
+      const def = UNIT_DEFS[occ.key]
+      if (!def || def.bakerDef) return 0
+      return def.range ?? DEFAULT_RANGE[unitRole(def)] ?? 1
     }
+    return BUILDING_DEFS[occ.key]?.range ?? 0
   }
 
-  _frontEnemyInCol(col) {
+  /** Lowest-HP live enemy within Manhattan-diamond `range` of (row,col). Ties break
+   *  toward the enemy closest to breaching (lowest row), then lowest column. */
+  _lowestHpEnemyInRange(row, col, range) {
     let best = null
     for (const e of this.data.enemies) {
-      if (e.col === col && !e.damaged && (best === null || e.slot > best.slot)) best = e
+      if (e.damaged || e.breached) continue
+      if (Math.abs(e.row - row) + Math.abs(e.col - col) > range) continue
+      if (!best || e.hp < best.hp ||
+        (e.hp === best.hp && (e.row < best.row || (e.row === best.row && e.col < best.col)))) best = e
     }
     return best
   }
-  _frontEnemySlot(col) {
-    const f = this._frontEnemyInCol(col)
-    return f ? f.slot : -1
-  }
-  // Rear-most enemy (smallest slot = farthest from the player) — the Catapult's target.
-  _backEnemyInCol(col) {
-    let best = null
-    for (const e of this.data.enemies) {
-      if (e.col === col && !e.damaged && (best === null || e.slot < best.slot)) best = e
-    }
-    return best
-  }
-  /** Undamaged enemies orthogonally adjacent to `e` in the col/slot grid (splash targets). */
-  _enemyNeighbors(e) {
-    return this.data.enemies.filter((o) => !o.damaged && o !== e &&
-      Math.abs(o.col - e.col) + Math.abs(o.slot - e.slot) === 1)
+
+  _dealDamageToEnemy(e, amount) {
+    e.hp -= amount
+    const killed = e.hp <= 0
+    if (killed) { e.hp = 0; e.damaged = true }
+    this._pushEvent({ kind: 'damage', side: 'enemy', amount, killed, col: e.col, row: e.row })
   }
 
-  /** Additive % bonus to a :naval: unit's unblocked-damage resources from every undamaged
-   *  Lighthouse in the same waters (each +200%). 0 for non-naval units / none in range. */
-  _navalUnblockedBonus(c) {
-    if (!UNIT_DEFS[c.unit.key].types.includes('naval')) return 0
-    const waters = this._watersTiles(c.row, c.col)
-    if (waters.size === 0) return 0
-    let bonus = 0
-    for (const tile of this.data.tableau.tiles.values()) {
-      const occ = tile.occupant
-      if (occ?.kind === 'building' && occ.key === 'lighthouse' && !occ.damaged && waters.has(`${tile.row},${tile.col}`)) {
-        bonus += BUILDING_DEFS.lighthouse.unblockedBonus(occ.level)
-      }
-    }
-    return bonus
+  /** All enemies act, front-most (lowest row) first so a column flows downward. */
+  _enemyPhase(bounds) {
+    const list = this.data.enemies.filter((e) => !e.damaged && !e.breached)
+    list.sort((a, b) => a.row - b.row || a.col - b.col)
+    for (const e of list) this._enemyAct(e, bounds)
   }
 
-  /** "r,c" keys of the connected water body (coast/sea, currently visible) containing (sr, sc). */
-  _watersTiles(sr, sc) {
-    const t = this.data.tableau
-    const era = this.data.era
-    const isWater = (r, c) => {
-      const p = t.tileAt(r, c)?.def?.place
-      return (p === 'coast' || p === 'sea') && t.isUnlocked(r, c, era)
+  /** One enemy acts: breach off the bottom, chip a blocker below, or march down. */
+  _enemyAct(e, bounds) {
+    if (e.damaged || e.breached) return
+    const belowRow = e.row - 1
+    // Off the bottom → breach: subtract atk from legitimacy, then remove.
+    if (belowRow < bounds.minRow) {
+      const lost = this._damageLegitimacy(e.atk) // Democracy doubles the loss
+      e.breached = true
+      this._pushEvent({ kind: 'legit', amount: lost, col: e.col, row: e.row })
+      return
     }
-    const seen = new Set()
-    if (!isWater(sr, sc)) return seen
-    seen.add(`${sr},${sc}`)
-    const stack = [[sr, sc]]
-    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
-    while (stack.length) {
-      const [r, c] = stack.pop()
-      for (const [dr, dc] of NBRS) {
-        const nr = r + dr, nc = c + dc, k = `${nr},${nc}`
-        if (!seen.has(k) && isWater(nr, nc)) { seen.add(k); stack.push([nr, nc]) }
-      }
+    const below = this.data.tableau.tileAt(belowRow, e.col)
+    // Impeded by a blocker in the path — chip the unit first, then the building.
+    const blocker = (below?.unit && !below.unit.damaged) ? below.unit
+      : (below?.building && !below.building.damaged) ? below.building : null
+    if (blocker) {
+      const chip = UNIT_DEFS[e.key]?.chip ?? 1
+      this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
+      this._chipBlocker(blocker, chip, below)
+      return
     }
-    return seen
-  }
-  _frontPlayerInCol(col, bounds) {
-    for (let r = bounds.maxRow; r >= bounds.minRow; r--) {
-      const occ = this.data.tableau.tileAt(r, col)?.occupant
-      if (occ && !occ.damaged) return { occ, row: r }
-    }
-    return null
-  }
-  _frontPlayerRow(col, bounds) {
-    const f = this._frontPlayerInCol(col, bounds)
-    return f ? f.row : NaN
-  }
-  // Front-most friendly UNIT (buildings excluded — they shield the enemy but don't
-  // block your own melee/cavalry from striking the front enemy).
-  _frontPlayerUnitRow(col, bounds) {
-    for (let r = bounds.maxRow; r >= bounds.minRow; r--) {
-      const occ = this.data.tableau.tileAt(r, col)?.occupant
-      if (occ && !occ.damaged && occ.kind === 'unit') return r
-    }
-    return NaN
+    // Blocked by another live enemy queued directly ahead → hold this turn.
+    if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && o.row === belowRow && o.col === e.col)) return
+    // Clear path → march down one tile.
+    e.row = belowRow
+    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
   }
 
-  // --- Utility unit "acts" (e.g. Baker): resolve on cooldown like an attack, but grant
-  // an effect instead of dealing damage. Player-only (enemies never field utility units). ---
-  _isUtilityActor(c) {
-    return c.side === 'player' && c.isUnit && !!UNIT_DEFS[c.unit.key]?.bakerDef
+  _chipBlocker(blocker, amount, tile) {
+    blocker.hp -= amount
+    const killed = blocker.hp <= 0
+    if (killed) { blocker.hp = 0; blocker.damaged = true }
+    this._pushEvent({ kind: 'damage', side: 'player', amount, killed, col: tile.col, row: tile.row })
   }
 
-  /** Baker acts: permanently grant +N :defense: to each adjacent friendly unit. */
-  _utilityAct(c) {
-    const amount = UNIT_DEFS[c.unit.key].bakerDef(c.unit.level)
-    for (const tile of this._adjacentTiles(c.row, c.col)) {
-      const occ = tile.occupant
-      if (occ?.kind === 'unit' && !occ.damaged) {
-        occ.permDef = (occ.permDef ?? 0) + amount
-        this._pushEvent({ kind: 'buff', amount, col: tile.col, row: tile.row })
-      }
-    }
+  // Player units carry a synced effective atk (occ.atk); buildings use their def's
+  // attack(level) if they're towers; enemies fall back to base stats.
+  _effectiveAtk(occ) {
+    if (occ.atk != null) return occ.atk
+    if (occ.kind === 'building') return BUILDING_DEFS[occ.key]?.attack?.(occ.level) ?? 0
+    return unitStats(UNIT_DEFS[occ.key], occ.level, 0, occ.warband ?? 0).atk
   }
 
-  // ---------------------------------------------------------------------------
-  // Combat repositioning: a unit whose own column has NO enemies flows one column
-  // over toward reachable enemies.
-  //  - melee/cavalry: move to an adjacent column that HAS enemies and NO friendly
-  //    melee/cavalry unit (become its front line).
-  //  - ranged: move to an adjacent column that HAS enemies and friendly cover (a
-  //    defensive building or a melee unit) to shoot from behind.
-  // ---------------------------------------------------------------------------
-  _combatReposition(bounds) {
-    if (!bounds) return false
-    const units = []
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (occ && occ.kind === 'unit' && !occ.damaged) units.push({ tile, occ })
-    }
-    units.sort((a, b) => a.tile.row - b.tile.row || a.tile.col - b.tile.col)
-    let moved = false
-    for (const { tile, occ } of units) {
-      if (this._columnHasEnemies(tile.col)) continue // has targets here — stay
-      const role = unitRole(UNIT_DEFS[occ.key])
-      if (role !== 'melee' && role !== 'cavalry' && role !== 'ranged') continue
-      const dest = this._repositionDest(tile, occ, role, bounds)
-      if (dest) { dest.occupant = occ; tile.occupant = null; moved = true }
-    }
-    return moved
-  }
-
-  /** Best reposition target for an idle unit: an empty, valid tile at road-augmented
-   *  distance 1 in a DIFFERENT column that has enemies and satisfies the role's rule
-   *  (melee/cavalry → no friendly front there; ranged → has cover there). With no road
-   *  this is exactly the same-row neighbouring column (a lateral step — never a leap to
-   *  a distant row); a road bridges it to any of the network's ports. */
-  _repositionDest(tile, occ, role, bounds) {
-    // Horseman-style long support: reach any column on the landmass, not just distance 1.
-    if (UNIT_DEFS[occ.key].longSupport) return this._landmassSupportDest(tile, occ, bounds)
-    const cands = []
-    for (const [k, d] of this._reachableWithin(tile.row, tile.col, 1)) {
-      if (d !== 1) continue
-      const [r, c] = k.split(',').map(Number)
-      if (c === tile.col || c < bounds.minCol || c > bounds.maxCol) continue
-      if (!this._columnHasEnemies(c)) continue
-      const dt = this.data.tableau.tileAt(r, c)
-      if (!dt || dt.occupant || !this.data.tableau.isUnlocked(r, c, this.data.era)) continue
-      if (!canPlaceOn(UNIT_DEFS[occ.key].placement, dt.terrain)) continue
-      const ok = role === 'ranged' ? this._columnHasCover(c, bounds) : !this._columnHasFriendlyFront(c, bounds)
-      if (ok) cands.push(dt)
-    }
-    cands.sort((a, b) => a.col - b.col || a.row - b.row)
-    return cands[0] ?? null
-  }
-
-  /** Horseman "support": reposition to any empty valid tile on the SAME landmass whose
-   *  column has enemies and no friendly melee/cavalry front (nearest such gap wins). */
-  _landmassSupportDest(tile, occ, bounds) {
-    const cands = []
-    for (const key of this._landmassTiles(tile.row, tile.col)) {
-      const [r, c] = key.split(',').map(Number)
-      if (c === tile.col || c < bounds.minCol || c > bounds.maxCol) continue
-      if (!this._columnHasEnemies(c)) continue
-      const dt = this.data.tableau.tileAt(r, c)
-      if (!dt || dt.occupant || !canPlaceOn(UNIT_DEFS[occ.key].placement, dt.terrain)) continue
-      if (this._columnHasFriendlyFront(c, bounds)) continue // only plug a melee/cavalry gap
-      cands.push(dt)
-    }
-    cands.sort((a, b) => Math.abs(a.col - tile.col) - Math.abs(b.col - tile.col) || a.col - b.col || a.row - b.row)
-    return cands[0] ?? null
-  }
-
-  /** "r,c" keys of the connected land component (orthogonal, currently-visible land)
-   *  containing (sr, sc). Empty if the start tile isn't visible land. */
-  _landmassTiles(sr, sc) {
-    const t = this.data.tableau
-    const era = this.data.era
-    const isLand = (r, c) => {
-      const tile = t.tileAt(r, c)
-      return !!tile && tile.def?.place === 'land' && t.isUnlocked(r, c, era)
-    }
-    const seen = new Set()
-    if (!isLand(sr, sc)) return seen
-    seen.add(`${sr},${sc}`)
-    const stack = [[sr, sc]]
-    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
-    while (stack.length) {
-      const [r, c] = stack.pop()
-      for (const [dr, dc] of NBRS) {
-        const nr = r + dr, nc = c + dc, k = `${nr},${nc}`
-        if (!seen.has(k) && isLand(nr, nc)) { seen.add(k); stack.push([nr, nc]) }
-      }
-    }
-    return seen
-  }
-
-  _columnHasEnemies(col) {
-    return this.data.enemies.some((e) => e.col === col && !e.damaged)
-  }
-  // Friendly melee/cavalry unit present in a column.
-  _columnHasFriendlyFront(col, bounds) {
-    for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
-      const occ = this.data.tableau.tileAt(r, col)?.occupant
-      if (occ?.kind === 'unit' && !occ.damaged) {
-        const role = unitRole(UNIT_DEFS[occ.key])
-        if (role === 'melee' || role === 'cavalry') return true
-      }
-    }
-    return false
-  }
-  // Cover for ranged: a friendly defensive building or a melee unit in the column.
-  _columnHasCover(col, bounds) {
-    for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
-      const occ = this.data.tableau.tileAt(r, col)?.occupant
-      if (!occ || occ.damaged) continue
-      if (occ.kind === 'building' && BUILDING_DEFS[occ.key]?.types?.includes('defense')) return true
-      if (occ.kind === 'unit' && unitRole(UNIT_DEFS[occ.key]) === 'melee') return true
-    }
-    return false
-  }
-  // Player units carry a synced effective atk (occ.atk); enemies fall back to base.
-  _effectiveAtk(unit) { return unit.atk ?? unitStats(UNIT_DEFS[unit.key], unit.level, 0, unit.warband ?? 0).atk }
   _effectiveCooldown(unit) {
     const def = UNIT_DEFS[unit.key] ?? BUILDING_DEFS[unit.key]
-    return Math.max(MIN_COOLDOWN, (def?.cooldown ?? MIN_COOLDOWN) - (unit.cdReduce ?? 0)) // Brothel −0.5s
-  }
-
-  _colPlaces(col) {
-    const b = this.data.tableau.visibleBounds(this.data.era)
-    const places = new Set()
-    if (!b) return places
-    for (let r = b.minRow; r <= b.maxRow; r++) {
-      const p = this.data.tableau.tileAt(r, col)?.def?.place
-      if (p) places.add(p)
-    }
-    return places
-  }
-
-  // Wolf ability: after attacking, shift to an adjacent empty valid space.
-  // Returns true if the unit actually moved (so the caller can re-sync stats).
-  _shift(c, bounds, enemyRows) {
-    const def = UNIT_DEFS[c.unit.key]
-    if (c.side === 'player') {
-      const t = this.data.tableau
-      // Adjacent empty valid tile (road-augmented — a Road lets the Wolf shift farther).
-      for (const tile of this._adjacentTiles(c.row, c.col)) {
-        if (tile.occupant || !t.isUnlocked(tile.row, tile.col, this.data.era) || !canPlaceOn(def.placement, tile.terrain)) continue
-        t.tileAt(c.row, c.col).occupant = null
-        tile.occupant = c.unit
-        return true
-      }
-    } else {
-      const nbrs = [[c.slot + 1, c.col], [c.slot - 1, c.col], [c.slot, c.col + 1], [c.slot, c.col - 1]]
-      for (const [slot, col] of nbrs) {
-        if (slot < 0 || slot >= enemyRows || col < bounds.minCol || col > bounds.maxCol) continue
-        if (!this._colPlaces(col).has(def.placement)) continue
-        if (this.data.enemies.some((e) => e.col === col && e.slot === slot)) continue
-        c.unit.col = col
-        c.unit.slot = slot
-        return true
-      }
-    }
-    return false
+    return Math.max(MIN_COOLDOWN, (def?.cooldown ?? MIN_COOLDOWN) - (unit.cdReduce ?? 0))
   }
 
   _pushEvent(ev) { this.data.combatEvents.push({ ...ev, seq: this.data.combatSeq }) }
 
-  /** Campfire buildings heal adjacent friendly units/buildings by a % of their max
-   *  HP for each whole combat-second elapsed (`times`). */
-  _applyCampfireHealing(times) {
-    for (const { tile, occ } of this._buildingInstances()) {
-      if (occ.key !== 'campfire' || occ.damaged) continue
-      const pct = BUILDING_DEFS.campfire.heal(occ.level)
-      for (const nbTile of this._adjacentTiles(tile.row, tile.col)) {
-        const nb = nbTile.occupant
-        if (!nb || nb.damaged || nb.hp == null || nb.maxHp == null || nb.hp >= nb.maxHp) continue
-        const heal = Math.min(nb.maxHp - nb.hp, Math.max(1, Math.ceil((pct / 100) * nb.maxHp)) * times)
-        if (heal <= 0) continue
-        nb.hp += heal
-        this._pushEvent({ kind: 'heal', amount: heal, col: nbTile.col, row: nbTile.row })
-      }
-    }
-  }
-
-  /** Public Baths: at each 5-second mark crossed this step, heal adjacent friendly
-   *  units/buildings by 50% of their max HP and permanently grant adjacent units
-   *  +level :attack: (folded into stats by the caller's _syncUnitStats). Returns whether
-   *  it buffed a unit (so the caller re-syncs). */
-  _applyPublicBaths(before, after) {
-    const def = BUILDING_DEFS.public_baths
-    let hits = 0
-    for (let s = (Math.floor(before / def.bathsEvery) + 1) * def.bathsEvery; s <= after; s += def.bathsEvery) if (s > 0) hits++
-    if (hits === 0) return false
-    let buffed = false
-    for (const { tile, occ } of this._buildingInstances()) {
-      if (occ.key !== 'public_baths' || occ.damaged) continue
-      const atk = def.bathsAtk(occ.level) * hits
-      for (const nbTile of this._adjacentTiles(tile.row, tile.col)) {
-        const nb = nbTile.occupant
-        if (!nb || nb.damaged) continue
-        if (nb.hp != null && nb.maxHp != null && nb.hp < nb.maxHp) {
-          const heal = Math.min(nb.maxHp - nb.hp, Math.max(1, Math.ceil((def.bathsHealPct / 100) * nb.maxHp)) * hits)
-          if (heal > 0) { nb.hp += heal; this._pushEvent({ kind: 'heal', amount: heal, col: nbTile.col, row: nbTile.row }) }
-        }
-        if (nb.kind === 'unit') {
-          nb.permAtk = (nb.permAtk ?? 0) + atk
-          this._pushEvent({ kind: 'buff', amount: atk, col: nbTile.col, row: nbTile.row })
-          buffed = true
-        }
-      }
-    }
-    return buffed
-  }
-
-  /** Embassies hire a free mercenary onto an empty adjacent tile at each 8-second mark
-   *  crossed this step. */
-  _applyEmbassyMercs(before, after) {
-    const every = BUILDING_DEFS.embassy.mercEvery
-    let hits = 0
-    for (let s = (Math.floor(before / every) + 1) * every; s <= after; s += every) if (s > 0) hits++
-    if (hits === 0) return
-    for (const { tile, occ } of this._buildingInstances()) {
-      if (occ.key !== 'embassy' || occ.damaged) continue
-      for (let i = 0; i < hits; i++) this._spawnMercAdjacent(tile)
-    }
-  }
-
-  /** Spawn a random one-battle mercenary onto a random empty adjacent tile it can stand on. */
-  _spawnMercAdjacent(embassyTile) {
-    const spots = this._adjacentTiles(embassyTile.row, embassyTile.col).filter(
-      (t) => !t.occupant && this.data.tableau.isUnlocked(t.row, t.col, this.data.era) && this._placeableUnitsAt(t).length > 0)
-    if (spots.length === 0) return
-    const dest = spots[Math.floor(Math.random() * spots.length)]
-    const picks = this._placeableUnitsAt(dest)
-    const pick = picks[Math.floor(Math.random() * picks.length)]
-    const level = this._mercLevel(pick.level)
-    const hp = unitStats(UNIT_DEFS[pick.key], level, this.data.civilization.modifiers.unitHpBonus).def
-    dest.occupant = { kind: 'unit', key: pick.key, level, hp, maxHp: hp, damaged: false, mercenary: true, homeRow: dest.row, homeCol: dest.col }
-    this._syncUnitStats(true) // combat stats for the new merc (and Warband refresh)
-    dest.occupant.cdTimer = this._effectiveCooldown(dest.occupant)
-  }
-
-  /** After a battle, move every unit back to the tile it started combat on (units
-   *  reposition/shift during combat) and disband mercenaries. Buildings never move. */
-  _restoreUnitHomes() {
-    const t = this.data.tableau
-    const units = []
-    for (const tile of t.visibleTiles(this.data.era)) {
-      if (tile.occupant?.kind === 'unit') { units.push(tile.occupant); tile.occupant = null }
-    }
-    for (const occ of units) {
-      if (occ.mercenary) continue // disbanded — not placed back
-      const home = t.tileAt(occ.homeRow, occ.homeCol)
-      if (home) home.occupant = occ
-    }
-  }
-
-  _endCombat() {
-    this._restoreUnitHomes() // shifted units return to their starting tiles; mercs disband
+  /** Remove one-battle mercenaries from the board (called at battle end / on defeat). */
+  _disbandMercenaries() {
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const occ = tile.occupant
-      if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer } // survivors heal to full
+      if (tile.unit?.mercenary) tile.unit = null
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Battle end
+  // ---------------------------------------------------------------------------
+  _endCombat() {
+    this._disbandMercenaries()
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      for (const occ of [tile.unit, tile.building]) {
+        if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer } // survivors heal to full
+      }
     }
     // "End of era" (= end of combat) effects — Festivals triggers them an extra time.
     const times = this._hasPolicy('festivals') ? 2 : 1
     for (let i = 0; i < times; i++) this._applyEraEndEffects()
     this._syncUnitStats(false) // combat over: drop terrain bonus, fold in Hereditary Rule
     this.data.enemies = [] // undefeated enemies fade away
+    this.data.combatTurn = 0
+    this.data.combatAccum = 0
     this.data.combatTime = 0
     this.data.combatEvents = []
     this.data.combatIntro = false
@@ -598,22 +265,21 @@ class CombatMixin {
     let legit = 0
     let deployedUnits = 0
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      if (tile.occupant?.kind === 'unit') deployedUnits++
+      if (tile.unit) deployedUnits++
     }
     for (const { occ } of this._buildingInstances()) {
       if (occ.damaged) continue
       if (occ.key === 'totem') legit += BUILDING_DEFS.totem.combatLegit(occ.level)
-      else if (occ.key === 'colosseum') legit += 5 * deployedUnits // 5 :legitimacy: per unit in the civ
+      else if (occ.key === 'colosseum') legit += 5 * deployedUnits
     }
-    legit += (POP_TYPES.shaman.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
+    legit += (POP_TYPES.shaman?.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
     if (this._hasPolicy('sacred_grounds')) {
       for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-        if (!tile.occupant && tile.def?.place === 'land') legit += 1
+        if (!tile.unit && !tile.building && tile.def?.place === 'land') legit += 1
       }
     }
     if (legit > 0) civ.legitimacy.value += legit
-    // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy: (progress
-    // banked like Burial Rites — its choices open in next era's development).
+    // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy:.
     if (this._hasPolicy('oral_tradition')) {
       const L = Math.floor(civ.legitimacy.value)
       civ.gold.value += L
@@ -626,24 +292,21 @@ class CombatMixin {
     }
     // Deployed buildings' end-of-era output (e.g. Pier food, Library progress).
     this._accrueBuildingOutputs()
-    // Forging: upgrade a random adjacent (road-augmented) unit. Stats re-derived by the
-    // _syncUnitStats(false) that runs right after this in _endCombat.
+    // Forging: upgrade a random adjacent (road-augmented) unit.
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.key !== 'forging' || occ.damaged) continue
-      const adj = this._adjacentTiles(tile.row, tile.col).filter((t) => t.occupant?.kind === 'unit' && !t.occupant.damaged)
+      const adj = this._adjacentTiles(tile.row, tile.col).filter((t) => t.unit && !t.unit.damaged)
       if (adj.length === 0) continue
-      adj[Math.floor(Math.random() * adj.length)].occupant.level += 1
+      adj[Math.floor(Math.random() * adj.length)].unit.level += 1
     }
     // Surveying: lay a Road on a random valid tile.
     if (this._hasPolicy('surveying')) this._layRandomRoad()
   }
 
   _defeat() {
-    // _endCombat never runs on defeat, so shift units home + disband mercenaries here
-    // too (the enemy host stays on the board as a record of who won).
-    this._restoreUnitHomes()
+    this._disbandMercenaries()
     this.data.defeated = true
-    this.data.combatTime = COMBAT_DURATION
+    this.data.combatTime = 0
     this._restartTimer()
     this._emit()
   }
