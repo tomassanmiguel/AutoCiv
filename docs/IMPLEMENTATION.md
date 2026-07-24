@@ -45,12 +45,21 @@ is still the full v2 content set. Progress:
   (trap/command/spawner/wall/support) in `slots.js`.
 - [ ] **Economy pass** — legitimacy uncapped + no per-tick legit; drop empty-column unit-gold remnants;
   terrain base-yields; legit-on-complete (Shrine +10 …) + legit-leverage (Monastery/Elysium/Temple).
-- [ ] **Advancement reconciliation** — rebuild the `POOL` + `IMPLEMENTED` registry in `advancements.js`
-  to match `PROGRESSION.md` (era/name source of truth). This is what makes the v2 content unlockable
-  in-game with the right tech names. Prune v1 holdovers. Do era-by-era; keep every draw resolvable.
-- [ ] **Pops/specialists → v2** (`pops.js`): Citizen 1/1/1; gold-upgrade chains (Astrologer→…),
-  prefixes (Evolved/Cyborg/Psychic), Priest/Soldier/Replicant. **Specialist gold-upgrade** mechanic.
-- [ ] **Policies → v2** (`policies.js`): additive % modifiers, flat adds, combat triggers per `policies.md`.
+- [ ] **Advancement reconciliation** (NEXT — the big unblock) — rebuild `POOL` + `IMPLEMENTED` in
+  `advancements.js` to match `PROGRESSION.md`. Now easy: every UNIT_DEFS/BUILDING_DEFS/POP_TYPES/
+  POLICY_DEFS entry carries `tech`, so build a `tech → { kind, key }` map by scanning the four
+  registries (units→unit, buildings→building, pops→pop, policies with slot!==false→policy, slot===false
+  →modifier/bonus). Rebuild POOL era buckets from PROGRESSION headers; wire IMPLEMENTED = that map.
+  Prune v1 holdovers (baker-unit/legionnaire/horseman, shaman/philosopher/poet, brewery/totem/mine/…).
+  Handle name/tech mismatches (e.g. Branding→Metallurgy-policy). Keep every draw resolvable + green.
+- [x] **Pops/specialists → v2** (`pops.js`): Citizen 1/1/1; the four gold-upgrade chains + special pops
+  (Priest/Soldier/Replicant) + chain/tier/next/tech metadata. Remaining: the **specialist gold-upgrade**
+  mechanic (convert a pop type up its chain); prefix (Evolved/Cyborg/Psychic) application in popOutput.
+- [x] **Policies → v2** (`policies.js`): 105 policy+bonus defs with structured effect fields; generic
+  `outputPct`/`totalGoldPct` %-engine wired in `_recomputeOutputs`. Remaining: wire the other structured
+  families (doctrine/citizenOutput/specialistOutput/thresholdMult/legitPerEra/goldInterest/unitDeath/
+  ticksPerEra/policySlots/unitAtkPct/def-bonuses/…) + the ~40 `special`-tagged effects; display via
+  `policyEffect()`. **Every def now carries a `tech`** → the registry can be AUTO-GENERATED from defs.
 - [ ] **Wonders** (`wonders.js` new): dedicated slot + one-in-flight gate + N=3-build completion;
     Manhattan Project uses the **Fallout** tile (`public/sprites/tiles/fallout.png`, already staged).
 - [ ] **Enemies → v2**: hand-authored roster (atk=breach-legit, def=HP·1.25^E, elites/bosses, per-enemy
