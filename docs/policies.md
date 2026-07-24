@@ -98,8 +98,8 @@ Sacred Grounds (2) plains · Forestry (5) forest · Mountaineering (9) mountain 
 
 | Policy | Era | Effect |
 |---|--|---|
-| Festivals | 6 | end-of-era effects trigger **×2** |
-| Cosmic Celebration | 22 | end-of-era effects trigger **×3** (supersedes Festivals) |
+| Festivals | 6 | end-of-era effects get **+1 extra trigger** (fire twice) |
+| Cosmic Celebration | 22 | end-of-era effects get **+2 extra triggers**; **stacks additively with Festivals** → up to **4× total** |
 | **Wonder yields** | 6 / 11 / 20 | Pilgrimage ×1.5 · Tourism ×2 · Star Hopping ×3 (supersede) |
 | Xenodiplomacy | 17 | each combat: hire **6 alien ranged mercs**, +50% atk off-Earth |
 | Replicant Rights | 16 | Replicant progress **+200%** (needs Replicants) |
@@ -116,20 +116,21 @@ Sacred Grounds (2) plains · Forestry (5) forest · Mountaineering (9) mountain 
 
 | Family | Members (era) → effect |
 |---|---|
-| Unit def | Armor (2) +1 · Liminite Plating (20) +3 def |
+| Unit def | Armor (2) +1 · **Liminite** (20) +1 (dual tech — see Unit damage) |
 | Building def | Cement (3) +1 def |
-| Unit damage | Steel (2) +15% · Composites (11) +25% · Liminite Alloys (20) +40% · Antimatter (24) +60% atk |
+| Unit damage | Steel (2) +15% · Composites (11) +25% · **Liminite** (20) +40% atk **& +1 def** · Antimatter (24) +60% atk |
 | Policy slots | Hereditary Rule (2) → 6th · Democracy (8) → 7th · Socialism (11) → 8th · Technocracy (15) → 9th |
 | Region bridging (prep repositioning) | Combustion (8) ocean · Mass Drivers (14) space · FTL (23) deep space |
 | Ranged reach | Telegram (9) +1 · Tightbeams (17) +1 range to all ranged effects |
 | Wonder cost | Monumentality (6) −1 · Megastructure Engineering (20) −2 builds (floor 1) |
 | Era length | Calendar (0) +5 · Clocks (6) +6 · Relativity (12) +7 · Liminism (20) +8 · Time Travel (26) +12 ticks |
-| Food threshold | ~6 tiers, each −5%→−12% (`foodThresholdMult`) |
-| Progress threshold | ~6 tiers, each −5%→−12% (`progressThresholdMult`) |
-| Production threshold | ~6 tiers, each −5%→−12% (`productionThresholdMult`) |
+| Food threshold −% | Agriculture (0) · Irrigation (2) · Crop Rotation (4) · Industrial Agriculture (9) · Hydroponics (16) · Chimeric Agriculture (21) |
+| Progress threshold −% | Writing (1) · Printing Press (6) · Public Schooling (9) · Microprocessors (13) · Neural Interfaces (15) · Hyperquantum Computing (24) |
+| Production threshold −% | Mining (1) · Metallurgy (4) · Railroad (9) · 3d Printing (13) · Matter Compression (20) · Nanoswarms (24) |
 | Instant production | Mathematics (2) · Engineering (6) · Mass Production (11) · Replication (22) — each grants **+2 free builds** on unlock |
 
-*(Threshold-reducer families still need ~6 invented names each — deferred to the progression pass.)*
+*Threshold names borrowed from the existing advancements pool. Each family's 6 tiers give an escalating
+discount — **−5% early → −12% late** — stacking multiplicatively into the resource's `*ThresholdMult`.*
 
 ---
 
@@ -144,5 +145,6 @@ Sacred Grounds (2) plains · Forestry (5) forest · Mountaineering (9) mountain 
 3. **Damage stacking is additive but deep:** category doctrine (+50%) + Steel-line (+15…60%) + command
    auras (+50/100%) + Caste (+25%) + Adaptive (+120%) can pile very high on one unit. Intended, but the
    ceiling is worth a look once combat is tuned.
-4. **Invented extras** (Golden Age / Manifest Destiny / Transhumanism, + the "Optics = naval" and
-   "Liminite" name-split) — confirm or cut.
+4. **Invented extras** (Golden Age / Manifest Destiny / Transhumanism, + the "Optics = naval" call) —
+   confirm or cut. (Liminite is now a single dual +1 def / +40% atk tech; threshold names borrowed
+   from the real pool.)
