@@ -300,10 +300,20 @@ export class GameManager {
       occ.tickOutput = out
       if (out) totals[out.res] += out.amount
       // v2: every building ALSO gains a flat per-tick base yield from its terrain
-      // (Plains→food, Forest→progress, Mountain→production, sea/space→gold).
+      // (Plains→food, Forest→progress, Mountain→production, sea/space→gold), optionally
+      // multiplied by a terrain-doubler policy (Forestry/Granaries/Mountaineering/Ecology
+      // ×2, Beltalowdas ×3 on asteroid).
       const ty = terrainEconYield(tile.terrain)
-      if (ty && totals[ty.res] != null) { totals[ty.res] += ty.amount; occ.terrainYield = ty }
-      else occ.terrainYield = null
+      if (ty && totals[ty.res] != null) {
+        let tmult = 1
+        for (const def of this._activeEffectDefs()) {
+          if (def.terrainDouble && (def.terrainDouble === 'all' || def.terrainDouble === tile.terrain)) tmult *= (def.terrainDouble === 'asteroid' ? 3 : 2)
+        }
+        const amt = ty.amount * tmult
+        totals[ty.res] += amt
+        occ.terrainYield = { res: ty.res, amount: amt }
+      } else occ.terrainYield = null
+      if (civ.bonuses.includes('gas_light')) totals.production += 2 // Gas Light bonus: every building +2 :production:/t
     }
     return totals
   }
@@ -520,9 +530,17 @@ export class GameManager {
         }
         // Fascism: a desperation doctrine — +100% :attack: while legitimacy is below 50.
         if (this._hasPolicy('fascism') && civ.legitimacy.value < 50) dmgBonus += 1.0
+        // Flat attack from special effects: Bayonets (+5 :melee:), Gunboat Diplomacy (+15 :naval:).
+        // Read via _activeEffectDefs so both policies and bonus-techs (civ.bonuses) count.
+        const uTypes = UNIT_DEFS[occ.key].types
+        let flatAtk = 0
+        for (const def of this._activeEffectDefs()) {
+          if (def.special === 'melee_flat_atk' && uTypes.includes('melee')) flatAtk += 5
+          if (def.special === 'gunboat_flat_atk' && uTypes.includes('naval')) flatAtk += 15
+        }
         // occ.permDef / occ.permAtk = permanent :defense: (Baker) / :attack: (Public Baths)
         // granted mid-combat; both persist across combats.
-        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb + pack + (occ.permAtk ?? 0))
+        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0), wb + pack + (occ.permAtk ?? 0) + flatAtk)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         const posMult = (brew ? 1.1 : 1) * brothel.atkMult * (1 + dmgBonus) // Brewery × Brothel × v2 damage %
         occ.warband = wb

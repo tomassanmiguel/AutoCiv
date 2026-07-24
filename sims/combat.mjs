@@ -281,5 +281,20 @@ console.log('TEST 12: Manhattan Project — combat-start nuke, fallout tile, fal
   g2.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 13: Bayonets bonus — melee units +5 flat attack')
+{
+  const g = new GameManager(8); g.setEra(2)
+  const b = g.data.tableau.visibleBounds(2)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol)
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true); const a0 = t.unit.atk
+  g._applyModifier({ key: 'bayonets' }) // ✦ bonus → civ.bonuses
+  g._syncUnitStats(true); const a1 = t.unit.atk
+  console.log(`  Warrior atk ${a0} → ${a1} with Bayonets`)
+  assert(a1 - a0 === 5, `Bayonets +5 melee atk (got +${a1 - a0})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -182,5 +182,18 @@ console.log('TEST 14: specialist gold-upgrade chain — Astrologer → Scholar (
   assert(out.progress === 8, `Scholar produces 8 progress/pop (got ${out.progress})`)
 }
 
+console.log('TEST 15: Forestry policy doubles the Forest terrain yield')
+{
+  const g = new GameManager(4); g.setEra(2)
+  const tile = g.data.tableau.visibleTiles(2).find((t) => !t.building && !t.unit)
+  tile.terrain = 'forest'
+  tile.building = { kind: 'building', key: 'market', level: 1, hp: 10, maxHp: 10, damaged: false }
+  g._recomputeOutputs(); const p0 = g.data.civilization.progress.output
+  g.data.civilization.policies[0] = { key: 'forestry' }
+  g._recomputeOutputs(); const p1 = g.data.civilization.progress.output
+  console.log(`  Forest progress yield ${p0} → ${p1} with Forestry`)
+  assert(p1 - p0 === 1, `Forestry doubles Forest yield (1→2 progress, got +${p1 - p0})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

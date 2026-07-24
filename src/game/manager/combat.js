@@ -187,7 +187,8 @@ class CombatMixin {
     const belowRow = e.row - 1
     // Off the bottom → breach: subtract atk from legitimacy, then remove.
     if (belowRow < bounds.minRow) {
-      const lost = this._damageLegitimacy(e.atk) // Democracy doubles the loss
+      const fw = this._hasPolicy('firewall') ? 0.75 : 1 // Firewall: −25% enemy attack values
+      const lost = this._damageLegitimacy(Math.round(e.atk * fw)) // Democracy doubles the loss
       e.breached = true
       this._pushEvent({ kind: 'legit', amount: lost, col: e.col, row: e.row })
       return

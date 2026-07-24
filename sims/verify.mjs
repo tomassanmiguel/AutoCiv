@@ -63,8 +63,9 @@ console.log('3. Effect-wiring coverage (policies + bonuses)')
 // Structured fields the engine actually applies + specials with a handler.
 const WIRED_FIELDS = ['outputPct', 'totalGoldPct', 'citizenOutput', 'popOutputFlat', 'specialistOutput',
   'thresholdMult', 'instantBuilds', 'unitDefBonus', 'buildingDefBonus', 'ticksPerEra', 'legitPerEra',
-  'goldInterest', 'endEraGoldFromLegit', 'unitDeath', 'doctrine', 'unitAtkPct', 'wonderCostReduce', 'upgradeMult']
-const WIRED_SPECIALS = new Set(['low_legit_atk'])
+  'goldInterest', 'endEraGoldFromLegit', 'unitDeath', 'doctrine', 'unitAtkPct', 'wonderCostReduce', 'upgradeMult',
+  'terrainDouble']
+const WIRED_SPECIALS = new Set(['low_legit_atk', 'melee_flat_atk', 'gunboat_flat_atk', 'building_production_flat', 'enemy_atk_reduce'])
 // v1-name policies wired by hardcoded _hasPolicy(key) checks rather than a structured field.
 const HARDCODED_WIRED = new Set(['slavery', 'weights_and_measures', 'ownership', 'specialization',
   'language', 'festivals', 'tribalism', 'caste_system', 'calendar', 'code_of_laws', 'diplomatic_marriage', 'midwivery'])
