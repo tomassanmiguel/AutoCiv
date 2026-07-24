@@ -20,6 +20,7 @@ Anchor 5.
 | Musketman | Revolution (8) | 15 | 3 | 1 | 0 | 0 | — |
 | Rifleman | Modern (11) | 23 | 3 | 1 | 0 | 0 | — |
 | Infantryman | Silicon (13) | 31 | 4 | 1 | 0 | 0 | — |
+| Jedi | Solar (16) | 47 | 3 | 1 | 0 | 0 | **Force Push**: the enemy it attacks is knocked back 1 tile — **5-turn cooldown** on the push (attacks normally in between). *(tech: Kyber Crystals)* |
 | Terminator | Invasion (17) | 54 | 4 | 1 | 0 | 0 | — |
 | Space Marine | Xenotic (21) | 94 | 4 | 1 | 0 | 0 | very strong late-game melee |
 | Ascendant | Time (26) | 189 | 4 | 1 | 2 | 0 | Cavalry behavior; **move Land+Space** |
@@ -29,6 +30,7 @@ Anchor 4.
 
 | Tier | Era (E) | atk | def | r | P | cd | Ability |
 |---|---|--|--|--|--|--|---|
+| Slinger | Stone (0) | 4 | 1 | 2 | 0 | 0 | earliest ranged unit *(tech: The Sling)* |
 | Archer | Bronze (1) | 5 | 1 | 2 | 0 | 0 | — |
 | Crossbowman | Early Medieval (4) | 7 | 1 | 2 | 0 | 0 | — |
 | Cannoneer | Exploration (7) | 11 | 1 | 3 | 0 | 0 | — |
