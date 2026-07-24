@@ -876,7 +876,11 @@ export class GameManager {
     if (!def) return
     // Track the bonus so its ongoing structured effects are read by _activeEffectDefs
     // (one-time fields below are applied once here and never re-read).
-    if (!civ.bonuses.includes(unlock.key)) civ.bonuses.push(unlock.key)
+    const isNew = !civ.bonuses.includes(unlock.key)
+    if (isNew) civ.bonuses.push(unlock.key)
+    // Policy-slot expansion (Socialism +3, Technocracy +1, Omnicracy +1): grow the
+    // policy roster so more policies can be equipped. Guarded so it can't double-add.
+    if (def.policySlots && isNew) for (let k = 0; k < def.policySlots; k++) civ.policies.push(null)
     if (def.thresholdMult) {
       const { res, mult } = def.thresholdMult
       if (res === 'food') civ.modifiers.foodThresholdMult *= mult
@@ -888,7 +892,7 @@ export class GameManager {
     if (def.buildingDefBonus) { civ.modifiers.buildingHpBonus += def.buildingDefBonus; this._syncUnitStats() }
     if (def.ticksPerEra) civ.modifiers.bonusTicks = (civ.modifiers.bonusTicks ?? 0) + def.ticksPerEra
     if (def.special === 'pop_on_unlock') civ.pops.citizen = (civ.pops.citizen ?? 0) + 20 // Genome Mapping
-    // Not yet applied here (later passes): unitAtkPct, rangedReach, policySlots,
+    // Not yet applied here (later passes): unitAtkPct, rangedReach,
     // mercLevels, freeRerolls, terrainDouble, and every `special`-tagged effect.
   }
 
@@ -956,7 +960,8 @@ export class GameManager {
         return { group: 'buildings', multiFill: false, slotIndices }
       }
       case 'policy':
-        return { group: 'policies', multiFill: false, slotIndices: [0, 1, 2, 3, 4] }
+        // Slot count is dynamic — grown by Socialism/Technocracy/Omnicracy (base 5).
+        return { group: 'policies', multiFill: false, slotIndices: this.data.civilization.policies.map((_, i) => i) }
       case 'pop':
         return { group: 'population', multiFill: false, slotIndices: [1, 2, 3, 4] } // slot 0 = Citizen, never replaced
       default:

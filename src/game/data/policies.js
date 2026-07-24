@@ -201,7 +201,7 @@ export const POLICY_DEFS = {
   composites: { key: 'composites', name: 'Composites', era: 11, tech: 'Composites', slot: false, unitAtkPct: 0.25, description: 'All units deal +25% :attack:.' },
   geneva_convention: { key: 'geneva_convention', name: 'Geneva Convention', era: 11, tech: 'Geneva Convention', slot: false, special: 'enemy_budget_reduce', description: 'Enemy host budget reduced by 5%.' },
   replaceable_parts: { key: 'replaceable_parts', name: 'Mass Production', era: 11, tech: 'Replaceable Parts', slot: false, instantBuilds: 2, description: 'On unlock, gain +2 free :production: builds.' },
-  socialism: { key: 'socialism', name: 'Socialism', era: 11, tech: 'Socialism', slot: false, policySlots: 1, description: 'Unlock an 8th policy slot.' },
+  socialism: { key: 'socialism', name: 'Socialism', era: 11, tech: 'Socialism', slot: false, policySlots: 3, description: 'Unlock an 8th policy slot.' },
   communism: { key: 'communism', name: 'Communism', era: 11, tech: 'Communism', slot: true, outputPct: { production: 0.30, gold: -0.20 }, description: 'All :production: outputs +30%, but all :gold: outputs −20%.' },
   fascism: { key: 'fascism', name: 'Fascism', era: 11, tech: 'Fascism', slot: true, special: 'low_legit_atk', description: 'While :legitimacy: is below 50, all units deal +100% :attack:.' },
   prohibition: { key: 'prohibition', name: 'Prohibition', era: 11, tech: 'Prohibition', slot: true, special: 'prohibition', description: 'Each Citizen produces +2 to each non-:gold: output, but −1 :gold: per tick.' },

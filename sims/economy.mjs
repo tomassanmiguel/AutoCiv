@@ -383,5 +383,27 @@ console.log('TEST 29: Military / Architectural Tradition — overbuilding keeps 
   g.stop()
 }
 
+console.log('TEST 30: Policy-slot expansion (Socialism/Technocracy/Omnicracy)')
+{
+  const g = new GameManager(33); const civ = g.data.civilization
+  assert(civ.policies.length === 5, `base 5 slots (got ${civ.policies.length})`)
+  g._applyModifier({ kind: 'modifier', key: 'socialism' })
+  assert(civ.policies.length === 8, `Socialism → 8 (got ${civ.policies.length})`)
+  g._applyModifier({ kind: 'modifier', key: 'technocracy' })
+  assert(civ.policies.length === 9, `Technocracy → 9 (got ${civ.policies.length})`)
+  g._applyModifier({ kind: 'modifier', key: 'omnicracy' })
+  assert(civ.policies.length === 10, `Omnicracy → 10 (got ${civ.policies.length})`)
+  g._applyModifier({ kind: 'modifier', key: 'socialism' }) // idempotent
+  assert(civ.policies.length === 10, `re-apply is a no-op (got ${civ.policies.length})`)
+  // _unlockTarget spans all slots, and the 10th slot can be filled.
+  const t = g._unlockTarget({ kind: 'policy', key: 'communism' })
+  assert(t.slotIndices.length === 10, `_unlockTarget spans 10 slots (got ${t.slotIndices.length})`)
+  for (let i = 0; i < 9; i++) civ.policies[i] = { key: 'x' }
+  g._fillSlot('policies', 9, { kind: 'policy', key: 'communism' })
+  console.log(`  slots ${civ.policies.length}; 10th = ${civ.policies[9]?.key}`)
+  assert(civ.policies[9]?.key === 'communism', `10th slot fills (got ${civ.policies[9]?.key})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
