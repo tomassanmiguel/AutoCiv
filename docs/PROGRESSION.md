@@ -90,12 +90,13 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Warships** | 🗡 | Trireme — Naval; atk 6 range 2 |
 | **Great Wall** | ⭐ | Great Wall — 4-lane shared-HP blocker, def 20 |
 
-### E4 · Early Medieval — 18
+### E4 · Early Medieval — 19
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **Armor** | ✦ | Armor — units +1 def |
 | **Crop Rotation** | ✦ | Crop Rotation — reduce food threshold -7% |
+| **Castles** | 🏛 | Castle — Wall: blocker, mid-tier def |
 | **Coinage** | 🏛 | Mint — 10 gold/t |
 | **Compass** | 🏛 | Caravansary — Gold/t, stacks per Caravansary |
 | **Machinery** | 🏛 | Workshop — production (upgraded); Machinery |
@@ -107,7 +108,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Manorial Levy** | 📜 | Manorial Levy — +1 production per Citizen |
 | **Pilgrimage** | 📜 | Pilgrimage — wonder yields ×1.5 |
 | **Theocracy** | 📜 | Theocracy — end of era: +25 legitimacy |
-| **Alchemy** | 👤 | Blacksmith — +8 :production:/tick pop |
+| **Blacksmithing** | 👤 | Blacksmith — +8 :production:/tick pop |
 | **Algebra** | 🗡 | Catapult — Siege; splash damage |
 | **Crossbows** | 🗡 | Crossbowman — Ranged; atk 7 range 2 |
 | **Monastic Order** | 🗡 | Warrior Monk — Auxiliary; atk=10% legitimacy |
@@ -126,9 +127,9 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Dressage** | 📜 | Dressage — +50% atk to cavalry units |
 | **Guilds** | 📜 | Guilds — +2 output to every specialist |
 | **Merchant Navy** | 📜 | Merchant Navy — naval units +2 gold/tick |
-| **Schism** | 📜 | Organized Religion — end of era: gold = legitimacy |
+| **Schism** | 📜 | Schism — end of era: gold = legitimacy |
 | **State Alchemists** | 📜 | State Alchemists — 1 free reroll |
-| **Public Education** | 👤 | Scholar — +8 :progress:/tick pop |
+| **University** | 👤 | Scholar — +8 :progress:/tick pop |
 | **Clinker Construction** | 🗡 | Longship — Naval; atk 8 def 3 |
 | **Counterweights** | 🗡 | Trebuchet — Siege; splash, range 4 |
 | **Crusades** | 🗡 | Knight — Melee; atk 10 def 3 |
@@ -144,13 +145,13 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Monumentality** | ✦ | Monumentality — wonder cost -1 build |
 | **Printing Press** | ✦ | Printing Press — reduce progress threshold -7% |
 | **Acoustics** | 🏛 | Theater — End-of-era 300 progress |
+| **Astronomy** | 🏛 | Observatory — End-of-era progress from terrain |
 | **Flying Butress** | 🏛 | Cathedral — +40 legit, +5 legit/era |
 | **Gunpowder** | 🏛 | Powder Magazine — Trap: 45 dmg on death |
 | **Physics** | 🏛 | Windmill — +1 free upgrade level range |
 | **Urbanization** | 🏛 | City — Underlaid: tile holds 3 |
 | **Blueprints** | 📜 | Blueprints — -50% building repair cost |
 | **Freedom of Religion** | 📜 | Freedom of Religion — +30% progress, legitimacy losses doubled |
-| **Golden Age** | 📜 | Golden Age — dev +30% thresholds, -20% gold |
 | **Mercantilism** | 📜 | Mercantilism — +25% total gold |
 | **Military Tradition** | 📜 | Military Tradition — overbuilt units keep upgrade levels |
 | **Oligarchy** | 📜 | Oligarchy — +30% gold, -20% progress |
@@ -163,7 +164,6 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Banking** | 🏛 | Bank — End-of-era gold from unspent |
 | **Creole Culture** | 🏛 | Hacienda — 6 food, 6 production, 9 gold |
 | **Pumping** | 🏛 | Drydock — Spawner: best Naval unit |
-| **Scientific Method** | 🏛 | Observatory — End-of-era progress from terrain |
 | **Shipbuilding** | 🏛 | Harbor — Production from units in range |
 | **Star Forts** | 🏛 | Star Fort — Command: ranged +1 range |
 | **Colonialism** | 📜 | Colonialism — New-World units/buildings +2 levels |
@@ -176,22 +176,24 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Cartography** | 🗡 | Pirate — Auxiliary; naval, gold on attack |
 | **Circumnavigation** | 🗡 | Frigate — Naval; atk 12 range 3 |
 | **Dragoons** | 🗡 | Dragoon — Cavalry; ranged while pursuing |
+| **Muskets** | 🗡 | Musketman — Melee; atk 15 def 3 |
 | **Architecture** | ⭐ | Taj Mahal — banks dead unit atk as progress |
 
-### E8 · Revolution — 8
+### E8 · Revolution — 9
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **Democracy** | ✦ | Democracy — unlock 7th policy slot |
 | **Newspaper** | ✦ | Public Schooling — reduce progress threshold -8% |
-| **University** | 🏛 | School — 13 progress/t |
+| **Public Education** | 🏛 | School — 13 progress/t |
+| **Sea Mine** | 🏛 | Sea Mine — Trap: 89 dmg first enemy |
 | **Civil Rights** | 📜 | Civil Rights — +30% progress, -20% food |
 | **Guerilla Warfare** | 📜 | Guerilla Warfare — +100% damage from trap buildings |
 | **Levee en Masse** | 📜 | Levee en Masse — -50% unit repair cost |
 | **Nationalism** | 📜 | Nationalism — unit death: gold = atk |
-| **Muskets** | 🗡 | Musketman — Melee; atk 15 def 3 |
+| **Scientific Method** | 👤 | Scientist — +12 :progress:/tick pop |
 
-### E9 · Steam — 15
+### E9 · Steam — 13
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -202,9 +204,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Electricity** | 🏛 | Coal Plant — +2 free upgrade levels range |
 | **Joint Stock Company** | 🏛 | Stock Exchange — 23 gold/t |
 | **Mass Production** | 🏛 | Factory — 16 production/t |
-| **Sea Mine** | 🏛 | Sea Mine — Trap: 89 dmg first enemy |
 | **Architectural Tradition** | 📜 | Architectural Tradition — overbuilt buildings keep levels |
-| **Chemistry** | 👤 | Scientist — +12 :progress:/tick pop |
 | **Germ Theory** | 👤 | Doctor — +12 :food:/tick pop |
 | **Hydraulic Press** | 👤 | Inventor — +12 :production:/tick pop |
 | **Income Tax** | 👤 | Banker — +18 :gold:/tick pop |
@@ -255,27 +255,27 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Plastics** | 🏛 | Laboratory — 31 progress/t |
 | **Aerodynamics** | 📜 | Aerodynamics — +50% atk to aerial units |
 | **Ecology** | 📜 | Ecology — double all terrain bonuses |
-| **Naturalism** | 📜 | Naturalism — double water terrain bonus |
 | **Quantitative Easing** | 📜 | Quantitative Easing — 20% end-of-era gold interest |
 | **Computers** | 👤 | Software Engineer — +16 :production:/tick pop |
 | **Ballistics** | 🗡 | Missile Launcher — Siege; bigger AoE |
+| **Fission** | ⭐ | Hadron Collider — +2200 progress each era (scaling) |
 
-### E13 · Silicon — 6
+### E13 · Silicon — 7
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **3d Printing** | ✦ | 3d Printing — reduce production threshold -8% |
-| **Microprocessors** | ✦ | Microprocessors — reduce progress threshold -10% |
+| **Cell Phones** | ✦ | Microprocessors — reduce progress threshold -10% |
+| **Microprocessors** | 🏛 | 3D Printer — 39 production/t |
 | **The Cloud** | 🏛 | Data Center — 75 gold/t |
+| **High Frequency Trading** | 👤 | Investor — +30 :gold:/tick pop |
 | **Stealth** | 🗡 | Raptor — Aerial; atk 35 range 2 |
-| **Fission** | ⭐ | Hadron Collider — +2200 progress each era (scaling) |
 | **Space Station** | ⭐ | Intl. Space Station — space unit creation copies it |
 
-### E14 · Lunar — 6
+### E14 · Lunar — 5
 
 | Advancement | | Unlocks |
 |---|--|---|
-| **3d printing** | 🏛 | 3D Printer — 39 production/t |
 | **Discombobulator** | 🏛 | Discombobulator — Trap: enemies skip next turn |
 | **Lunar Defense Stratagem** | 📜 | Lunar Defense Stratagem — Moon units +100% atk |
 | **Drone Warfare** | 🗡 | Drone — Cavalry; high range, fragile |
@@ -295,7 +295,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Robotic Labor** | 👤 | Replicant — 1 prod/gold/progress, count doubles |
 | **Autonomous Warfare** | ⭐ | Skynet — military +75% atk, Terminators +150% |
 
-### E16 · Solar — 10
+### E16 · Solar — 9
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -306,7 +306,6 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Hydroponics** | 🏛 | Hydroponicist — 63 food/t |
 | **Industrial Desalination** | 🏛 | Artificial Island — Converts ocean tile to land |
 | **Martian Freedom** | 📜 | Martian Freedom — Mars units/buildings +3 levels |
-| **Nanite Warfare** | 📜 | Nanite Warfare — poison all enemies at start |
 | **Replicant Rights** | 📜 | Replicant Rights — Replicant progress +200% |
 | **Martianism** | ⭐ | Happy Valley — Mars units/buildings +8 upgrade levels |
 
@@ -330,8 +329,8 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Mass Drivers** | ✦ | Mass Drivers — reposition bridging across space |
 | **Occlusion** | ✦ | Occlusion — +1 def to all units & buildings in space |
 | **Asteroid Capture** | 🏛 | Asteroid Mine — 186 gold/t |
+| **Cosmic Myth** | 📜 | Cosmic Myth — unit death: +1 legitimacy |
 | **Deepfaked Reality** | 📜 | Deepfaked Reality — +50 legit at end of era |
-| **High Frequency Trading** | 👤 | Investor — +30 :gold:/tick pop |
 | **Cryogenics** | 🗡 | Cryo Specialist — Auxiliary; freezes target 2 turns |
 | **Starships** | 🗡 | Spaceship — Astral; cavalry move, space only |
 
@@ -348,7 +347,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Church of the Simulation** | 🗡 | Zealot — Auxiliary; atk=legitimacy, gains legitimacy |
 | **Gravwaves** | 🗡 | Grav Cannon — Siege; big AoE, pushes group |
 
-### E20 · Liminite — 8
+### E20 · Liminite — 7
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -356,7 +355,6 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Liminite** | ✦ | Liminite — +1 def & +40% atk |
 | **Spaceports** | 🏛 | Spaceport — Spawner: best Astral unit |
 | **Virtual Afterlife** | 🏛 | Elysium — +50 legit, gold/t = legit |
-| **Digital Afterlife** | 📜 | Digital Afterlife — unit death: +1 legitimacy |
 | **Star Hopping** | 📜 | Star Hopping — wonder yields ×3 |
 | **Bimodal Starships** | 🗡 | Valkyrie — Astral; tanky, def 4 |
 | **Deep Space Relays** | ⭐ | Stargate — buildings become repositionable during prep |
@@ -366,7 +364,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | Advancement | | Unlocks |
 |---|--|---|
 | **Chimeric Agriculture** | ✦ | Chimeric Agriculture — reduce food threshold -12% |
-| **Superintelligence** | 🏛 | Cogitorium — 238 progress/t |
+| **Distributed Being** | 🏛 | Cogitorium — 238 progress/t |
 | **Cortical Stacks** | 📜 | Cortical Stacks — -100% unit repair cost |
 | **Hive Mind** | 📜 | Hive Mind — buildings +1 level per adjacent building |
 | **Xenodiplomacy** | 📜 | Xenodiplomacy — hire 6 alien ranged mercs |
@@ -375,21 +373,20 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Space Marines** | 🗡 | Space Marine — Strong late-game melee |
 | **Omnisurveillance** | ⭐ | Panopticon — reposition enemy units during prep |
 
-### E22 · Evolution — 12
+### E22 · Evolution — 11
 
 | Advancement | | Unlocks |
 |---|--|---|
-| **Forced Evolution** | ✦ | Forced Evolution — Evolved prefix: +food per pop |
-| **Machine Synthesis** | ✦ | Machine Synthesis — Cyborg prefix: +production per pop |
-| **Psychic Awakening** | ✦ | Psychic Awakening — Psychic prefix: +progress per pop |
+| **Forced Evolution** | ✦ | Forced Evolution — Evolved prefix: +4 food per non-robot pop |
+| **Machine Synthesis** | ✦ | Machine Synthesis — Cyborg prefix: +4 production per non-robot pop |
+| **Psychic Awakening** | ✦ | Psychic Awakening — Psychic prefix: +4 progress per non-robot pop |
 | **Replication** | ✦ | Replication — +2 free builds on unlock |
 | **Melange** | 🏛 | Spice Extractor — 441 gold/t |
 | **Synaptic Rewiring** | 🏛 | Psy-Link — Command: +100% atk aura |
 | **Cosmic Celebration** | 📜 | Cosmic Celebration — end-of-era effects +2 triggers |
 | **Futurization** | 📜 | Futurization — -60% upgrade cost |
-| **Immortality** | 📜 | Immortality — population gains doubled |
 | **Abiogenesis** | 👤 | Abioticist — +20 :food:/tick pop |
-| **Distributed Being** | 👤 | Superintelligence — +20 :progress:/tick pop |
+| **Superintelligence** | 👤 | Superintelligence — +20 :progress:/tick pop |
 | **Psionics** | 🗡 | Psyker — Ranged; atk 65 range 5 |
 
 ### E23 · Early Galactic — 9
@@ -424,10 +421,13 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Neutron Canons** | 🗡 | Tachyon Bomber — Siege; huge AoE |
 | **Planet Busting** | ⭐ | Death Star — vaporize random enemy every 5 turns |
 
-### E25 · Utopian — 4
+### E25 · Utopian — 7
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Black Hole Warfare** | 🏛 | Singularity — Trap: impassable, 1000 dmg Azazoth |
+| **Biological Immortality** | 📜 | Biological Immortality — population gains doubled |
+| **Nanite Warfare** | 📜 | Nanite Warfare — poison all enemies at start |
 | **Purpose Engineering** | 📜 | Purpose Engineering — +5 output to every specialist |
 | **Superhumanity** | 🗡 | Ascendant — Melee; cavalry behavior, moves space |
 | **Teleportation** | 🗡 | Warper — Cavalry; long pursuit, flanks |
@@ -443,12 +443,11 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Oblivion Beam** | 🗡 | Sun Launcher — Infinite range multi-attack; stars only |
 | **Sonic Screwdrivers** | 🗡 | Timelord — Auxiliary; teleports when killed |
 
-### E27 · Infinity — 2
+### E27 · Infinity — 1
 
 | Advancement | | Unlocks |
 |---|--|---|
-| **Black Hole Warfare** | 🏛 | Singularity — Trap: impassable, 1000 dmg Azazoth |
 | **Elder Awareness** | 📜 | Elder Awareness — +50% damage vs Azazoth |
 
 
-## Density: 0:16 · 1:18 · 2:15 · 3:17 · 4:18 · 5:17 · 6:16 · 7:17 · 8:8 · 9:15 · 10:12 · 11:13 · 12:9 · 13:6 · 14:6 · 15:8 · 16:10 · 17:8 · 18:7 · 19:8 · 20:8 · 21:9 · 22:12 · 23:9 · 24:13 · 25:4 · 26:5 · 27:2
+## Density: 0:16 · 1:18 · 2:15 · 3:17 · 4:19 · 5:17 · 6:16 · 7:17 · 8:9 · 9:13 · 10:12 · 11:13 · 12:9 · 13:7 · 14:5 · 15:8 · 16:9 · 17:8 · 18:7 · 19:8 · 20:7 · 21:9 · 22:11 · 23:9 · 24:13 · 25:7 · 26:5 · 27:1
