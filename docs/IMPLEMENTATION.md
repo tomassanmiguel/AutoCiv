@@ -95,8 +95,13 @@ is still the full v2 content set. Progress:
    throwing; load the game and confirm early-era unlocks work.
 5. **Slot reconciliation** (parallel task): add v2 building categories (wall/trap/command/spawner/support)
    to `slots.js` + the Military/Civilian two-tab split in UIPanel, so the gated buildings can wire.
-- [ ] **Enemies → v2**: hand-authored roster (atk=breach-legit, def=HP·1.25^E, elites/bosses, per-enemy
-  `chip`/behaviours) replacing the transitional draw-from-player-pool host.
+- [x] **Enemies → v2** (`enemies.js`): hand-authored `ENEMY_DEFS` (26 ordinary + 3 bosses) with base
+  atk(breach)/def(HP)/chip/special tags; budget-based `generateHost` (waveBudget 40·1.3^E·difficulty,
+  HP ×1.25^E, breach atk +E, 5% elites ×2, bosses excluded). Combat reads per-enemy chip; TileCard
+  resolves ENEMY_DEFS. Verified live (Thrall/Raider/Marauder render, no errors) + sim TEST 9.
+  REMAINING: the ~24 enemy `special` abilities (heal/pathing/spawn/ranged-chip/pierce/split/teleport/
+  self-destruct/…), multi-tile bosses (Titan 2×2, Flagship 4×2, Azazoth row-span), scripted waves,
+  difficulty selection.
 - [ ] **New systems:** roster no-replace + version cycling; civilizations + difficulty + pre-game screen.
 - [x] **Policy/bonus effect wiring** — economy: `_activeEffectDefs()` (policies + `civ.bonuses`),
   generalized `popOutput` (citizenOutput/specialistOutput/popOutputFlat + Evolved/Cyborg/Psychic
