@@ -4,6 +4,7 @@ import { RESOURCE_CONFIG, TICKS_PER_ERA, nextThreshold, rubberBand } from './dat
 import { POP_TYPES, isSpecialist } from './data/pops.js'
 import { POLICY_DEFS } from './data/policies.js'
 import { WONDER_BUILDS } from './data/wonders.js'
+import { CIVILIZATIONS, difficultyMult } from './data/civilizations.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount } from './data/buildings.js'
@@ -48,12 +49,13 @@ function weightedSample(items, weightFn, k) {
  * GameData.selection) and holds the game paused until the player resolves it.
  */
 export class GameManager {
-  constructor(seed = 1) {
+  constructor(seed = 1, options = {}) {
     this.data = new GameData(seed)
     this._listeners = new Set()
     this._version = 0
     this._timer = null
     this._roadNetsCache = null // memoized _roadPortSets(); invalidated when a Road is placed
+    this.difficultyMult = difficultyMult(options.difficulty) // enemy budget scaler (pre-game)
 
     this.subscribe = (fn) => {
       this._listeners.add(fn)
@@ -61,8 +63,27 @@ export class GameManager {
     }
     this.getVersion = () => this._version
 
+    if (options.civ) this._applyCivilization(options.civ) // marquee policy + starting unit/building
     this._recomputeOutputs()
     this._generateEnemies() // era-0 host, visible during development
+  }
+
+  /** Apply a chosen civilization's head-start: a marquee policy in the first policy slot,
+   *  plus a special starting unit or building pre-unlocked in the matching roster slot. */
+  _applyCivilization(civKey) {
+    const c = CIVILIZATIONS[civKey]
+    if (!c) return
+    const civ = this.data.civilization
+    civ.civKey = civKey
+    if (c.marqueePolicy && POLICY_DEFS[c.marqueePolicy]) civ.policies[0] = { key: c.marqueePolicy }
+    if (c.startUnit && UNIT_DEFS[c.startUnit]) {
+      const i = UNIT_CATEGORIES.findIndex((x) => x.key === UNIT_DEFS[c.startUnit].types[0])
+      if (i >= 0) civ.units[i] = { key: c.startUnit, level: 1 }
+    }
+    if (c.startBuilding && BUILDING_DEFS[c.startBuilding]) {
+      const i = BUILDING_CATEGORIES.findIndex((x) => x.key === BUILDING_DEFS[c.startBuilding].types[0])
+      if (i >= 0) civ.buildings[i] = { key: c.startBuilding, level: 1 }
+    }
   }
 
   _emit() {

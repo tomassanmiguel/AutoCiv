@@ -36,7 +36,7 @@ class CombatMixin {
     const era = this.data.era
     const t = this.data.tableau
     const bounds = t.visibleBounds(era)
-    const host = generateHost(era, bounds, t.enemyRowCount(era), t.columnPlaces(era))
+    const host = generateHost(era, bounds, t.enemyRowCount(era), t.columnPlaces(era), Math.random, this.difficultyMult ?? 1)
     this.data.enemies = host.units
     this.data.enemyHostType = host.type
   }

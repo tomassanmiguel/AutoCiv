@@ -1,0 +1,76 @@
+.pregame-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  padding: 2rem clamp(1rem, 4vw, 4rem);
+  background: radial-gradient(ellipse at 50% 30%, #1a1c2e 0%, #0b0c14 70%);
+  color: var(--text, #e8e2d0);
+  overflow: hidden;
+}
+
+.pregame-title {
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  color: var(--accent-light, #e3c07a);
+  letter-spacing: 0.04em;
+  margin: 0 0 0.3rem;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+}
+
+.pregame-label {
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass, #b8975a);
+  margin-top: 0.4rem;
+}
+
+.civ-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.7rem;
+  width: min(1000px, 100%);
+}
+
+.civ-card {
+  text-align: left;
+  padding: 0.8rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(150, 120, 70, 0.4);
+  background: rgba(30, 30, 44, 0.6);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+}
+.civ-card:hover { border-color: rgba(200, 160, 90, 0.8); transform: translateY(-2px); }
+.civ-card.selected {
+  border-color: var(--accent-light, #e3c07a);
+  background: rgba(70, 58, 30, 0.55);
+  box-shadow: 0 0 0 1px rgba(227, 192, 122, 0.6) inset;
+}
+.civ-name { font-family: var(--font-display, 'Cinzel', serif); font-size: 1.05rem; color: var(--accent-light, #e3c07a); margin-bottom: 0.25rem; }
+.civ-blurb { font-size: 0.8rem; line-height: 1.35; color: var(--text-muted, #b9b2a0); }
+
+.diff-row { display: flex; gap: 0.7rem; flex-wrap: wrap; justify-content: center; width: min(720px, 100%); }
+.diff-btn {
+  flex: 1 1 160px;
+  text-align: center;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(150, 120, 70, 0.4);
+  background: rgba(30, 30, 44, 0.6);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.diff-btn:hover { border-color: rgba(200, 160, 90, 0.8); }
+.diff-btn.selected { border-color: var(--accent-light, #e3c07a); background: rgba(70, 58, 30, 0.55); }
+.diff-name { font-family: var(--font-display, 'Cinzel', serif); font-size: 1rem; color: var(--accent-light, #e3c07a); }
+.diff-blurb { font-size: 0.74rem; color: var(--text-muted, #b9b2a0); margin-top: 0.2rem; }
+
+.pregame-actions { display: flex; gap: 1rem; margin-top: 0.8rem; }

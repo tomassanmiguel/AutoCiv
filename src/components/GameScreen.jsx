@@ -24,8 +24,8 @@ import './GameScreen.css'
  *
  * Each run gets a fresh random seed so the randomized terrain regions differ.
  */
-export default function GameScreen({ seed, audio, onExit }) {
-  const manager = useMemo(() => new GameManager(seed), [seed])
+export default function GameScreen({ seed, civ, difficulty, audio, onExit }) {
+  const manager = useMemo(() => new GameManager(seed, { civ, difficulty }), [seed, civ, difficulty])
   // Victory popup can be hidden (map stays inspectable) and re-summoned via the
   // trophy widget. Held here so both the popup and the rail share it.
   const [victoryHidden, setVictoryHidden] = useState(false)

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import LoadingScreen from './screens/LoadingScreen.jsx'
 import TitleScreen from './screens/TitleScreen.jsx'
+import PreGameScreen from './screens/PreGameScreen.jsx'
 import GameScreen from './components/GameScreen.jsx'
+import { DEFAULT_CIV, DEFAULT_DIFFICULTY } from './game/data/civilizations.js'
 import { AudioManager } from './game/audio/AudioManager.js'
 import { TITLE_TRACK } from './game/data/eras.js'
 import './App.css'
@@ -19,6 +21,8 @@ export default function App() {
   // can play) and then fades into the title screen.
   const [screen, setScreen] = useState('loading')
   const [seed, setSeed] = useState(0)
+  const [civ, setCiv] = useState(DEFAULT_CIV)
+  const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY)
   const [fading, setFading] = useState(false)
 
   // One AudioManager for the whole session so the title track and the era tracks
@@ -56,8 +60,14 @@ export default function App() {
     }, FADE_MS)
   }
 
-  const startGame = () =>
-    transitionTo('game', () => setSeed((Math.random() * 0x100000000) >>> 0))
+  // Title → pre-game setup (pick civ + difficulty) → game (seed chosen at "Begin").
+  const openSetup = () => transitionTo('pregame')
+  const beginGame = (civKey, diffKey) =>
+    transitionTo('game', () => {
+      setSeed((Math.random() * 0x100000000) >>> 0)
+      setCiv(civKey)
+      setDifficulty(diffKey)
+    })
   const exitToTitle = () => transitionTo('title')
   // The loading click is the audio-unlocking gesture; also enable directly so
   // the title track is ready the moment we arrive there.
@@ -69,8 +79,9 @@ export default function App() {
   return (
     <div className="app-shell">
       {screen === 'loading' && <LoadingScreen onStart={beginFromTitle} />}
-      {screen === 'title' && <TitleScreen onNewGame={startGame} />}
-      {screen === 'game' && <GameScreen seed={seed} audio={audio} onExit={exitToTitle} />}
+      {screen === 'title' && <TitleScreen onNewGame={openSetup} />}
+      {screen === 'pregame' && <PreGameScreen onStart={beginGame} onBack={exitToTitle} />}
+      {screen === 'game' && <GameScreen seed={seed} civ={civ} difficulty={difficulty} audio={audio} onExit={exitToTitle} />}
       <div className={`screen-fade${fading ? ' active' : ''}`} />
     </div>
   )
