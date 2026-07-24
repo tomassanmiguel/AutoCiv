@@ -58,8 +58,8 @@ is still the full v2 content set. Progress:
   Prune v1 holdovers (baker-unit/legionnaire/horseman, shaman/philosopher/poet, brewery/totem/mine/…).
   Handle name/tech mismatches (e.g. Branding→Metallurgy-policy). Keep every draw resolvable + green.
 - [x] **Pops/specialists → v2** (`pops.js`): Citizen 1/1/1; the four gold-upgrade chains + special pops
-  (Priest/Soldier/Replicant) + chain/tier/next/tech metadata. Remaining: the **specialist gold-upgrade**
-  mechanic (convert a pop type up its chain); prefix (Evolved/Cyborg/Psychic) application in popOutput.
+  (Priest/Soldier/Replicant); prefixes wired. **Specialist gold-upgrade mechanic DONE**
+  (`specialistUpgradeInfo`/`upgradeSpecialistChain` + PopCard ▲ button; round(15·1.18^E)/pop, one-way).
 - [x] **Policies → v2** (`policies.js`): 105 policy+bonus defs with structured effect fields; generic
   `outputPct`/`totalGoldPct` %-engine wired in `_recomputeOutputs`. Remaining: wire the other structured
   families (doctrine/citizenOutput/specialistOutput/thresholdMult/legitPerEra/goldInterest/unitDeath/
