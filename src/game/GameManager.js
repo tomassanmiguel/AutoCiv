@@ -2,6 +2,7 @@ import { GameData } from './GameData.js'
 import { ERAS, ERA_COUNT } from './data/eras.js'
 import { RESOURCE_CONFIG, TICKS_PER_ERA, nextThreshold, rubberBand } from './data/resources.js'
 import { POP_TYPES, isSpecialist } from './data/pops.js'
+import { POLICY_DEFS } from './data/policies.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount } from './data/buildings.js'
@@ -182,6 +183,14 @@ export class GameManager {
     if (this._hasPolicy('slavery')) { pct.production += 0.10; pct.progress -= 0.05 }
     if (this._hasPolicy('weights_and_measures')) pct.gold += 0.50
     if (this._hasPolicy('democracy')) pct.progress += 0.20 // +20% :progress: gain
+    // v2 generic policy % modifiers: additive per-resource outputPct + totalGoldPct
+    // (v1 policies above have no such fields, so no double-count).
+    for (const p of civ.policies) {
+      const def = p && POLICY_DEFS[p.key]
+      if (!def) continue
+      if (def.outputPct) for (const res of Object.keys(pct)) if (def.outputPct[res]) pct[res] += def.outputPct[res]
+      if (def.totalGoldPct) pct.gold += def.totalGoldPct
+    }
     for (const res of Object.keys(pct)) if (pct[res]) totals[res] *= 1 + pct[res]
     civ.progress.output = totals.progress
     civ.food.output = totals.food
