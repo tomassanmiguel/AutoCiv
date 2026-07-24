@@ -603,6 +603,16 @@ export class GameManager {
   // ---------------------------------------------------------------------------
   addPops(n) {
     const civ = this.data.civilization
+    // Pop-gain modifiers (read from active policies + bonuses): Inoculation +3 pops,
+    // Biological Immortality ×2 (both routed through the growth split), Semaglutides
+    // +3 flat Citizens on top. Computed order-independently.
+    let add = 0, mult = 1, extraCitizens = 0
+    for (const def of this._activeEffectDefs()) {
+      if (def.special === 'extra_pop_gains') add += 3
+      else if (def.special === 'double_pop_gains') mult *= 2
+      else if (def.special === 'extra_citizen_gains') extraCitizens += 3
+    }
+    n = (n + add) * mult
     for (let k = 0; k < n; k++) {
       civ.growthParity += 1
       const specialists = this._unlockedSpecialistKeys()
@@ -614,6 +624,7 @@ export class GameManager {
         civ.pops.citizen = (civ.pops.citizen ?? 0) + 1
       }
     }
+    if (extraCitizens) civ.pops.citizen = (civ.pops.citizen ?? 0) + extraCitizens
   }
 
   /** Unlocked specialist pop keys, ordered bottom-to-top (highest slot first). */
@@ -826,6 +837,7 @@ export class GameManager {
     if (def.unitDefBonus) { civ.modifiers.unitHpBonus += def.unitDefBonus; this._syncUnitStats() }
     if (def.buildingDefBonus) { civ.modifiers.buildingHpBonus += def.buildingDefBonus; this._syncUnitStats() }
     if (def.ticksPerEra) civ.modifiers.bonusTicks = (civ.modifiers.bonusTicks ?? 0) + def.ticksPerEra
+    if (def.special === 'pop_on_unlock') civ.pops.citizen = (civ.pops.citizen ?? 0) + 20 // Genome Mapping
     // Not yet applied here (later passes): unitAtkPct, rangedReach, policySlots,
     // mercLevels, freeRerolls, terrainDouble, and every `special`-tagged effect.
   }

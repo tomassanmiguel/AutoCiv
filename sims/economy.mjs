@@ -195,5 +195,31 @@ console.log('TEST 15: Forestry policy doubles the Forest terrain yield')
   assert(p1 - p0 === 1, `Forestry doubles Forest yield (1→2 progress, got +${p1 - p0})`)
 }
 
+console.log('TEST 16: Pop-gain modifiers (Inoculation +3, Biological Immortality ×2, Semaglutides +3 Citizens)')
+{
+  const total = (civ) => Object.values(civ.pops).reduce((a, b) => a + b, 0)
+  const base = new GameManager(6); base.setEra(8)
+  const t0 = total(base.data.civilization); base.addPops(4); const gainBase = total(base.data.civilization) - t0
+  const g = new GameManager(6); g.setEra(8)
+  g.data.civilization.bonuses.push('inoculation')      // +3 pops
+  g.data.civilization.policies[0] = { key: 'biological_immortality' } // ×2
+  g.data.civilization.bonuses.push('semaglutides')     // +3 citizens
+  const s0 = total(g.data.civilization); g.addPops(4); const gain = total(g.data.civilization) - s0
+  console.log(`  base gain ${gainBase} → modified gain ${gain} for addPops(4)`)
+  // (4 + 3) × 2 = 14, then +3 Citizens = 17
+  assert(gainBase === 4, `base addPops(4) adds 4 (got ${gainBase})`)
+  assert(gain === 17, `Inoculation+BioImmortality+Semaglutides: 4→17 (got ${gain})`)
+}
+
+console.log('TEST 17: Genome Mapping grants +20 population on unlock')
+{
+  const g = new GameManager(7); g.setEra(12)
+  const before = Object.values(g.data.civilization.pops).reduce((a, b) => a + b, 0)
+  g._applyModifier({ kind: 'modifier', key: 'genome_mapping' })
+  const after = Object.values(g.data.civilization.pops).reduce((a, b) => a + b, 0)
+  console.log(`  population ${before} → ${after}`)
+  assert(after - before === 20, `Genome Mapping +20 population (got +${after - before})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

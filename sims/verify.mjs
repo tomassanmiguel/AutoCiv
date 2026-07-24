@@ -67,7 +67,8 @@ const WIRED_FIELDS = ['outputPct', 'totalGoldPct', 'citizenOutput', 'popOutputFl
   'terrainDouble', 'repairMult', 'mercCostMult', 'mercLevels', 'rangedReach']
 const WIRED_SPECIALS = new Set(['low_legit_atk', 'melee_flat_atk', 'gunboat_flat_atk', 'building_production_flat',
   'enemy_atk_reduce', 'prohibition', 'citizen_progress_production_trade', 'pop_highest_plus', 'eugenics_atk',
-  'end_era_progress_from_atk', 'end_combat_gold_from_atk'])
+  'end_era_progress_from_atk', 'end_combat_gold_from_atk',
+  'extra_pop_gains', 'double_pop_gains', 'extra_citizen_gains', 'pop_on_unlock'])
 // v1-name policies wired by hardcoded _hasPolicy(key) checks rather than a structured field.
 const HARDCODED_WIRED = new Set(['slavery', 'weights_and_measures', 'ownership', 'specialization',
   'language', 'festivals', 'tribalism', 'caste_system', 'calendar', 'code_of_laws', 'diplomatic_marriage', 'midwivery'])
