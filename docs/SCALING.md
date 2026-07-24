@@ -27,7 +27,7 @@ unlock era**, so a tier unlocked later is simply stronger; you rarely list more 
 
 | Domain | growth `g` | Notes |
 |---|---|---|
-| Building output (all resources) | **1.15** | ~3/tick Stone base; a building authored at era E has base `≈ 3·1.15^E` |
+| Building output | **1.15** | see **Output values** below (base 3.5, gold ×1.5, late-game boost) |
 | Unit attack | **1.15** | tracks output so towers keep pace with the economy |
 | **Enemy HP** | **1.25** | outpaces player attack on purpose |
 | Enemy attack (vs blockers) | flat base `[proposed]` | plus per-type unit/building multipliers |
@@ -41,6 +41,16 @@ difference lives in `X` (jump size) and `targetPerEra` (levels expected per era)
 exponent needed. Note thresholds grow at `1.25^E` while output grows at `1.15^E`, so requirements
 pull ahead of raw per-tick output — more of the "keep investing" pressure. `TICKS_PER_ERA = 65` (base;
 Calendar-line techs extend it).
+
+**Output values.** A per-tick output building unlocked at era E produces
+`round(3.5 · 1.15^E · lateBoost(E))` of its resource — **except GOLD buildings, which use base 5.25**
+(≈50% more, since gold buys upgrades/mercs/rerolls rather than crossing thresholds).
+`lateBoost(E) = 1 + 0.1·max(0, E−10)` (1× through Gilded, ramping to ~2.7× by Infinity) so **late-era
+buildings punch harder** — they have fewer eras left to pay off against a much steeper threat.
+**End-of-era lump** buildings (Pier / Theater / Arena) pay `≈ 50 × the equivalent per-tick value` (so a
+Stone-age Pier ≈ 200 food). **Proportional** buildings state an explicit per-unit / per-tile / per-count
+coefficient — never an approximation. **Default enemy chip = 1 dmg/turn** to a blocker (heavier enemy
+types override); wall `def` is sized against that.
 
 **The central tension:** a same-tier unit's attack (`·1.15^E`) falls behind a same-era enemy's HP
 (`·1.25^E`), so a **raw** unit needs more and more hits over time. Players close the gap with **upgrade
