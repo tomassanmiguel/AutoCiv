@@ -6,59 +6,55 @@ Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so sp
 
 | current | era | unused avail |
 |--|--|--|
-| **1** ⚠️ | E27 Infinity | 19 |
-| **5** ⚠️ | E26 Time | 14 |
-| **6** ⚠️ | E13 Silicon | 12 |
-| **6** ⚠️ | E14 Lunar | 15 |
+| **3** ⚠️ | E27 Infinity | 17 |
+| **6** ⚠️ | E26 Time | 14 |
 | **7** ⚠️ | E18 Exodus | 14 |
 | **7** ⚠️ | E20 Liminite | 11 |
 | **7** ⚠️ | E25 Utopian | 15 |
-| **8** | E15 Intelligence | 15 |
 | **8** | E17 Invasion | 13 |
 | **8** | E19 Frontier | 14 |
-| **9** | E8 Revolution | 13 |
-| **9** | E12 Atomic | 12 |
-| **9** | E16 Solar | 12 |
 | **9** | E21 Xenotic | 14 |
 | **9** | E23 Early Galactic | 15 |
+| **10** | E13 Silicon | 9 |
 | **11** | E22 Evolution | 17 |
-| **12** | E10 Gilded | 15 |
-| **13** | E9 Steam | 11 |
-| **13** | E11 Modern | 11 |
+| **12** | E15 Intelligence | 12 |
+| **13** | E12 Atomic | 9 |
+| **13** | E14 Lunar | 9 |
+| **13** | E16 Solar | 10 |
 | **13** | E24 Late Galactic | 8 |
-| **15** | E0 Stone | 4 |
-| **15** | E2 Iron | 5 |
-| **16** | E6 Renaissance | 11 |
-| **17** | E3 Classical | 9 |
+| **15** | E8 Revolution | 8 |
+| **15** | E9 Steam | 9 |
+| **16** | E1 Bronze | 2 |
+| **16** | E2 Iron | 4 |
+| **16** | E11 Modern | 9 |
 | **17** | E5 Late Medieval | 9 |
-| **17** | E7 Exploration | 11 |
-| **18** | E1 Bronze | 2 |
+| **17** | E10 Gilded | 10 |
+| **18** | E3 Classical | 8 |
+| **18** | E6 Renaissance | 9 |
+| **19** | E0 Stone | 2 |
 | **19** | E4 Early Medieval | 3 |
+| **19** | E7 Exploration | 9 |
 
 ---
 
-### E0 · Stone — current 15 · 4 unused
+### E0 · Stone — current 19 · 2 unused
 - Clothes
-- Language
 - Fermentation
-- Ownership
 
-### E1 · Bronze — current 18 · 2 unused
+### E1 · Bronze — current 16 · 2 unused
 - Oral Tradition
 - Brothels
 
-### E2 · Iron — current 15 · 5 unused
+### E2 · Iron — current 16 · 4 unused
 - Horseback Riding
 - Forging
 - Rudders
 - Embassy
-- Alphabet
 
-### E3 · Classical — current 17 · 9 unused
+### E3 · Classical — current 18 · 8 unused
 - Concrete
 - Glassblowing
 - Public Baths
-- Poetry
 - Census
 - Rhetoric
 - Pharmacology
@@ -81,53 +77,42 @@ Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so sp
 - Quarantine
 - Cofferdams
 
-### E6 · Renaissance — current 16 · 11 unused
+### E6 · Renaissance — current 18 · 9 unused
 - Perspective
-- Maritime Law
 - Calculus
 - Humanism
 - Machiavellianism
 - Tolerance
 - Patronage
-- Domes
 - Brocade
 - Anatomy
 - Masquerades
 
-### E7 · Exploration — current 17 · 11 unused
+### E7 · Exploration — current 19 · 9 unused
 - Deepwater Navigation
 - Reformation
 - Native Diplomacy
 - Scurvy Prevention
 - Natural History
-- Evangelism
-- Coffee
 - Opera
 - Patents
 - Potatoes
 - Indentured Servitude
 
-### E8 · Revolution — current 9 · 13 unused
+### E8 · Revolution — current 15 · 8 unused
 - Constitution
 - Theory of Evolution
-- Bayonets
-- Paper Money
-- Inoculation
-- Gas Light
 - Free Press
 - Abolition
 - Chemistry
-- Canning
 - Native Integration
 - Napoleonic Code
 - Zooly
 
-### E9 · Steam — current 13 · 11 unused
+### E9 · Steam — current 15 · 9 unused
 - Telegraph
-- Machine Guns
 - Public Schooling
 - Public Health
-- Gunboat Diplomacy
 - Canals
 - Incorporation
 - Reforestation
@@ -135,85 +120,65 @@ Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so sp
 - Restaurants
 - Contraception
 
-### E10 · Gilded — current 12 · 15 unused
+### E10 · Gilded — current 17 · 10 unused
 - Telephone
 - Refrigeration
-- Automobile
-- Eugenics
-- National Parks
 - Petrochemicals
-- Sports
 - Impressionism
 - Cameras
-- Skyscrapers
 - Espionage
 - Submarines
 - Anti-Trust
 - Anesthesia
 - Cult of Personality
 
-### E11 · Modern — current 13 · 11 unused
+### E11 · Modern — current 16 · 9 unused
 - Red Cross
 - Highways
 - Jazz
 - Universal Sufferage
-- Geneva Convention
 - Air Conditioning
 - Magnetic Recording
-- Prohibition
 - Comics
 - Television
 - Decolonization
 
-### E12 · Atomic — current 9 · 12 unused
+### E12 · Atomic — current 13 · 9 unused
 - Orbital Mechanics
-- Rocketry
 - Nuclear Weaponry
 - Mutually Assured Destruction
 - Renewable Energy
 - Climate Science
 - Rock n' Roll
-- Internet
-- Game Theory
 - Lithium-Ion
 - War on Drugs
 - Human Genome Project
 
-### E13 · Silicon — current 6 ⚠️ · 12 unused
+### E13 · Silicon — current 10 · 9 unused
 - Blockchain
-- Maglev
 - Streaming
 - Nonproliferation
-- Video Games
 - E-commerce
 - Identity Politics
 - Neurodivergence
 - Electric Vehicles
 - Hacking
 - Social Media
-- Semaglutides
 
-### E14 · Lunar — current 6 ⚠️ · 15 unused
+### E14 · Lunar — current 13 · 9 unused
 - Sustainable Habitats
 - Deefake
-- Large Language Models
 - Telework
 - Carbon Nanotubes
-- Universal Basic Income
-- Artificial Meat
 - Stratoblasting
 - Helium-3
 - Space Treaty
 - Data Privacy
-- Alzheimer's Cure
-- Prediction Markets
-- Reuseable Rocketry
 - Self-Driving
 
-### E15 · Intelligence — current 8 · 15 unused
+### E15 · Intelligence — current 12 · 12 unused
 - AGI
 - Quantum Cryptography
-- Carbon Capture
 - Cognitive Liberty
 - Robotic Medicine
 - Meritocracy
@@ -221,20 +186,16 @@ Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so sp
 - Biofuel
 - Sapient Rights
 - Synthetic Art
-- Recursive Self-Improvement
 - Warm Superconductors
 - Megalopolis
-- P=NP
 - Flying Taxis
 
-### E16 · Solar — current 9 · 12 unused
+### E16 · Solar — current 13 · 10 unused
 - Cure for Cancer
 - Dome City
 - Augmented Reality
-- Solar Sails
 - Space Elevator
 - Exosuit
-- Gravboots
 - Fuel Synthesis
 - Atmokinesis
 - Offworld Governance
@@ -380,7 +341,7 @@ Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so sp
 - Perpetual Motion
 - Morphological Freedoms
 
-### E26 · Time — current 5 ⚠️ · 14 unused
+### E26 · Time — current 6 ⚠️ · 14 unused
 - Chronotic Regulation
 - Multiversal Accord
 - Precognitive Policing
@@ -396,7 +357,7 @@ Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so sp
 - Timeloop Retirement
 - Probability Drive
 
-### E27 · Infinity — current 1 ⚠️ · 19 unused
+### E27 · Infinity — current 3 ⚠️ · 17 unused
 - Universal Simulation
 - Immutability
 - Duplication
@@ -408,12 +369,10 @@ Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so sp
 - Reanimation
 - Invincibility
 - Final Prupose
-- Entropic Reversal
 - Unbound Memory
 - Endless Song
 - Elysium
 - Elder Contact
-- Omnicracy
 - Ascendancy
 - Prescience
 

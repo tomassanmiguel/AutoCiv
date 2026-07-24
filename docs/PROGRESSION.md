@@ -4,28 +4,32 @@ Units/buildings/specialists/wonders unlock via a *tech* whose name differs from 
 
 Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wonder · ✦ bonus.
 
-### E0 · Stone — 16
+### E0 · Stone — 20
 
 | Advancement | | Unlocks |
 |---|--|---|
 | *(start)* | 🗡 | **Warrior** — default melee blocker |
 | **Basket Weaving** | ✦ | Agriculture — reduce food threshold -5% |
+| **Language** | ✦ | Language — +2 progress/tick permanently |
 | **Cave Painting** | 🏛 | Cave Painting — Banks stored progress, dumps overbuilt |
 | **Fire** | 🏛 | Campfire — military utility: after each era permanently +1 atk to adjacent units |
 | **Fishing** | 🏛 | Pier — End-of-era 200 food |
 | **Mud Brick** | 🏛 | Mud Brick Wall — Wall: blocker, def 3 |
+| **Pottery** | 🏛 | Kiln — basic production building |
 | **Sacred Grounds** | 🏛 | Shrine — +10 legit on completion |
 | **Burial Rites** | 📜 | Burial Rites — unit death: progress = atk |
 | **Midwivery** | 📜 | Midwivery — +1 food per Citizen |
+| **Ownership** | 📜 | Ownership — +6 gold/tick |
 | **Tribalism** | 📜 | Tribalism — +1 atk/def per same-type unit |
 | **Agriculture** | 👤 | Farmer — +4 :food:/tick pop |
 | **Bartering** | 👤 | Trader — +6 :gold:/tick pop |
+| **Tools** | 👤 | Builder — +4 :production:/tick pop |
 | **Hunting** | 🗡 | Hunter — Auxiliary; gain food on kill |
 | **Pack Bonding** | 🗡 | Wolf — Stone-age Cavalry unit |
 | **The Sling** | 🗡 | Slinger — earliest ranged unit |
 | **Mysticism** | ⭐ | Stonehenge — +25 legitimacy per era |
 
-### E1 · Bronze — 18
+### E1 · Bronze — 16
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -34,21 +38,19 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Domestication** | 🏛 | Ranch — 4 food/t, +2 each era |
 | **Leatherwork** | 🏛 | Caltrops — Trap: 20 dmg per crosser |
 | **Milling** | 🏛 | Lumber Mill — Production from forest tile bonus |
-| **Pottery** | 🏛 | Kiln — basic production building |
 | **The Plough** | 🏛 | Farm — 4 food/t |
 | **Forestry** | 📜 | Forestry — double forest terrain bonus |
 | **Granaries** | 📜 | Granaries — double plains terrain economy bonus |
 | **Scriptoria** | 📜 | Scriptoria — +1 progress per Citizen |
 | **Slavery** | 📜 | Slavery — +30% production, -20% progress |
 | **Astrology** | 👤 | Astrologer — +4 :progress:/tick pop |
-| **Tools** | 👤 | Builder — +4 :production:/tick pop |
 | **Alloying** | 🗡 | Spearman — Melee; +50% atk vs cavalry |
 | **Archery** | 🗡 | Archer — Ranged; atk 5 range 2 |
 | **Sailing** | 🗡 | Galley — Naval; ram, melee range |
 | **The Wheel** | 🗡 | Chariot — Cavalry; atk 6 pursuit 2 |
 | **Masonry** | ⭐ | The Pyramids — all upgrade costs -25% |
 
-### E2 · Iron — 15
+### E2 · Iron — 16
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -60,6 +62,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Fortification** | 🏛 | Stone Wall — Wall: blocker, def 4 |
 | **Paper** | 🏛 | Library — 6 progress/t |
 | **Trade Networks** | 🏛 | Market — 7 gold/t |
+| **Alphabet** | 📜 | Alphabet — when you build a Progress building, upgrade it once free |
 | **Code of Laws** | 📜 | Code of Laws — when your unit is killed, attacker takes damage = your unit's attack |
 | **Communal Granary** | 📜 | Communal Granary — +1 food per Citizen |
 | **Compound Bow** | 📜 | Compound Bow — +50% atk to ranged units |
@@ -68,7 +71,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Siege** | 🗡 | Ballista — Siege; single-target, pushes back |
 | **Hospitality Rites** | ⭐ | Hanging Gardens — +1 extra pop per population gain |
 
-### E3 · Classical — 17
+### E3 · Classical — 18
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -82,6 +85,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Caste System** | 📜 | Caste System — +25% atk for upgraded units |
 | **Defensive Pact** | 📜 | Defensive Pact — mercenaries get +1 def |
 | **Optics** | 📜 | Optics — +50% atk to naval units |
+| **Poetry** | 📜 | Poetry — end of era: gain progress = attack of surviving units |
 | **Usury** | 📜 | Usury — 10% end-of-era gold interest |
 | **Baking** | 👤 | Baker — +8 :food:/tick pop |
 | **Monotheism** | 👤 | Priest — +1 legitimacy per era-end |
@@ -136,7 +140,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Stirrups** | 🗡 | Heavy Cavalry — Cavalry; atk 10 def 3 |
 | **Inquisition** | ⭐ | Hagia Sophia — double legitimacy; production 2x legitimacy |
 
-### E6 · Renaissance — 16
+### E6 · Renaissance — 18
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -152,15 +156,18 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Urbanization** | 🏛 | City — Underlaid: tile holds 3 |
 | **Blueprints** | 📜 | Blueprints — -50% building repair cost |
 | **Freedom of Religion** | 📜 | Freedom of Religion — +30% progress, legitimacy losses doubled |
+| **Maritime Law** | 📜 | Maritime Law — +500% water-tile gold bonus |
 | **Mercantilism** | 📜 | Mercantilism — +25% total gold |
 | **Military Tradition** | 📜 | Military Tradition — overbuilt units keep upgrade levels |
 | **Oligarchy** | 📜 | Oligarchy — +30% gold, -20% progress |
 | **Siege Doctrine** | 📜 | Siege Doctrine — +50% atk to siege units |
+| **Domes** | ⭐ | Sistine Chapel — free advancement pick at the start of each era (no threshold increase) |
 
-### E7 · Exploration — 17
+### E7 · Exploration — 19
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Coffee** | ✦ | Coffee — all Citizens +1 production/tick |
 | **Banking** | 🏛 | Bank — End-of-era gold from unspent |
 | **Creole Culture** | 🏛 | Hacienda — 6 food, 6 production, 9 gold |
 | **Pumping** | 🏛 | Drydock — Spawner: best Naval unit |
@@ -169,6 +176,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Colonialism** | 📜 | Colonialism — New-World units/buildings +2 levels |
 | **Columbian Exchange** | 📜 | Columbian Exchange — New-World units/buildings +6 gold/tick |
 | **Embassies** | 📜 | Embassies — +4 mercenary upgrade levels |
+| **Evangelism** | 📜 | Evangelism — +1 output to Priests (requires Priest) |
 | **Mountaineering** | 📜 | Mountaineering — double mountain terrain bonus |
 | **Economics** | 👤 | Merchant — +12 :gold:/tick pop |
 | **Statistics** | 👤 | Statistician — +24 :gold:/tick pop |
@@ -179,21 +187,27 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Muskets** | 🗡 | Musketman — Melee; atk 15 def 3 |
 | **Architecture** | ⭐ | Taj Mahal — banks dead unit atk as progress |
 
-### E8 · Revolution — 9
+### E8 · Revolution — 15
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Bayonets** | ✦ | Bayonets — all melee units +5 attack |
+| **Canning** | ✦ | Canning — all Citizens +1 food/tick |
 | **Democracy** | ✦ | Democracy — unlock 7th policy slot |
+| **Gas Light** | ✦ | Gas Light — all buildings +2 production/tick |
 | **Newspaper** | ✦ | Public Schooling — reduce progress threshold -8% |
+| **Paper Money** | ✦ | Paper Money — all Citizens +1 gold/tick |
 | **Public Education** | 🏛 | School — 13 progress/t |
 | **Sea Mine** | 🏛 | Sea Mine — Trap: 89 dmg first enemy |
 | **Civil Rights** | 📜 | Civil Rights — +30% progress, -20% food |
 | **Guerilla Warfare** | 📜 | Guerilla Warfare — +100% damage from trap buildings |
+| **Inoculation** | 📜 | Inoculation — population gains yield +3 more |
 | **Levee en Masse** | 📜 | Levee en Masse — -50% unit repair cost |
 | **Nationalism** | 📜 | Nationalism — unit death: gold = atk |
+| **Native Collaboration** | 📜 | Native Collaboration — before combat: 3 free random mercenaries in the New World |
 | **Scientific Method** | 👤 | Scientist — +12 :progress:/tick pop |
 
-### E9 · Steam — 13
+### E9 · Steam — 15
 
 | Advancement | | Unlocks |
 |---|--|---|
@@ -203,21 +217,28 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Telegram** | ✦ | Telegram — +1 ranged reach |
 | **Electricity** | 🏛 | Coal Plant — +2 free upgrade levels range |
 | **Joint Stock Company** | 🏛 | Stock Exchange — 23 gold/t |
+| **Machine Guns** | 🏛 | Machine Gun — Military underlay: the unit on this tile attacks 1/2/3/… extra times |
 | **Mass Production** | 🏛 | Factory — 16 production/t |
 | **Architectural Tradition** | 📜 | Architectural Tradition — overbuilt buildings keep levels |
+| **Gunboat Diplomacy** | 📜 | Gunboat Diplomacy — all naval units +15 base attack |
 | **Germ Theory** | 👤 | Doctor — +12 :food:/tick pop |
 | **Hydraulic Press** | 👤 | Inventor — +12 :production:/tick pop |
 | **Income Tax** | 👤 | Banker — +18 :gold:/tick pop |
 | **Dynamite** | 🗡 | Artillery — Siege; splash, atk 28 |
 | **World Faire** | ⭐ | Eiffel Tower — all specialists +50% output |
 
-### E10 · Gilded — 12
+### E10 · Gilded — 17
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Automobile** | ✦ | Automobile — all units +1 pursuit range |
+| **Skyscrapers** | ✦ | Skyscrapers — city buildings +5 upgrade levels (requires Urbanization) |
 | **Archaeology** | 🏛 | Museum — Progress from unique row/column types |
 | **Metric System** | 🏛 | Armory — Command: upgrade adjacent unit free |
+| **National Parks** | 🏛 | National Park — each National Park: +10/15/20…% to base terrain yields globally |
 | **Radio** | 🏛 | Radio Tower — Command: ranged units +2 range |
+| **Sports** | 🏛 | Stadium — end of era: +1000/1250/1500… gold and +10 legit |
+| **Eugenics** | 📜 | Eugenics — end of era: all units permanently +2 attack |
 | **Laissez-Faire** | 📜 | Laissez-Faire — +40% total gold |
 | **Modernization** | 📜 | Modernization — -30% upgrade cost |
 | **Unions** | 📜 | Unions — +3 output to every specialist |
@@ -228,85 +249,111 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Trenchwarfare** | 🗡 | Infantryman — Melee; atk 31 def 4 |
 | **Immigration** | ⭐ | Statue of Liberty — overbuilding stops raising production threshold |
 
-### E11 · Modern — 13
+### E11 · Modern — 16
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **Composites** | ✦ | Composites — units +25% atk |
+| **Geneva Convention** | ✦ | Geneva Convention — −5% enemy host budget |
 | **Replaceable Parts** | ✦ | Mass Production — +2 free builds on unlock |
 | **Socialism** | ✦ | Socialism — unlock 8th policy slot |
 | **Aircraft Carriers** | 🏛 | Aircraft Carrier — Spawner: best Aerial unit |
 | **Penicillin** | 🏛 | Hospital — 24 food/t |
 | **Communism** | 📜 | Communism — +30% production, -20% gold |
 | **Fascism** | 📜 | Fascism — +100% atk when legitimacy low |
+| **Prohibition** | 📜 | Prohibition — Citizens +2 to each non-gold output, −1 gold/tick |
 | **Propaganda** | 📜 | Propaganda — +25 legit at end of era |
 | **Tourism** | 📜 | Tourism — wonder yields ×2 |
 | **United Nations** | 📜 | United Nations — -60% mercenary cost |
 | **Radar** | 🗡 | Fighter — Aerial; atk 27 pursuit 3 |
 | **Rifling** | 🗡 | Rifleman — Melee; atk 23 def 3 |
 | **Steel Hulls** | 🗡 | Battleship — Naval; atk 19 def 4 |
+| **Fission** | ⭐ | Manhattan Project — start of combat: nuke a random enemy (2000 dmg) + permanent fallout tile (100 dmg to enemies entering/spawning) |
 
-### E12 · Atomic — 9
+### E12 · Atomic — 13
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Game Theory** | ✦ | Game Theory — +1 advancement option per progress pick |
+| **Genome Mapping** | ✦ | Genome Mapping — on unlock: +20 population |
+| **Internet** | ✦ | Internet — all Citizens +2 gold/tick |
 | **Psychology** | ✦ | Transhumanism — +1 to each pop's highest output |
 | **Relativity** | ✦ | Relativity — +7 ticks per era |
+| **Nuclear Power** | 🏛 | Nuclear Power Plant — Power: +3 free upgrade levels in range |
 | **Plastics** | 🏛 | Laboratory — 31 progress/t |
 | **Aerodynamics** | 📜 | Aerodynamics — +50% atk to aerial units |
 | **Ecology** | 📜 | Ecology — double all terrain bonuses |
 | **Quantitative Easing** | 📜 | Quantitative Easing — 20% end-of-era gold interest |
 | **Computers** | 👤 | Software Engineer — +16 :production:/tick pop |
 | **Ballistics** | 🗡 | Missile Launcher — Siege; bigger AoE |
-| **Fission** | ⭐ | Hadron Collider — +2200 progress each era (scaling) |
+| **Particle Physics** | ⭐ | Hadron Collider — +2200 progress each era (scaling) |
 
-### E13 · Silicon — 6
+### E13 · Silicon — 10
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **Cell Phones** | ✦ | Cell Phones — reduce production threshold -8% |
 | **Microprocessors** | ✦ | Microprocessors — reduce progress threshold -10% |
+| **Semaglutides** | ✦ | Semaglutides — population gains +3 extra Citizens |
+| **Video Games** | ✦ | Video Games — all Citizens +2 progress, −1 production/tick |
+| **Maglev** | 🏛 | Shinkansen — 3×1 road underlay; +3 gold/tick to each adjacent building |
 | **The Cloud** | 🏛 | Data Center — 75 gold/t |
+| **Firewall** | 📜 | Firewall — −25% to all enemy attack values |
 | **High Frequency Trading** | 👤 | Investor — +30 :gold:/tick pop |
 | **Stealth** | 🗡 | Raptor — Aerial; atk 35 range 2 |
 | **Space Station** | ⭐ | Intl. Space Station — space unit creation copies it |
 
-### E14 · Lunar — 6
+### E14 · Lunar — 13
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Alzheimer's Cure** | ✦ | Alzheimer's Cure — all pops +1 food/tick |
+| **Reuseable Rocketry** | ✦ | Reuseable Rocketry — all Moon tiles are adjacent to all Earth tiles for buildings |
 | **3d printing** | 🏛 | 3D Printer — 39 production/t |
 | **Discombobulator** | 🏛 | Discombobulator — Trap: enemies skip next turn |
+| **Lunar Installment** | 🏛 | Moon Base — Military, unique, moon-only: enemies path around the moon |
+| **Artificial Meat** | 📜 | Artificial Meat — Food buildings: double output, produce production instead of food |
 | **Lunar Defense Stratagem** | 📜 | Lunar Defense Stratagem — Moon units +100% atk |
+| **Prediction Markets** | 📜 | Prediction Markets — end of combat: gold = total attack of surviving units |
+| **Universal Basic Income** | 📜 | Universal Basic Income — +50% gold output, −25% production output |
 | **Drone Warfare** | 🗡 | Drone — Cavalry; high range, fragile |
 | **Lasers** | 🗡 | Railgunner — Ranged; atk 28 range 4 |
 | **Satelite Defense** | 🗡 | Satellite — Astral; stationary, hits terrestrial |
+| **Solar Reflection** | ⭐ | Great Mirror — all terrestrial units & buildings +2 upgrade levels |
 
-### E15 · Intelligence — 8
+### E15 · Intelligence — 12
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Marine Construction** | ✦ | Marine Construction — land buildings (no other requirement) can be built on water |
 | **Neural Interfaces** | ✦ | Neural Interfaces — reduce progress threshold -12% |
+| **P=NP** | ✦ | P=NP — combat-prep shows projected legitimacy loss |
 | **Technocracy** | ✦ | Technocracy — unlock 9th policy slot |
+| **Industrial Carbon Capture** | 🏛 | Carbon Sink — end of combat: all terrestrial tiles +1 natural bonus |
 | **Autonomous Governance** | 📜 | Autonomous Governance — 2 free rerolls |
 | **Centralized Cryptocurrency** | 📜 | Centralized Cryptocurrency — +60% total gold |
 | **Rapid Reconstruction** | 📜 | Rapid Reconstruction — -100% building repair cost |
 | **In-Vitro Editing** | 👤 | Geneticist — +16 :food:/tick pop |
 | **Robotic Labor** | 👤 | Replicant — 1 prod/gold/progress, count doubles |
+| **Recursive Self-Improvement** | 🗡 | Aspirant — starts 1 atk/1 def; each era survived: randomly +1 def OR double attack |
 | **Autonomous Warfare** | ⭐ | Skynet — military +75% atk, Terminators +150% |
 
-### E16 · Solar — 9
+### E16 · Solar — 13
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **Jovian Life** | ✦ | Hydroponics — reduce food threshold -10% |
+| **Asteroid Mining** | 🏛 | Asteroid Mine — 186 gold/t |
 | **Energy Capture** | 🏛 | Solar Array — 31 production/t, stacks per Array |
 | **Exoptics** | 🏛 | Space Telescope — 79 progress/t |
-| **Fusion** | 🏛 | Fusion Plant — +3 free upgrade levels range |
+| **Fusion** | 🏛 | Fusion Plant — Power: +4 free upgrade levels in range |
 | **Hydroponics** | 🏛 | Hydroponicist — 63 food/t |
 | **Industrial Desalination** | 🏛 | Artificial Island — Converts ocean tile to land |
+| **Beltalowdas** | 📜 | Beltalowdas — triple Asteroid natural bonus |
+| **Gravboots** | 📜 | Gravboots — land buildings (no other requirement) can be built on Asteroids |
 | **Martian Freedom** | 📜 | Martian Freedom — Mars units/buildings +3 levels |
 | **Replicant Rights** | 📜 | Replicant Rights — Replicant progress +200% |
+| **Solar Sails** | 🗡 | Astral Galleon — Astral; long pursuit but moves 1 tile/turn, space-only, melee-range |
 | **Martianism** | ⭐ | Happy Valley — Mars units/buildings +8 upgrade levels |
 
 ### E17 · Invasion — 8
@@ -328,7 +375,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 |---|--|---|
 | **Mass Drivers** | ✦ | Mass Drivers — reposition bridging across space |
 | **Occlusion** | ✦ | Occlusion — +1 def to all units & buildings in space |
-| **Asteroid Capture** | 🏛 | Asteroid Mine — 186 gold/t |
+| **Asteroid Capture** | 🏛 | Asteroid Foundry — creates a new Asteroid on a space (not deep-space) tile |
 | **Cosmic Myth** | 📜 | Cosmic Myth — unit death: +1 legitimacy |
 | **Deepfaked Reality** | 📜 | Deepfaked Reality — +50 legit at end of era |
 | **Cryogenics** | 🗡 | Cryo Specialist — Auxiliary; freezes target 2 turns |
@@ -433,21 +480,24 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 | **Teleportation** | 🗡 | Warper — Cavalry; long pursuit, flanks |
 | **Mega Colonization** | ⭐ | Ecumenopolis — planet tile yields 10x terrain bonus |
 
-### E26 · Time — 5
+### E26 · Time — 6
 
 | Advancement | | Unlocks |
 |---|--|---|
+| **Omnicracy** | ✦ | Omnicracy — +1 policy slot |
 | **Time Travel** | ✦ | Time Travel — +12 ticks per era |
 | **Bootstrapping** | 🏛 | Chronobooster — Command: units act twice |
 | **Chronoscopy** | 📜 | Chronoscopy — 3 free rerolls |
 | **Oblivion Beam** | 🗡 | Sun Launcher — Infinite range multi-attack; stars only |
 | **Sonic Screwdrivers** | 🗡 | Timelord — Auxiliary; teleports when killed |
 
-### E27 · Infinity — 1
+### E27 · Infinity — 3
 
 | Advancement | | Unlocks |
 |---|--|---|
 | **Elder Awareness** | 📜 | Elder Awareness — +50% damage vs Azazoth |
+| **Entropic Reversal** | 📜 | Entropic Reversal — units have double upgrade levels |
+| **Multiversal Army** | 📜 | Multiversal Army — mercenary hire cost −75% |
 
 
-## Density: 0:16 · 1:18 · 2:15 · 3:17 · 4:19 · 5:17 · 6:16 · 7:17 · 8:9 · 9:13 · 10:12 · 11:13 · 12:9 · 13:6 · 14:6 · 15:8 · 16:9 · 17:8 · 18:7 · 19:8 · 20:7 · 21:9 · 22:11 · 23:9 · 24:13 · 25:7 · 26:5 · 27:1
+## Density: 0:20 · 1:16 · 2:16 · 3:18 · 4:19 · 5:17 · 6:18 · 7:19 · 8:15 · 9:15 · 10:17 · 11:16 · 12:13 · 13:10 · 14:13 · 15:12 · 16:13 · 17:8 · 18:7 · 19:8 · 20:7 · 21:9 · 22:11 · 23:9 · 24:13 · 25:7 · 26:6 · 27:3
