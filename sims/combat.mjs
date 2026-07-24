@@ -253,5 +253,33 @@ console.log('TEST 11: Fascism — +100% atk while legitimacy < 50')
   g.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 12: Manhattan Project — combat-start nuke, fallout tile, fallout march-damage')
+{
+  const g = new GameManager(13); g.setEra(11)
+  g.data.civilization.completedWonders.push('manhattan_project')
+  const b = g.data.tableau.visibleBounds(11)
+  g.data.enemies = [mkEnemy('raider', 'A', b.minCol, b.maxRow + 1, 500, 5)]
+  g._startCombat()
+  const nuked = g.data.enemies[0].damaged
+  const falloutTiles = g.data.tableau.visibleTiles(11).filter((t) => t.terrain === 'fallout').length
+  console.log(`  nuke killed the 500-HP enemy: ${nuked}; fallout tiles laid: ${falloutTiles}`)
+  assert(nuked, 'the 2000 nuke kills a 500-HP enemy')
+  assert(falloutTiles === 1, 'one permanent fallout tile laid at combat start')
+  g.stop()
+
+  const g2 = new GameManager(14); g2.setEra(11)
+  const b2 = g2.data.tableau.visibleBounds(11)
+  const col = b2.minCol
+  g2.data.tableau.tileAt(b2.maxRow, col).terrain = 'fallout'
+  const e = mkEnemy('raider', 'F', col, b2.maxRow + 1, 500, 5)
+  g2.data.enemies = [e]
+  g2.data.phase = 'battle'; g2.data.combatIntro = false
+  g2._enemyPhase(b2)
+  console.log(`  enemy marching onto fallout took ${500 - e.hp} dmg`)
+  assert(e.row === b2.maxRow && (500 - e.hp) === 100, `enemy entering fallout takes 100 (got ${500 - e.hp})`)
+  g2.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -56,6 +56,7 @@ class CombatMixin {
       e.damaged = false
       e.breached = false
     }
+    this._applyManhattanProject() // nuke a random enemy + lay a fallout tile
     this.data.combatTurn = 0
     this.data.combatAccum = 0
     this.data.combatTime = 0
@@ -206,6 +207,24 @@ class CombatMixin {
     // Clear path → march down one tile.
     e.row = belowRow
     this._pushEvent({ kind: 'march', col: e.col, row: e.row })
+    // Manhattan Project fallout tile: 100 damage to an enemy that enters it.
+    if (this.data.tableau.tileAt(belowRow, e.col)?.terrain === 'fallout' && !e.damaged) {
+      this._dealDamageToEnemy(e, 100)
+    }
+  }
+
+  /** Manhattan Project wonder: at combat start, nuke a random live enemy for 2000 and lay
+   *  a permanent Fallout tile (which chips enemies that march onto it) on a random land tile. */
+  _applyManhattanProject() {
+    if (!this._hasWonder('manhattan_project')) return
+    const live = this.data.enemies.filter((e) => !e.damaged && !e.breached)
+    if (live.length) {
+      const t = live[Math.floor(Math.random() * live.length)]
+      t.hp -= 2000
+      if (t.hp <= 0) { t.hp = 0; t.damaged = true }
+    }
+    const tiles = this.data.tableau.visibleTiles(this.data.era).filter((t) => t.def?.place === 'land' && t.terrain !== 'fallout')
+    if (tiles.length) tiles[Math.floor(Math.random() * tiles.length)].terrain = 'fallout'
   }
 
   _chipBlocker(blocker, amount, tile) {

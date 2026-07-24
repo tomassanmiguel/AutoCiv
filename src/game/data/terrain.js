@@ -28,6 +28,8 @@ export const TERRAIN = {
   planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a', place: 'space', econYield: { res: 'food', amount: 500 } },
   star:       { name: 'Star',       sprite: '/sprites/tiles/star.png',       color: '#d8b24b', place: 'space', econYield: { res: 'production', amount: 200 } },
   singularity:{ name: 'Singularity',sprite: '/sprites/tiles/singularity.png',color: '#1a0a2a', place: 'space', econYield: { res: 'progress', amount: 200 } },
+  // Laid by the Manhattan Project wonder: enemies entering take 100 damage.
+  fallout:    { name: 'Fallout',    sprite: '/sprites/tiles/fallout.png',    color: '#5a5a2a', place: 'land', note: 'Radioactive — enemies entering take 100 damage.' },
 }
 
 /** Flat per-tick economic yield a building on this terrain also produces (v2), or null. */
