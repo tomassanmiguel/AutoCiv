@@ -15,18 +15,31 @@ export class Tile {
     this.label = label   // design label from the sheet (e.g. 'Old World')
     this.terrain = terrain // resolved concrete terrain key (e.g. 'plains')
     this.flipX = flipX   // mirror the sprite horizontally (west-facing coasts)
-    // A deployed unit/building instance, or null. Shape:
-    //   { kind:'unit'|'building', key, level, hp, maxHp, damaged, lifetimeOutput? }
-    this.occupant = null
-    // An UNDERLAPPING building (e.g. Road) that shares the tile with the occupant in
-    // its own slot — never replaced, no combat/HP. Shape: { kind:'building', key, level }.
-    this.underlap = null
-    // An underlaid CITY (its own slot, independent of a Road) that lets this tile hold
-    // extra buildings. Shape: { kind:'building', key:'city', level }. `extras` holds the
-    // additional (non-underlaid) buildings, each { kind:'building', key, level, hp, … }.
-    this.city = null
+    // v2 tile model: a tile can hold ONE of each simultaneously.
+    //   unit     — a deployed unit instance  { kind:'unit', key, level, hp, maxHp, ... }
+    //   building — a deployed building instance { kind:'building', key, level, hp, maxHp, ... }
+    //   underlay — an underlaid support (Road / City / booster) { kind:'building', key, level }
+    this.unit = null
+    this.building = null
+    this.underlay = null
+    // v1-city extras retained transitionally (reconciled when the City building lands).
     this.extras = []
   }
+
+  // --- Transitional compat shims (v1 code still says `tile.occupant` / `underlap` / `city`) ---
+  // `occupant` = the single unit-XOR-building the v1 code assumed. Getter prefers the unit
+  // (front-line combatant); setter routes by kind. Migrated call sites use unit/building directly.
+  get occupant() { return this.unit || this.building }
+  set occupant(v) {
+    if (!v) { this.unit = null; this.building = null }
+    else if (v.kind === 'unit') this.unit = v
+    else this.building = v
+  }
+  // Road/City both live in the single `underlay` slot now (v2: one underlay per tile).
+  get underlap() { return this.underlay }
+  set underlap(v) { this.underlay = v }
+  get city() { return this.underlay?.key === 'city' ? this.underlay : null }
+  set city(v) { if (v) this.underlay = v; else if (this.underlay?.key === 'city') this.underlay = null }
 
   get def() {
     return TERRAIN[this.terrain] ?? null
