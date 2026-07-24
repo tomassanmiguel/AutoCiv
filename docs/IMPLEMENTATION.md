@@ -91,6 +91,15 @@ is still the full v2 content set. Progress:
 - [ ] **Enemies → v2**: hand-authored roster (atk=breach-legit, def=HP·1.25^E, elites/bosses, per-enemy
   `chip`/behaviours) replacing the transitional draw-from-player-pool host.
 - [ ] **New systems:** roster no-replace + version cycling; civilizations + difficulty + pre-game screen.
+- [x] **Policy/bonus effect wiring** — economy: `_activeEffectDefs()` (policies + `civ.bonuses`),
+  generalized `popOutput` (citizenOutput/specialistOutput/popOutputFlat + Evolved/Cyborg/Psychic
+  prefixes w/ robot exemption), `%`-loop over both; end-of-era (legitPerEra/goldInterest/
+  endEraGoldFromLegit + Priest); building legit (legitOnComplete + Monastery/Elysium leverage).
+  Combat: additive unit atk% (Steel/Composites/Liminite/Antimatter) + category doctrines (Bushido/
+  Compound Bow/…) in `_syncUnitStats`; policy buildingDefBonus (Reinforced Construction). Verified
+  by sims/economy (12) + sims/combat (20). **Remaining effect wiring:** unitDeath triggers
+  (Nationalism gold / Cosmic Myth legit), Fascism/Adaptive combat ramps, wonderYield/mercLevels/
+  repair-upgrade cost mults, terrainDouble, and the ~40 `special`-tagged effects.
 - [ ] **Combat abilities** (incremental): splash (Siege), pursuit (cavalry/aerial), push/freeze/poison,
   legit-scaling atk (Warrior Monk/Zealot), line/multi hits — flags already on the unit defs.
 - [ ] **Verify** each PROGRESSION entry to spec; expand `sims/`.
