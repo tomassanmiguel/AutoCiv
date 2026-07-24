@@ -1468,7 +1468,38 @@ export class GameManager {
   // the fight. No ticking; the player presses "Begin Combat" to start the battle.
   _startPrep() {
     this.data.phase = 'prep'
+    this._applyPreCombatMercs() // free mercenaries from Native Collaboration / Xenodiplomacy
     this._restartTimer() // clears the dev timer; prep has none
+  }
+
+  /** Spawn the free mercenaries granted by pre-combat policies (Native Collaboration:
+   *  3 random mercs on empty New-World tiles; Xenodiplomacy: 6 :ranged: mercs on any empty
+   *  valid tile). These disband at battle end exactly like hired mercenaries. */
+  _applyPreCombatMercs() {
+    const defs = this._activeEffectDefs()
+    if (defs.some((d) => d.special === 'new_world_mercs')) this._spawnFreeMercs(3, { label: 'New World' })
+    if (defs.some((d) => d.special === 'alien_ranged_mercs')) this._spawnFreeMercs(6, { role: 'ranged' })
+  }
+
+  /** Place up to `n` free mercenaries on empty valid tiles matching the filter
+   *  (label = required tile design label; role = required unit combat role). */
+  _spawnFreeMercs(n, { label = null, role = null } = {}) {
+    const civ = this.data.civilization
+    let placed = 0
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      if (placed >= n) break
+      if (tile.occupant || (label && tile.label !== label)) continue
+      let cands = this._placeableUnitsAt(tile)
+      if (role) cands = cands.filter((s) => unitRole(UNIT_DEFS[s.key]) === role)
+      if (!cands.length) continue
+      const pick = cands[Math.floor(Math.random() * cands.length)]
+      const level = this._mercLevel(pick.level)
+      const hp = unitStats(UNIT_DEFS[pick.key], level, civ.modifiers.unitHpBonus).def
+      tile.occupant = { kind: 'unit', key: pick.key, level, hp, maxHp: hp, damaged: false, mercenary: true }
+      placed++
+    }
+    if (placed) this._syncUnitStats()
+    return placed
   }
 
   /** Player pressed "Begin Combat" on the preparation screen. */

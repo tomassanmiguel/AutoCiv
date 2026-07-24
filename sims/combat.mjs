@@ -411,5 +411,32 @@ console.log('TEST 20: Cosmic Celebration — end-of-era effects trigger 2 extra 
   assert(cosmic === 30, `Cosmic Celebration = 3× end-of-era (got +${cosmic})`)
 }
 
+console.log('TEST 21: Xenodiplomacy — hires 6 ranged mercenaries before combat')
+{
+  const g = new GameManager(19); g.setEra(10)
+  g.data.civilization.units[1] = { key: 'slinger', level: 1 } // unlock a ranged unit
+  g.data.civilization.policies[0] = { key: 'xenodiplomacy' }
+  g._applyPreCombatMercs()
+  const mercs = g.data.tableau.visibleTiles(10).filter((t) => t.unit?.mercenary)
+  console.log(`  spawned ${mercs.length} mercenaries (expect 6, all ranged Slingers)`)
+  assert(mercs.length === 6, `Xenodiplomacy spawns 6 mercs (got ${mercs.length})`)
+  assert(mercs.every((t) => t.unit.key === 'slinger'), `all spawned mercs are ranged`)
+  g.stop()
+}
+
+console.log('TEST 22: Native Collaboration — spawns 3 free mercs on New-World tiles')
+{
+  const g = new GameManager(20); g.setEra(7)
+  g.data.tableau.visibleTiles(7).filter((t) => !t.occupant && t.def?.place === 'land').slice(0, 4)
+    .forEach((t) => { t.label = 'New World' })
+  g.data.civilization.policies[0] = { key: 'native_collaboration' }
+  g._applyPreCombatMercs()
+  const mercs = g.data.tableau.visibleTiles(7).filter((t) => t.unit?.mercenary)
+  console.log(`  spawned ${mercs.length} New-World mercenaries (expect 3)`)
+  assert(mercs.length === 3, `Native Collaboration spawns 3 (got ${mercs.length})`)
+  assert(mercs.every((t) => t.label === 'New World'), `all placed on New-World tiles`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
