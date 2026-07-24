@@ -22,7 +22,7 @@ scale finished yields. Multi-tile footprints per SCALING §8. All **`[proposed]`
 | **The Ansible** | 15 | 1×1 | any | **+1 range to ALL ranged effects** (units + command auras + towers) |
 | **Skynet** | 16 | 1×1 | land | military units **+75% atk**; Terminator-line **+150%** ⚠️ |
 | **Happy Valley** | 16 | 1×1 | mars | units & buildings on **Mars +8 free upgrade levels** (≈ +200%) ⚠️ |
-| **Death Star** | 18 | **2×2** | deep space | every **5 turns, instantly vaporize a random enemy** (not Azazoth) |
+| **Death Star** | 18 | **2×2** | deep space | every **5 turns, instantly vaporize a random enemy**; deals **5000 damage to Azazoth** |
 | **Stargate** | 20 | 1×1 | exoplanet | your **buildings become repositionable** during prep |
 | **Ecumenopolis** | 25 | 1×1 | planet | the planet tile yields **10×** its terrain bonus (Planet +500 → **+5000**) ⚠️ |
 
