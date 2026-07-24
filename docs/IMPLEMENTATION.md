@@ -60,8 +60,27 @@ is still the full v2 content set. Progress:
   families (doctrine/citizenOutput/specialistOutput/thresholdMult/legitPerEra/goldInterest/unitDeath/
   ticksPerEra/policySlots/unitAtkPct/def-bonuses/…) + the ~40 `special`-tagged effects; display via
   `policyEffect()`. **Every def now carries a `tech`** → the registry can be AUTO-GENERATED from defs.
-- [ ] **Wonders** (`wonders.js` new): dedicated slot + one-in-flight gate + N=3-build completion;
-    Manhattan Project uses the **Fallout** tile (`public/sprites/tiles/fallout.png`, already staged).
+- [x] **Wonders data** (`wonders.js`): 20 wonder defs (era/tech/footprint/placement/special/effect) +
+    `WONDER_BUILDS=3` + `wonderForTech()`. Manhattan Project → `special:'nuke_and_fallout'` (Fallout tile,
+    staged). Remaining: the Wonder **slot** + one-in-flight gate + N-build completion mechanic (systems pass).
+- [x] **Registry annotations** — every wireable def now carries `tech`+`era` (units/pops/policies/
+    wonders + the 15 carry-over buildings + 13 carry-over policies). Unblocks the auto-gen below.
+
+### Registry auto-gen design (NEXT — execute carefully + sim-test before/after)
+1. In `advancements.js`, scan `UNIT_DEFS`/`BUILDING_DEFS`/`POP_TYPES`/`POLICY_DEFS`/`WONDER_DEFS` for
+   `{tech, era, key}` → build `IMPLEMENTED[tech] = { kind, key, eraIndex, description }`. kind =
+   unit / building / pop / policy (`slot!==false`) / modifier (`slot===false`) / wonder. First-wins on
+   tech conflicts (dev `console.warn`).
+2. **Gating (avoid breaking unlock):** only wire a building if `types[0]` is an existing slot category
+   (progress/production/food/gold/legitimacy/defense/utility) — SKIP wall/trap/command/spawner/support
+   until `slots.js` + UIPanel tabs get the v2 categories. SKIP `wonder` (no wonder slot yet) and decide
+   on `modifier` (needs a generic `_applyModifier` for structured bonus fields — thresholdMult/
+   ticksPerEra/policySlots/instantBuilds/… ; wire the easy ones, gate the rest).
+3. Derive `POOL[eraId]` = tech names of all wired defs grouped by era; derive `ADVANCEMENTS`.
+4. Verify: a sim that walks eras 0→10 and asserts every owed progress/production choice resolves without
+   throwing; load the game and confirm early-era unlocks work.
+5. **Slot reconciliation** (parallel task): add v2 building categories (wall/trap/command/spawner/support)
+   to `slots.js` + the Military/Civilian two-tab split in UIPanel, so the gated buildings can wire.
 - [ ] **Enemies → v2**: hand-authored roster (atk=breach-legit, def=HP·1.25^E, elites/bosses, per-enemy
   `chip`/behaviours) replacing the transitional draw-from-player-pool host.
 - [ ] **New systems:** roster no-replace + version cycling; civilizations + difficulty + pre-game screen.
