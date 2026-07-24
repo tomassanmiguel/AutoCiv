@@ -3,7 +3,7 @@ import { ERAS, ERA_COUNT } from './data/eras.js'
 import { RESOURCE_CONFIG, TICKS_PER_ERA, nextThreshold, rubberBand } from './data/resources.js'
 import { POP_TYPES, isSpecialist } from './data/pops.js'
 import { POLICY_DEFS } from './data/policies.js'
-import { WONDER_BUILDS } from './data/wonders.js'
+import { WONDER_BUILDS, WONDER_DEFS } from './data/wonders.js'
 import { CIVILIZATIONS, difficultyMult } from './data/civilizations.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
@@ -528,6 +528,34 @@ export class GameManager {
     return Math.max(0, (counts[occ.key] ?? 1) - 1)
   }
 
+  /** Free upgrade levels an occupant of `kind` ('unit'|'building') on `tile` gains from
+   *  region effects — active policies (Colonialism/Martian Freedom/Skyscrapers/Empire of
+   *  the Stars/Hive Mind) AND completed wonders (Machu Picchu/Happy Valley/Great Mirror).
+   *  Folded into the effective level passed to unitStats/buildingHp; occ.level is never
+   *  mutated (display + upgrade cost keep reading the real level). */
+  _regionLevelBonus(tile, kind) {
+    let bonus = 0
+    const add = (special, b) => {
+      if (!b) return
+      switch (special) {
+        case 'new_world_levels': if (tile.label === 'New World') bonus += b; break // both kinds
+        case 'mars_levels': if (tile.terrain === 'mars') bonus += b; break // both kinds
+        case 'mountain_levels': if (tile.terrain === 'mountain') bonus += b; break // both kinds (Machu Picchu)
+        case 'terrestrial_levels': if (tile.def?.place === 'land') bonus += b; break // both kinds (Great Mirror)
+        case 'city_levels': if (kind === 'building' && tile.city) bonus += b; break
+        case 'space_levels': if (kind === 'building' && tile.def?.place === 'space') bonus += b; break
+        case 'hive_mind_levels': if (kind === 'building') {
+          let n = 0
+          for (const nb of this._adjacentTiles(tile.row, tile.col)) for (const o of this._buildingsOn(nb)) if (!o.damaged) n++
+          bonus += b * n // +b per adjacent (road-augmented, undamaged) building
+        } break
+      }
+    }
+    for (const def of this._activeEffectDefs()) add(def.special, def.levelBonus ?? 0)
+    for (const key of this.data.civilization.completedWonders) { const w = WONDER_DEFS[key]; if (w?.levelBonus) add(w.special, w.levelBonus) }
+    return bonus
+  }
+
   /**
    * Recompute each deployed instance's effective combat stats and store them on the
    * occupant (units: occ.atk / occ.maxHp; buildings: occ.maxHp), folding in every
@@ -598,7 +626,10 @@ export class GameManager {
         // occ.permDef / occ.permAtk = permanent :defense: (Baker) / :attack: (Public Baths)
         // granted mid-combat; both persist across combats.
         const mercBonus = occ.mercenary ? mercDef : 0 // Defensive Pact: mercenaries +1 :defense:
-        const s = unitStats(UNIT_DEFS[occ.key], occ.level, hpBonus + wb + terrainDef + (occ.permDef ?? 0) + mercBonus, wb + pack + (occ.permAtk ?? 0) + flatAtk)
+        // Region free-upgrade-levels (Colonialism/Martian Freedom/… + wonders): inflate the
+        // level used for stats WITHOUT touching occ.level (display/upgrade-cost keep the real one).
+        const effLevel = occ.level + this._regionLevelBonus(tile, 'unit')
+        const s = unitStats(UNIT_DEFS[occ.key], effLevel, hpBonus + wb + terrainDef + (occ.permDef ?? 0) + mercBonus, wb + pack + (occ.permAtk ?? 0) + flatAtk)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         const posMult = (brew ? 1.1 : 1) * brothel.atkMult * (1 + dmgBonus) // Brewery × Brothel × v2 damage %
         occ.warband = wb
@@ -613,7 +644,8 @@ export class GameManager {
         occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
       } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.underlap) {
-        const newMax = buildingHp(BUILDING_DEFS[occ.key], occ.level, civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
+        const effLevel = occ.level + this._regionLevelBonus(tile, 'building') // region free-upgrade-levels
+        const newMax = buildingHp(BUILDING_DEFS[occ.key], effLevel, civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         occ.maxHp = Math.max(1, newMax)
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)

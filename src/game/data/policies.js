@@ -162,7 +162,7 @@ export const POLICY_DEFS = {
 
   // --- Era 7: Exploration ---
   coffee: { key: 'coffee', name: 'Coffee', era: 7, tech: 'Coffee', slot: false, citizenOutput: { res: 'production', amount: 1 }, description: 'Each Citizen also produces +1 :production: per tick.' },
-  colonialism: { key: 'colonialism', name: 'Colonialism', era: 7, tech: 'Colonialism', slot: true, special: 'new_world_levels', description: 'New-World units and buildings gain +2 upgrade levels.' },
+  colonialism: { key: 'colonialism', name: 'Colonialism', era: 7, tech: 'Colonialism', slot: true, special: 'new_world_levels', levelBonus: 2, description: 'New-World units and buildings gain +2 upgrade levels.' },
   columbian_exchange: { key: 'columbian_exchange', name: 'Columbian Exchange', era: 7, tech: 'Columbian Exchange', slot: true, special: 'new_world_gold', description: 'New-World units and buildings also produce +6 :gold: per tick.' },
   embassies: { key: 'embassies', name: 'Embassies', era: 7, tech: 'Embassies', slot: true, mercLevels: 4, description: 'Mercenaries are hired 4 upgrade levels higher.' },
   evangelism: { key: 'evangelism', name: 'Evangelism', era: 7, tech: 'Evangelism', slot: true, special: 'evangelism', description: 'Each Priest produces +1 more :legitimacy: (requires Priest).' },
@@ -191,7 +191,7 @@ export const POLICY_DEFS = {
 
   // --- Era 10: Gilded ---
   automobile: { key: 'automobile', name: 'Automobile', era: 10, tech: 'Automobile', slot: false, special: 'pursuit_range', description: 'All units gain +1 pursuit range.' },
-  skyscrapers: { key: 'skyscrapers', name: 'Skyscrapers', era: 10, tech: 'Skyscrapers', slot: false, special: 'city_levels', description: 'City buildings gain +5 upgrade levels (requires Urbanization).' },
+  skyscrapers: { key: 'skyscrapers', name: 'Skyscrapers', era: 10, tech: 'Skyscrapers', slot: false, special: 'city_levels', levelBonus: 5, description: 'City buildings gain +5 upgrade levels (requires Urbanization).' },
   eugenics: { key: 'eugenics', name: 'Eugenics', era: 10, tech: 'Eugenics', slot: true, special: 'eugenics_atk', description: 'At the end of each era, all units permanently gain +2 :attack:.' },
   laissez_faire: { key: 'laissez_faire', name: 'Laissez-Faire', era: 10, tech: 'Laissez-Faire', slot: true, totalGoldPct: 0.40, description: 'Total :gold: output +40%.' },
   modernization: { key: 'modernization', name: 'Modernization', era: 10, tech: 'Modernization', slot: true, upgradeMult: 0.7, description: 'Upgrade costs 30% less :gold:.' },
@@ -247,7 +247,7 @@ export const POLICY_DEFS = {
   jovian_life: { key: 'jovian_life', name: 'Hydroponics', era: 16, tech: 'Jovian Life', slot: false, thresholdMult: { res: 'food', mult: 0.90 }, description: 'Reduce :food: threshold by 10%.' },
   beltalowdas: { key: 'beltalowdas', name: 'Beltalowdas', era: 16, tech: 'Beltalowdas', slot: true, terrainDouble: 'asteroid', description: 'Triple the Asteroid terrain economy bonus.' },
   gravboots: { key: 'gravboots', name: 'Gravboots', era: 16, tech: 'Gravboots', slot: true, special: 'build_on_asteroid', description: 'Land buildings (with no other requirement) can be built on Asteroids.' },
-  martian_freedom: { key: 'martian_freedom', name: 'Martian Freedom', era: 16, tech: 'Martian Freedom', slot: true, special: 'mars_levels', description: 'Mars units and buildings gain +3 upgrade levels.' },
+  martian_freedom: { key: 'martian_freedom', name: 'Martian Freedom', era: 16, tech: 'Martian Freedom', slot: true, special: 'mars_levels', levelBonus: 3, description: 'Mars units and buildings gain +3 upgrade levels.' },
   replicant_rights: { key: 'replicant_rights', name: 'Replicant Rights', era: 16, tech: 'Replicant Rights', slot: true, special: 'replicant_progress', description: 'Replicant :progress: +200% (requires Replicants).' },
 
   // --- Era 17: Invasion ---
@@ -274,7 +274,7 @@ export const POLICY_DEFS = {
   // --- Era 21: Xenotic ---
   chimeric_agriculture: { key: 'chimeric_agriculture', name: 'Chimeric Agriculture', era: 21, tech: 'Chimeric Agriculture', slot: false, thresholdMult: { res: 'food', mult: 0.88 }, description: 'Reduce :food: threshold by 12%.' },
   cortical_stacks: { key: 'cortical_stacks', name: 'Cortical Stacks', era: 21, tech: 'Cortical Stacks', slot: true, repairMult: 0, special: 'unit_repair', description: 'Unit repair is free.' },
-  hive_mind: { key: 'hive_mind', name: 'Hive Mind', era: 21, tech: 'Hive Mind', slot: true, special: 'hive_mind_levels', description: 'Buildings gain +1 upgrade level per adjacent building.' },
+  hive_mind: { key: 'hive_mind', name: 'Hive Mind', era: 21, tech: 'Hive Mind', slot: true, special: 'hive_mind_levels', levelBonus: 1, description: 'Buildings gain +1 upgrade level per adjacent building.' },
   xenodiplomacy: { key: 'xenodiplomacy', name: 'Xenodiplomacy', era: 21, tech: 'Xenodiplomacy', slot: true, special: 'alien_ranged_mercs', description: 'Hire 6 alien :ranged: mercenaries.' },
 
   // --- Era 22: Evolution ---
@@ -295,7 +295,7 @@ export const POLICY_DEFS = {
   hyperquantum_computing: { key: 'hyperquantum_computing', name: 'Hyperquantum Computing', era: 24, tech: 'Hyperquantum Computing', slot: false, thresholdMult: { res: 'progress', mult: 0.86 }, description: 'Reduce :progress: threshold by 14%.' },
   megastructure_engineering: { key: 'megastructure_engineering', name: 'Megastructure Engineering', era: 24, tech: 'Megastructure Engineering', slot: false, wonderCostReduce: 2, description: 'Wonders cost 2 fewer builds to finish (floor 1).' },
   nanoswarms: { key: 'nanoswarms', name: 'Nanoswarms', era: 24, tech: 'Nanoswarms', slot: false, thresholdMult: { res: 'production', mult: 0.88 }, description: 'Reduce :production: threshold by 12%.' },
-  empire_of_the_stars: { key: 'empire_of_the_stars', name: 'Empire of the Stars', era: 24, tech: 'Empire of the Stars', slot: true, special: 'space_levels', description: 'Space buildings gain +4 upgrade levels.' },
+  empire_of_the_stars: { key: 'empire_of_the_stars', name: 'Empire of the Stars', era: 24, tech: 'Empire of the Stars', slot: true, special: 'space_levels', levelBonus: 4, description: 'Space buildings gain +4 upgrade levels.' },
   omniplomacy: { key: 'omniplomacy', name: 'Omniplomacy', era: 24, tech: 'Omniplomacy', slot: true, mercLevels: 6, description: 'Mercenaries are hired 6 upgrade levels higher.' },
 
   // --- Era 25: Utopian ---

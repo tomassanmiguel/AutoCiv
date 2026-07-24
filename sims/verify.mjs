@@ -65,7 +65,7 @@ const WIRED_FIELDS = ['outputPct', 'totalGoldPct', 'citizenOutput', 'popOutputFl
   'thresholdMult', 'instantBuilds', 'unitDefBonus', 'buildingDefBonus', 'ticksPerEra', 'legitPerEra',
   'goldInterest', 'endEraGoldFromLegit', 'unitDeath', 'doctrine', 'unitAtkPct', 'wonderCostReduce', 'upgradeMult',
   'terrainDouble', 'repairMult', 'mercCostMult', 'mercLevels', 'rangedReach', 'wonderYieldMult', 'policySlots',
-  'freeRerolls']
+  'freeRerolls', 'levelBonus']
 const WIRED_SPECIALS = new Set(['low_legit_atk', 'melee_flat_atk', 'gunboat_flat_atk', 'building_production_flat',
   'enemy_atk_reduce', 'prohibition', 'citizen_progress_production_trade', 'pop_highest_plus', 'eugenics_atk',
   'end_era_progress_from_atk', 'end_combat_gold_from_atk',

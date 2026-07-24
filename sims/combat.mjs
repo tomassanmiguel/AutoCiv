@@ -1,6 +1,8 @@
 // Headless test of the v2 turn-based combat engine.
 const { GameManager } = await import('../src/game/GameManager.js')
 const { ENEMY_DEFS } = await import('../src/game/data/enemies.js')
+const { UNIT_DEFS, unitStats } = await import('../src/game/data/units.js')
+const { BUILDING_DEFS, buildingHp } = await import('../src/game/data/buildings.js')
 
 function mkEnemy(key, name, col, row, hp, atk) {
   return { key, name, col, row, hp, maxHp: hp, atk, damaged: false, breached: false }
@@ -541,6 +543,76 @@ console.log('TEST 29: Hagia Sophia completion legit scales with wonder-yield')
   console.log(`  Hagia completion legit (from 100): base ${base}, Tourism ${boosted}`)
   assert(base === 200, `base ×2 → 200 (got ${base})`)
   assert(boosted === 300, `Tourism ×(1+2) → 300 (got ${boosted})`)
+}
+
+console.log('TEST 30: Region upgrade-levels — Colonialism / Martian Freedom (units + buildings)')
+{
+  const g = new GameManager(35); g.setEra(16)
+  const b = g.data.tableau.visibleBounds(16)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol); t.terrain = 'plains'; t.label = 'New World'
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g.data.civilization.policies[0] = { key: 'colonialism' } // +2 on New World
+  g._syncUnitStats(true)
+  const expect = unitStats(UNIT_DEFS.warrior, 3, 0, 0) // level 1 + 2
+  console.log(`  New-World Warrior atk ${t.unit.atk} (expect ${expect.atk}), level still ${t.unit.level}`)
+  assert(t.unit.atk === expect.atk && t.unit.maxHp === expect.def, `Colonialism computes at level 3`)
+  assert(t.unit.level === 1, `occ.level unchanged (got ${t.unit.level})`)
+  // Control: a non-New-World tile gets no bonus.
+  const t2 = g.data.tableau.tileAt(b.minRow, b.minCol + 1); t2.terrain = 'plains'; t2.label = 'Old World'
+  t2.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true)
+  assert(t2.unit.atk === unitStats(UNIT_DEFS.warrior, 1, 0, 0).atk, `control unit unaffected`)
+  g.stop()
+}
+
+console.log('TEST 31: Region upgrade-levels — Skyscrapers (building-only) + Hive Mind (per-neighbour)')
+{
+  const g = new GameManager(36); g.setEra(21)
+  const b = g.data.tableau.visibleBounds(21)
+  const t = g.data.tableau.tileAt(b.minRow + 1, b.minCol); t.terrain = 'plains'
+  t.city = { kind: 'building', key: 'city', level: 1 } // underlaid City
+  t.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 10, maxHp: 10, damaged: false }
+  g.data.civilization.policies[0] = { key: 'skyscrapers' } // +5 to City buildings
+  g._syncUnitStats(true)
+  const expWall = buildingHp(BUILDING_DEFS.mud_wall, 6, g.data.civilization.modifiers.buildingHpBonus)
+  console.log(`  City Wall maxHp ${t.building.maxHp} vs expected(level 6) ${expWall}`)
+  assert(t.building.maxHp === expWall, `Skyscrapers → building computed at level 6`)
+  // A unit on the same city tile is NOT boosted (building-only).
+  const tu = g.data.tableau.tileAt(b.minRow, b.minCol); tu.terrain = 'plains'; tu.city = { kind: 'building', key: 'city', level: 1 }
+  tu.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true)
+  assert(tu.unit.atk === unitStats(UNIT_DEFS.warrior, 1, 0, 0).atk, `unit on city tile unaffected by Skyscrapers`)
+  // Hive Mind: +1 level per adjacent building.
+  const g2 = new GameManager(37); g2.setEra(21)
+  const bb = g2.data.tableau.visibleBounds(21)
+  const c = g2.data.tableau.tileAt(bb.minRow + 1, bb.minCol + 1); c.terrain = 'plains'
+  c.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 10, maxHp: 10, damaged: false }
+  const nbrs = g2._adjacentTiles(c.row, c.col).slice(0, 2)
+  for (const nb of nbrs) { nb.terrain = 'plains'; nb.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false } }
+  g2.data.civilization.policies[0] = { key: 'hive_mind' }
+  g2._syncUnitStats(true)
+  const exp2 = buildingHp(BUILDING_DEFS.mud_wall, 1 + nbrs.length, g2.data.civilization.modifiers.buildingHpBonus)
+  console.log(`  Hive Mind wall with ${nbrs.length} neighbours → level ${1 + nbrs.length}, maxHp ${c.building.maxHp}`)
+  assert(c.building.maxHp === exp2, `Hive Mind +1/neighbour (level ${1 + nbrs.length})`)
+  nbrs[0].building.damaged = true; g2._syncUnitStats(true)
+  const exp3 = buildingHp(BUILDING_DEFS.mud_wall, 1 + (nbrs.length - 1), g2.data.civilization.modifiers.buildingHpBonus)
+  assert(c.building.maxHp === exp3, `damaged neighbour drops the bonus`)
+  g.stop(); g2.stop()
+}
+
+console.log('TEST 32: Region upgrade-levels via WONDER (Happy Valley, Mars +8)')
+{
+  const g = new GameManager(38); g.setEra(16)
+  const b = g.data.tableau.visibleBounds(16)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol); t.terrain = 'mars'
+  t.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 10, maxHp: 10, damaged: false }
+  g._syncUnitStats(true); const before = t.building.maxHp
+  g.data.civilization.completedWonders.push('happy_valley')
+  g._syncUnitStats(true)
+  const exp = buildingHp(BUILDING_DEFS.mud_wall, 9, g.data.civilization.modifiers.buildingHpBonus) // 1 + 8
+  console.log(`  Mars Wall maxHp ${before} → ${t.building.maxHp} (expect ${exp}) with Happy Valley`)
+  assert(t.building.maxHp === exp, `Happy Valley +8 on Mars (level 9)`)
+  g.stop()
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
