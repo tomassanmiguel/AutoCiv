@@ -1,26 +1,60 @@
 # Unused Pool Advancements (candidates to re-add)
 
-Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md, by era. Spelling verbatim from the sheet.
+Code POOL (560) names not yet used in PROGRESSION.md, by era (fuzzy match, so spelling variants / Compound Bow etc. count as used). **`current`** = advancements the era has NOW; low current = urgent to fill.
 
-### E0 · Stone — 4 unused
-- Cave Painting
+## Urgency (sorted by current count)
+
+| current | era | unused avail |
+|--|--|--|
+| **1** ⚠️ | E27 Infinity | 19 |
+| **5** ⚠️ | E26 Time | 14 |
+| **6** ⚠️ | E13 Silicon | 12 |
+| **6** ⚠️ | E14 Lunar | 15 |
+| **7** ⚠️ | E18 Exodus | 14 |
+| **7** ⚠️ | E20 Liminite | 11 |
+| **7** ⚠️ | E25 Utopian | 15 |
+| **8** | E15 Intelligence | 15 |
+| **8** | E17 Invasion | 13 |
+| **8** | E19 Frontier | 14 |
+| **9** | E8 Revolution | 13 |
+| **9** | E12 Atomic | 12 |
+| **9** | E16 Solar | 12 |
+| **9** | E21 Xenotic | 14 |
+| **9** | E23 Early Galactic | 15 |
+| **11** | E22 Evolution | 17 |
+| **12** | E10 Gilded | 15 |
+| **13** | E9 Steam | 11 |
+| **13** | E11 Modern | 11 |
+| **13** | E24 Late Galactic | 8 |
+| **15** | E0 Stone | 4 |
+| **15** | E2 Iron | 5 |
+| **16** | E6 Renaissance | 11 |
+| **17** | E3 Classical | 9 |
+| **17** | E5 Late Medieval | 9 |
+| **17** | E7 Exploration | 11 |
+| **18** | E1 Bronze | 2 |
+| **19** | E4 Early Medieval | 3 |
+
+---
+
+### E0 · Stone — current 15 · 4 unused
+- Clothes
 - Language
 - Fermentation
 - Ownership
 
-### E1 · Bronze — 2 unused
+### E1 · Bronze — current 18 · 2 unused
 - Oral Tradition
 - Brothels
 
-### E2 · Iron — 6 unused
+### E2 · Iron — current 15 · 5 unused
 - Horseback Riding
 - Forging
 - Rudders
 - Embassy
 - Alphabet
-- Composite Bows
 
-### E3 · Classical — 9 unused
+### E3 · Classical — current 17 · 9 unused
 - Concrete
 - Glassblowing
 - Public Baths
@@ -31,12 +65,12 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Citizenship
 - Fresco
 
-### E4 · Early Medieval — 3 unused
+### E4 · Early Medieval — current 19 · 3 unused
 - Trial by Jury
 - Manor System
 - Hedgerows
 
-### E5 · Late Medieval — 9 unused
+### E5 · Late Medieval — current 17 · 9 unused
 - Absolute Monarchy
 - Alchemy
 - Longbow
@@ -47,7 +81,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Quarantine
 - Cofferdams
 
-### E6 · Renaissance — 11 unused
+### E6 · Renaissance — current 16 · 11 unused
 - Perspective
 - Maritime Law
 - Calculus
@@ -60,9 +94,8 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Anatomy
 - Masquerades
 
-### E7 · Exploration — 12 unused
+### E7 · Exploration — current 17 · 11 unused
 - Deepwater Navigation
-- Colombian Exchange
 - Reformation
 - Native Diplomacy
 - Scurvy Prevention
@@ -74,7 +107,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Potatoes
 - Indentured Servitude
 
-### E8 · Revolution — 13 unused
+### E8 · Revolution — current 9 · 13 unused
 - Constitution
 - Theory of Evolution
 - Bayonets
@@ -89,7 +122,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Napoleonic Code
 - Zooly
 
-### E9 · Steam — 11 unused
+### E9 · Steam — current 13 · 11 unused
 - Telegraph
 - Machine Guns
 - Public Schooling
@@ -102,7 +135,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Restaurants
 - Contraception
 
-### E10 · Gilded — 16 unused
+### E10 · Gilded — current 12 · 15 unused
 - Telephone
 - Refrigeration
 - Automobile
@@ -116,27 +149,23 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Espionage
 - Submarines
 - Anti-Trust
-- Trade Unions
 - Anesthesia
 - Cult of Personality
 
-### E11 · Modern — 14 unused
+### E11 · Modern — current 13 · 11 unused
 - Red Cross
 - Highways
 - Jazz
-- Facism
 - Universal Sufferage
 - Geneva Convention
 - Air Conditioning
-- Suburbanization
 - Magnetic Recording
 - Prohibition
 - Comics
 - Television
 - Decolonization
-- Guerilla Warefare
 
-### E12 · Atomic — 12 unused
+### E12 · Atomic — current 9 · 12 unused
 - Orbital Mechanics
 - Rocketry
 - Nuclear Weaponry
@@ -150,7 +179,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - War on Drugs
 - Human Genome Project
 
-### E13 · Silicon — 13 unused
+### E13 · Silicon — current 6 ⚠️ · 12 unused
 - Blockchain
 - Maglev
 - Streaming
@@ -161,18 +190,16 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Neurodivergence
 - Electric Vehicles
 - Hacking
-- Democratic Socialism
 - Social Media
 - Semaglutides
 
-### E14 · Lunar — 16 unused
+### E14 · Lunar — current 6 ⚠️ · 15 unused
 - Sustainable Habitats
 - Deefake
 - Large Language Models
 - Telework
 - Carbon Nanotubes
 - Universal Basic Income
-- Space Tourism
 - Artificial Meat
 - Stratoblasting
 - Helium-3
@@ -183,7 +210,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Reuseable Rocketry
 - Self-Driving
 
-### E15 · Intelligence — 15 unused
+### E15 · Intelligence — current 8 · 15 unused
 - AGI
 - Quantum Cryptography
 - Carbon Capture
@@ -200,12 +227,11 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - P=NP
 - Flying Taxis
 
-### E16 · Solar — 13 unused
+### E16 · Solar — current 9 · 12 unused
 - Cure for Cancer
 - Dome City
 - Augmented Reality
 - Solar Sails
-- Asteroid Mining
 - Space Elevator
 - Exosuit
 - Gravboots
@@ -215,12 +241,11 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Somnology
 - Belter Culture
 
-### E17 · Invasion — 14 unused
+### E17 · Invasion — current 8 · 13 unused
 - EMP
 - Bunkering
 - Maturation
 - Global Banding
-- Cold FUsion
 - Masking
 - Scorched Earth
 - Marinopolis
@@ -231,7 +256,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Social Ranking
 - Xenocontainment
 
-### E18 · Exodus — 14 unused
+### E18 · Exodus — current 7 ⚠️ · 14 unused
 - Flagships
 - Generation Ships
 - Wormholes
@@ -247,7 +272,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Final Farewells
 - Engram Engrafting
 
-### E19 · Frontier — 14 unused
+### E19 · Frontier — current 8 · 14 unused
 - Xenobiology
 - Digestion Adaptation
 - Proactive Immunity
@@ -263,10 +288,9 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Diaspora
 - Cyberball
 
-### E20 · Liminite — 13 unused
+### E20 · Liminite — current 7 ⚠️ · 11 unused
 - Virtual Reality
 - FTL Signaling
-- Liminite Stabilization
 - Soma
 - Nonfungible Tokening
 - Longevity
@@ -275,10 +299,9 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Molecular Nanotechnology
 - Lithoscoping
 - Interstellar Government
-- Individualized Propaganda
 - Liminal Arms
 
-### E21 · Xenotic — 14 unused
+### E21 · Xenotic — current 9 · 14 unused
 - Planetary Governance
 - Autotranslation
 - Cloning
@@ -294,7 +317,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Coretapping
 - Peronal Spacecraft
 
-### E22 · Evolution — 17 unused
+### E22 · Evolution — current 11 · 17 unused
 - Uploading
 - Controlled Evolution
 - Alien Integration
@@ -313,10 +336,8 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Purity Strata
 - Subatomic Slicing
 
-### E23 · Early Galactic — 17 unused
+### E23 · Early Galactic — current 9 · 15 unused
 - Wormhole Generation
-- Galactic Democracy
-- Liminite Alchemy
 - Dyson Spheres
 - Ringworlds
 - Prime Directive
@@ -332,21 +353,17 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Energetic Condensation
 - Starright
 
-### E24 · Late Galactic — 12 unused
-- Planteogenesis
+### E24 · Late Galactic — current 13 · 8 unused
 - Intergalactic Consensus
-- Antimatter Harvesting
 - Warm Drive
 - Eternal Rule
-- Stealth Plating
 - Deep Space Defense
 - Pleasure Planets
 - Predictive Logistics
-- Xenoarchaeology
 - Ecumenopolis
 - Grand Armada
 
-### E25 · Utopian — 16 unused
+### E25 · Utopian — current 7 ⚠️ · 15 unused
 - Uplifting
 - Phasing
 - Shapeshifting
@@ -356,7 +373,6 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Ship of Thesus
 - Star Preservation
 - Equal Resourcing
-- Superhumantiy
 - Cosmic Art
 - Hegemony
 - Postscarcity
@@ -364,7 +380,7 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Perpetual Motion
 - Morphological Freedoms
 
-### E26 · Time — 15 unused
+### E26 · Time — current 5 ⚠️ · 14 unused
 - Chronotic Regulation
 - Multiversal Accord
 - Precognitive Policing
@@ -375,13 +391,12 @@ Names from the code POOL (560) not yet used as an advancement in PROGRESSION.md,
 - Ego Dispersion
 - Prenatal Strike
 - Black Hole Transit
-- Relativity Ray
 - Timeline Steeling
 - Single Truth
 - Timeloop Retirement
 - Probability Drive
 
-### E27 · Infinity — 19 unused
+### E27 · Infinity — current 1 ⚠️ · 19 unused
 - Universal Simulation
 - Immutability
 - Duplication

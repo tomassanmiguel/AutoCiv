@@ -10,7 +10,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 |---|--|---|
 | *(start)* | 🗡 | **Warrior** — default melee blocker |
 | **Basket Weaving** | ✦ | Agriculture — reduce food threshold -5% |
-| **Clothes** | 🏛 | Cave Painting — Banks stored progress, dumps overbuilt |
+| **Cave Painting** | 🏛 | Cave Painting — Banks stored progress, dumps overbuilt |
 | **Fire** | 🏛 | Campfire — military utility: after each era permanently +1 atk to adjacent units |
 | **Fishing** | 🏛 | Pier — End-of-era 200 food |
 | **Mud Brick** | 🏛 | Mud Brick Wall — Wall: blocker, def 3 |
