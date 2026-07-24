@@ -12,7 +12,7 @@ per-item docs = stats/effects) are the spec.
 - [x] **2. Turn-based combat** — `combat.js` is now a discrete turn engine: player towers strike the
   lowest-HP enemy in Manhattan-diamond range; enemies march down one tile/turn, chip a blocker in the
   path (unit→building) for a flat 1, or breach off the bottom (−atk legitimacy). Ends when all
-  enemies slain/breached (500-turn cap). Node-sim tested (`scratchpad/sim_combat.mjs`, 11/11).
+  enemies slain/breached (500-turn cap). Node-sim tested (`sims/combat.mjs`, 11/11).
 - [x] **2b. Enemy rendering** — enemies render at `(row,col)` on the unified grid (`i = enemyRows +
   maxRow − row`), preview in the battlefield backdrop, march down with the FLIP slide. TickCounter
   shows enemies-remaining.
@@ -44,5 +44,5 @@ Order that keeps each commit green + runnable:
 ## Notes
 - The `occupant` shim (Tile.js) is the bridge; remove it once placement + all render/econ paths use
   `unit`/`building` directly.
-- Validate model logic with headless node `scratchpad/sim_*.mjs` before/along UI.
+- Validate model logic with headless node sims in `sims/` (e.g. `node sims/combat.mjs`) before/along UI.
 - Stacked % modifiers are ADDITIVE per resource (sum then ×(1+total)), never chained.
