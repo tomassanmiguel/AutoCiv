@@ -2,20 +2,18 @@
 
 Per-pop, per-tick output. The **Citizen** is the auto-unlocked generalist; specialists are unlocked as
 advancements and you **spend gold to upgrade your pops up a chain** (Astrologer → Scholar → …), a
-one-way conversion of that pop type. Each tier's output = `round(anchor · 1.18^E · lateBoost(E))`
-(`anchor` = **3** for progress/production/food, **4.5** for gold — the same ×1.5 gold premium as
-buildings). Numbers **`[proposed]`**.
+one-way conversion of that pop type.
 
-> **Balance note:** specialists use anchor 3 (vs buildings' 3.5) because population is *not* tile-bound
-> — you can field far more pops than buildings, so per-pop output sits a touch lower. This pop-count ↔
-> per-pop-output balance is the main tuning knob here.
+**Per-pop output scales LINEARLY across tiers** (a flat step per tier, NOT era-scaled). The economy's
+exponential growth comes from **population COUNT** — later-era food thresholds yield more pops per
+crossing, so total output = (modest, linearly-rising per-pop output) × (fast-growing pop count).
+Non-gold chains step by **+4/tier**; gold steps by **+6/tier** (the same ×1.5 gold premium). Numbers **`[proposed]`**.
 
 ---
 
-## Citizen (generalist, never scales)
+## Citizen (generalist)
 
-**1 progress + 1 production + 1 food** per tick, flat. Starting population; the fallback that pop growth
-produces when no specialist slot is chosen.
+**1 progress + 1 production + 1 food** per tick, flat. Starting population and pop-growth fallback.
 
 ---
 
@@ -24,51 +22,51 @@ produces when no specialist slot is chosen.
 | Tier | Era | progress/t |
 |---|--|--|
 | Astrologer | Bronze (1) | 4 |
-| Scholar | Late Medieval (5) | 7 |
-| Scientist | Steam (9) | 13 |
-| Mentat | Intelligence (15) | 54 |
-| Superintelligence | Evolution (22) | 252 |
+| Scholar | Late Medieval (5) | 8 |
+| Scientist | Steam (9) | 12 |
+| Mentat | Intelligence (15) | 16 |
+| Superintelligence | Evolution (22) | 20 |
 
 ## Production — Builder → … → Nanomancer
 
 | Tier | Era | production/t |
 |---|--|--|
 | Builder | Bronze (1) | 4 |
-| Blacksmith | Early Medieval (4) | 6 |
-| Inventor | Revolution (8) | 11 |
-| Engineer | Silicon (13) | 34 |
-| Nanomancer | Frontier (20) | 164 |
+| Blacksmith | Early Medieval (4) | 8 |
+| Inventor | Revolution (8) | 12 |
+| Engineer | Silicon (13) | 16 |
+| Nanomancer | Frontier (20) | 20 |
 
 ## Food — Farmer → … → Abioticist
 
 | Tier | Era | food/t |
 |---|--|--|
-| Farmer | Stone (0) | 3 |
-| Baker | Classical (3) | 5 |
-| Doctor | Steam (9) | 13 |
-| Geneticist | Intelligence (15) | 54 |
-| Abioticist | Evolution (22) | 252 |
+| Farmer | Stone (0) | 4 |
+| Baker | Classical (3) | 8 |
+| Doctor | Steam (9) | 12 |
+| Geneticist | Intelligence (15) | 16 |
+| Abioticist | Evolution (22) | 20 |
 
-## Gold — Trader → … → Plutarch `[anchor 4.5]`
+## Gold — Trader → … → Plutarch `[+6/tier]`
 
 | Tier | Era | gold/t |
 |---|--|--|
 | Trader | Iron (2) | 6 |
-| Merchant | Late Medieval (5) | 10 |
-| Banker | Steam (9) | 20 |
-| Statistician | Silicon (13) | 50 |
-| Investor | Exodus (18) | 159 |
-| Plutarch | Early Galactic (23) | 466 |
+| Merchant | Late Medieval (5) | 12 |
+| Banker | Steam (9) | 18 |
+| Statistician | Silicon (13) | 24 |
+| Investor | Exodus (18) | 30 |
+| Plutarch | Early Galactic (23) | 36 |
 
 ---
 
 ## Special populations
 
-| Pop | Output | Growth | Notes |
-|---|---|---|---|
-| **Replicant** | 1 production + 1 gold + 1 progress /t (flat) | **does NOT grow with normal pop growth** — instead the replicant count **DOUBLES at each era end** (not counted as an "end-of-era effect", so Festivals/Cosmic Celebration don't double it again) | Gain 1 when first unlocked. Exponential *count* (not per-pop output) is the whole mechanic; Replicant Rights policy boosts their progress. |
-| **Priest** | — (no per-tick) | normal | At the end of each era, **+1 legitimacy per Priest** — one of the few legitimacy income sources (fits the no-per-tick-legit rule). |
-| **Soldier** | — (no per-tick) | normal | Every friendly **unit gains +1 attack per Soldier** you have (global, army-wide). A combat pop; scales linearly with Soldier count. |
+| Pop | Era | Output | Growth | Notes |
+|---|--|---|---|---|
+| **Priest** | Classical (3) | — | normal | End of each era: **+1 legitimacy per Priest** — a rare legit income (fits no-per-tick-legit). |
+| **Soldier** | Late Medieval (5) | — | normal | Every friendly **unit gains +1 attack per Soldier** (global). Scales with Soldier count. |
+| **Replicant** | Intelligence (15) | 1 production + 1 gold + 1 progress /t (flat) | **count DOUBLES each era end** (not a Festivals-doubled "end-of-era effect"); does NOT grow via normal pop growth | Gain 1 on unlock. The doubling *count* is the mechanic; Replicant Rights policy boosts their progress. Its unlock era bounds the doubling — tune it. |
 
 ---
 
@@ -82,10 +80,9 @@ Three exclusive techs each stamp a permanent prefix on **all non-robot** populat
 | Machine Synthesis | **Cyborg** | **+production** |
 | Psychic Awakening | **Psychic** | **+progress** |
 
-`[proposed]` magnitude: **+2** of the resource per non-robot pop, scaling with era like other output
-(`round(1.5·1.18^E)`). This is civ-defining, so tell me the intended strength (flat small number vs. a
-scaling amount vs. a % of the pop's existing output) and I'll pin it. Robot pops (e.g. Terminator-line,
-Replicants?) are exempt — confirm which count as "robot".
+`[proposed]` magnitude: **+2** of the resource per non-robot pop (flat — scaling comes from pop count,
+like the specialists). Tell me if you want it bigger/smaller or a %, and **which pops are "robot"**
+(exempt — likely just the Replicant).
 
 ---
 
@@ -93,9 +90,9 @@ Replicants?) are exempt — confirm which count as "robot".
 
 - **Eiffel Tower** (wonder): all specialists **+50% effective**.
 - **Specialization / Guilds / Unions / Purpose Engineering** (policies): all specialists **+1 / +2 / +3 / +5** output.
-- **Replicant Rights** (policy, needs Replicants unlocked): boosts Replicant progress.
+- **Replicant Rights** (policy, needs Replicants): boosts Replicant progress.
 
 ## Gold-upgrade cost `[proposed]`
 
-Upgrading a pop type one tier up its chain costs gold — proposed `round(15·1.18^E)` per pop (or a bulk
-per-type sum). Exact formula goes in a future `costs.md` with unit/building upgrade + mercenary + reroll costs.
+Upgrading a pop type one tier costs gold — proposed `round(15·1.18^E)` per pop (or a bulk per-type sum).
+Final formula lands in a future `costs.md` alongside unit/building upgrade, mercenary, and reroll costs.
