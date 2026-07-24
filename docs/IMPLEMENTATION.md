@@ -66,7 +66,14 @@ is still the full v2 content set. Progress:
 - [x] **Registry annotations** — every wireable def now carries `tech`+`era` (units/pops/policies/
     wonders + the 15 carry-over buildings + 13 carry-over policies). Unblocks the auto-gen below.
 
-### Registry auto-gen design (NEXT — execute carefully + sim-test before/after)
+- [x] **Advancement registry AUTO-GENERATED** (`advancements.js`) — scans all def registries by `tech`+`era`
+  → 351 advancements, 301 implemented (58 units / 53 buildings / 24 specialists / 101 policies / 65 bonuses).
+  Gated categories (wall/trap/command/spawner/support + wonders) draw as filler. `_applyModifier` applies
+  v2 bonus fields (thresholdMult/instantBuilds/def-bonuses/ticksPerEra). `sims/registry.mjs` (6 checks, 0
+  softlocks). **VERIFIED LIVE**: the Progress! selection shows correct v2 cards (Bartering→Trader +6 gold,
+  Pottery→Kiln, Midwivery→policy). v2 content is now UNLOCKABLE in-game per PROGRESSION.md.
+
+### Registry auto-gen design (DONE — see above; kept for reference)
 1. In `advancements.js`, scan `UNIT_DEFS`/`BUILDING_DEFS`/`POP_TYPES`/`POLICY_DEFS`/`WONDER_DEFS` for
    `{tech, era, key}` → build `IMPLEMENTED[tech] = { kind, key, eraIndex, description }`. kind =
    unit / building / pop / policy (`slot!==false`) / modifier (`slot===false`) / wonder. First-wins on
