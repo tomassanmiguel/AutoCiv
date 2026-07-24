@@ -3,6 +3,7 @@ import { ERAS, ERA_COUNT } from './data/eras.js'
 import { RESOURCE_CONFIG, TICKS_PER_ERA, nextThreshold, rubberBand } from './data/resources.js'
 import { POP_TYPES, isSpecialist } from './data/pops.js'
 import { POLICY_DEFS } from './data/policies.js'
+import { WONDER_BUILDS } from './data/wonders.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount } from './data/buildings.js'
@@ -160,6 +161,8 @@ export class GameManager {
       const vals = Object.values(base)
       if (vals.length) { const max = Math.max(...vals); for (const res of Object.keys(base)) if (base[res] === max) base[res] += specBoost }
     }
+    // Eiffel Tower wonder: all specialists +50% effective output.
+    if (spec && this._hasWonder('eiffel_tower')) for (const res of Object.keys(base)) base[res] = Math.round(base[res] * 1.5)
     return base
   }
 
@@ -589,6 +592,13 @@ export class GameManager {
       this._restartTimer() // holds the game paused
       return
     }
+    // A wonder in flight consumes production-builds (the "sacrifice") until it completes;
+    // any builds beyond that open the normal production selection.
+    const civ = this.data.civilization
+    while (this.data.pendingProduction > 0 && civ.wonder) {
+      this.data.pendingProduction -= 1
+      this._advanceWonder()
+    }
     if (this.data.pendingProduction > 0) this._openProductionSelection()
   }
 
@@ -607,6 +617,8 @@ export class GameManager {
     const era = this.data.era
     const civ = this.data.civilization
     const avail = ADVANCEMENTS.filter((a) => a.eraIndex <= era && !civ.chosenAdvancements.has(a.id))
+      // One wonder in flight at a time: don't offer another while one is unlocked-but-unfinished.
+      .filter((a) => !(civ.wonder && IMPLEMENTED[a.name]?.kind === 'wonder'))
     const impl = avail.filter((a) => isImplemented(a.name))
     const unimpl = avail.filter((a) => !isImplemented(a.name))
     const weight = (a) => Math.pow(2, a.eraIndex)
@@ -638,6 +650,7 @@ export class GameManager {
       case 'building': return catSil(BUILDING_CATEGORIES, BUILDING_DEFS[unlock.key].types[0])
       case 'pop': return '/sprites/ui/pop.png'
       case 'policy': return '/sprites/ui/policy.png'
+      case 'wonder': return '/sprites/ui/building.png'
       case 'modifier': return unlock.silhouette ?? '/sprites/ui/defense.png'
       default: return null
     }
@@ -654,6 +667,12 @@ export class GameManager {
     if (!opt.unlock) { this._markChosen(opt.id); this._resolveProgress(); return }
     if (opt.unlock.kind === 'modifier') {
       this._applyModifier(opt.unlock)
+      this._markChosen(opt.id)
+      this._resolveProgress()
+      return
+    }
+    if (opt.unlock.kind === 'wonder') {
+      this._unlockWonder(opt.unlock)
       this._markChosen(opt.id)
       this._resolveProgress()
       return
@@ -757,9 +776,43 @@ export class GameManager {
     if (def.unitDefBonus) { civ.modifiers.unitHpBonus += def.unitDefBonus; this._syncUnitStats() }
     if (def.buildingDefBonus) { civ.modifiers.buildingHpBonus += def.buildingDefBonus; this._syncUnitStats() }
     if (def.ticksPerEra) civ.modifiers.bonusTicks = (civ.modifiers.bonusTicks ?? 0) + def.ticksPerEra
-    // Not yet applied here (later passes): unitAtkPct, rangedReach, policySlots, wonder*,
+    // Not yet applied here (later passes): unitAtkPct, rangedReach, policySlots,
     // mercLevels, freeRerolls, terrainDouble, and every `special`-tagged effect.
   }
+
+  // ---------------------------------------------------------------------------
+  // Wonders. Unlocking one queues it (buildsLeft = N − reductions); production-builds
+  // advance it (see _maybeOpenSelection) until it completes and its effect turns on.
+  // Only one wonder in flight at a time (gated in _pickProgressOptions).
+  // ---------------------------------------------------------------------------
+  _unlockWonder(unlock) {
+    let reduce = 0
+    for (const def of this._activeEffectDefs()) if (def.wonderCostReduce) reduce += def.wonderCostReduce
+    this.data.civilization.wonder = { key: unlock.key, buildsLeft: Math.max(1, WONDER_BUILDS - reduce) }
+  }
+
+  /** Spend one production-build on the in-flight wonder; complete it at 0. */
+  _advanceWonder() {
+    const w = this.data.civilization.wonder
+    if (!w) return
+    w.buildsLeft -= 1
+    if (w.buildsLeft <= 0) this._completeWonder()
+  }
+
+  _completeWonder() {
+    const civ = this.data.civilization
+    const key = civ.wonder?.key
+    if (!key) return
+    civ.completedWonders.push(key)
+    civ.wonder = null
+    // Immediate (on-completion) effects; ongoing effects are read via _hasWonder().
+    if (key === 'hagia_sophia') civ.legitimacy.value *= 2 // double current legitimacy
+    this._recomputeOutputs()
+    this._syncUnitStats()
+  }
+
+  /** True once a wonder is completed (its ongoing effect is active). */
+  _hasWonder(key) { return this.data.civilization.completedWonders.includes(key) }
 
   // --- Slot resolution helpers ---
   // Returns { group, multiFill, slotIndices }. slotIndices are the item's target
@@ -1103,7 +1156,12 @@ export class GameManager {
     if (!occ || occ.damaged || occ.mercenary) return // mercenaries disband; don't sink gold into them
     const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
     if (def?.noUpgrade) return // e.g. Cave Painting can't be upgraded
-    const cost = upgradeCost(occ, this.data.era)
+    // Upgrade-cost reducers: the best policy discount (Modernization ×0.7 / Futurization ×0.4,
+    // supersede) × The Pyramids wonder (×0.75, stacks).
+    let mult = 1
+    for (const d of this._activeEffectDefs()) if (d.upgradeMult != null) mult = Math.min(mult, d.upgradeMult)
+    if (this._hasWonder('the_pyramids')) mult *= 0.75
+    const cost = Math.round(upgradeCost(occ, this.data.era) * mult)
     const civ = this.data.civilization
     if (civ.gold.value < cost) return
     civ.gold.value -= cost

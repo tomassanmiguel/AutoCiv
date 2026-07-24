@@ -51,6 +51,11 @@ export class CivilizationData {
     this.population = new Array(5).fill(null)
     this.population[0] = POP_TYPES.citizen.key
 
+    // Wonders: at most one in flight ({ key, buildsLeft }); production-builds advance it
+    // until buildsLeft hits 0, then it moves to completedWonders and its effect turns on.
+    this.wonder = null
+    this.completedWonders = []
+
     // Civilization-wide passives applied by advancements.
     //  unitHpBonus / buildingHpBonus — flat :defense: added to every unit / building
     //    (Clothes, and +1 each combat from Hereditary Rule).

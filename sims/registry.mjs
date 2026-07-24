@@ -70,5 +70,26 @@ console.log('\nTEST 4: Basket Weaving lowers the food threshold multiplier')
   assert(after < before, 'food threshold multiplier decreased')
 }
 
+// --- TEST 5: wonder flow — unlock → advance via production-builds → complete + effect ---
+console.log('\nTEST 5: wonder flow (unlock, auto-build, complete, ongoing effect)')
+{
+  const g = new GameManager(11)
+  const wi = IMPLEMENTED['Mysticism']
+  assert(wi && wi.kind === 'wonder' && wi.key === 'stonehenge', 'Mysticism → Stonehenge wonder')
+  g._unlockWonder({ key: 'stonehenge' })
+  assert(g.data.civilization.wonder?.key === 'stonehenge' && g.data.civilization.wonder.buildsLeft === 3, 'Stonehenge queued with 3 builds')
+  g.data.pendingProduction = 3
+  g.data.phase = 'development'
+  g._maybeOpenSelection()
+  assert(g.data.civilization.wonder === null, 'wonder completes after 3 production-builds')
+  assert(g.data.civilization.completedWonders.includes('stonehenge'), 'Stonehenge completed')
+  assert(!g.data.selection, 'the builds went to the wonder — no normal production selection')
+  const legit0 = g.data.civilization.legitimacy.value
+  g._applyEraEndEffects()
+  const dl = g.data.civilization.legitimacy.value - legit0
+  console.log(`  Stonehenge end-of-era legit +${dl}`)
+  assert(dl === 25, `Stonehenge grants +25 legit/era (got ${dl})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

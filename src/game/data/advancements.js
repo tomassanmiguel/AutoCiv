@@ -58,8 +58,7 @@ for (const d of Object.values(POLICY_DEFS)) {
   register(d.tech, d.era, kind, d.key, true, policyEffect(d))
 }
 for (const d of Object.values(WONDER_DEFS)) {
-  // Wonders are filler until the dedicated Wonder slot + completion mechanic exist.
-  register(d.tech, d.era, 'wonder', d.key, false, `Unlocks the ${d.name} wonder.`)
+  register(d.tech, d.era, 'wonder', d.key, true, `Unlocks the ${d.name} wonder — ${d.effect}`)
 }
 
 /** The flat draw pool. `id` is tech-derived (techs are unique across the pool). */

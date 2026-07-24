@@ -306,6 +306,7 @@ class CombatMixin {
     }
     legit += (POP_TYPES.shaman?.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
     legit += (POP_TYPES.priest?.legitPerEra ?? 1) * (civ.pops.priest ?? 0) // v2 Priest
+    if (this._hasWonder('stonehenge')) legit += 25 // Stonehenge wonder: +25 legit/era
     if (this._hasPolicy('sacred_grounds')) {
       for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
         if (!tile.unit && !tile.building && tile.def?.place === 'land') legit += 1
