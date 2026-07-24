@@ -13,7 +13,7 @@ challenge them freely.
 | `units.md` | Every unit: atk/def/range/pursuit/cooldown/deploy/move + ability, by category | **done (all 8 categories)** |
 | `buildings.md` | Military (Traps/Command/Spawners/Walls) + Civilian (Progress/Production/Food/Gold/Legitimacy/Support) | **done** |
 | `specialists.md` | Population + specialist chains + prefixes + special pops | **done** |
-| `policies.md` | Policies + bonus/modifier advancements | not started |
+| `policies.md` | Policies (combat/economy/legit/terrain/colonial/upgrade/meta) + bonus/modifier techs | **done** |
 | `wonders.md` | Wonders + build-cost (N) | not started |
 | `enemies.md` | Enemy roster + wave/budget rules + bosses | not started |
 | `terrain.md` | Terrain yields + combat modifiers | not started |
