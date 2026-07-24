@@ -117,11 +117,14 @@ export function generateHost(era, bounds, spawnRows, columns, rng = Math.random)
 
   // --- Emit: stack each column's buyers into spawn rows (front-most nearest the player). ---
   const units = []
+  let id = 0
   for (const [col, list] of perCol) {
     list.forEach((u, idx) => {
       const def = UNIT_DEFS[u.key]
       const s = unitStats(def, u.level)
       units.push({
+        id: id++, // stable per-host id (React key / FLIP identity)
+        kind: 'unit', // enemies render through the unit TileCard
         key: u.key,
         name: def.name,
         level: u.level,

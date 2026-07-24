@@ -7,14 +7,12 @@ import './CombatFx.css'
 
 const CELL = 96 // must match Tableau's CELL
 
-// Content-space (x,y) center of the cell an event happened on.
+// Content-space (x,y) center of the cell an event happened on. Every combat event
+// carries (col, row) on the unified grid — enemies march on the same axis as tiles.
 function cellPos(ev, bounds, enemyRows) {
-  if (ev.col == null) return null
+  if (ev.col == null || ev.row == null) return null
   const x = (ev.col - bounds.minCol) * CELL + CELL / 2
-  let y
-  if (ev.slot != null) y = ev.slot * CELL + CELL / 2 // enemy slot (0 = top)
-  else if (ev.row != null) y = (enemyRows + (bounds.maxRow - ev.row)) * CELL + CELL / 2 // player row
-  else y = enemyRows * CELL // legit-on-empty-column: at the front player line
+  const y = (enemyRows + (bounds.maxRow - ev.row)) * CELL + CELL / 2
   return { x, y }
 }
 

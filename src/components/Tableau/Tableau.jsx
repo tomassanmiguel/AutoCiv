@@ -334,8 +334,6 @@ export default function Tableau() {
   // Enemy host (visible during development as a preview, fighting during battle).
   const combat = game.data.phase === 'battle'
   const combatSeq = game.data.combatSeq // drives the per-attack "thrust" (only when a unit attacked)
-  const enemyGrid = new Map()
-  for (const e of game.data.enemies) enemyGrid.set(`${e.col}:${e.slot}`, e)
 
   // Gold actions (repair/upgrade) are offered on deployed instances during
   // development + preparation (not mid-battle, not during a selection).
@@ -365,23 +363,19 @@ export default function Tableau() {
         ref={contentRef}
         style={{ width: contentW, height: contentH }}
       >
-        {/* Enemy slots (Battlefield) atop each visible column; enemies deploy here */}
+        {/* Battlefield backdrop zone atop each visible column — enemies spawn here
+            (during development) and march DOWN into the grid (during battle). */}
         {cols.map((c) =>
-          Array.from({ length: enemyRows }, (_, k) => {
-            const enemy = enemyGrid.get(`${c}:${k}`)
-            return (
-              <div
-                key={`enemy-${c}-${k}`}
-                className={`enemy-slot${enemy ? ' occupied' : ''}`}
-                style={{ left: (c - bounds.minCol) * CELL, top: k * CELL, width: CELL, height: CELL }}
-                onMouseEnter={enemy ? undefined : (e) => showTip(BATTLEFIELD_TIP, e)}
-                onMouseMove={enemy ? undefined : moveTooltip}
-                onMouseLeave={enemy ? undefined : () => setTooltip(null)}
-              >
-                {enemy && <TileCard occupant={enemy} era={era} combat={combat} combatSeq={combatSeq} side="enemy" slide={slideFor(enemy, (c - bounds.minCol) * CELL, k * CELL)} />}
-              </div>
-            )
-          }),
+          Array.from({ length: enemyRows }, (_, k) => (
+            <div
+              key={`bf-${c}-${k}`}
+              className="enemy-slot"
+              style={{ left: (c - bounds.minCol) * CELL, top: k * CELL, width: CELL, height: CELL }}
+              onMouseEnter={(e) => showTip(BATTLEFIELD_TIP, e)}
+              onMouseMove={moveTooltip}
+              onMouseLeave={() => setTooltip(null)}
+            />
+          )),
         )}
 
         {/* Player tiles */}
@@ -482,6 +476,27 @@ export default function Tableau() {
                   <span className="merc-btn-cost"><img src="/sprites/icons/gold.png" alt="" />{mercCost}</span>
                 </button>
               )}
+            </div>
+          )
+        })}
+
+        {/* Marching enemies — positioned on the unified grid (spawn zone above the
+            grid during development, marching down through the player rows in battle).
+            An enemy at row R maps to the same vertical index as a player tile at R,
+            so it slides smoothly from the battlefield into the columns. */}
+        {bounds && game.data.enemies.map((e) => {
+          if (e.breached) return null // broke through — no longer on the board
+          const j = e.col - bounds.minCol
+          const i = enemyRows + (bounds.maxRow - e.row)
+          const x = j * CELL
+          const y = i * CELL
+          return (
+            <div
+              key={`enemy-${e.id}`}
+              className="enemy-piece"
+              style={{ left: x, top: y, width: CELL, height: CELL }}
+            >
+              <TileCard occupant={e} era={era} combat={combat} combatSeq={combatSeq} side="enemy" slide={slideFor(e, x, y)} />
             </div>
           )
         })}

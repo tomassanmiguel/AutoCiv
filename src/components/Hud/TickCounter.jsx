@@ -2,18 +2,17 @@ import { useGame } from '../../game/react/GameProvider.jsx'
 import InfoTip from '../common/InfoTip.jsx'
 import './TickCounter.css'
 
-const COMBAT_DURATION = 25
-
 /** Ticks remaining in development, a crossed-swords glyph during preparation,
- *  seconds remaining in a battle, or "—" while the era transition banner plays. */
+ *  enemies remaining in a battle, or "—" while the era transition banner plays. */
 export default function TickCounter() {
   const game = useGame()
   const phase = game.data.phase
   let value, title, tip
   if (phase === 'battle') {
-    value = `${Math.max(0, Math.ceil(COMBAT_DURATION - game.data.combatTime))}s`
-    title = 'Battle time'
-    tip = 'Seconds left in this battle.'
+    const left = game.data.enemies.filter((e) => !e.damaged && !e.breached).length
+    value = `☠${left}`
+    title = 'Enemies remaining'
+    tip = 'Enemies still marching. The battle ends when all are slain or have broken through.'
   } else if (phase === 'prep') {
     value = '⚔'
     title = 'Preparation'
