@@ -264,7 +264,7 @@ Legend: 🗡 unit · 🏛 building · 👤 specialist · 📜 policy · ⭐ wond
 
 | Advancement | | Unlocks |
 |---|--|---|
-| **3d Printing** | ✦ | 3d Printing — reduce production threshold -8% |
+| **Cell Phones** | ✦ | Cell Phones — reduce production threshold -8% |
 | **Microprocessors** | ✦ | Microprocessors — reduce progress threshold -10% |
 | **The Cloud** | 🏛 | Data Center — 75 gold/t |
 | **High Frequency Trading** | 👤 | Investor — +30 :gold:/tick pop |
