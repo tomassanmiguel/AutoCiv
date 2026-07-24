@@ -34,12 +34,17 @@ is still the full v2 content set. Progress:
   pursuit/cooldown/deploy/move/tech/ability). `unitStats` = +25% atk/level, flat def/range. Combat honors
   range + Siege cooldown. UI shows Range. `baker`/`legionnaire`/`horseman` kept as v1 holdovers until the
   registry reconciliation prunes them. Verified live (v2 units render as player + enemies).
-- [ ] **Buildings → v2** (`buildings.js`) — from `buildings.md`/SCALING §10: hp(low) + upgradeTarget;
-  per-tick `output` = round(3.5·1.18^E·lateBoost), gold base 5.25, end-of-era lump = 50×; **towers**
-  (atk/range); **walls** (blocker def); **traps**/**commands**/**spawners**; terrain base-yields
-  (plains→food, forest→progress, mountain→production, sea/space→gold). Two tabs (Military/Civilian).
+- [x] **Buildings → v2** (`buildings.js`): +50 v2 building defs from `buildings.md` with the v2 schema
+  (era/tech/types/placement/hp/upgradeTarget/output/range/special/effect). Data-driven **economy engine**
+  (`buildingTickAmount`/`buildingOutputs` + `_buildingTickOutputs`/`_accrueBuildingOutputs`) processes
+  generic `def.output` {res,amount,when:'tick'|'eraEnd'} with +25%/level. Verified `sims/economy.mjs` 4/4.
+  Remaining building work: **terrain base-yields** (plains→food, forest→progress, mountain→production,
+  sea/space→gold) into `_buildingTickOutputs`; wall/tower/trap/command/spawner/power/legit-leverage/
+  proportional/growth/convert effects (tagged by `special`); exotic-terrain placement classes
+  (mountain/space/asteroid/exoplanet/star/singularity/deepspace/moon) + new slot categories
+  (trap/command/spawner/wall/support) in `slots.js`.
 - [ ] **Economy pass** — legitimacy uncapped + no per-tick legit; drop empty-column unit-gold remnants;
-  wire terrain base-yields into `_buildingTickOutputs`; data-drive `_recomputeOutputs`.
+  terrain base-yields; legit-on-complete (Shrine +10 …) + legit-leverage (Monastery/Elysium/Temple).
 - [ ] **Advancement reconciliation** — rebuild the `POOL` + `IMPLEMENTED` registry in `advancements.js`
   to match `PROGRESSION.md` (era/name source of truth). This is what makes the v2 content unlockable
   in-game with the right tech names. Prune v1 holdovers. Do era-by-era; keep every draw resolvable.
