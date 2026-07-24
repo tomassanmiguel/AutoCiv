@@ -129,6 +129,15 @@ class CombatMixin {
     this._pushEvent({ kind: 'attack', side: 'player', col: p.col, row: p.row })
     occ.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
     this._dealDamageToEnemy(target, atk)
+    // Siege splash: deal splash× damage to every live enemy adjacent to the target.
+    const splash = UNIT_DEFS[occ.key]?.splash
+    if (splash) {
+      const sdmg = Math.round(atk * splash)
+      if (sdmg > 0) for (const e of this.data.enemies) {
+        if (e.damaged || e.breached || e === target) continue
+        if (Math.abs(e.row - target.row) + Math.abs(e.col - target.col) === 1) this._dealDamageToEnemy(e, sdmg)
+      }
+    }
     const cd = UNIT_DEFS[occ.key]?.cooldown ?? BUILDING_DEFS[occ.key]?.cooldown ?? 0
     if (cd > 0) occ.cdTimer = cd
   }

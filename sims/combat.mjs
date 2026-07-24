@@ -216,5 +216,25 @@ console.log('TEST 9: hand-authored enemy host scales HP ×1.25^E and breach atk 
   g.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 10: Siege splash — Catapult hits the target in full + neighbours at 50%')
+{
+  const g = new GameManager(6); g.setEra(4)
+  const b = g.data.tableau.visibleBounds(4)
+  const col = b.minCol + 1, r = b.minRow + 1
+  g.data.tableau.tileAt(r, col).unit = { kind: 'unit', key: 'catapult', level: 1, hp: 5, maxHp: 5, damaged: false }
+  const target = mkEnemy('raider', 'T', col, r + 1, 1000, 3)
+  const nb1 = mkEnemy('raider', 'N1', col + 1, r + 1, 1000, 3)
+  const nb2 = mkEnemy('raider', 'N2', col, r + 2, 1000, 3)
+  g.data.enemies = [target, nb1, nb2]
+  g._startCombat(); g.dismissCombatIntro()
+  g._runTurn()
+  const dT = 1000 - target.hp, dN1 = 1000 - nb1.hp, dN2 = 1000 - nb2.hp
+  console.log(`  target ${dT} dmg; neighbours ${dN1}, ${dN2} (Catapult atk 14, splash 0.5)`)
+  assert(dT === 14, `target takes full 14 (got ${dT})`)
+  assert(dN1 === 7 && dN2 === 7, `neighbours take 7 splash (got ${dN1}, ${dN2})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
