@@ -5,7 +5,8 @@
 export const POLICY_DEFS = {
   burial_rites: {
     key: 'burial_rites', name: 'Burial Rites', type: 'Policy', era: 0, tech: 'Burial Rites',
-    effect: 'Whenever a unit dies, gain :progress: equal to its :defense:.',
+    unitDeath: { res: 'progress' },
+    effect: 'Whenever a unit dies, gain :progress: equal to its :attack:.',
   },
   // Unlocked by "Language".
   language: {

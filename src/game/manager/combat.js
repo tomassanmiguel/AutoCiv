@@ -202,8 +202,25 @@ class CombatMixin {
   _chipBlocker(blocker, amount, tile) {
     blocker.hp -= amount
     const killed = blocker.hp <= 0
-    if (killed) { blocker.hp = 0; blocker.damaged = true }
+    if (killed) { blocker.hp = 0; blocker.damaged = true; if (blocker.kind === 'unit') this._onUnitDeath(blocker, tile) }
     this._pushEvent({ kind: 'damage', side: 'player', amount, killed, col: tile.col, row: tile.row })
+  }
+
+  /** Unit-death triggers (Burial Rites → :progress:, Nationalism → :gold:, Cosmic Myth →
+   *  +1 :legitimacy:). Amount = the policy's flat value, else the unit's effective :attack:.
+   *  Banked progress/gold carries into next dev; combat progress choices don't open mid-battle. */
+  _onUnitDeath(occ, tile) {
+    const civ = this.data.civilization
+    const atk = this._effectiveAtk(occ)
+    for (const def of this._activeEffectDefs()) {
+      if (!def.unitDeath) continue
+      const amount = def.unitDeath.flat ?? atk
+      if (amount <= 0) continue
+      const res = def.unitDeath.res
+      if (res === 'progress') { civ.progress.value += amount; this._pushEvent({ kind: 'progress', amount, col: tile.col, row: tile.row }) }
+      else if (res === 'gold') { civ.gold.value += amount; this._pushEvent({ kind: 'gold', amount, col: tile.col, row: tile.row }) }
+      else if (res === 'legitimacy') { civ.legitimacy.value += amount }
+    }
   }
 
   // Player units carry a synced effective atk (occ.atk); buildings use their def's

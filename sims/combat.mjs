@@ -173,5 +173,24 @@ console.log('TEST 7: combat damage modifiers — Bushido (+50% melee) + Steel (+
   g.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 8: unit-death trigger — Nationalism grants :gold: = the dead unit atk')
+{
+  const g = new GameManager(5); g.setEra(2)
+  const b = g.data.tableau.visibleBounds(2)
+  const col = b.minCol
+  g.data.tableau.tileAt(b.minRow, col).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 2, maxHp: 2, damaged: false }
+  g.data.enemies = [mkEnemy('warrior', 'Tank', col, b.maxRow + 1, 1000, 4)] // tanky so it kills the warrior
+  g.data.civilization.policies[0] = { key: 'nationalism' }
+  const gold0 = g.data.civilization.gold.value
+  g._startCombat(); g.dismissCombatIntro()
+  let turns = 0
+  while (g.data.phase === 'battle' && turns < 200) { g._runTurn(); turns++ }
+  const delta = g.data.civilization.gold.value - gold0
+  console.log(`  gold +${delta} (dead Warrior atk = 5)`)
+  assert(delta === 5, `Nationalism grants +5 gold on the Warrior's death (got ${delta})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
