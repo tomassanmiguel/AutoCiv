@@ -72,10 +72,11 @@ const WIRED_SPECIALS = new Set(['low_legit_atk', 'melee_flat_atk', 'gunboat_flat
   'naval_gold_flat', 'merc_def_bonus', 'moon_atk',
   'enemy_budget_reduce', 'extra_advancement_option', 'new_world_gold',
   'evangelism', 'azazoth_damage', 'replicant_progress', 'artificial_meat', 'exoplanet_gold',
-  'combat_atk_ramp', 'water_gold_bonus'])
+  'combat_atk_ramp', 'water_gold_bonus', 'free_progress_upgrade'])
 // v1-name policies wired by hardcoded _hasPolicy(key) checks rather than a structured field.
 const HARDCODED_WIRED = new Set(['slavery', 'weights_and_measures', 'ownership', 'specialization',
-  'language', 'festivals', 'tribalism', 'caste_system', 'calendar', 'code_of_laws', 'diplomatic_marriage', 'midwivery'])
+  'language', 'festivals', 'tribalism', 'caste_system', 'calendar', 'code_of_laws', 'diplomatic_marriage', 'midwivery',
+  'cosmic_celebration'])
 // v1 policies kept in POLICY_DEFS but NOT registered (no tech → unreachable; superseded in v2).
 const UNREACHABLE = new Set(['trade_networks', 'sacred_grounds', 'oral_tradition', 'hereditary_rule',
   'surveying', 'hospitality_rites', 'hunting', 'composite_bows', 'democracy'])

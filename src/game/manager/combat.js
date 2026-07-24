@@ -297,8 +297,11 @@ class CombatMixin {
         if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer } // survivors heal to full
       }
     }
-    // "End of era" (= end of combat) effects — Festivals triggers them an extra time.
-    const times = this._hasPolicy('festivals') ? 2 : 1
+    // "End of era" (= end of combat) effects — Festivals triggers them an extra time,
+    // Cosmic Celebration two more (additive with Festivals).
+    let times = 1
+    if (this._hasPolicy('festivals')) times += 1
+    if (this._hasPolicy('cosmic_celebration')) times += 2
     for (let i = 0; i < times; i++) this._applyEraEndEffects()
     this._syncUnitStats(false) // combat over: drop terrain bonus, fold in Hereditary Rule
     this.data.enemies = [] // undefeated enemies fade away

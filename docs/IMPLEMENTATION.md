@@ -5,8 +5,8 @@
 > content (324/351 advancements), data-driven economy (terrain yields, legit-leverage, specialist
 > gold-upgrade chains), hand-authored scaled enemy roster, the wonder system (incl. Manhattan
 > Project/Fallout), and the pre-game civ/difficulty screen. `node sims/verify.mjs` = 0 problems.
-> Remaining = incremental polish: **32 stubbed** policy/enemy `special` abilities (effect-wiring
-> coverage now **134/166** reachable policies+bonuses WIRED, per `node sims/verify.mjs`), roster
+> Remaining = incremental polish: **30 stubbed** policy/enemy `special` abilities (effect-wiring
+> coverage now **136/166** reachable policies+bonuses WIRED, per `node sims/verify.mjs`), roster
 > no-replace versioning, multi-tile wonders/bosses, the trap/command/spawner slot tab-split, and
 > balance tuning. The remaining stubs are the genuinely architectural ones — region upgrade-levels
 > (colonialism/martian_freedom/skyscrapers/empire_of_the_stars/hive_mind), keep-upgrade-levels

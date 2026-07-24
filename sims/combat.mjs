@@ -394,5 +394,22 @@ console.log('TEST 19: Adaptive Strategy — units gain +5% attack per combat tur
   g.stop()
 }
 
+console.log('TEST 20: Cosmic Celebration — end-of-era effects trigger 2 extra times')
+{
+  const run = (policy) => {
+    const g = new GameManager(18); g.setEra(6)
+    g.data.civilization.pops.shaman = 1 // +10 legit per end-of-era application
+    if (policy) g.data.civilization.policies[0] = { key: policy }
+    const l0 = g.data.civilization.legitimacy.value
+    g._endCombat() // applies end-of-era effects `times` times
+    const gain = g.data.civilization.legitimacy.value - l0
+    g.stop(); return gain
+  }
+  const base = run(null), cosmic = run('cosmic_celebration')
+  console.log(`  Shaman end-of-era legit: base +${base}, Cosmic Celebration +${cosmic}`)
+  assert(base === 10, `base = 1× (Shaman +10) (got +${base})`)
+  assert(cosmic === 30, `Cosmic Celebration = 3× end-of-era (got +${cosmic})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

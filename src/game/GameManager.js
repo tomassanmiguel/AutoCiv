@@ -1168,6 +1168,13 @@ export class GameManager {
     const inst = this._makeInstance(chosen)
     if (toExtra) (tile.extras ??= []).push(inst)
     else tile.occupant = inst
+    // Alphabet: building a :progress: building upgrades it once for free (on creation).
+    if (chosen.kind === 'building' && bdef.types.includes('progress') && !bdef.noUpgrade &&
+        this._activeEffectDefs().some((d) => d.special === 'free_progress_upgrade')) {
+      inst.level += 1
+      inst.maxHp = Math.max(1, buildingHp(bdef, inst.level, civ.modifiers.buildingHpBonus))
+      inst.hp = inst.maxHp
+    }
     this._syncUnitStats() // board changed → refresh Warband bonuses
     this._recomputeOutputs() // …and per-tick building outputs (Ranch/Kiln/Mine/Brewery)
     if (chosen.kind === 'building') {

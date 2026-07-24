@@ -339,5 +339,17 @@ console.log('TEST 26: Maritime Law — +500% water-tile gold terrain bonus (×6)
   g.stop()
 }
 
+console.log('TEST 27: Alphabet — building a progress building upgrades it once for free')
+{
+  const g = new GameManager(17); g.setEra(3)
+  const tile = g.data.tableau.visibleTiles(3).find((t) => !t.building && !t.unit && t.def?.place === 'land')
+  g.data.civilization.policies[0] = { key: 'alphabet' }
+  // Library is a progress building (upgradeable). Build it via _createInstance.
+  g._createInstance({ kind: 'building', key: 'library', level: 1 }, tile)
+  console.log(`  Library built at level ${tile.occupant.level} (expect 2 with Alphabet)`)
+  assert(tile.occupant.level === 2, `Alphabet auto-upgrades progress building to level 2 (got ${tile.occupant.level})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
