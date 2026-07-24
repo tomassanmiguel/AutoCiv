@@ -308,21 +308,21 @@ export const BUILDING_DEFS = {
   // --- Walls ---
   stone_wall: {
     key: 'stone_wall', name: 'Stone Wall', era: 2, tech: 'Fortification',
-    types: ['wall'], placement: 'land',
+    types: ['defense'], placement: 'land',
     hp: 4, upHp: 1, upgradeTarget: 'def',
     special: 'wall',
     effect: 'A blocker. Upgrades add +1 :defense:/level.',
   },
   castle: {
     key: 'castle', name: 'Castle', era: 4, tech: 'Castles',
-    types: ['wall'], placement: 'land',
+    types: ['defense'], placement: 'land',
     hp: 6, upHp: 1, upgradeTarget: 'def',
     special: 'wall',
     effect: 'A blocker. Upgrades add +1 :defense:/level.',
   },
   shield_matrix: {
     key: 'shield_matrix', name: 'Shield Matrix', era: 23, tech: 'Shielding',
-    types: ['wall'], placement: 'any',
+    types: ['defense'], placement: 'any',
     hp: 9, upHp: 2, upgradeTarget: 'def',
     special: 'wall',
     effect: 'A blocker placeable on land, water or space. Upgrades add +2 :defense:/level.',
