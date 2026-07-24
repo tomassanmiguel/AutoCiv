@@ -13,7 +13,6 @@ const totemLegit = (level = 1) => 10 + 5 * Math.max(0, level - 1) // 10 / 15 / 2
 // Per-tick output buildings (resolved with instance/tile context in GameManager):
 const kilnPerAdjacent = (level = 1) => level + 1 // +2 / +3 / +4 … :production: per adjacent building
 const mineGold = (level = 1) => 8 * level         // :gold: per tick (×2 on a mountain)
-const templeLegit = (level = 1) => level          // :legitimacy: per tick (1 / 2 / 3 …)
 const mintLegitPct = (level = 1) => 0.05 + 0.02 * Math.max(0, level - 1) // 5% / 7% / 9% … of legitimacy
 const forgingProd = (level = 1) => 3 * (level + 1)      // :production: per tick (6 / 9 / 12 …)
 const libraryProgress = (level = 1) => 200 * (level + 1) // end-of-combat :progress: (400 / 600 / 800 …)
@@ -120,8 +119,8 @@ export const BUILDING_DEFS = {
   temple: {
     key: 'temple', name: 'Temple', era: 3, tech: 'Organized Religion', types: ['legitimacy'], placement: 'land',
     hp: 18, upHp: 6,
-    legitPerTick: templeLegit,
-    effect: (level) => `Produces ${templeLegit(level)} :legitimacy: per tick.`,
+    legitOnComplete: 20, endEraGoldFromLegit: 3, // v2: +20 legit on build; end-of-era gold = 3× legit
+    effect: 'On completion, gain +20 :legitimacy:. At the end of each era, gain :gold: equal to 3× your :legitimacy:.',
   },
   farm: {
     key: 'farm', name: 'Farm', era: 1, tech: 'The Plough', types: ['food'], placement: 'land',

@@ -311,6 +311,12 @@ class CombatMixin {
       if (def.goldInterest) civ.gold.value += Math.floor(goldNow * def.goldInterest) // Usury/QE/Perfect Trade
       if (def.endEraGoldFromLegit) civ.gold.value += Math.floor(legitNow * def.endEraGoldFromLegit) // Schism
     }
+    // v2 legitimacy buildings' end-of-era gold (Temple = 3× legitimacy).
+    for (const { occ } of this._buildingInstances()) {
+      if (occ.damaged) continue
+      const g = BUILDING_DEFS[occ.key]?.endEraGoldFromLegit
+      if (g) civ.gold.value += Math.floor(legitNow * g)
+    }
     // Oral Tradition: bank :gold: + :progress: equal to post-combat :legitimacy:.
     if (this._hasPolicy('oral_tradition')) {
       const L = Math.floor(civ.legitimacy.value)

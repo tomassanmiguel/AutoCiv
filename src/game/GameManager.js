@@ -267,7 +267,8 @@ export class GameManager {
       else if (occ.key === 'kiln') out = { res: 'production', amount: 2 + def.perAdjacent(occ.level) * this._adjacentBuildingCount(tile.row, tile.col) }
       else if (occ.key === 'mine') out = { res: 'gold', amount: def.goldPerTick(occ.level) * (tile.terrain === 'mountain' ? 2 : 1) }
       else if (occ.key === 'mint') out = { res: 'gold', amount: def.legitPct(occ.level) * civ.legitimacy.value }
-      else if (occ.key === 'temple') out = { res: 'legitimacy', amount: def.legitPerTick(occ.level) }
+      // (v2: legitimacy has NO per-tick production — the Temple now grants legit on
+      //  completion + end-of-era gold; see _createInstance / _applyEraEndEffects.)
       else if (occ.key === 'farm') out = { res: 'food', amount: 5 * this._plainsAround(tile) }
       else if (occ.key === 'forging') out = { res: 'production', amount: def.prodPerTick(occ.level) }
       else if (occ.key === 'aqueduct') out = { res: 'food', amount: def.base(occ.level) * Math.pow(2, this._adjacentAqueductCount(tile)) }

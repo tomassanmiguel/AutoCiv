@@ -134,5 +134,22 @@ console.log('TEST 11: Monastery leverage → progress/t = legitimacy ÷ 20')
   assert(g.data.civilization.progress.output >= 5, `Monastery adds legit/20=5 progress/t (got ${g.data.civilization.progress.output})`)
 }
 
+console.log('TEST 12: Temple — +20 legit on build, end-era gold = 3× legit, NO per-tick legit')
+{
+  const g = new GameManager(1); g.setEra(3)
+  const tile = g.data.tableau.visibleTiles(3).find((t) => !t.building && !t.unit && t.def?.place === 'land')
+  const legit0 = g.data.civilization.legitimacy.value
+  g._createInstance({ kind: 'building', key: 'temple', level: 1 }, tile)
+  assert(g.data.civilization.legitimacy.value - legit0 === 20, `Temple +20 legit on completion (got ${g.data.civilization.legitimacy.value - legit0})`)
+  g._recomputeOutputs()
+  assert(g.data.civilization.legitimacy.output === 0, `no per-tick legitimacy output (got ${g.data.civilization.legitimacy.output})`)
+  g.data.civilization.legitimacy.value = 100
+  const gold0 = g.data.civilization.gold.value
+  g._applyEraEndEffects()
+  const goldDelta = g.data.civilization.gold.value - gold0
+  console.log(`  end-era gold +${goldDelta} (3× legit 100 = 300)`)
+  assert(goldDelta === 300, `Temple end-era gold = 3×100 = 300 (got ${goldDelta})`)
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
