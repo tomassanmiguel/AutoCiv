@@ -72,10 +72,11 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const ratio = clamp01((occ.hp ?? maxHp) / maxHp)
   const defStyle = combat && ratio < 1 ? { color: defColor(ratio) } : undefined
 
-  // Cooldown bar (units only, during combat): ticks down from full to attack. Effective
-  // cooldown folds in a Brothel's −0.5s (occ.cdReduce).
-  const cooldown = isUnit ? Math.max(1, def.cooldown - (occ.cdReduce ?? 0)) : 0
-  const cdFrac = combat && isUnit && occ.cdTimer != null ? clamp01(occ.cdTimer / cooldown) : null
+  // v2 units show RANGE (Manhattan diamond) in the first stat slot. A cooldown bar
+  // only appears for units that actually recharge after firing (Siege = 2 turns).
+  const rangeVal = isUnit ? (def.range ?? 1) : 0
+  const cdMax = isUnit ? (def.cooldown ?? 0) : 0
+  const cdFrac = combat && isUnit && cdMax > 0 && occ.cdTimer != null ? clamp01(occ.cdTimer / cdMax) : null
 
   const outs = isUnit ? [] : buildingOutputs(def, occ.level, era)
   const tickOut = isUnit ? null : occ.tickOutput // live per-tick output (Ranch/Kiln/Mine)
@@ -91,7 +92,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
     const atkMult = occ.atkMult ?? (b ? 1.1 : 1) // Brewery × Brothel (positional)
     const caste = occ.casteActive && lvl > 1 ? 1.25 : 1 // upgraded-unit bonus applies at the previewed level
     return {
-      speed: Math.max(1, s.speed - (occ.cdReduce ?? 0)),
+      range: s.range,
       atk: Math.round(s.atk * atkMult * caste),
       def: Math.round(s.def * (b ? 0.9 : 1)),
     }
@@ -101,7 +102,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
     const lvl = isPrev ? occ.level + 1 : occ.level
     const ps = isUnit && isPrev ? statsAt(lvl) : null
     const bOuts = isUnit ? [] : buildingOutputs(def, lvl, era)
-    const dispSpeed = isUnit ? (isPrev ? ps.speed : cooldown) : null
+    const dispSpeed = isUnit ? (isPrev ? ps.range : rangeVal) : null
     const dispAtk = isUnit ? (isPrev ? ps.atk : shownAtk) : null
     const dispDef = isUnit
       ? (isPrev ? ps.def : (combat ? `${occ.hp}/${maxHp}` : maxHp))
@@ -206,7 +207,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
               </div>
               {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
               <div className="tc-stats">
-                {isUnit && <IconVal src={STAT_ICON.speed}>{cooldown}</IconVal>}
+                {isUnit && <IconVal src={STAT_ICON.speed}>{rangeVal}</IconVal>}
                 {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}

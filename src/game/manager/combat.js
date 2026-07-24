@@ -47,6 +47,7 @@ class CombatMixin {
       for (const occ of [tile.unit, tile.building]) {
         if (!occ || occ.damaged) continue
         occ.hp = occ.maxHp // damage doesn't persist between combats
+        occ.cdTimer = 0    // ready to attack (Siege recharge starts fresh)
         delete occ.lastAttackSeq
       }
     }
@@ -115,16 +116,21 @@ class CombatMixin {
     for (const p of pieces) this._pieceAttack(p)
   }
 
-  /** One tower's attack: strike the lowest-HP enemy within its range. */
+  /** One tower's attack: strike the lowest-HP enemy within its range. Units with a
+   *  cooldown (Siege = 2) must recharge for that many turns after firing. */
   _pieceAttack(p) {
-    const range = this._pieceRange(p.occ)
+    const occ = p.occ
+    const range = this._pieceRange(occ)
     if (range <= 0) return
+    if (occ.cdTimer > 0) { occ.cdTimer -= 1; return } // recharging after a shot
     const target = this._lowestHpEnemyInRange(p.row, p.col, range)
     if (!target) return
-    const atk = this._effectiveAtk(p.occ)
+    const atk = this._effectiveAtk(occ)
     this._pushEvent({ kind: 'attack', side: 'player', col: p.col, row: p.row })
-    p.occ.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
+    occ.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
     this._dealDamageToEnemy(target, atk)
+    const cd = UNIT_DEFS[occ.key]?.cooldown ?? BUILDING_DEFS[occ.key]?.cooldown ?? 0
+    if (cd > 0) occ.cdTimer = cd
   }
 
   /** Attack range for a player piece (0 = doesn't attack). Utility units never attack;

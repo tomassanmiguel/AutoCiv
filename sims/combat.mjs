@@ -129,5 +129,29 @@ console.log('TEST 5: a real generated host runs through combat → transition (i
   g.stop()
 }
 
+// ---------------------------------------------------------------------------
+console.log('TEST 6: Siege cooldown — a Ballista (cd 2) fires every 3rd turn')
+{
+  const g = new GameManager(3)
+  g.setEra(2)
+  const b = g.data.tableau.visibleBounds(2)
+  const colA = b.minCol, colB = b.minCol + 1
+  // Ballista in colA (range 3); a huge wall in colB halts the enemy in range of it.
+  g.data.tableau.tileAt(b.minRow, colA).unit = { kind: 'unit', key: 'ballista', level: 1, hp: 50, maxHp: 50, damaged: false }
+  g.data.tableau.tileAt(b.minRow, colB).building = { kind: 'building', key: 'totem', level: 1, hp: 1e9, maxHp: 1e9, damaged: false }
+  const enemy = mkEnemy('warrior', 'Bruiser', colB, b.maxRow + 1, 100000, 5)
+  g.data.enemies = [enemy]
+  g._startCombat()
+  g.dismissCombatIntro()
+  // March the enemy down to the wall first (colB is minCol+1; enemy needs to reach minRow+1).
+  for (let i = 0; i < 6; i++) g._runTurn()
+  const hpAtStart = enemy.hp
+  for (let i = 0; i < 9; i++) g._runTurn() // 9 turns → Ballista fires on turns 1,4,7 = 3 shots
+  const shots = Math.round((hpAtStart - enemy.hp) / 11) // ballista atk 11
+  console.log(`  enemy took ${hpAtStart - enemy.hp} dmg over 9 turns → ~${shots} Ballista shots`)
+  assert(shots === 3, `Ballista fires 3× in 9 turns (cd 2), got ${shots}`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
