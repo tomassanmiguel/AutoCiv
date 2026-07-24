@@ -4,17 +4,17 @@
 
 export const POLICY_DEFS = {
   burial_rites: {
-    key: 'burial_rites', name: 'Burial Rites', type: 'Policy',
+    key: 'burial_rites', name: 'Burial Rites', type: 'Policy', era: 0, tech: 'Burial Rites',
     effect: 'Whenever a unit dies, gain :progress: equal to its :defense:.',
   },
   // Unlocked by "Language".
   language: {
-    key: 'language', name: 'Language', type: 'Policy',
+    key: 'language', name: 'Language', type: 'Policy', era: 0, tech: 'Language',
     effect: 'Each Citizen also produces +1 :progress: per tick.',
   },
   // Unlocked by "Tribalism".
   tribalism: {
-    key: 'tribalism', name: 'Tribalism', type: 'Policy',
+    key: 'tribalism', name: 'Tribalism', type: 'Policy', era: 0, tech: 'Tribalism',
     effect: 'Each unit gains +1 :attack: and +1 :defense: for every other friendly unit of the same type on the board.',
   },
   hunting: {
@@ -22,11 +22,11 @@ export const POLICY_DEFS = {
     effect: 'Whenever your units deal unblocked damage, also gain that much :food:.',
   },
   midwivery: {
-    key: 'midwivery', name: 'Midwivery', type: 'Policy',
+    key: 'midwivery', name: 'Midwivery', type: 'Policy', era: 0, tech: 'Midwivery',
     effect: 'Whenever you create a unit, gain :production: equal to its :defense:.',
   },
   ownership: {
-    key: 'ownership', name: 'Ownership', type: 'Policy',
+    key: 'ownership', name: 'Ownership', type: 'Policy', era: 0, tech: 'Ownership',
     effect: 'All buildings also produce +2 :gold: per tick.',
   },
   oral_tradition: {
@@ -38,15 +38,15 @@ export const POLICY_DEFS = {
     effect: 'At the end of combat, all units and buildings permanently gain +1 :defense:.',
   },
   specialization: {
-    key: 'specialization', name: 'Specialization', type: 'Policy',
+    key: 'specialization', name: 'Specialization', type: 'Policy', era: 2, tech: 'Specialization',
     effect: 'Each specialist also produces +1 of its highest output.',
   },
   slavery: {
-    key: 'slavery', name: 'Slavery', type: 'Policy',
+    key: 'slavery', name: 'Slavery', type: 'Policy', era: 1, tech: 'Slavery',
     effect: 'All :production: outputs +10%, but all :progress: outputs −5%.',
   },
   caste_system: {
-    key: 'caste_system', name: 'Caste System', type: 'Policy',
+    key: 'caste_system', name: 'Caste System', type: 'Policy', era: 3, tech: 'Caste System',
     effect: 'Upgraded units (level 2+) deal +25% :attack:.',
   },
   trade_networks: {
@@ -58,15 +58,15 @@ export const POLICY_DEFS = {
     effect: 'Hiring mercenaries costs 50% less :gold:.',
   },
   weights_and_measures: {
-    key: 'weights_and_measures', name: 'Weights and Measures', type: 'Policy',
+    key: 'weights_and_measures', name: 'Weights and Measures', type: 'Policy', era: 2, tech: 'Weights and Measures',
     effect: 'All :gold: outputs are increased by 50%.',
   },
   calendar: {
-    key: 'calendar', name: 'Calendar', type: 'Policy',
+    key: 'calendar', name: 'Calendar', type: 'Policy', era: 2, tech: 'Calendar',
     effect: "Each era's development lasts 5 more ticks.",
   },
   festivals: {
-    key: 'festivals', name: 'Festivals', type: 'Policy',
+    key: 'festivals', name: 'Festivals', type: 'Policy', era: 4, tech: 'Festivals',
     effect: 'End-of-combat effects (legitimacy, Ranch growth, Pier, etc.) trigger an additional time.',
   },
   composite_bows: {
@@ -78,11 +78,11 @@ export const POLICY_DEFS = {
     effect: 'At the end of each combat, a Road is laid on a random valid tile.',
   },
   code_of_laws: {
-    key: 'code_of_laws', name: 'Code of Laws', type: 'Policy',
+    key: 'code_of_laws', name: 'Code of Laws', type: 'Policy', era: 2, tech: 'Code of Laws',
     effect: 'Unit and building repair costs are reduced by 75%.',
   },
   diplomatic_marriage: {
-    key: 'diplomatic_marriage', name: 'Diplomatic Marriage', type: 'Policy',
+    key: 'diplomatic_marriage', name: 'Diplomatic Marriage', type: 'Policy', era: 4, tech: 'Diplomatic Marriage',
     effect: 'Mercenaries are hired 3 upgrade levels higher.',
   },
   sacred_grounds: {

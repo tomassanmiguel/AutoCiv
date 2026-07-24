@@ -25,7 +25,7 @@ const brothelAtk = (level = 1) => 0.10 + 0.05 * Math.max(0, level - 1)
 
 export const BUILDING_DEFS = {
   mud_wall: {
-    key: 'mud_wall', name: 'Mud Wall', types: ['defense'], placement: 'land',
+    key: 'mud_wall', name: 'Mud Brick Wall', era: 0, tech: 'Mud Brick', types: ['defense'], placement: 'land',
     hp: 25, upHp: 10,
     effect: 'A sturdy wall that stalls the enemy advance.',
   },
@@ -42,7 +42,7 @@ export const BUILDING_DEFS = {
     effect: (level) => `+1 :gold: per tick for each unit in range ${level}. Units in range: +10% :attack:, −10% :defense:.`,
   },
   pier: {
-    key: 'pier', name: 'Pier', types: ['food'], placement: 'coast',
+    key: 'pier', name: 'Pier', era: 0, tech: 'Fishing', types: ['food'], placement: 'coast',
     hp: 12, upHp: 4,
     // Flat food by level (era-independent), granted at the end of combat.
     effect: (level) => `Produces ${pierFood(level)} :food: at the end of combat.`,
@@ -50,7 +50,7 @@ export const BUILDING_DEFS = {
     eraFood: pierFood,
   },
   campfire: {
-    key: 'campfire', name: 'Campfire', types: ['utility'], placement: 'land',
+    key: 'campfire', name: 'Campfire', era: 0, tech: 'Fire', types: ['utility'], placement: 'land',
     hp: 1, upHp: 0,
     heal: campfireHeal, // % of max HP healed per combat-second
     effect: (level) => `Each second in combat, heals adjacent units & buildings for ${campfireHeal(level)}% of their max :defense:.`,
@@ -69,20 +69,20 @@ export const BUILDING_DEFS = {
     effect: 'In combat, hires a random mercenary onto an empty adjacent tile every 8 seconds.',
   },
   cave_painting: {
-    key: 'cave_painting', name: 'Cave Painting', types: ['progress'], placement: 'land',
+    key: 'cave_painting', name: 'Cave Painting', era: 0, tech: 'Cave Painting', types: ['progress'], placement: 'land',
     hp: 8, upHp: 0, noUpgrade: true,
     storedBase: 5, storedMax: 50000, // starts at 5 :progress:, doubles each era, capped
     effect: 'When overbuilt, grants its stored :progress: (starts at 5, doubles each era after combat, max 50000).',
   },
   ranch: {
-    key: 'ranch', name: 'Ranch', types: ['food'], placement: 'land',
+    key: 'ranch', name: 'Ranch', era: 1, tech: 'Domestication', types: ['food'], placement: 'land',
     hp: 8, upHp: 4,
     // Per-tick food = 5 + an era-growth bonus (occ.ranchBonus); grows +2/3/4/… at each
     // combat end, resets if destroyed (see GameManager _buildingTickOutputs / _endCombat).
     effect: 'Produces :food: each tick (starts at 5, +2/3/4/… at the end of each combat). If it is destroyed, the bonus resets.',
   },
   kiln: {
-    key: 'kiln', name: 'Kiln', types: ['production'], placement: 'land',
+    key: 'kiln', name: 'Kiln', era: 0, tech: 'Pottery', types: ['production'], placement: 'land',
     hp: 5, upHp: 3,
     perAdjacent: kilnPerAdjacent,
     effect: (level) => `Produces 2 :production: per tick, plus ${kilnPerAdjacent(level)} for each adjacent building.`,
@@ -94,7 +94,7 @@ export const BUILDING_DEFS = {
     effect: (level) => `Produces ${forgingProd(level)} :production: per tick. At the end of each combat, upgrades a random adjacent unit.`,
   },
   library: {
-    key: 'library', name: 'Library', types: ['progress'], placement: 'land',
+    key: 'library', name: 'Library', era: 2, tech: 'Paper', types: ['progress'], placement: 'land',
     hp: 9, upHp: 3,
     outputs: (level) => [{ res: 'progress', amount: libraryProgress(level), per: 'era' }],
     effect: (level) => `At the end of each combat, gain ${libraryProgress(level)} :progress:.`,
@@ -106,36 +106,36 @@ export const BUILDING_DEFS = {
     effect: (level) => `Produces ${mineGold(level)} :gold: per tick — doubled when placed on a mountain.`,
   },
   mint: {
-    key: 'mint', name: 'Mint', types: ['gold'], placement: 'land',
+    key: 'mint', name: 'Mint', era: 4, tech: 'Coinage', types: ['gold'], placement: 'land',
     hp: 10, upHp: 4,
     legitPct: mintLegitPct,
     effect: (level) => `Produces :gold: each tick equal to ${Math.round(mintLegitPct(level) * 100)}% of your current :legitimacy:.`,
   },
   lighthouse: {
-    key: 'lighthouse', name: 'Lighthouse', types: ['gold'], placement: 'coast',
+    key: 'lighthouse', name: 'Lighthouse', era: 3, tech: 'Celestial Navigation', types: ['gold'], placement: 'coast',
     hp: 12, upHp: 4,
     unblockedBonus: lighthouseBonus, // +200%/+250%/+300%… (ADDITIVE) to a :naval: unit's unblocked-damage resources in its waters
     effect: (level) => `When a :naval: unit deals unblocked damage in the Lighthouse's waters, resources gained are increased by ${Math.round(lighthouseBonus(level) * 100)}%.`,
   },
   temple: {
-    key: 'temple', name: 'Temple', types: ['legitimacy'], placement: 'land',
+    key: 'temple', name: 'Temple', era: 3, tech: 'Organized Religion', types: ['legitimacy'], placement: 'land',
     hp: 18, upHp: 6,
     legitPerTick: templeLegit,
     effect: (level) => `Produces ${templeLegit(level)} :legitimacy: per tick.`,
   },
   farm: {
-    key: 'farm', name: 'Farm', types: ['food'], placement: 'land',
+    key: 'farm', name: 'Farm', era: 1, tech: 'The Plough', types: ['food'], placement: 'land',
     hp: 6, upHp: 2,
     effect: 'Produces +5 :food: per tick for each adjacent Plains tile (including its own).',
   },
   aqueduct: {
-    key: 'aqueduct', name: 'Aqueduct', types: ['food'], placement: 'land',
+    key: 'aqueduct', name: 'Aqueduct', era: 3, tech: 'Arches', types: ['food'], placement: 'land',
     hp: 12, upHp: 5, // +5 base food per upgrade (via aqueductBase)
     base: aqueductBase,
     effect: (level) => `Produces ${aqueductBase(level)} :food: per tick — DOUBLED for each adjacent Aqueduct.`,
   },
   glassworks: {
-    key: 'glassworks', name: 'Glassworks', types: ['production'], placement: 'land',
+    key: 'glassworks', name: 'Glassworks', era: 5, tech: 'Stained Glass', types: ['production'], placement: 'land',
     hp: 10, upHp: 4,
     legitOnBuild: glassworksLegit,
     effect: (level) => `Produces 10 :production: per tick. Whenever you complete another building anywhere, gain ${glassworksLegit(level)} :legitimacy:.`,
@@ -157,7 +157,7 @@ export const BUILDING_DEFS = {
   // `extraCap` additional non-underlaid buildings in `tile.extras`. City buildings are
   // additive (they never replace) and can't be replaced or overbuilt themselves.
   city: {
-    key: 'city', name: 'City', types: ['utility'], placement: 'land',
+    key: 'city', name: 'City', era: 6, tech: 'Urbanization', types: ['utility'], placement: 'land',
     underlaidCity: true, noUpgrade: true, hp: 0, upHp: 0,
     extraCap: 2, // additional buildings the tile can hold beyond its primary occupant
     effect: 'Underlaid. Lets this tile hold 2 additional buildings. City buildings can never be replaced.',
@@ -166,7 +166,7 @@ export const BUILDING_DEFS = {
   // tile's own `underlap` slot (never replaced, no HP/combat) rather than as the
   // occupant. Links every tile it touches into one adjacency group.
   road: {
-    key: 'road', name: 'Road', types: ['utility'], placement: 'land',
+    key: 'road', name: 'Road', era: 3, tech: 'Surveying', types: ['utility'], placement: 'land',
     underlap: true, noUpgrade: true, hp: 0, upHp: 0,
     effect: 'All tiles adjacent to the road are adjacent to each other. Underlaid.',
   },
