@@ -320,6 +320,8 @@ export class GameManager {
       const def = BUILDING_DEFS[occ.key]
       // Neocolonialism: buildings on Exoplanet terrain produce +150% :gold: (×2.5).
       const exoGold = tile.terrain?.startsWith('exo') && this._activeEffectDefs().some((d) => d.special === 'exoplanet_gold') ? 2.5 : 1
+      // Maritime Law: +500% to the water-tile :gold: terrain bonus (×6 on coast/sea tiles).
+      const waterGold = (tile.def?.place === 'sea' || tile.def?.place === 'coast') && this._activeEffectDefs().some((d) => d.special === 'water_gold_bonus') ? 6 : 1
       let out = null
       // v2 data-driven per-tick output (generic). v1 buildings without def.output fall
       // through to the key-specific cases below (Ranch growth, Kiln adjacency, etc.).
@@ -355,7 +357,7 @@ export class GameManager {
         for (const def of this._activeEffectDefs()) {
           if (def.terrainDouble && (def.terrainDouble === 'all' || def.terrainDouble === tile.terrain)) tmult *= (def.terrainDouble === 'asteroid' ? 3 : 2)
         }
-        const amt = ty.res === 'gold' ? Math.round(ty.amount * tmult * exoGold) : ty.amount * tmult
+        const amt = ty.res === 'gold' ? Math.round(ty.amount * tmult * exoGold * waterGold) : ty.amount * tmult
         totals[ty.res] += amt
         occ.terrainYield = { res: ty.res, amount: amt }
       } else occ.terrainYield = null

@@ -374,5 +374,25 @@ console.log('TEST 18: Elder Awareness — +50% damage vs Azazoth')
   g.stop()
 }
 
+console.log('TEST 19: Adaptive Strategy — units gain +5% attack per combat turn')
+{
+  const g = new GameManager(15); g.setEra(4)
+  const b = g.data.tableau.visibleBounds(4)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol)
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g.data.civilization.policies[0] = { key: 'adaptive_strategy' }
+  g._syncUnitStats(true); const atk = t.unit.atk
+  const mkEnemy = () => ({ key: 'warrior', row: b.minRow + 1, col: b.minCol, hp: 1e6, maxHp: 1e6, damaged: false, breached: false })
+  g.data.combatSeq = 0
+  g.data.combatTurn = 1; let e = mkEnemy(); g.data.enemies = [e]
+  g._pieceAttack({ occ: t.unit, row: t.row, col: t.col }); const d1 = 1e6 - e.hp
+  t.unit.cdTimer = 0; g.data.combatTurn = 3; e = mkEnemy(); g.data.enemies = [e]
+  g._pieceAttack({ occ: t.unit, row: t.row, col: t.col }); const d3 = 1e6 - e.hp
+  console.log(`  atk ${atk}: turn-1 dmg ${d1}, turn-3 dmg ${d3} (expect +10%)`)
+  assert(d1 === atk, `turn 1 = base atk (got ${d1} vs ${atk})`)
+  assert(d3 === Math.round(atk * 1.1), `turn 3 = +10% (got ${d3} vs ${Math.round(atk * 1.1)})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

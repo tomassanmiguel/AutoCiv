@@ -325,5 +325,19 @@ console.log('TEST 25: Neocolonialism — Exoplanet buildings produce +150% gold 
   g.stop()
 }
 
+console.log('TEST 26: Maritime Law — +500% water-tile gold terrain bonus (×6)')
+{
+  const g = new GameManager(16); g.setEra(6)
+  const tile = g.data.tableau.visibleTiles(6).find((t) => !t.building && !t.unit)
+  tile.terrain = 'ocean' // a sea tile yields gold from terrain
+  tile.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  g._recomputeOutputs(); const gold0 = g.data.civilization.gold.output
+  g.data.civilization.policies[0] = { key: 'maritime_law' }
+  g._recomputeOutputs(); const gold1 = g.data.civilization.gold.output
+  console.log(`  water gold/tick ${gold0} → ${gold1} with Maritime Law`)
+  assert(gold0 > 0 && Math.abs(gold1 - gold0 * 6) < 0.01, `Maritime Law ×6 water gold (got ${gold0}→${gold1})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

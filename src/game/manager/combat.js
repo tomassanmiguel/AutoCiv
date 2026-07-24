@@ -129,7 +129,12 @@ class CombatMixin {
     if (occ.cdTimer > 0) { occ.cdTimer -= 1; return } // recharging after a shot
     const target = this._lowestHpEnemyInRange(p.row, p.col, range)
     if (!target) return
-    const atk = this._effectiveAtk(occ)
+    let atk = this._effectiveAtk(occ)
+    // Adaptive Strategy: units gain +5% attack per elapsed combat turn (resets each battle;
+    // turn 1 = base). Applies to units only, not towers.
+    if (occ.kind === 'unit' && this._activeEffectDefs().some((d) => d.special === 'combat_atk_ramp')) {
+      atk = Math.round(atk * (1 + 0.05 * Math.max(0, this.data.combatTurn - 1)))
+    }
     this._pushEvent({ kind: 'attack', side: 'player', col: p.col, row: p.row })
     occ.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
     this._dealDamageToEnemy(target, atk)

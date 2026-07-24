@@ -5,8 +5,8 @@
 > content (324/351 advancements), data-driven economy (terrain yields, legit-leverage, specialist
 > gold-upgrade chains), hand-authored scaled enemy roster, the wonder system (incl. Manhattan
 > Project/Fallout), and the pre-game civ/difficulty screen. `node sims/verify.mjs` = 0 problems.
-> Remaining = incremental polish: **34 stubbed** policy/enemy `special` abilities (effect-wiring
-> coverage now **132/166** reachable policies+bonuses WIRED, per `node sims/verify.mjs`), roster
+> Remaining = incremental polish: **32 stubbed** policy/enemy `special` abilities (effect-wiring
+> coverage now **134/166** reachable policies+bonuses WIRED, per `node sims/verify.mjs`), roster
 > no-replace versioning, multi-tile wonders/bosses, the trap/command/spawner slot tab-split, and
 > balance tuning. The remaining stubs are the genuinely architectural ones — region upgrade-levels
 > (colonialism/martian_freedom/skyscrapers/empire_of_the_stars/hive_mind), keep-upgrade-levels
@@ -16,7 +16,7 @@
 > rerolls (state_alchemists/autonomous_governance/chronoscopy), wonderYieldMult
 > (pilgrimage/tourism/star_hopping/cosmic_celebration), traps/poison
 > (guerilla_warfare/nanite_warfare), terrain-mercs (native_collaboration/xenodiplomacy), and a
-> couple of combat abilities (adaptive_strategy, galactic_legion) — deferred as a group.
+> spawn-on-build ability (galactic_legion) — deferred as a group.
 
 
 Strategy (per the user): **implement the new mechanics slice by slice → wipe v1 content → re-add v2
