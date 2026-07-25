@@ -25,16 +25,26 @@ export const TERRAIN = {
   exohills:   { name: 'Exo Hills',  sprite: '/sprites/tiles/exohills.png',   color: '#6b4a7d', place: 'land', econYield: { res: 'production', amount: 25 } },
   exoplains:  { name: 'Exo Plains', sprite: '/sprites/tiles/exoplains.png',  color: '#7d5a8a', place: 'land', econYield: { res: 'food', amount: 25 } },
   exosea:     { name: 'Exo Sea',    sprite: '/sprites/tiles/exosea.png',     color: '#3a4a8a', place: 'sea', econYield: { res: 'gold', amount: 100 } },
-  planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a', place: 'space', econYield: { res: 'food', amount: 500 } },
+  planet:     { name: 'Planet',     sprite: '/sprites/tiles/planet.png',     color: '#4a5a9a', place: 'space', econYield: [{ res: 'production', amount: 500 }, { res: 'gold', amount: 500 }, { res: 'food', amount: 500 }, { res: 'progress', amount: 500 }] },
   star:       { name: 'Star',       sprite: '/sprites/tiles/star.png',       color: '#d8b24b', place: 'space', econYield: { res: 'production', amount: 200 } },
   singularity:{ name: 'Singularity',sprite: '/sprites/tiles/singularity.png',color: '#1a0a2a', place: 'space', econYield: { res: 'progress', amount: 200 } },
   // Laid by the Manhattan Project wonder: enemies entering take 100 damage.
   fallout:    { name: 'Fallout',    sprite: '/sprites/tiles/fallout.png',    color: '#5a5a2a', place: 'land', note: 'Radioactive — enemies entering take 100 damage.' },
 }
 
-/** Flat per-tick economic yield a building on this terrain also produces (v2), or null. */
+/** Flat per-tick economic yield a building on this terrain also produces (v2). Returns a single
+ *  { res, amount } (the FIRST, for output-scaling callers) or null. Use terrainEconYields for all. */
 export function terrainEconYield(terrainKey) {
-  return TERRAIN[terrainKey]?.econYield ?? null
+  const y = TERRAIN[terrainKey]?.econYield
+  if (!y) return null
+  return Array.isArray(y) ? (y[0] ?? null) : y
+}
+
+/** ALL per-tick terrain yields as an array (a Planet gives four; most terrains give one). */
+export function terrainEconYields(terrainKey) {
+  const y = TERRAIN[terrainKey]?.econYield
+  if (!y) return []
+  return Array.isArray(y) ? y : [y]
 }
 
 /** Whether a unit/building with the given placement rule may deploy on a terrain. */

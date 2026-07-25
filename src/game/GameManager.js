@@ -9,7 +9,7 @@ import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount, defOf } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
-import { canPlaceOn, canPlaceWonder, terrainDefBonus, terrainEconYield, EARTH_TERRAINS } from './data/terrain.js'
+import { canPlaceOn, canPlaceWonder, terrainDefBonus, terrainEconYield, terrainEconYields, EARTH_TERRAINS } from './data/terrain.js'
 import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost, rerollCost } from './data/costs.js'
 import { installCombat, SPEED_TPS, COMBAT_INTERVAL_MS } from './manager/combat.js'
 
@@ -366,21 +366,24 @@ export class GameManager {
       // (Plains→food, Forest→progress, Mountain→production, sea/space→gold), optionally
       // multiplied by a terrain-doubler policy (Forestry/Granaries/Mountaineering/Ecology
       // ×2, Beltalowdas ×3 on asteroid).
-      const ty = terrainEconYield(tile.terrain)
-      if (ty && totals[ty.res] != null) {
-        let tmult = 1
-        for (const def of this._activeEffectDefs()) {
-          if (def.terrainDouble && (def.terrainDouble === 'all' || def.terrainDouble === tile.terrain)) tmult *= (def.terrainDouble === 'asteroid' ? 3 : 2)
-        }
-        // Carbon Sink (naturalGrowth, land tiles) + National Park (parkMult) + Ecumenopolis
-        // (planet tiles ×10) fold into the yield.
-        const natural = tile.def?.place === 'land' ? civ.naturalGrowth : 0
-        const planetMult = (tile.terrain === 'planet' && this._hasWonder('ecumenopolis')) ? 10 : 1
+      // Terrain doublers (Forestry/Granaries/…) + Carbon Sink (naturalGrowth, land) + National
+      // Park (parkMult) + Ecumenopolis (planet ×10) fold into EACH of the terrain's yields (a
+      // Planet gives four: production/gold/food/progress).
+      let tmult = 1
+      for (const def of this._activeEffectDefs()) {
+        if (def.terrainDouble && (def.terrainDouble === 'all' || def.terrainDouble === tile.terrain)) tmult *= (def.terrainDouble === 'asteroid' ? 3 : 2)
+      }
+      const natural = tile.def?.place === 'land' ? civ.naturalGrowth : 0
+      const planetMult = (tile.terrain === 'planet' && this._hasWonder('ecumenopolis')) ? 10 : 1
+      const yields = []
+      for (const ty of terrainEconYields(tile.terrain)) {
+        if (totals[ty.res] == null) continue
         const scaled = (ty.amount + natural) * tmult * parkMult * planetMult
         const amt = ty.res === 'gold' ? Math.round(scaled * exoGold * waterGold) : scaled
         totals[ty.res] += amt
-        occ.terrainYield = { res: ty.res, amount: amt }
-      } else occ.terrainYield = null
+        yields.push({ res: ty.res, amount: amt })
+      }
+      occ.terrainYield = yields.length ? yields : null
       if (civ.bonuses.includes('gas_light')) totals.production += 2 // Gas Light bonus: every building +2 :production:/t
     }
     return totals

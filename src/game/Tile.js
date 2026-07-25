@@ -56,8 +56,11 @@ export class Tile {
   getTooltip() {
     const lines = []
     if (this.def?.note) lines.push(this.def.note) // combat effect (e.g. Forest +5 :defense:)
-    const y = this.def?.econYield // v2: a building here also produces this per tick
-    if (y) lines.push(`A building here also produces +${y.amount} :${y.res}: per tick.`)
+    const y = this.def?.econYield // v2: a building here also produces this per tick (Planet → four)
+    if (y) {
+      const parts = (Array.isArray(y) ? y : [y]).map((e) => `+${e.amount} :${e.res}:`).join(', ')
+      lines.push(`A building here also produces ${parts} per tick.`)
+    }
     return { title: this.def?.name ?? this.terrain, lines }
   }
 }

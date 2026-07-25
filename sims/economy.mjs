@@ -529,10 +529,15 @@ console.log('TEST 36: Wonders — Hanging Gardens, Hadron Collider, Statue of Li
   const planet = g5.data.tableau.visibleTiles(25).find((x) => !x.building && !x.unit && x.terrain === 'planet')
   if (planet) {
     planet.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
-    g5._recomputeOutputs(); const y0 = g5.data.civilization.gold.output
-    g5.data.civilization.completedWonders.push('ecumenopolis'); g5._recomputeOutputs(); const y1 = g5.data.civilization.gold.output
+    g5._recomputeOutputs()
+    const c5 = g5.data.civilization
+    // A building on a Planet produces +500 of ALL FOUR: production, gold, food, progress.
+    console.log(`  Planet yields: prod ${c5.production.output}, gold ${c5.gold.output}, food ${c5.food.output}, progress ${c5.progress.output}`)
+    assert(c5.production.output === 500 && c5.gold.output === 500 && c5.food.output === 500 && c5.progress.output === 500, 'Planet gives +500 production/gold/food/progress')
+    const y0 = c5.gold.output
+    c5.completedWonders.push('ecumenopolis'); g5._recomputeOutputs(); const y1 = c5.gold.output
     console.log(`  Ecumenopolis: planet gold yield ${y0} → ${y1} (×10)`)
-    assert(y0 === 0 || y1 === y0 * 10, `Ecumenopolis planet ×10 (got ${y0}→${y1})`)
+    assert(y1 === y0 * 10, `Ecumenopolis planet ×10 (got ${y0}→${y1})`)
   } else { console.log('  (no planet tile visible — Ecumenopolis assertion skipped)'); assert(true, 'skip') }
   g5.stop()
 }
