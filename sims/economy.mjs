@@ -537,5 +537,36 @@ console.log('TEST 36: Wonders — Hanging Gardens, Hadron Collider, Statue of Li
   g5.stop()
 }
 
+console.log('TEST 37: Previously-stubbed building outputs (Lumber Mill, Harbor, Hacienda, Arena, Bank)')
+{
+  const g = new GameManager(70); g.setEra(9); g.data.civilization.pops = {}
+  const lands = g.data.tableau.visibleTiles(9).filter((x) => !x.building && !x.unit && x.def?.place === 'land')
+  // Lumber Mill on a forest tile → production from terrain scaling.
+  lands[0].terrain = 'forest'; lands[0].building = { kind: 'building', key: 'lumber_mill', level: 1, hp: 5, maxHp: 5, damaged: false }
+  g._recomputeOutputs()
+  console.log(`  Lumber Mill production/tick: ${g.data.civilization.production.output}`)
+  assert(g.data.civilization.production.output > 0, `Lumber Mill produces (got ${g.data.civilization.production.output})`)
+  // Hacienda on a New-World tile → multi-output food+prod+gold.
+  const g2 = new GameManager(71); g2.setEra(9); g2.data.civilization.pops = {}
+  const t2 = g2.data.tableau.visibleTiles(9).find((x) => !x.building && !x.unit && x.def?.place === 'land')
+  t2.label = 'New World'; t2.building = { kind: 'building', key: 'hacienda', level: 1, hp: 8, maxHp: 8, damaged: false }
+  g2._recomputeOutputs()
+  const c = g2.data.civilization
+  console.log(`  Hacienda: food ${c.food.output}, prod ${c.production.output}, gold ${c.gold.output}`)
+  assert(c.food.output >= 6 && c.production.output >= 6 && c.gold.output === 9, `Hacienda 6/6/9 multi-output`)
+  g.stop(); g2.stop()
+  // Arena + Bank: end-of-era gold.
+  const g3 = new GameManager(72); g3.setEra(9)
+  const b3 = g3.data.tableau.visibleBounds(9)
+  g3.data.tableau.tileAt(b3.minRow, b3.minCol).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  const at = g3.data.tableau.tileAt(b3.minRow + 1, b3.minCol); at.terrain = 'plains'
+  at.building = { kind: 'building', key: 'arena', level: 1, hp: 5, maxHp: 5, damaged: false }
+  const gold0 = g3.data.civilization.gold.value
+  g3._accrueBuildingOutputs()
+  console.log(`  Arena: gold +${g3.data.civilization.gold.value - gold0} (8 × 1 deployed unit)`)
+  assert(g3.data.civilization.gold.value - gold0 === 8, `Arena 8 gold/unit (got +${g3.data.civilization.gold.value - gold0})`)
+  g3.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -347,6 +347,14 @@ export class GameManager {
       else if (occ.key === 'forging') out = { res: 'production', amount: def.prodPerTick(effLevel) }
       else if (occ.key === 'aqueduct') out = { res: 'food', amount: def.base(effLevel) * Math.pow(2, this._adjacentAqueductCount(tile)) }
       else if (occ.key === 'glassworks') out = { res: 'production', amount: 10 }
+      else if (occ.key === 'shinkansen') out = { res: 'gold', amount: 3 * this._adjacentBuildingCount(tile.row, tile.col) } // +3 gold per adjacent building
+      else if (occ.key === 'lumber_mill') out = { res: 'production', amount: Math.round(4 * (terrainEconYield(tile.terrain)?.amount ?? 0) * effLevel) }
+      else if (occ.key === 'harbor') out = { res: 'production', amount: 6 * this._unitsInRange(tile.row, tile.col, (def.range ?? 1) + (occ.level - 1)) }
+      else if (occ.key === 'museum') out = { res: 'progress', amount: 16 * this._lineTypeCount(tile) * occ.level }
+      else if (occ.key === 'hacienda' && tile.label === 'New World') { // multi-output
+        totals.food += 6 * occ.level; totals.production += 6 * occ.level // food + production added directly
+        out = { res: 'gold', amount: 9 * occ.level } // gold via the normal out path (added once below)
+      }
       // Artificial Meat: :food: buildings double output and produce :production: instead.
       if (out && out.res === 'food' && this._activeEffectDefs().some((d) => d.special === 'artificial_meat')) out = { res: 'production', amount: out.amount * 2 }
       // Neocolonialism: boost a building's own :gold: output on Exoplanet terrain.
@@ -386,6 +394,24 @@ export class GameManager {
       if (d?.special === 'stacks' && d.parkYieldPct) b += d.parkYieldPct * occ.level
     }
     return b
+  }
+
+  /** Distinct unit + building keys among all tiles sharing `tile`'s row or column (Museum). */
+  _lineTypeCount(tile) {
+    const keys = new Set()
+    for (const t of this.data.tableau.tiles.values()) {
+      if (t.row !== tile.row && t.col !== tile.col) continue
+      if (t.unit && !t.unit.damaged) keys.add(t.unit.key)
+      if (t.building && !t.building.damaged) keys.add(t.building.key)
+    }
+    return keys.size
+  }
+
+  /** Count of deployed (undamaged) units on the board (Arena / Colosseum). */
+  _deployedUnitCount() {
+    let n = 0
+    for (const tile of this.data.tableau.tiles.values()) if (tile.unit && !tile.unit.damaged) n++
+    return n
   }
 
   /** Count of Plains tiles among a Farm's own tile + its (road-augmented) neighbours. */
@@ -1448,7 +1474,7 @@ export class GameManager {
   _accrueBuildingOutputs() {
     const civ = this.data.civilization
     let addedFood = 0
-    for (const { occ } of this._buildingInstances()) {
+    for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) continue
       for (const o of buildingOutputs(BUILDING_DEFS[occ.key], occ.level, this.data.era)) {
         if (!civ[o.res]) continue
@@ -1456,6 +1482,13 @@ export class GameManager {
         occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + o.amount
         if (o.res === 'food') addedFood += o.amount
       }
+      // Runtime end-of-era outputs: Observatory (progress from terrain), Arena (gold per unit),
+      // Bank (interest on unspent gold).
+      let extra = 0, res = null
+      if (occ.key === 'observatory') { res = 'progress'; extra = Math.round(10 * (terrainEconYield(tile.terrain)?.amount ?? 0) * occ.level) }
+      else if (occ.key === 'arena') { res = 'gold'; extra = 8 * this._deployedUnitCount() * occ.level }
+      else if (occ.key === 'bank') { res = 'gold'; extra = Math.floor(civ.gold.value * 0.05 * occ.level) }
+      if (res && extra > 0) { civ[res].value += extra; occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + extra }
     }
     if (addedFood > 0) this._processThresholds('food', civ.food)
   }

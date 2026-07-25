@@ -862,5 +862,41 @@ console.log('TEST 39: Wonders — Skynet, Taj Mahal, Death Star, Panopticon, Gre
   g5.stop()
 }
 
+console.log('TEST 40: Machine Gun underlay — the unit on its tile attacks +level extra times')
+{
+  const g = new GameManager(73); g.setEra(9)
+  const b = g.data.tableau.visibleBounds(9)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol); t.terrain = 'plains'
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  t.building = { kind: 'building', key: 'machine_gun', level: 2, hp: 4, maxHp: 4, damaged: false } // +2 extra attacks
+  const e = mkEnemy('warrior', 'X', b.minCol, b.minRow + 1, 100000, 5)
+  g.data.enemies = [e]
+  g._startCombat(); g.dismissCombatIntro()
+  const wAtk = t.unit.atk
+  g.data.combatEvents = []
+  g._playerPhase()
+  console.log(`  Machine Gun lvl 2: warrior atk ${wAtk}, enemy took ${100000 - e.hp} (expect 3× = base + 2 extra)`)
+  assert(100000 - e.hp === wAtk * 3, `Machine Gun +2 extra attacks → 3 total (got ${100000 - e.hp} vs ${wAtk * 3})`)
+  g.stop()
+}
+
+console.log('TEST 41: Impassable building (Moon Base) — enemies cannot pass or destroy it')
+{
+  const g = new GameManager(74); g.setEra(14)
+  const b = g.data.tableau.visibleBounds(14)
+  const wt = g.data.tableau.tileAt(b.minRow, b.minCol); wt.terrain = 'plains'
+  wt.building = { kind: 'building', key: 'moon_base', level: 1, hp: 3, maxHp: 3, damaged: false }
+  const e = mkEnemy('warrior', 'X', b.minCol, b.minRow + 1, 100, 5)
+  g.data.enemies = [e]
+  g._startCombat(); g.dismissCombatIntro()
+  const l0 = g.data.civilization.legitimacy.value
+  for (let i = 0; i < 30; i++) g._runTurn()
+  console.log(`  after combat: enemy breached=${e.breached}, Moon Base intact=${wt.building && !wt.building.damaged}, legit lost=${l0 - g.data.civilization.legitimacy.value}`)
+  assert(!e.breached, 'enemy never breaches past the Moon Base')
+  assert(wt.building && !wt.building.damaged, 'Moon Base is never destroyed by a normal enemy')
+  assert(g.data.civilization.legitimacy.value === l0, 'no legitimacy lost')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -133,6 +133,13 @@ class CombatMixin {
       this._pieceAttack(p)
       // Chronobooster aura: units in range act a second time this turn (cooldown bypassed).
       if (p.occ.kind === 'unit' && p.occ.cmdActTwice && !p.occ.damaged) { p.occ.cdTimer = 0; this._pieceAttack(p) }
+      // Machine Gun underlay: the unit sharing its tile attacks +level extra times.
+      if (p.occ.kind === 'unit' && !p.occ.damaged) {
+        const bld = this.data.tableau.tileAt(p.row, p.col)?.building
+        if (bld && !bld.damaged && bld.key === 'machine_gun') {
+          for (let i = 0; i < bld.level && !p.occ.damaged; i++) { p.occ.cdTimer = 0; this._pieceAttack(p) }
+        }
+      }
     }
   }
 
@@ -255,6 +262,11 @@ class CombatMixin {
     const blocker = (below?.unit && !below.unit.damaged) ? below.unit
       : (belowB && !belowB.damaged && !walkover) ? belowB : null
     if (blocker) {
+      // Impassable buildings (Moon Base / Singularity): normal enemies can't chip or pass them
+      // and simply hold; only Azazoth can force through (and takes the Singularity's huge hit).
+      const bdef = blocker.kind === 'building' ? BUILDING_DEFS[blocker.key] : null
+      const impassable = bdef?.trapTrigger === 'impassable' || bdef?.special === 'trap_impassable'
+      if (impassable && e.key !== 'azazoth') return
       const chip = e.chip ?? 1 // per-enemy blocker chip (Barbarian 2, …); baked at generation
       this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
       this._chipBlocker(blocker, chip, below)
