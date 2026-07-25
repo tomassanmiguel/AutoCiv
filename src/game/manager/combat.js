@@ -228,17 +228,108 @@ class CombatMixin {
   _dealDamageToEnemy(e, amount) {
     // Elder Awareness: +50% damage vs the Azazoth boss (applies to direct + splash hits).
     if (e.key === 'azazoth' && this._activeEffectDefs().some((d) => d.special === 'azazoth_damage')) amount = Math.round(amount * 1.5)
+    const def = ENEMY_DEFS[e.key]
+    // Swarm: takes only 1 damage per hit (HP doesn't scale — it tanks by attrition).
+    if (def?.special === 'split_when_damaged') amount = Math.min(amount, 1)
+    if (amount <= 0) return
     e.hp -= amount
     const killed = e.hp <= 0
     if (killed) { e.hp = 0; e.damaged = true }
     this._pushEvent({ kind: 'damage', side: 'enemy', amount, killed, col: e.col, row: e.row })
+    if (!killed) this._onEnemyDamaged(e, def)
   }
 
-  /** All enemies act, front-most (lowest row) first so a column flows downward. */
+  /** On-damage enemy triggers (survivors only): Warper blinks away, Swarm splits. */
+  _onEnemyDamaged(e, def) {
+    if (!def) return
+    if (def.special === 'teleport_when_damaged') this._teleportEnemy(e, 3)           // Warper
+    else if (def.special === 'split_when_damaged') this._spawnEnemyAdjacent(e, 'swarm') // Swarm
+  }
+
+  /** Build + register a fresh scaled enemy of `key` at (row,col). Returns it, or null. */
+  _spawnEnemy(key, col, row) {
+    const d = ENEMY_DEFS[key]
+    if (!d) return null
+    const era = this.data.era
+    const noScale = d.special === 'split_when_damaged'
+    const hp = Math.max(1, noScale ? d.def : Math.round(d.def * Math.pow(1.25, era)))
+    this.data.enemySpawnSeq = (this.data.enemySpawnSeq ?? 1_000_000) + 1
+    const e = {
+      id: this.data.enemySpawnSeq, kind: 'unit', key, name: d.name, types: d.types ?? ['melee'], level: 1,
+      col, row, hp, maxHp: hp, atk: d.atk + era, chip: d.chip ?? 1, elite: false, damaged: false, breached: false,
+    }
+    this.data.enemies.push(e)
+    this._pushEvent({ kind: 'march', col, row })
+    return e
+  }
+
+  /** A cell (grid or spawn zone) that has no live enemy and is inside the battlefield. */
+  _enemySpotFree(row, col, bounds) {
+    if (col < bounds.minCol || col > bounds.maxCol) return false
+    if (row < bounds.minRow || row > bounds.maxRow + this.data.tableau.enemyRowCount(this.data.era)) return false
+    return !this.data.enemies.some((o) => !o.damaged && !o.breached && o.row === row && o.col === col)
+  }
+
+  /** Spawn `key` on a random empty cell orthogonally adjacent to `e` (capped so it can't explode). */
+  _spawnEnemyAdjacent(e, key) {
+    const bounds = this.data.tableau.visibleBounds(this.data.era)
+    if (!bounds) return
+    if (this.data.enemies.filter((o) => !o.damaged && !o.breached).length >= 40) return // runaway guard
+    const cands = [[e.row + 1, e.col], [e.row - 1, e.col], [e.row, e.col + 1], [e.row, e.col - 1]]
+      .filter(([r, c]) => this._enemySpotFree(r, c, bounds))
+    if (!cands.length) return
+    const [r, c] = cands[Math.floor(Math.random() * cands.length)]
+    this._spawnEnemy(key, c, r)
+  }
+
+  /** Blink `e` to a random empty cell within Manhattan `range` (Warper). */
+  _teleportEnemy(e, range) {
+    const bounds = this.data.tableau.visibleBounds(this.data.era)
+    if (!bounds) return
+    const spots = []
+    for (let r = e.row - range; r <= e.row + range; r++) {
+      for (let c = e.col - range; c <= e.col + range; c++) {
+        if (Math.abs(r - e.row) + Math.abs(c - e.col) > range || (r === e.row && c === e.col)) continue
+        if (this._enemySpotFree(r, c, bounds)) spots.push([r, c])
+      }
+    }
+    if (!spots.length) return
+    const [r, c] = spots[Math.floor(Math.random() * spots.length)]
+    e.row = r; e.col = c
+    this._pushEvent({ kind: 'march', col: c, row: r })
+  }
+
+  /** Effective breach :attack: for an enemy. Berserker grows by its missing HP. */
+  _enemyBreachAtk(e) {
+    let atk = e.atk
+    if (ENEMY_DEFS[e.key]?.special === 'grows_when_damaged') atk = e.atk + (e.maxHp - e.hp)
+    if (e.buffed) atk *= 2 // Leader aura (set each turn in _applyEnemyAuras)
+    return atk
+  }
+
+  /** How many times an enemy acts this turn: speed modifiers (double/triple/ninja) and the
+   *  Juggernaut's every-other-turn skip. Alien is only fast in space. */
+  _enemyActsThisTurn(e) {
+    const s = ENEMY_DEFS[e.key]?.special
+    if (s === 'skip_alt_turn') return this.data.combatTurn % 2 === 1 ? 1 : 0
+    if (s === 'triple_speed') {
+      if (e.key === 'alien') { const t = this.data.tableau.tileAt(e.row, e.col); return t?.def?.place === 'space' ? 3 : 1 }
+      return 3
+    }
+    if (s === 'double_speed') return 2
+    if (s === 'least_resistance' && e.key === 'ninja') return 2 // Ninja moves twice
+    return 1
+  }
+
+  /** All enemies act, front-most (lowest row) first so a column flows downward. Fast enemies
+   *  act multiple times; the Juggernaut skips alternate turns. */
   _enemyPhase(bounds) {
     const list = this.data.enemies.filter((e) => !e.damaged && !e.breached)
     list.sort((a, b) => a.row - b.row || a.col - b.col)
-    for (const e of list) this._enemyAct(e, bounds)
+    for (const e of list) {
+      const acts = this._enemyActsThisTurn(e)
+      for (let n = 0; n < acts && !e.damaged && !e.breached; n++) this._enemyAct(e, bounds)
+    }
   }
 
   /** One enemy acts: breach off the bottom, chip a blocker below, or march down. */
@@ -249,7 +340,7 @@ class CombatMixin {
     // Off the bottom → breach: subtract atk from legitimacy, then remove.
     if (belowRow < bounds.minRow) {
       const fw = this._hasPolicy('firewall') ? 0.75 : 1 // Firewall: −25% enemy attack values
-      const lost = this._damageLegitimacy(Math.round(e.atk * fw)) // Democracy doubles the loss
+      const lost = this._damageLegitimacy(Math.round(this._enemyBreachAtk(e) * fw)) // Democracy doubles the loss
       e.breached = true
       this._pushEvent({ kind: 'legit', amount: lost, col: e.col, row: e.row })
       return

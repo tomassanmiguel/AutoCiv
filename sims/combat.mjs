@@ -1277,5 +1277,44 @@ console.log('TEST 54: a wall shields a unit sharing its tile — enemies chip th
   g.stop()
 }
 
+console.log('TEST 55: enemy abilities — Swarm, Warper, Berserker, speed modifiers')
+{
+  const g = new GameManager(110); g.setEra(5)
+  const b = g.data.tableau.visibleBounds(5)
+  g.data.phase = 'battle'; g.data.combatIntro = false; g.data.combatSeq = 1
+  const sw = mkEnemy('swarm', 'W', b.minCol, b.maxRow + 1, 5, 50)
+  g.data.enemies = [sw]
+  g._dealDamageToEnemy(sw, 100) // huge hit → capped to 1
+  assert(sw.hp === 4, `Swarm takes only 1 damage per hit (lost ${5 - sw.hp})`)
+  assert(g.data.enemies.length === 2, 'Swarm splits (spawns another Swarm) when damaged')
+  g.stop()
+
+  // Warper: teleports somewhere else when damaged.
+  const g2 = new GameManager(111); g2.setEra(24)
+  const b2 = g2.data.tableau.visibleBounds(24)
+  g2.data.phase = 'battle'; g2.data.combatIntro = false
+  const wp = mkEnemy('enemy_warper', 'T', b2.minCol + 1, b2.maxRow, 100, 9); wp.types = ['astral']
+  g2.data.enemies = [wp]
+  const r0 = wp.row, c0 = wp.col
+  g2._dealDamageToEnemy(wp, 10)
+  assert(wp.row !== r0 || wp.col !== c0, 'Warper teleports when damaged')
+  g2.stop()
+
+  // Berserker: breach attack grows by its missing HP.
+  const g3 = new GameManager(112); g3.setEra(5)
+  assert(g3._enemyBreachAtk({ key: 'berserker', maxHp: 20, hp: 8, atk: 7 }) === 19, 'Berserker breach atk = base + missing HP')
+  g3.stop()
+
+  // Speed modifiers: Mongol ×2, Dervish ×3, Juggernaut skips even turns.
+  const g4 = new GameManager(113); g4.setEra(6)
+  g4.data.combatTurn = 1
+  assert(g4._enemyActsThisTurn({ key: 'mongol' }) === 2, 'Mongol acts twice (double speed)')
+  assert(g4._enemyActsThisTurn({ key: 'dervish' }) === 3, 'Dervish acts thrice (triple speed)')
+  assert(g4._enemyActsThisTurn({ key: 'juggernaut' }) === 1, 'Juggernaut acts on an odd turn')
+  g4.data.combatTurn = 2
+  assert(g4._enemyActsThisTurn({ key: 'juggernaut' }) === 0, 'Juggernaut skips an even turn')
+  g4.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -80,7 +80,8 @@ export function generateHost(era, bounds, spawnRows, columns, rng = Math.random,
     const d = pick()
     const elite = rng() < 0.05
     const mult = elite ? 2 : 1
-    const hp = Math.max(1, Math.round(d.def * scale)) * mult
+    // Swarm's HP deliberately does NOT scale with era (it tanks via the 1-damage-per-hit rule).
+    const hp = Math.max(1, d.special === 'split_when_damaged' ? d.def : Math.round(d.def * scale)) * mult
     const atk = (d.atk + era) * mult
     const c = open[Math.floor(rng() * open.length)]
     const idx = perCol.get(c.col)
