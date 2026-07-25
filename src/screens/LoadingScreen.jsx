@@ -33,7 +33,7 @@ export default function LoadingScreen({ onStart }) {
     <div className={`loading-screen${loaded ? ' ready' : ''}`} onClick={advance}>
       <div className="loading-stars" aria-hidden="true" />
       <div className="loading-content">
-        <h1 className="loading-title">AutoCiv</h1>
+        <img className="loading-logo" src="/logo/third-place-games.svg" alt="Third Place Games" />
         <div className="loading-bar" aria-hidden="true">
           <div className="loading-bar-fill" onAnimationEnd={() => setLoaded(true)} />
         </div>

@@ -47,13 +47,19 @@
   text-align: center;
 }
 
-.loading-title {
-  font-family: var(--font-pixel);
-  font-weight: 400;
-  font-size: clamp(1.5rem, 6vw, 3.2rem);
-  color: var(--accent-light);
-  text-shadow: 3px 3px 0 #3a2a08, 6px 6px 0 rgba(0, 0, 0, 0.45);
-  image-rendering: pixelated;
+/* Third Place Games logo — the bronze wordmark+cube, lifted off the dark starfield
+   with a soft glow so it doesn't read as a flat sticker. */
+.loading-logo {
+  width: clamp(180px, 34vw, 340px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 18px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 24px rgba(214, 160, 90, 0.22));
+  animation: logo-in 0.7s ease both;
+}
+@keyframes logo-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* Chunky segmented pixel loading bar that fills once. */
