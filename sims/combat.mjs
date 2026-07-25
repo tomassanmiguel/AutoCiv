@@ -1316,5 +1316,51 @@ console.log('TEST 55: enemy abilities — Swarm, Warper, Berserker, speed modifi
   g4.stop()
 }
 
+console.log('TEST 56: enemy abilities — blockers, ranged chip, auras')
+{
+  // Obliterator instantly destroys the blocker below it.
+  const g = new GameManager(120); g.setEra(9)
+  const b = g.data.tableau.visibleBounds(9)
+  const col = b.minCol
+  for (let r = b.minRow; r <= b.maxRow; r++) g.data.tableau.tileAt(r, col).terrain = 'plains'
+  g.data.phase = 'battle'; g.data.combatIntro = false; g.data.combatSeq = 1
+  const wall = { kind: 'building', key: 'stone_wall', level: 1, hp: 50, maxHp: 50, damaged: false }
+  g.data.tableau.tileAt(b.minRow, col).building = wall
+  const ob = mkEnemy('obliterator', 'O', col, b.minRow + 1, 100, 20)
+  g.data.enemies = [ob]
+  g._enemyAct(ob, b)
+  assert(wall.damaged, 'Obliterator destroys a blocker instantly')
+  g.stop()
+
+  // Deadeye chips a blocker two tiles away without moving (ranged chip r4).
+  const g2 = new GameManager(121); g2.setEra(9)
+  const b2 = g2.data.tableau.visibleBounds(9)
+  const c2 = b2.minCol
+  for (let r = b2.minRow; r <= b2.maxRow; r++) g2.data.tableau.tileAt(r, c2).terrain = 'plains'
+  const u = { kind: 'unit', key: 'warrior', level: 1, hp: 10, maxHp: 10, damaged: false }
+  g2.data.tableau.tileAt(b2.maxRow - 1, c2).unit = u
+  const de = mkEnemy('deadeye', 'D', c2, b2.maxRow + 1, 100, 3) // two tiles above the unit
+  g2.data.enemies = [de]
+  g2.data.phase = 'battle'; g2.data.combatIntro = false
+  const dr0 = de.row
+  g2._enemyAct(de, b2)
+  assert(u.hp < u.maxHp && de.row === dr0, 'Deadeye chips a blocker at range without moving')
+  g2.stop()
+
+  // Leader buffs an adjacent enemy's breach attack (x2); Shaman heals an adjacent one.
+  const g3 = new GameManager(122); g3.setEra(9)
+  const b3 = g3.data.tableau.visibleBounds(9)
+  const ld = mkEnemy('leader', 'L', b3.minCol, b3.maxRow + 1, 100, 3)
+  const buddy = mkEnemy('raider', 'R', b3.minCol + 1, b3.maxRow + 1, 50, 5)
+  const sh = mkEnemy('enemy_shaman', 'S', b3.minCol + 2, b3.maxRow + 1, 100, 1)
+  const hurt = mkEnemy('raider', 'H', b3.minCol + 3, b3.maxRow + 1, 100, 5); hurt.hp = 50
+  g3.data.enemies = [ld, buddy, sh, hurt]
+  g3.data.phase = 'battle'; g3.data.combatIntro = false
+  g3._applyEnemyAuras()
+  assert(buddy.buffed === true && g3._enemyBreachAtk(buddy) === 10, 'Leader buffs adjacent enemy (x2 breach)')
+  assert(hurt.hp > 50, 'Shaman heals an adjacent damaged enemy')
+  g3.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -324,12 +324,90 @@ class CombatMixin {
   /** All enemies act, front-most (lowest row) first so a column flows downward. Fast enemies
    *  act multiple times; the Juggernaut skips alternate turns. */
   _enemyPhase(bounds) {
+    this._applyEnemyAuras() // Shaman heals, Leader buffs, Flagship spawns — before anyone acts
     const list = this.data.enemies.filter((e) => !e.damaged && !e.breached)
     list.sort((a, b) => a.row - b.row || a.col - b.col)
     for (const e of list) {
       const acts = this._enemyActsThisTurn(e)
       for (let n = 0; n < acts && !e.damaged && !e.breached; n++) this._enemyAct(e, bounds)
     }
+  }
+
+  /** Per-turn enemy auras + boss spawns: enemy_shaman heals adjacent allies, Leader buffs
+   *  adjacent allies' breach attack (×2), Flagship spawns 2 random enemies. */
+  _applyEnemyAuras() {
+    const live = () => this.data.enemies.filter((e) => !e.damaged && !e.breached)
+    const all = live()
+    for (const e of all) e.buffed = false // recomputed fresh each turn
+    const adjacent = (a, b) => Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1
+    for (const src of all) {
+      const s = ENEMY_DEFS[src.key]?.special
+      if (s === 'heal_adjacent') {
+        for (const e of all) {
+          if (e === src || !adjacent(e, src) || e.hp >= e.maxHp) continue
+          const amt = Math.max(1, Math.round(e.maxHp * 0.1))
+          e.hp = Math.min(e.maxHp, e.hp + amt)
+          this._pushEvent({ kind: 'heal', amount: amt, col: e.col, row: e.row })
+        }
+      } else if (s === 'buff_adjacent') {
+        for (const e of all) if (e !== src && adjacent(e, src)) e.buffed = true
+      }
+    }
+    for (const src of all) { // Flagship: 2 reinforcements per turn
+      if (ENEMY_DEFS[src.key]?.special === 'spawns_enemies') {
+        this._spawnEnemyAdjacent(src, this._randomHostKey())
+        this._spawnEnemyAdjacent(src, this._randomHostKey())
+      }
+    }
+  }
+
+  /** A random non-boss enemy key eligible for the current era (Flagship reinforcements). */
+  _randomHostKey() {
+    const pool = Object.values(ENEMY_DEFS).filter((d) => !d.boss && d.era <= this.data.era)
+    return (pool.length ? pool[Math.floor(Math.random() * pool.length)] : ENEMY_DEFS.raider).key
+  }
+
+  /** Column chip reach: Deadeye 4, Ranger/Mongol 2, everyone else 1 (adjacent only). */
+  _enemyChipRange(e) {
+    if (e.key === 'deadeye') return 4
+    if (e.key === 'ranger' || e.key === 'mongol') return 2
+    return 1
+  }
+
+  /** An enemy chips a blocker, applying its destroy/pierce specials. */
+  _enemyChip(e, blocker, tile) {
+    const s = ENEMY_DEFS[e.key]?.special
+    if (s === 'destroy_blockers') { this._chipBlocker(blocker, blocker.hp, tile); return } // Obliterator
+    if (s === 'destroy_buildings' && blocker.kind === 'building') { this._chipBlocker(blocker, blocker.hp, tile); return } // Sapper vs buildings
+    const chip = e.chip ?? 1
+    this._chipBlocker(blocker, chip, tile)
+    if (s === 'pierce_blockers') { // Beamer: the hit carries through to every blocker behind
+      const minRow = this.data.tableau.visibleBounds(this.data.era)?.minRow ?? tile.row
+      for (let r = tile.row - 1; r >= minRow; r--) {
+        const t = this.data.tableau.tileAt(r, tile.col)
+        for (const occ of [t?.unit, t?.building]) if (occ && !occ.damaged) this._chipBlocker(occ, chip, t)
+      }
+    }
+  }
+
+  /** Sapper also chips every OTHER adjacent blocker (buildings destroyed outright). */
+  _sapperAdjacent(e, tile) {
+    for (const nb of this._adjacentTiles(tile.row, tile.col)) {
+      for (const occ of [nb.unit, nb.building]) {
+        if (!occ || occ.damaged) continue
+        this._chipBlocker(occ, occ.kind === 'building' ? occ.hp : (e.chip ?? 1), nb)
+      }
+    }
+  }
+
+  /** Kamikaze self-destruct: destroy every player piece within Manhattan `range` of `tile`. */
+  _enemyExplode(e, tile, range) {
+    for (const t of this.data.tableau.visibleTiles(this.data.era)) {
+      if (Math.abs(t.row - tile.row) + Math.abs(t.col - tile.col) > range) continue
+      for (const occ of [t.unit, t.building]) if (occ && !occ.damaged) this._chipBlocker(occ, occ.hp, t)
+    }
+    e.hp = 0; e.damaged = true
+    this._pushEvent({ kind: 'damage', side: 'enemy', amount: 9999, killed: true, col: e.col, row: e.row })
   }
 
   /** One enemy acts: breach off the bottom, chip a blocker below, or march down. */
@@ -352,6 +430,26 @@ class CombatMixin {
       this._enemyReroute(e, bounds)
       return
     }
+    // Ranged chippers (Ranger/Deadeye/Mongol) strike the nearest blocker down their column from
+    // afar — if it's NOT adjacent, chip it in place; an adjacent one falls through to melee below.
+    const chipRange = this._enemyChipRange(e)
+    if (chipRange > 1) {
+      for (let d = 1; d <= chipRange; d++) {
+        const r = e.row - d
+        if (r < bounds.minRow) break
+        const t = this.data.tableau.tileAt(r, e.col)
+        const bl = (t?.unit && !t.unit.damaged) ? t.unit
+          : (t?.building && !t.building.damaged && !['cross', 'first'].includes(defOf(t.building.key)?.trapTrigger)) ? t.building : null
+        if (!bl) continue
+        if (d > 1) {
+          this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
+          e.lastAttackSeq = this.data.combatSeq
+          this._enemyChip(e, bl, t)
+          return
+        }
+        break // adjacent blocker → normal melee below
+      }
+    }
     // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it and trigger it.
     const belowB = below?.building
     const walkover = belowB && ['cross', 'first'].includes(defOf(belowB.key)?.trapTrigger)
@@ -369,10 +467,12 @@ class CombatMixin {
       const bdef = blocker.kind === 'building' ? defOf(blocker.key) : null
       const impassable = bdef?.trapTrigger === 'impassable' || bdef?.special === 'trap_impassable'
       if (impassable && e.key !== 'azazoth') return
-      const chip = e.chip ?? 1 // per-enemy blocker chip (Barbarian 2, …); baked at generation
       this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
       e.lastAttackSeq = this.data.combatSeq // drives the enemy attack "thrust" (accelerate down, slide back)
-      this._chipBlocker(blocker, chip, below)
+      // Kamikaze detonates on its first attack instead of chipping.
+      if (ENEMY_DEFS[e.key]?.special === 'self_destruct') { this._enemyExplode(e, below, 2); return }
+      this._enemyChip(e, blocker, below) // handles Obliterator/Sapper/Beamer specials
+      if (ENEMY_DEFS[e.key]?.special === 'destroy_buildings') this._sapperAdjacent(e, below) // Sapper hits all adjacent too
       if (blocker.damaged) this._onTrapDestroyed(blocker, below, e) // Powder Magazine AoE / Singularity→Azazoth
       return
     }
@@ -381,6 +481,7 @@ class CombatMixin {
     // Clear path → march down one tile.
     e.row = belowRow
     this._pushEvent({ kind: 'march', col: e.col, row: e.row })
+    if (ENEMY_DEFS[e.key]?.special === 'spawn_on_move') this._spawnEnemyAdjacent(e, 'raider') // Quartermaster
     const landed = this.data.tableau.tileAt(belowRow, e.col)
     // Manhattan Project fallout tile: 100 damage to an enemy that enters it.
     if (landed?.terrain === 'fallout' && !e.damaged) this._dealDamageToEnemy(e, 100)
