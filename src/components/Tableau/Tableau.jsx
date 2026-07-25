@@ -68,6 +68,8 @@ export default function Tableau() {
   // threshold and drives the ghost + valid-tile highlight; the ghost follows the
   // cursor imperatively (reposPendingRef) so ticking re-renders don't reset it.
   const [repos, setRepos] = useState(null)
+  // The deployed unit currently hovered — drives the range/pursuit tile preview (#7).
+  const [hoverUnit, setHoverUnit] = useState(null)
   const reposPendingRef = useRef(null)
   const ghostRef = useRef(null)
   const snapTimerRef = useRef(null) // pending snap-back timeout (canceled on a new grab)
@@ -355,12 +357,23 @@ export default function Tableau() {
     showTip(tile.getTooltip(), e)
   }
 
+  // Track the hovered deployed unit for the range preview. The functional updater returns the
+  // SAME reference when nothing changed, so mousemove over one tile doesn't churn re-renders.
+  const hoverTileUnit = (tile) => setHoverUnit((prev) => {
+    if (!tile.unit) return prev === null ? prev : null
+    return prev && prev.row === tile.row && prev.col === tile.col ? prev : { row: tile.row, col: tile.col }
+  })
+
   const cols = bounds ? range(bounds.minCol, bounds.maxCol) : []
   const tiles = bounds ? tableau.visibleTiles(era) : []
 
   // Production placement mode: valid tiles flash yellow, occupied ones red.
   const sel = game.data.selection
   const placing = !!(sel && sel.type === 'production' && sel.stage === 'place')
+  // Hover-a-unit range preview: red = tiles it can strike now, blue = tiles it could reach then
+  // strike after pursuing (obstruction-shortened). Hidden during placement / a reposition drag so
+  // it doesn't clash with those flashes.
+  const reach = hoverUnit && !placing && !repos ? game.unitReachCells(hoverUnit.row, hoverUnit.col) : null
   // Advancing a placed-but-incomplete wonder: during a production PICK, clicking the on-map
   // structure spends the build on it (canAdvanceWonder gates: placed, on-board, not destroyed).
   const picking = !!(sel && sel.type === 'production' && sel.stage === 'pick')
@@ -450,6 +463,7 @@ export default function Tableau() {
           const reposValid = repos && !reposSrc && game.canReposition(repos.fromRow, repos.fromCol, tile.row, tile.col)
           // Single-tile wonder awaiting a build → clickable to advance (multi-tile handled below).
           const advanceHere = canAdvanceMap && !isMT && wonderInst && tile.building === wonderInst
+          const rkey = `${tile.row},${tile.col}`
           const cls = [
             'tableau-tile',
             occ ? 'occupied' : '',
@@ -459,6 +473,8 @@ export default function Tableau() {
             mercAfford ? 'merc-open' : '', // only ring the tile when a hire is actually affordable
             reposValid ? 'reposition-valid' : '',
             reposSrc ? 'reposition-src' : '',
+            reach?.attack.has(rkey) ? 'in-attack-range' : '',
+            reach?.pursuit.has(rkey) ? 'in-pursuit-range' : '',
           ].filter(Boolean).join(' ')
           return (
             <div
@@ -467,9 +483,9 @@ export default function Tableau() {
               data-row={tile.row}
               data-col={tile.col}
               style={{ left: j * CELL, top: i * CELL, width: CELL, height: CELL }}
-              onMouseEnter={(e) => tileTip(tile, e)}
-              onMouseMove={(e) => tileTip(tile, e)}
-              onMouseLeave={() => setTooltip(null)}
+              onMouseEnter={(e) => { tileTip(tile, e); hoverTileUnit(tile) }}
+              onMouseMove={(e) => { tileTip(tile, e); hoverTileUnit(tile) }}
+              onMouseLeave={() => { setTooltip(null); setHoverUnit(null) }}
               onClick={
                 placeable ? () => { if (!movedRef.current) game.placeAt(tile.row, tile.col) }
                   : advanceHere ? () => { if (!movedRef.current) game.advanceWonderProgress() }

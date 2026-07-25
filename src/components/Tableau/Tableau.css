@@ -124,6 +124,16 @@
 .tableau-tile.reposition-valid { cursor: grabbing; z-index: 3; }
 .tableau-tile.reposition-valid .tile-bg { animation: tile-valid-flash 1.4s ease-in-out infinite; }
 .tableau-tile.reposition-src .tile-card-anchor { opacity: 0.4; }
+
+/* Unit range preview (hover a deployed unit): RED = tiles it can strike this coming round;
+   BLUE = tiles it could reach then strike after pursuing (obstruction-shortened). Static rings
+   on the terrain layer (a parent inset shadow would be hidden under the positioned .tile-bg). */
+.tableau-tile.in-pursuit-range .tile-bg {
+  box-shadow: inset 0 0 0 2px rgba(88, 150, 255, 0.85), inset 0 0 13px rgba(88, 150, 255, 0.4);
+}
+.tableau-tile.in-attack-range .tile-bg {
+  box-shadow: inset 0 0 0 2px rgba(255, 82, 70, 0.92), inset 0 0 13px rgba(255, 82, 70, 0.45);
+}
 /* Multi-tile buildings (Shinkansen, wonder structures) render as one card spanning the footprint. */
 .multitile-card { position: absolute; z-index: 4; display: flex; align-items: center; justify-content: center; }
 .multitile-card .tile-card-anchor { width: 92%; height: 92%; }

@@ -1562,5 +1562,30 @@ console.log('TEST 67: Tribalism buffs +2 :attack: per other same-key unit (NO :d
   g.stop()
 }
 
+console.log('TEST 68: unitReachCells — attack diamond (red) + pursuit reach (blue), obstruction shortens')
+{
+  const g = new GameManager(300); g.setEra(0)
+  const b = g.data.tableau.visibleBounds(0)
+  for (const t of g.data.tableau.visibleTiles(0)) { t.terrain = 'plains'; t.unit = null; t.building = null }
+  const r0 = b.minRow + 1, c0 = b.minCol + 1 // interior tile with 4 in-grid neighbours
+  g.data.tableau.tileAt(r0, c0).unit = { kind: 'unit', key: 'wolf', level: 1, hp: 2, maxHp: 2, damaged: false } // range 1, pursuit 2
+  const open = g.unitReachCells(r0, c0)
+  assert(!open.attack.has(`${r0},${c0}`), 'origin excluded from attack range')
+  assert(open.attack.has(`${r0 + 1},${c0}`) && open.attack.has(`${r0},${c0 + 1}`), 'attack range = orthogonal neighbours (range 1)')
+  assert(open.pursuit.size > 0, 'pursuit reach non-empty on an open field')
+  for (const k of open.attack) assert(!open.pursuit.has(k), 'pursuit set disjoint from attack set')
+  // Box the wolf in with friendly units on all four sides → no room to pursue.
+  for (const [nr, nc] of [[r0 + 1, c0], [r0 - 1, c0], [r0, c0 + 1], [r0, c0 - 1]]) { const t = g.data.tableau.tileAt(nr, nc); if (t) t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 2, maxHp: 2, damaged: false } }
+  const boxed = g.unitReachCells(r0, c0)
+  console.log(`  open pursuit ${open.pursuit.size} → boxed ${boxed.pursuit.size}`)
+  assert(boxed.pursuit.size === 0, 'fully obstructed → pursuit reach empty')
+  // A melee (no pursuit) shows only its attack diamond, never a blue set.
+  const wt = g.data.tableau.tileAt(r0, c0); wt.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 2, maxHp: 2, damaged: false }
+  for (const [nr, nc] of [[r0 + 1, c0], [r0 - 1, c0], [r0, c0 + 1], [r0, c0 - 1]]) { const t = g.data.tableau.tileAt(nr, nc); if (t) t.unit = null }
+  const melee = g.unitReachCells(r0, c0)
+  assert(melee.pursuit.size === 0 && melee.attack.size > 0, 'a no-pursuit melee shows attack range only')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

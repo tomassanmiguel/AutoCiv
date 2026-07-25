@@ -429,6 +429,62 @@ class CombatMixin {
     return domains.some((d) => canPlaceOn(d, tile.terrain))
   }
 
+  /** Tiles a player unit at (row,col) could strike THIS coming combat round — for the hover
+   *  preview. `attack` = its current attack-range diamond; `pursuit` = extra tiles it could hit
+   *  AFTER pursuing (an obstruction-aware BFS through its move domains, up to `pursuit` steps,
+   *  so friendly units / impassable terrain in the way shorten the reach). Both are Sets of
+   *  "row,col" keys; the origin is excluded and `pursuit` excludes `attack`. Empty when the piece
+   *  can't attack (utility / range 0). */
+  unitReachCells(row, col) {
+    const empty = { attack: new Set(), pursuit: new Set() }
+    const tile = this.data.tableau.tileAt(row, col)
+    const unit = tile?.unit
+    if (!unit || unit.kind !== 'unit' || unit.damaged) return empty
+    const def = UNIT_DEFS[unit.key]
+    const range = this._pieceRange(unit)
+    if (!def || range <= 0) return empty
+    const era = this.data.era
+    const bounds = this.data.tableau.visibleBounds(era)
+    if (!bounds) return empty
+    const key = (r, c) => `${r},${c}`
+    const inGrid = (r, c) => r >= bounds.minRow && r <= bounds.maxRow && c >= bounds.minCol && c <= bounds.maxCol && this.data.tableau.isUnlocked(r, c, era)
+    const addDiamond = (r0, c0, set) => {
+      for (let dr = -range; dr <= range; dr++) {
+        const w = range - Math.abs(dr)
+        for (let dc = -w; dc <= w; dc++) if (inGrid(r0 + dr, c0 + dc)) set.add(key(r0 + dr, c0 + dc))
+      }
+    }
+    // Red: attack diamond from the current tile.
+    const attack = new Set()
+    addDiamond(row, col, attack)
+    // Reachable standing tiles via pursuit BFS (obstruction-aware) through move domains.
+    const reach = [[row, col]]
+    const pursuit = def.pursuit ?? 0
+    if (pursuit > 0) {
+      const seen = new Set([key(row, col)])
+      let frontier = [[row, col]]
+      for (let step = 0; step < pursuit && frontier.length; step++) {
+        const next = []
+        for (const [r, c] of frontier) {
+          for (const [nr, nc] of [[r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1]]) {
+            if (!inGrid(nr, nc) || seen.has(key(nr, nc))) continue
+            const t = this.data.tableau.tileAt(nr, nc)
+            if (!t || !this._unitCanMoveOnto(unit, def, t)) continue // blocked → shortens pursuit
+            seen.add(key(nr, nc)); next.push([nr, nc]); reach.push([nr, nc])
+          }
+        }
+        frontier = next
+      }
+    }
+    // Blue: attack diamonds from every reachable tile, minus the red set (and the origin).
+    const pursuitSet = new Set()
+    for (const [r, c] of reach) addDiamond(r, c, pursuitSet)
+    attack.delete(key(row, col))
+    for (const k of attack) pursuitSet.delete(k)
+    pursuitSet.delete(key(row, col))
+    return { attack, pursuit: pursuitSet }
+  }
+
   /** One tower's attack: strike the lowest-HP enemy within its range. Units with a
    *  cooldown (Siege = 2) must recharge for that many turns after firing. */
   _pieceAttack(p) {
