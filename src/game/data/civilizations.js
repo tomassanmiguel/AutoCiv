@@ -2,35 +2,18 @@
 // (pre-filled in a policy slot) plus a special starting unit OR building (pre-unlocked in
 // the roster). Difficulty scales the enemy wave budget. See REDESIGN §6.
 
+// TEMP: the flavored civilizations are shelved for now — a single neutral "dummy" civ with the
+// plain default start (a Warrior + a Totem, both pre-unlocked in CivilizationData) and NO marquee
+// policy / special start / ability. Re-add flavored civs later by giving entries a marqueePolicy
+// and a startUnit or startBuilding.
 export const CIVILIZATIONS = {
-  horde: {
-    key: 'horde', name: 'The Horde',
-    blurb: 'A warrior people who live for the charge. Begin with the Tribalism policy and a Wolf.',
-    marqueePolicy: 'tribalism', startUnit: 'wolf',
-  },
-  guild: {
-    key: 'guild', name: 'The Guild',
-    blurb: 'Master traders who bankroll every campaign. Begin with the Ownership policy and a Market.',
-    marqueePolicy: 'ownership', startBuilding: 'market',
-  },
-  academy: {
-    key: 'academy', name: 'The Academy',
-    blurb: 'Seekers of knowledge above all. Begin with the Language policy and a Cave Painting.',
-    marqueePolicy: 'language', startBuilding: 'cave_painting',
-  },
-  faithful: {
-    key: 'faithful', name: 'The Faithful',
-    blurb: 'A devout order that turns loss into legend. Begin with Burial Rites and a Shrine.',
-    marqueePolicy: 'burial_rites', startBuilding: 'shrine',
-  },
-  wanderers: {
-    key: 'wanderers', name: 'The Wanderers',
-    blurb: 'Restless nomads who multiply and skirmish. Begin with Midwivery and a Slinger.',
-    marqueePolicy: 'midwivery', startUnit: 'slinger',
+  dummy: {
+    key: 'dummy', name: 'Civilization',
+    blurb: 'A fledgling people, starting from nothing but a Warrior and a Totem.',
   },
 }
 
-export const DEFAULT_CIV = 'horde'
+export const DEFAULT_CIV = 'dummy'
 
 // budgetMult scales the enemy wave budget (waveBudget × mult) via generateHost.
 export const DIFFICULTIES = [

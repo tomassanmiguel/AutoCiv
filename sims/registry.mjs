@@ -106,15 +106,16 @@ console.log('\nTEST 5: wonder flow (unlock, place, advance, complete, ongoing ef
 // --- TEST 6: civilization + difficulty pre-game setup ---
 console.log('\nTEST 6: civilization + difficulty setup')
 {
-  const gg = new GameManager(1, { civ: 'guild', difficulty: 'brutal' })
-  assert(gg.data.civilization.policies[0]?.key === 'ownership', 'Guild starts with the Ownership policy')
-  assert(gg.data.civilization.buildings.some((b) => b?.key === 'market'), 'Guild starts with a Market building')
+  // Only the neutral "dummy" civ exists for now: default Warrior + Totem, no marquee policy / ability.
+  const gg = new GameManager(1, { civ: 'dummy', difficulty: 'brutal' })
+  assert(gg.data.civilization.policies[0] == null, 'dummy civ grants no starting policy')
+  assert(gg.data.civilization.units.some((u) => u?.key === 'warrior'), 'starts with a Warrior')
+  assert(gg.data.civilization.buildings.some((b) => b?.key === 'totem'), 'starts with a Totem')
   assert(Math.abs(gg.difficultyMult - 1.6) < 1e-9, `Brutal → enemy budget ×1.6 (got ${gg.difficultyMult})`)
-  const hh = new GameManager(2, { civ: 'horde' })
-  assert(hh.data.civilization.policies[0]?.key === 'tribalism', 'Horde starts with Tribalism')
-  assert(hh.data.civilization.units.some((u) => u?.key === 'wolf'), 'Horde starts with a Wolf')
+  const hh = new GameManager(2, { civ: 'dummy' })
   assert(hh.difficultyMult === 1, 'default (Normal) difficulty ×1')
-  console.log('  Guild: Ownership + Market (Brutal ×1.6); Horde: Tribalism + Wolf (Normal ×1)')
+  assert(hh.data.civilization.legitimacy.value === 50, `starting legitimacy is 50 (got ${hh.data.civilization.legitimacy.value})`)
+  console.log('  dummy civ: Warrior + Totem, no ability; starting legit 50; Brutal ×1.6 / Normal ×1')
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
