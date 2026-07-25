@@ -6,14 +6,14 @@ import { GRID, ROWS, COLS, COLUMN_SPECIALS } from './map.js'
 // ---------------------------------------------------------------------------
 // `place` = placement class for deploying units/buildings: 'land' | 'coast' | 'sea' | 'space'.
 // `defBonus` (optional) = flat :defense: a unit OR building stationed here gains during
-//   combat (Forest +5, Mountain +10). `note` = the tooltip line describing that effect.
+//   combat (Forest +1, Mountain +1). `note` = the tooltip line describing that effect.
 // `econYield` (v2) = a FLAT per-tick resource a building on this terrain also produces
 //   (Plains→food, Forest→progress, Mountain→production, sea/space→gold; SCALING §5). Flat,
 //   not era-scaled — small for early terrains, large for the rare late ones (Exosea/Planet).
 export const TERRAIN = {
   plains:     { name: 'Plains',     sprite: '/sprites/tiles/plains.png',     color: '#5a7d3a', place: 'land', econYield: { res: 'food', amount: 1 } },
   forest:     { name: 'Forest',     sprite: '/sprites/tiles/forest.png',     color: '#2f5a2f', place: 'land', defBonus: 1, note: 'A unit here gains +1 :defense: during combat.', econYield: { res: 'progress', amount: 1 } },
-  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land', defBonus: 10, note: 'A unit here gains +10 :defense: during combat.', econYield: { res: 'production', amount: 1 } },
+  mountain:   { name: 'Mountain',   sprite: '/sprites/tiles/mountain.png',   color: '#6b6b6b', place: 'land', defBonus: 1, note: 'A unit here gains +1 :defense: during combat.', econYield: { res: 'production', amount: 1 } },
   coast:      { name: 'Coast',      sprite: '/sprites/tiles/coast.png',      color: '#3a6b7d', place: 'coast', econYield: { res: 'gold', amount: 1 } },
   ocean:      { name: 'Ocean',      sprite: '/sprites/tiles/ocean.png',      color: '#1f3a6b', place: 'sea', econYield: { res: 'gold', amount: 2 } },
   island:     { name: 'Island',     sprite: '/sprites/tiles/island.png',     color: '#3a6b5a', place: 'land', econYield: { res: 'food', amount: 3 } },
