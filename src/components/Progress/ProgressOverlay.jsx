@@ -11,7 +11,8 @@ import IconText from '../common/IconText.jsx'
 import './ProgressOverlay.css'
 
 const STAT_ICON = {
-  speed: '/sprites/icons/speed.png',
+  range: '/sprites/icons/range.png',
+  pursuit: '/sprites/icons/speed.png',
   atk: '/sprites/icons/attack.png',
   def: '/sprites/icons/defense.png',
 }
@@ -46,6 +47,8 @@ function UnlockDetail({ opt, era }) {
         <div className="pc-unlocks">Unlocks {def.name}</div>
         <div className="pc-type"><IconText>{`:${def.types[0]}: ${catLabel(UNIT_CATEGORIES, def.types[0])} unit`}</IconText></div>
         <div className="pc-stats">
+          <Stat icon={STAT_ICON.range}>{s.range}</Stat>
+          {s.pursuit > 0 && <Stat icon={STAT_ICON.pursuit}>{s.pursuit}</Stat>}
           {unitRole(def) !== 'utility' && <Stat icon={STAT_ICON.atk}>{s.atk}</Stat>}
           <Stat icon={STAT_ICON.def}>{s.def}</Stat>
         </div>

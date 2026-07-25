@@ -43,17 +43,18 @@ const buildingSubTab = (index) => (MILITARY_IDX.has(index) ? 'military' : 'build
 // Render-tab key → the model group it talks to (both building tabs and the wonder tab translate back).
 const TAB_GROUP = { units: 'units', buildings: 'buildings', military: 'buildings', policies: 'policies', population: 'population', wonder: 'wonder' }
 
-// Unit/building stat icons. v2: the first slot shows RANGE (Manhattan diamond); the
-// speed icon is reused for it until a dedicated range icon exists. Atk = damage, Def = health.
+// Unit stat icons: Range (attack diamond), Pursuit (chase distance — the speed icon),
+// Atk = damage, Def = health. Pursuit is only shown for units that can pursue.
 const STAT_ICON = {
-  speed: '/sprites/icons/speed.png',
+  range: '/sprites/icons/range.png',
+  pursuit: '/sprites/icons/speed.png',
   atk: '/sprites/icons/attack.png',
   def: '/sprites/icons/defense.png',
 }
-const STAT_LABEL = { speed: 'Range', atk: 'Attack', def: 'Defense' }
+const STAT_LABEL = { range: 'Range', pursuit: 'Pursuit', atk: 'Attack', def: 'Defense' }
 
-/** A row of stat icon+value pairs (Atk, Def). Utility units pass keys without 'atk'
- *  since they don't attack. Range is intentionally omitted from unit cards. */
+/** A row of stat icon+value pairs. `keys` picks which stats to show; the row wraps so
+ *  every stat stays visible (never overlaps) as the count grows. */
 function StatIcons({ stats, keys = ['atk', 'def'], className = 'slot-card-stats' }) {
   return (
     <span className={className}>
@@ -67,7 +68,15 @@ function StatIcons({ stats, keys = ['atk', 'def'], className = 'slot-card-stats'
   )
 }
 
-const unitStatKeys = (def) => (unitRole(def) === 'utility' ? ['def'] : ['atk', 'def'])
+/** Stat keys for a unit card, in display order: Range, Pursuit (if any), Atk (unless
+ *  utility — they don't attack), Def. */
+const unitStatKeys = (def) => {
+  const keys = ['range']
+  if ((def.pursuit ?? 0) > 0) keys.push('pursuit')
+  if (unitRole(def) !== 'utility') keys.push('atk')
+  keys.push('def')
+  return keys
+}
 
 // 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
 const FRAME = { light: '/sprites/ui/box.png', dark: '/sprites/ui/box-dark.png' }
