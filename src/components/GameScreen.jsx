@@ -8,6 +8,7 @@ import EraBanner from './Hud/EraBanner.jsx'
 import TickCounter from './Hud/TickCounter.jsx'
 import SpeedControl from './Hud/SpeedControl.jsx'
 import TransitionOverlay from './Hud/TransitionOverlay.jsx'
+import BossBar from './Hud/BossBar.jsx'
 import ProgressOverlay from './Progress/ProgressOverlay.jsx'
 import ProductionPrompt from './Production/ProductionPrompt.jsx'
 import CombatPrep from './Prep/CombatPrep.jsx'
@@ -51,6 +52,7 @@ export default function GameScreen({ seed, civ, difficulty, audio, onExit }) {
             defeatHidden={defeatHidden}
             onShowDefeat={() => setDefeatHidden(false)}
           />
+          <BossBar />
           <TransitionOverlay />
           <ProgressOverlay />
           <ProductionPrompt />

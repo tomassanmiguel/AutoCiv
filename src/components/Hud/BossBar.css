@@ -1,0 +1,57 @@
+/* Boss health bar — pinned across the top of the tableau window, ominous red. */
+.boss-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, 88%);
+  z-index: 30;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: boss-bar-in 0.5s ease;
+}
+.boss-bar-name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1rem, 3vw, 2rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ff5a4a;
+  text-shadow: 0 0 16px rgba(255, 40, 40, 0.95), 2px 2px 0 #000;
+}
+.boss-bar-track {
+  position: relative;
+  width: 100%;
+  height: 22px;
+  background: #1a0505;
+  border: 2px solid #5a1010;
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(255, 30, 30, 0.5), inset 0 0 12px rgba(0, 0, 0, 0.75);
+  overflow: hidden;
+}
+.boss-bar-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #ff6a58 0%, #c01818 55%, #7a0000 100%);
+  box-shadow: 0 0 12px rgba(255, 70, 60, 0.85);
+  transition: width 0.2s ease;
+}
+.boss-bar-hp {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 1px 1px 0 #000, 0 0 6px rgba(0, 0, 0, 0.9);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+@keyframes boss-bar-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}

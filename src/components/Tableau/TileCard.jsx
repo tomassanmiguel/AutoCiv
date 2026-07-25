@@ -56,6 +56,17 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   // Incomplete wonder: how many production-builds remain before it finishes.
   const wonderBuildsLeft = isWonder && !occ.complete ? (occ.buildsLeft ?? 0) : null
 
+  // Bosses: an imposing name-only card that fills its whole footprint — no stat block, no
+  // level badge, no hover-scale/tooltip (those broke on a row-spanning Azazoth). Its HP lives
+  // in the top-of-screen boss health bar instead.
+  if (occ.boss) {
+    return (
+      <div className={`tile-card boss ${side} ${damaged ? 'damaged' : ''}`}>
+        <span className="tc-boss-name">{def.name}</span>
+      </div>
+    )
+  }
+
   // Underlapping buildings (Road): a minimal name-only card in its own bottom strip, no
   // stats/combat/actions. Its own tooltip still explains the effect.
   if (!isUnit && def.underlap) {

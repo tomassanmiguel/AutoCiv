@@ -129,7 +129,7 @@
 .multitile-card .tile-card-anchor { width: 92%; height: 92%; }
 /* Multi-tile bosses (Titan 2x2, Flagship 4x2, Azazoth full row) span their whole footprint. */
 .enemy-piece.enemy-boss { display: flex; align-items: center; justify-content: center; z-index: 6; }
-.enemy-piece.enemy-boss .tile-card-anchor { position: static; inset: auto; width: 96%; height: 96%; }
+.enemy-piece.enemy-boss .tile-card.boss { width: 100%; height: 100%; }
 /* Panopticon: enemy pieces draggable during prep. */
 .enemy-piece.enemy-grabbable { cursor: grab; }
 .enemy-piece.reposition-src { opacity: 0.4; }
