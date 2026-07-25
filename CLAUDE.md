@@ -391,7 +391,7 @@ exists; extend it as systems land.
   built from the unlock's real data (NOT a prose blurb): **"Unlocks <Name>"** + type line
   (`:cavalry: Cavalry unit`, `Policy`, `Specialist`, …) + the unlock's own **rules text**
   (unit description/ability, `buildingEffect`, policy effect, pop outputs+note) + **stats**
-  (units: Speed/Atk/Def; buildings: Def). A **modifier/bonus** shows just its effect. Hover enlarges.
+  (units: Range/Pursuit/Atk/Def; buildings: Def). A **modifier/bonus** shows just its effect. Hover enlarges.
   If the era's pool is fully **exhausted** (nothing unchosen left), the owed choice is silently
   **skipped** rather than opening a zero-card selection (no soft-lock).
 - **Stages** (`selection.stage`): `choose` (3 cards + **Hide**; hidden cards restored by the rail
@@ -425,13 +425,13 @@ exists; extend it as systems land.
   ranchBonus` growing +2/3/4/… each combat end, reset if destroyed; **Kiln** production = `2 +
   (level+1)·adjacentBuildings`; **Mine** gold = `8·level`, ×2 on a mountain) or **end-of-combat**
   (Pier food, flat `200 + 100·(level−1)`; **Library** progress; `_accrueBuildingOutputs`).
-- **Underlapping buildings** (the **Road** — a Utility building flagged `def.underlap`) live in a
+- **Underlapping buildings** (the **Road** — a Support building flagged `def.underlap`) live in a
   **separate** `Tile.underlap` slot: they **underlap** the occupant, are **never replaced**, have **no
   HP/combat**, and render as a name-only card in the tile's bottom strip (the occupant card takes the
   top 80%). The Road links every tile it touches into one adjacency group (see Combat → road-augmented
   adjacency). Placement (`_canPlaceHere`/`placementState`/`_createInstance`) treats it as a plain
   (never-replace) placement that ignores the occupant but can't stack a second underlap.
-- **City / multi-building tiles** (the **City** — a Utility building flagged `def.underlaidCity`): lives
+- **City / multi-building tiles** (the **City** — a Support building flagged `def.underlaidCity`): lives
   in its own underlaid `Tile.city` slot (independent of a Road) and lets the tile hold **`extraCap` (2)
   additional buildings** in `Tile.extras[]`, on top of the primary occupant. Placement fills the occupant
   first, then extras; **city buildings never replace** (a building occupant on a city tile is protected;
@@ -451,12 +451,18 @@ exists; extend it as systems land.
   range, and units in range get a **±10% aura** (+10% atk, −10% hp). Neither uses `_accrueBuildingOutputs`
   — Totem/Sacred-Grounds/Shaman resolve in `_endCombat`; Brewery/Ownership gold in `_recomputeOutputs`.
 - **On-tile cards** (`TileCard`): ~70% of the tile, centered, **enlarge to fill on hover** (which
-  shows a rich tooltip and hides the tile tooltip). Corner **level** badge. Units show name + type +
-  **Speed/Atk/Def icons** (Atk/Def are the synced **effective** `occ.atk`/`occ.maxHp`, incl. Warband/
-  Brewery); buildings show name + type + **Def + current outputs** (lifetime total in the tooltip).
-  The unit tooltip also notes Forest/Brewery/Tribalism bonuses. **Damaged** instances gray out and read
-  "(damaged)". Hovering the on-card **Upgrade** button switches the tooltip to a **dark-green preview**
-  of the next level (`InfoTip` `tipClassName="upgrade-preview"`; `renderTip(true)`). The tile sprite
+  shows a rich tooltip and hides the tile tooltip). Corner **level** badge. The compact on-tile card
+  shows only **Atk/Def** (synced **effective** `occ.atk`/`occ.maxHp`, incl. Warband/Brewery); **Range +
+  Pursuit** live in the hover tooltip (and the roster card). The **Def number is tinted**: in combat it
+  reddens by remaining HP (damage); out of combat a player unit's Def reads **light green when buffed
+  above its base** (Forest/Mountain — previewed even out of combat — Clothes, Baker, region levels…) and
+  **soft red when below** it (Brewery −10%). Buildings show name + **Def on the title row** + current
+  outputs (lifetime total in the tooltip). The unit tooltip also notes Forest/Brewery/Tribalism bonuses.
+  **Damaged** instances gray out and read "(damaged)". Hovering the on-card **Upgrade** button switches
+  the tooltip to a **dark-green preview** that spells out each scaling stat as **current → upgraded**
+  (`InfoTip` `tipClassName="upgrade-preview"`; `renderTip(true)`). Hovering a deployed unit also **rings
+  the tiles it could strike next round** — RED for its attack range, BLUE for tiles reachable-then-
+  attackable after pursuit (`GameManager.unitReachCells`, an obstruction-aware BFS). The tile sprite
   lives on its own `.tile-bg` layer so the west-coast mirror never flips the card.
 - **Fill juice:** filling a roster slot (advancement unlock) sets `data.justFilled`; the panel opens
   that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation. The slam
@@ -544,7 +550,7 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   teleporting — a FLIP in `Tableau` (per-occupant `posRef` of last cell) drives a `TileCard` `.tc-slide`.
 - **Stat pipeline** (`_syncUnitStats(inCombat)`, syncs **units AND buildings**): **units** store
   `occ.atk`/`occ.maxHp` — flat hp from **Clothes/Leatherwork** + **Hereditary Rule** + a Baker's
-  permanent **`occ.permDef`**; flat atk from Warband/**Tribalism** (+1 atk/def per other same-key unit),
+  permanent **`occ.permDef`**; flat atk from Warband/**Tribalism** (+2 atk — NOT def — per other same-key unit),
   an intrinsic **`packAtk`** (the **Legionnaire**'s +3 :attack: per other same-key unit, always on) and
   a Public Baths' permanent **`occ.permAtk`**; plus **terrain def** (Forest **+5** / Mountain **+10**,
   combat only); atk is then multiplied by the **Brewery** aura (×1.1 atk / ×0.9 hp), the **Brothel** aura
@@ -654,25 +660,29 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   **empty** slots show a centered type silhouette, while
   **filled** slots render a compact **item card** — the **type** shows as an ICON next to the name
   (no "MELEE"/"POLICY" text, no corner watermark, so cards stay compact and the policy effect fits);
-  units then show **Speed/Atk/Def stat icons** (`/sprites/icons/{speed,attack,defense}.png`,
+  units then show **Range/Pursuit/Atk/Def stat icons** (`/sprites/icons/{range,speed,attack,defense}.png`
+  — the speed icon = **Pursuit**, shown only for units that can pursue; a new range icon = **Range**;
   level-scaled, incl. Clothes/Leatherwork/Hereditary HP; **utility units omit Atk** — they don't
-  attack); buildings show a **Def stat + effect** (an underlapping Road shows name + effect only, no
-  Def); policies show the effect. Descriptions/effects always report the
+  attack); buildings show **name + Def on the title row + effect** (an underlapping Road shows name +
+  effect only, no Def); policies show the effect. Descriptions/effects always report the
   **current** value for the current era + level (e.g. the Pier's food), never the upgrade sequence
   or per-level deltas. Full descriptions (icon stats for units) on hover. During an advancement **replace**, the relevant group's tab force-activates
   and its candidate slots **flash red** and are clickable (`resolveReplace`). `CivilizationData`
   roster slots hold `{ key, level }` (Warrior pre-fills Melee); `pops` holds counts by type.
   - **Slot data** lives in `game/data/slots.js`: `UNIT_CATEGORIES` (9), `BUILDING_CATEGORIES`
-    (8), and `POLICY_INFO` / `POPULATION_INFO` (one silhouette + description each). Each entry
+    (10), and `POLICY_INFO` / `POPULATION_INFO` (one silhouette + description each). Each entry
     has a `silhouette` (path in `public/sprites/ui/`) and a `description`.
   - **Unit categories (9, display order):** Melee, Ranged, Cavalry, Siege, Utility, Naval,
     Aerial, Astral, Astral Utility. **Units are era-gated** by an `unlock` era id — only
     categories unlocked at the current era show, so early eras show fewer:
     Melee/Ranged/Cavalry from Stone; Utility + Naval from **Bronze** (the brief's "Copper Age");
     Siege from Iron; Aerial from Gilded; Astral Utility from Atomic; Astral from Lunar. Building
-    categories (not era-gated): Progress, Production, Gold, Food, Legitimacy, Defense, and **two
-    Utility slots** — a utility building fills the first empty one (`_unlockTarget` is fill-first-empty);
-    the underlapping **Road** occupies a Utility slot too.
+    categories (not era-gated): Progress, Production, Gold, Food, Legitimacy, Defense, **Support**
+    (one catch-all slot — formerly two Utility slots + a Support slot), Trap, Command, Spawner.
+    Unit/building unlocks are additive: `_unlockTierAndActivate` adds the tier to the unlocked set
+    and activates it in its category slot(s); every unlocked tier stays available and cycles at
+    build time (`cycleRosterSlot`). The **City** and underlapping **Road** are Support buildings
+    (they take their own `tile.city`/`tile.underlap` slots when placed).
   - **Hover** any slot for a tooltip (`<InfoTip>`): category name + description. Policies use one
     shared silhouette + description.
   - **Population** renders a richer **`PopCard`** for each unlocked pop type: name + **effective**

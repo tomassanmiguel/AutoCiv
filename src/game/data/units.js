@@ -3,9 +3,9 @@
 // stationary tower that strikes the lowest-HP enemy within its Manhattan-diamond range.
 //
 // v2 schema (see docs/SCALING.md §9 + docs/units.md):
-//   atk      — as-built attack at the unlock era (≈ anchor · 1.15^E). Upgrades add +25%
-//              atk per level (additive); DEF does NOT grow with level.
-//   def      — health (HP), a small flat value.
+//   atk      — as-built attack at the unlock era (≈ anchor · 1.15^E). Upgrades add atk per
+//              level (additive): melee & naval-ranged +10%, everything else +25% (see unitStats).
+//   def      — health (HP); flat per level EXCEPT melee, which gains +1 def per level.
 //   range    — attack range as a Manhattan diamond (|Δrow|+|Δcol| ≤ range).
 //   pursuit  — chase distance: cavalry/aerial reposition toward enemies within range+pursuit.
 //   cooldown — turns to wait after attacking (0 = every turn; Siege = 2).
