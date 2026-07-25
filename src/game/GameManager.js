@@ -619,8 +619,8 @@ export class GameManager {
     return { atkPct, def, rangedRange, actTwice }
   }
 
-  // --- Warband (Tribalism): units gain +1 atk / +1 def per OTHER deployed friendly
-  // unit of the same key. Snapshotted onto occ.warband via _syncUnitStats. ---
+  // --- Warband (Tribalism): units gain +2 atk (NO def) per OTHER deployed friendly
+  // unit of the same key. Snapshotted onto occ.warband (the atk bonus) via _syncUnitStats. ---
   _deployedUnitCounts() {
     const counts = {}
     for (const tile of this.data.tableau.tiles.values()) {
@@ -632,7 +632,7 @@ export class GameManager {
 
   _warbandBonus(occ, counts) {
     if (!occ || occ.kind !== 'unit' || !this._hasPolicy('tribalism')) return 0
-    return Math.max(0, (counts[occ.key] ?? 1) - 1)
+    return 2 * Math.max(0, (counts[occ.key] ?? 1) - 1) // +2 :attack: per OTHER same-key unit
   }
 
   /** Free upgrade levels an occupant of `kind` ('unit'|'building') on `tile` gains from
@@ -754,7 +754,7 @@ export class GameManager {
         // Region free-upgrade-levels (Colonialism/Martian Freedom/… + wonders): inflate the
         // level used for stats WITHOUT touching occ.level (display/upgrade-cost keep the real one).
         const effLevel = occ.level + this._regionLevelBonus(tile, 'unit')
-        const s = unitStats(UNIT_DEFS[occ.key], effLevel, hpBonus + wb + terrainDef + (occ.permDef ?? 0) + mercBonus + cmd.def, wb + pack + (occ.permAtk ?? 0) + flatAtk)
+        const s = unitStats(UNIT_DEFS[occ.key], effLevel, hpBonus + terrainDef + (occ.permDef ?? 0) + mercBonus + cmd.def, wb + pack + (occ.permAtk ?? 0) + flatAtk)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         const posMult = (brew ? 1.1 : 1) * brothel.atkMult * (1 + dmgBonus) // Brewery × Brothel × v2 damage %
         occ.warband = wb

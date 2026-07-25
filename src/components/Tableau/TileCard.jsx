@@ -102,8 +102,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   // the manager's pipeline (Forest is combat-only, so omitted from the dev preview).
   const statsAt = (lvl) => {
     // Include occ.permDef (Baker's def buff) and occ.packAtk (Legion's atk bonus) so the
-    // preview matches the live stats. permDef only affects def; packAtk only affects atk.
-    const s = unitStats(def, lvl, hpBonus + wb + (occ.permDef ?? 0), wb + (occ.packAtk ?? 0))
+    // preview matches the live stats. permDef only affects def; Tribalism (wb) + packAtk only atk.
+    const s = unitStats(def, lvl, hpBonus + (occ.permDef ?? 0), wb + (occ.packAtk ?? 0))
     const b = occ.inBrewery
     const atkMult = occ.atkMult ?? (b ? 1.1 : 1) // Brewery × Brothel (positional)
     const caste = occ.casteActive && lvl > 1 ? 1.25 : 1 // upgraded-unit bonus applies at the previewed level
@@ -150,7 +150,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         {!isPrev && isUnit && (occ.cdReduce ?? 0) > 0 && <><br /><IconText>{'−0.5s cooldown & bonus :attack: (Brothel).'}</IconText></>}
         {!isPrev && isUnit && occ.casteActive && occ.level > 1 && <><br /><IconText>{'+25% :attack: (Caste System).'}</IconText></>}
         {!isPrev && isUnit && occ.dmgBonus > 0 && <><br /><IconText>{`+${Math.round(occ.dmgBonus * 100)}% :attack: (doctrines/policies).`}</IconText></>}
-        {!isPrev && isUnit && wb > 0 && <><br /><IconText>{`+${wb} :attack: & :defense: (Tribalism).`}</IconText></>}
+        {!isPrev && isUnit && wb > 0 && <><br /><IconText>{`+${wb} :attack: (Tribalism).`}</IconText></>}
         {!isPrev && isUnit && (occ.packAtk ?? 0) > 0 && <><br /><IconText>{`+${occ.packAtk} :attack: (Legion).`}</IconText></>}
         {!isUnit && !isPrev && (bOuts[0] || tickOut) && <><br />Total produced: {Math.floor(occ.lifetimeOutput ?? 0)} <img className="itext-icon" src={RES_ICON[bOuts[0]?.res ?? tickOut.res]} alt="" /></>}
       </>

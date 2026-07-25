@@ -16,7 +16,7 @@ export const POLICY_DEFS = {
   // Unlocked by "Tribalism".
   tribalism: {
     key: 'tribalism', name: 'Tribalism', type: 'Policy', era: 0, tech: 'Tribalism',
-    effect: 'Each unit gains +1 :attack: and +1 :defense: for every other friendly unit of the same type on the board.',
+    effect: 'Each unit gains +2 :attack: for every other friendly unit of the same type on the board.',
   },
   hunting: {
     key: 'hunting', name: 'Hunting', type: 'Policy',

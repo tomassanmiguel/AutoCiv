@@ -1545,5 +1545,22 @@ console.log('TEST 66: the beat state machine resolves a full battle to a win, su
   g.stop()
 }
 
+console.log('TEST 67: Tribalism buffs +2 :attack: per other same-key unit (NO :defense:)')
+{
+  const g = new GameManager(70); g.setEra(0)
+  const b = g.data.tableau.visibleBounds(0)
+  const cells = [[b.minRow, b.minCol], [b.minRow, b.minCol + 1], [b.minRow + 1, b.minCol]]
+  for (const [r, c] of cells) { const t = g.data.tableau.tileAt(r, c); t.terrain = 'plains'; t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 2, maxHp: 2, damaged: false } }
+  const w = g.data.tableau.tileAt(b.minRow, b.minCol).unit
+  g._syncUnitStats(false); const baseAtk = w.atk, baseDef = w.maxHp
+  g.data.civilization.policies[0] = { key: 'tribalism' }
+  g._syncUnitStats(false)
+  console.log(`  warrior (3 on board): atk ${baseAtk}→${w.atk}, def ${baseDef}→${w.maxHp}`)
+  assert(baseAtk === 5 && baseDef === 2, `base warrior 5 atk / 2 def (got ${baseAtk}/${baseDef})`)
+  assert(w.atk === 5 + 2 * 2, `+2 atk per 2 others → 9 (got ${w.atk})`)
+  assert(w.maxHp === baseDef, `Tribalism grants NO defense (got ${w.maxHp})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
