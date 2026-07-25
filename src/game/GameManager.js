@@ -75,7 +75,7 @@ export class GameManager {
     if (!c) return
     const civ = this.data.civilization
     civ.civKey = civKey
-    if (c.marqueePolicy && POLICY_DEFS[c.marqueePolicy]) civ.policies[0] = { key: c.marqueePolicy }
+    if (c.marqueePolicy && POLICY_DEFS[c.marqueePolicy]) { civ.policies[0] = { key: c.marqueePolicy }; this._grantPolicyUnlock(c.marqueePolicy) }
     if (c.startUnit && UNIT_DEFS[c.startUnit]) {
       const i = UNIT_CATEGORIES.findIndex((x) => x.key === UNIT_DEFS[c.startUnit].types[0])
       if (i >= 0) civ.units[i] = { key: c.startUnit, level: 1 }
@@ -273,7 +273,8 @@ export class GameManager {
 
   _deployedBuildingCount() {
     let n = 0
-    for (const { occ } of this._buildingInstances()) if (!occ.damaged) n++ // destroyed buildings don't produce
+    // Traps are combat-only — they don't count as economic buildings (Ownership gold).
+    for (const { occ } of this._buildingInstances()) if (!occ.damaged && !BUILDING_DEFS[occ.key]?.trapTrigger) n++
     return n
   }
 
@@ -318,6 +319,10 @@ export class GameManager {
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
       const def = BUILDING_DEFS[occ.key]
+      // Traps are combat-only — they generate no per-tick output and no terrain/economy yield.
+      if (def.trapTrigger) { occ.tickOutput = null; occ.terrainYield = null; continue }
+      // Region free-upgrade-levels scale a building's per-tick OUTPUT too (not just its HP).
+      const effLevel = occ.level + this._regionLevelBonus(tile, 'building')
       // Neocolonialism: buildings on Exoplanet terrain produce +150% :gold: (×2.5).
       const exoGold = tile.terrain?.startsWith('exo') && this._activeEffectDefs().some((d) => d.special === 'exoplanet_gold') ? 2.5 : 1
       // Maritime Law: +500% to the water-tile :gold: terrain bonus (×6 on coast/sea tiles).
@@ -326,20 +331,20 @@ export class GameManager {
       // v2 data-driven per-tick output (generic). v1 buildings without def.output fall
       // through to the key-specific cases below (Ranch growth, Kiln adjacency, etc.).
       if (def.output && def.output.when === 'tick' && totals[def.output.res] != null) {
-        out = { res: def.output.res, amount: buildingTickAmount(def, occ.level) }
+        out = { res: def.output.res, amount: buildingTickAmount(def, effLevel) }
       }
       // v2 legit-leverage buildings (per-tick output scales with current legitimacy).
       else if (occ.key === 'monastery') out = { res: 'progress', amount: Math.floor(civ.legitimacy.value / 20) }
       else if (occ.key === 'elysium') out = { res: 'gold', amount: Math.floor(civ.legitimacy.value) }
       else if (occ.key === 'ranch') out = { res: 'food', amount: 5 + (occ.ranchBonus ?? 0) }
-      else if (occ.key === 'kiln') out = { res: 'production', amount: 2 + def.perAdjacent(occ.level) * this._adjacentBuildingCount(tile.row, tile.col) }
-      else if (occ.key === 'mine') out = { res: 'gold', amount: def.goldPerTick(occ.level) * (tile.terrain === 'mountain' ? 2 : 1) }
-      else if (occ.key === 'mint') out = { res: 'gold', amount: def.legitPct(occ.level) * civ.legitimacy.value }
+      else if (occ.key === 'kiln') out = { res: 'production', amount: 2 + def.perAdjacent(effLevel) * this._adjacentBuildingCount(tile.row, tile.col) }
+      else if (occ.key === 'mine') out = { res: 'gold', amount: def.goldPerTick(effLevel) * (tile.terrain === 'mountain' ? 2 : 1) }
+      else if (occ.key === 'mint') out = { res: 'gold', amount: def.legitPct(effLevel) * civ.legitimacy.value }
       // (v2: legitimacy has NO per-tick production — the Temple now grants legit on
       //  completion + end-of-era gold; see _createInstance / _applyEraEndEffects.)
       else if (occ.key === 'farm') out = { res: 'food', amount: 5 * this._plainsAround(tile) }
-      else if (occ.key === 'forging') out = { res: 'production', amount: def.prodPerTick(occ.level) }
-      else if (occ.key === 'aqueduct') out = { res: 'food', amount: def.base(occ.level) * Math.pow(2, this._adjacentAqueductCount(tile)) }
+      else if (occ.key === 'forging') out = { res: 'production', amount: def.prodPerTick(effLevel) }
+      else if (occ.key === 'aqueduct') out = { res: 'food', amount: def.base(effLevel) * Math.pow(2, this._adjacentAqueductCount(tile)) }
       else if (occ.key === 'glassworks') out = { res: 'production', amount: 10 }
       // Artificial Meat: :food: buildings double output and produce :production: instead.
       if (out && out.res === 'food' && this._activeEffectDefs().some((d) => d.special === 'artificial_meat')) out = { res: 'production', amount: out.amount * 2 }
@@ -382,11 +387,12 @@ export class GameManager {
     return n
   }
 
-  /** Count of active buildings on adjacent (road-augmented) tiles (incl. city extras). */
+  /** Count of active ECONOMIC buildings on adjacent (road-augmented) tiles (incl. city
+   *  extras). Combat-only traps are excluded (they don't feed Kiln adjacency etc.). */
   _adjacentBuildingCount(r, c) {
     let n = 0
     for (const tile of this._adjacentTiles(r, c)) {
-      for (const occ of this._buildingsOn(tile)) if (!occ.damaged) n++
+      for (const occ of this._buildingsOn(tile)) if (!occ.damaged && !BUILDING_DEFS[occ.key]?.trapTrigger) n++
     }
     return n
   }
@@ -821,7 +827,7 @@ export class GameManager {
       case 'building': return catSil(BUILDING_CATEGORIES, BUILDING_DEFS[unlock.key].types[0])
       case 'pop': return '/sprites/ui/pop.png'
       case 'policy': return '/sprites/ui/policy.png'
-      case 'wonder': return '/sprites/ui/building.png'
+      case 'wonder': return '/sprites/ui/wonder.png'
       case 'modifier': return unlock.silhouette ?? '/sprites/ui/defense.png'
       default: return null
     }
@@ -1026,8 +1032,11 @@ export class GameManager {
     if (!this.data.tableau.visibleBounds(era)) return 0
     const blocked = new Set()
     for (const tile of this.data.tableau.visibleTiles(era)) {
-      const occ = (tile.unit && !tile.unit.damaged) ? tile.unit : (tile.building && !tile.building.damaged ? tile.building : null)
-      if (occ) blocked.add(tile.col)
+      const u = tile.unit, b = tile.building
+      // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it (mirror _enemyAct).
+      const blocks = (u && !u.damaged) ||
+        (b && !b.damaged && !['cross', 'first'].includes(BUILDING_DEFS[b.key]?.trapTrigger))
+      if (blocks) blocked.add(tile.col)
     }
     const fw = this._hasPolicy('firewall') ? 0.75 : 1
     const dem = this._hasPolicy('democracy') ? 2 : 1

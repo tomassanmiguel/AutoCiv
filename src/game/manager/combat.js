@@ -51,6 +51,7 @@ class CombatMixin {
         if (!occ || occ.damaged) continue
         occ.hp = occ.maxHp // damage doesn't persist between combats
         occ.cdTimer = 0    // ready to attack (Siege recharge starts fresh)
+        delete occ.trapCd  // trap timers (Discombobulator) start fresh each battle
         delete occ.lastAttackSeq
       }
     }
@@ -287,8 +288,9 @@ class CombatMixin {
   /** Timed traps (Discombobulator): every trapCooldown turns, stun enemies in range so they
    *  skip their next turn. */
   _applyTrapTriggers() {
-    for (const { tile, occ } of this._buildingInstances()) {
-      if (occ.damaged) continue
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.building // traps live in the building slot; read it directly (not the occupant shim)
+      if (!occ || occ.damaged) continue
       const def = BUILDING_DEFS[occ.key]
       if (def?.trapTrigger !== 'skip') continue
       occ.trapCd = (occ.trapCd ?? 0) - 1
@@ -313,7 +315,10 @@ class CombatMixin {
       if (t.hp <= 0) { t.hp = 0; t.damaged = true }
     }
     const tiles = this.data.tableau.visibleTiles(this.data.era).filter((t) => t.def?.place === 'land' && t.terrain !== 'fallout')
-    if (tiles.length) tiles[Math.floor(Math.random() * tiles.length)].terrain = 'fallout'
+    if (tiles.length) {
+      tiles[Math.floor(Math.random() * tiles.length)].terrain = 'fallout'
+      this._netsCache = null // terrain changed → drop the bridge/adjacency memo (moon_earth uses terrain)
+    }
   }
 
   _chipBlocker(blocker, amount, tile) {

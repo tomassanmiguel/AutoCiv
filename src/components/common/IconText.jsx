@@ -28,6 +28,8 @@ const ICON_TOKENS = {
   // other slot types
   policy: '/sprites/ui/policy.png',
   pop: '/sprites/ui/pop.png',
+  trap: '/sprites/ui/trap.png',
+  wonder: '/sprites/ui/wonder.png',
 }
 
 const TOKEN_RE = /(:[a-z_]+:)/g

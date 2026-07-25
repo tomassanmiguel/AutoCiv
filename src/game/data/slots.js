@@ -49,9 +49,9 @@ export const BUILDING_CATEGORIES = [
   { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
     description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
   // Trap slot (index 8): traps trigger on enemy contact rather than blocking a lane —
-  // some deal damage, some disrupt. (Silhouette reuses the Defense art for now.)
-  { key: 'trap', label: 'Trap', silhouette: '/sprites/ui/defense.png',
-    description: ':defense: Trap buildings punish enemies that reach them — dealing damage or disrupting their advance' },
+  // some deal damage, some disrupt.
+  { key: 'trap', label: 'Trap', silhouette: '/sprites/ui/trap.png',
+    description: ':trap: Trap buildings punish enemies that reach them — dealing damage or disrupting their advance' },
 ]
 
 // Policies and Population are generic slots (no per-slot category); every slot

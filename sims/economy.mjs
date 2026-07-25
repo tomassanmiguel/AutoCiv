@@ -432,5 +432,35 @@ console.log('TEST 31: Advancement rerolls (State Alchemists / Autonomous Governa
   g.stop()
 }
 
+console.log('TEST 32: Region levels scale building OUTPUT too (Skyscrapers → Mine)')
+{
+  const g = new GameManager(50); g.setEra(10)
+  g.data.civilization.pops = {}
+  const t = g.data.tableau.visibleTiles(10).find((x) => !x.building && !x.unit && x.def?.place === 'land')
+  t.terrain = 'plains'; t.city = { kind: 'building', key: 'city', level: 1 }
+  t.building = { kind: 'building', key: 'mine', level: 1, hp: 12, maxHp: 12, damaged: false }
+  g._recomputeOutputs(); const g0 = g.data.civilization.gold.output
+  g.data.civilization.bonuses.push('skyscrapers') // +5 levels to City buildings
+  g._recomputeOutputs(); const g1 = g.data.civilization.gold.output
+  console.log(`  Mine gold/tick ${g0} → ${g1} with Skyscrapers (+5 effective levels)`)
+  assert(g1 > g0, `Skyscrapers scales Mine OUTPUT, not just HP (got ${g0}→${g1})`)
+  g.stop()
+}
+
+console.log('TEST 33: Traps are combat-only — no terrain yield, no Ownership gold, not counted')
+{
+  const g = new GameManager(51); g.setEra(8)
+  g.data.civilization.pops = {}
+  const t = g.data.tableau.visibleTiles(8).find((x) => !x.building && !x.unit && x.def?.place === 'land')
+  t.terrain = 'plains'; t.building = { kind: 'building', key: 'caltrops', level: 1, hp: 1, maxHp: 1, damaged: false }
+  g.data.civilization.policies[0] = { key: 'ownership' } // +2 gold per deployed building
+  g._recomputeOutputs()
+  console.log(`  caltrops economy: gold/t ${g.data.civilization.gold.output}, food/t ${g.data.civilization.food.output}, count ${g._deployedBuildingCount()}`)
+  assert(g.data.civilization.gold.output === 0, `no Ownership gold from a trap (got ${g.data.civilization.gold.output})`)
+  assert(g.data.civilization.food.output === 0, `no terrain yield from a trap (got ${g.data.civilization.food.output})`)
+  assert(g._deployedBuildingCount() === 0, `trap not counted as a deployed economic building`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

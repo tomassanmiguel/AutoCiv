@@ -670,7 +670,11 @@ console.log('TEST 34: P=NP projected legitimacy loss')
   g.data.enemies[1].damaged = true
   assert(g.projectedLegitLoss() === 0, 'damaged enemy excluded')
   assert(g.data.civilization.legitimacy.value === l0, 'projection is read-only')
-  console.log('  projection mirrors breach math (blockers, Firewall, Democracy); read-only')
+  // Walkover trap (Caltrops) does NOT block the column in the projection (mirrors _enemyAct).
+  g.data.enemies[1].damaged = false
+  g.data.tableau.tileAt(b.minRow, b.minCol + 1).building = { kind: 'building', key: 'caltrops', level: 1, hp: 1, maxHp: 1, damaged: false }
+  assert(g.projectedLegitLoss() === 4, `Caltrops-only column still projects breach (got ${g.projectedLegitLoss()})`)
+  console.log('  projection mirrors breach math (blockers, Firewall, Democracy, walkover-traps); read-only')
   g.stop()
 }
 
