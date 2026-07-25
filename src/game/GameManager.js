@@ -762,8 +762,12 @@ export class GameManager {
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
       } else if (occ.kind === 'building' && !defOf(occ.key)?.underlap) {
         if (!this._isAnchor(tile, occ)) continue // multi-tile building: computed once, at its anchor
-        const effLevel = occ.level + this._regionLevelBonus(tile, 'building') // region free-upgrade-levels
-        const newMax = buildingHp(defOf(occ.key), effLevel, civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
+        // Wonders are pinned to their flat base def (2, or Death Star 5): NO region free-levels,
+        // Hereditary Rule, terrain, or policy inflation — otherwise a persistent wonder balloons.
+        const isWonder = !!WONDER_DEFS[occ.key]
+        const newMax = isWonder
+          ? buildingHp(defOf(occ.key), occ.level, 0)
+          : buildingHp(defOf(occ.key), occ.level + this._regionLevelBonus(tile, 'building'), civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         occ.maxHp = Math.max(1, newMax)
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)

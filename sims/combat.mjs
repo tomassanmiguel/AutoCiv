@@ -1045,19 +1045,57 @@ console.log('TEST 47: Great Wall wonder — player places a real 4-lane shared-H
   let guard = 10
   while (g.data.civilization.wonder && guard-- > 0) g.advanceWonderProgress()
   assert(g._hasWonder('great_wall') && wall.complete, 'wonder marked complete after its builds')
+  // Wonders are pinned to a flat 2 :defense: (no level/region/Hereditary inflation).
+  g._syncUnitStats(true)
+  assert(wall.maxHp === 2, `Great Wall has flat 2 def (got ${wall.maxHp})`)
   // Shared HP: damaging via any cell hits the one shared instance.
-  span[2].building.hp -= 3
-  assert(span[0].building.hp === span[0].building.maxHp - 3, 'HP is shared across all 4 lanes')
-  // It blocks an enemy in one of its lanes (combat-only, no economy).
+  span[2].building.hp -= 1
+  assert(span[0].building.hp === span[0].building.maxHp - 1, 'HP is shared across all 4 lanes')
+  // It blocks an enemy in one of its lanes for its HP worth of turns (combat-only, no economy).
   const wallTile = span.find((t) => t.row === b.minRow) || span[0]
   const e = mkEnemy('warrior', 'X', wallTile.col, wallTile.row + 1, 100, 5)
   g.data.enemies = [e]
   g._startCombat(); g.dismissCombatIntro()
   const l0 = g.data.civilization.legitimacy.value
-  for (let i = 0; i < 6; i++) g._runTurn()
+  for (let i = 0; i < 2; i++) g._runTurn() // 2 HP wall absorbs 2 chips before it can be breached
   console.log(`  enemy in a wall lane: breached=${e.breached}, legit lost=${l0 - g.data.civilization.legitimacy.value}`)
-  assert(!e.breached || l0 === g.data.civilization.legitimacy.value, 'the wall blocks its lane')
+  assert(!e.breached && l0 === g.data.civilization.legitimacy.value, 'the wall blocks its lane while it stands')
   g.stop()
+}
+
+console.log('TEST 50: wonders keep a flat 2 def (Death Star 5) despite level/region/Hereditary inflation')
+{
+  const g = new GameManager(94); g.setEra(14)
+  // Stack every building-HP inflation source: Great Mirror (terrestrial +2 levels), Hereditary Rule
+  // building def, and a high upgrade level — none must touch a wonder's HP.
+  g.data.civilization.modifiers.buildingHpBonus = 999
+  g.data.civilization.completedWonders.push('great_mirror') // terrestrial_levels +2 via _regionLevelBonus
+  const b = g.data.tableau.visibleBounds(14)
+  const t1 = g.data.tableau.tiles.get(`${b.minRow},${b.minCol}`); t1.terrain = 'mountain'; t1.unit = null; t1.building = null
+  g._createInstance({ kind: 'building', key: 'stonehenge', level: 9, wonder: true }, t1)
+  g._syncUnitStats(true)
+  console.log(`  Stonehenge (lvl 9, +999 bonus, Great Mirror, on mountain) def = ${t1.building.maxHp}`)
+  assert(t1.building.maxHp === 2, `Stonehenge stays 2 def (got ${t1.building.maxHp})`)
+  // Death Star gets 5.
+  const g2 = new GameManager(95); g2.setEra(24)
+  const b2 = g2.data.tableau.visibleBounds(24)
+  // find a 2x2 deep-space anchor
+  let anchor2 = null
+  for (let r = b2.minRow; r <= b2.maxRow - 1 && !anchor2; r++)
+    for (let c = b2.minCol; c <= b2.maxCol - 1; c++) {
+      const cells = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]].map(([rr, cc]) => g2.data.tableau.tiles.get(`${rr},${cc}`))
+      if (cells.every((x) => x)) { cells.forEach((x) => { x.terrain = 'deep_space'; x.unit = null; x.building = null }); anchor2 = cells[0]; break }
+    }
+  if (anchor2) {
+    g2.data.civilization.modifiers.buildingHpBonus = 999
+    g2._createInstance({ kind: 'building', key: 'death_star', level: 5, wonder: true }, anchor2)
+    g2._syncUnitStats(true)
+    console.log(`  Death Star (lvl 5, +999 bonus) def = ${anchor2.building.maxHp}`)
+    assert(anchor2.building.maxHp === 5, `Death Star stays 5 def (got ${anchor2.building.maxHp})`)
+  } else {
+    console.log('  (skipped Death Star — no 2x2 deep-space anchor at era 24)')
+  }
+  g.stop(); g2.stop()
 }
 
 console.log('TEST 48: wonder lifecycle — pick→place→advance→complete; destroy retains progress, repair 3×')

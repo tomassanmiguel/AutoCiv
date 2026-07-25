@@ -12,7 +12,7 @@ export const WONDER_DEFS = {
   stonehenge:       { key: 'stonehenge', name: 'Stonehenge', era: 0, tech: 'Mysticism', footprint: [1, 1], placement: 'land', special: 'legit_per_era', effect: 'At the end of each era, gain +25 :legitimacy:.' },
   the_pyramids:     { key: 'the_pyramids', name: 'The Pyramids', era: 1, tech: 'Masonry', footprint: [1, 1], placement: 'land', special: 'upgrade_cost_reduce', effect: 'All unit & building upgrade costs −25%.' },
   hanging_gardens:  { key: 'hanging_gardens', name: 'Hanging Gardens', era: 2, tech: 'Hospitality Rites', footprint: [1, 1], placement: 'land', special: 'extra_pop_per_gain', effect: 'Every population gain yields +1 more pop.' },
-  great_wall:       { key: 'great_wall', name: 'Great Wall', era: 3, tech: 'Great Wall', footprint: [4, 1], placement: 'land', special: 'multi_lane_wall', hp: 20, upHp: 2, effect: 'One shared-HP blocker across 4 lanes (:defense: 20, +2/level).' },
+  great_wall:       { key: 'great_wall', name: 'Great Wall', era: 3, tech: 'Great Wall', footprint: [4, 1], placement: 'land', special: 'multi_lane_wall', effect: 'One shared-HP blocker spanning 4 lanes.' },
   machu_picchu:     { key: 'machu_picchu', name: 'Machu Picchu', era: 4, tech: 'Civil Service', footprint: [1, 1], placement: 'mountain', special: 'mountain_levels', levelBonus: 2, effect: 'Units & buildings on mountains gain +2 free upgrade levels.' },
   hagia_sophia:     { key: 'hagia_sophia', name: 'Hagia Sophia', era: 5, tech: 'Inquisition', footprint: [1, 1], placement: 'land', special: 'legit_double_prod', effect: 'On completion, double current :legitimacy:. Each era start: :production: = 2× :legitimacy:.' },
   sistine_chapel:   { key: 'sistine_chapel', name: 'Sistine Chapel', era: 6, tech: 'Domes', footprint: [1, 1], placement: 'land', special: 'free_advancement', effect: 'Free advancement pick at the start of each era, with no threshold increase.' },
@@ -38,8 +38,10 @@ export const WONDER_DEFS = {
 // category), combatOnly (kept out of the economy like traps), noUpgrade (wonders complete via
 // production picks, never gold upgrades), and a default 1×1 footprint.
 for (const d of Object.values(WONDER_DEFS)) {
-  if (d.hp == null) d.hp = 30 + 10 * d.era
-  if (d.upHp == null) d.upHp = 5
+  // Wonders are deliberately FRAGILE: a flat 2 :defense: (Death Star 5), NEVER inflated by
+  // upgrade level, region free-levels, or Hereditary Rule — they must be actively protected.
+  if (d.hp == null) d.hp = d.key === 'death_star' ? 5 : 2
+  if (d.upHp == null) d.upHp = 0
   if (!d.types) d.types = ['wonder']
   if (!d.footprint) d.footprint = [1, 1]
   d.combatOnly = true
