@@ -274,7 +274,10 @@ exists; extend it as systems land.
   deep space (23–24 Early Galactic, 25 Late Galactic, 26 Utopian); cols 24–26 scatter special
   tiles per column via `COLUMN_SPECIALS` (col 24: 2 planets + 1 star; cols 25–26: + 1 singularity).
 - Above the visible columns sit rows of enemy slots rendered with the **Battlefield tile**
-  (hover shows a "Battlefield" tooltip): **3 rows, growing to 4 from the Revolution era**.
+  (hover shows a "Battlefield" tooltip): **3 rows, growing to 4 from the Revolution era**. **Before
+  Iron**, purely-water columns (e.g. the Stone-start Coast column) get **no** battlefield tiles —
+  `TableauData.battlefieldColumns` filters them from both spawning and the backdrop. Enemies spawn on a
+  **uniformly random free cell** across the zone (no bottom-row bias).
 
 ### Terrain (`game/data/terrain.js`)
 - Grid cells carry a **design label**; some are concrete, some are **meta-types** resolved to
@@ -402,7 +405,7 @@ exists; extend it as systems land.
   confirm it. Empty slots fill immediately.
 - **Unlock rules:** unit/building fills its category slot(s) (a multi-type item fills each empty type
   slot; only when **all** its type slots are full does it go to replace). Policies use the 5 generic
-  slots; specialists use population slots **1–4** (Citizen slot 0 is never replaced). Unlocking a
+  slots; specialists use population slots **1–7** (Citizen slot 0 is never replaced). Unlocking a
   specialist **converts 1 citizen** to it if ≥2 citizens; **replacing** a specialist splits its pops
   **half → new type, half → citizens** (`floor` to the new type). `modifier` (Clothes → `+5`
   `modifiers.unitHpBonus`) applies immediately with no slot **and retroactively bumps the hp/maxHp of
@@ -451,9 +454,10 @@ exists; extend it as systems land.
   range, and units in range get a **±10% aura** (+10% atk, −10% hp). Neither uses `_accrueBuildingOutputs`
   — Totem/Sacred-Grounds/Shaman resolve in `_endCombat`; Brewery/Ownership gold in `_recomputeOutputs`.
 - **On-tile cards** (`TileCard`): ~70% of the tile, centered, **enlarge to fill on hover** (which
-  shows a rich tooltip and hides the tile tooltip). Corner **level** badge. The compact on-tile card
-  shows only **Atk/Def** (synced **effective** `occ.atk`/`occ.maxHp`, incl. Warband/Brewery); **Range +
-  Pursuit** live in the hover tooltip (and the roster card). The **Def number is tinted**: in combat it
+  shows a rich tooltip and hides the tile tooltip). Corner **level** badge. Unit cards show **Range +
+  Pursuit + Atk/Def** (the unit type icon is dropped in favour of Range/Pursuit; Pursuit only when it
+  can pursue); Atk/Def are the synced **effective** `occ.atk`/`occ.maxHp` (incl. Warband/Brewery).
+  Building cards keep their type icon. The **Def number is tinted**: in combat it
   reddens by remaining HP (damage); out of combat a player unit's Def reads **light green when buffed
   above its base** (Forest/Mountain — previewed even out of combat — Clothes, Baker, region levels…) and
   **soft red when below** it (Brewery −10%). Buildings show name + **Def on the title row** + current
@@ -462,7 +466,11 @@ exists; extend it as systems land.
   the tooltip to a **dark-green preview** that spells out each scaling stat as **current → upgraded**
   (`InfoTip` `tipClassName="upgrade-preview"`; `renderTip(true)`). Hovering a deployed unit also **rings
   the tiles it could strike next round** — RED for its attack range, BLUE for tiles reachable-then-
-  attackable after pursuit (`GameManager.unitReachCells`, an obstruction-aware BFS). The tile sprite
+  attackable after pursuit (`GameManager.unitReachCells`, an obstruction-aware BFS). Hovering an **enemy**
+  shows its reach in a distinct palette — ORANGE (chip/attack down-column) + PURPLE (advance this turn),
+  `GameManager.enemyReachCells`. Both ranges + pursuit **extend up into the battlefield spawn zone**: a
+  unit may **advance into the enemy rows** to engage (terrain-free there — `_playerCombatCell`/
+  `_inCombatZone`), and returns to its placed home at combat end. The tile sprite
   lives on its own `.tile-bg` layer so the west-coast mirror never flips the card.
 - **Fill juice:** filling a roster slot (advancement unlock) sets `data.justFilled`; the panel opens
   that tab and the slot **remounts** (keyed by occupant) to play a "slam" pop-in animation. The slam
@@ -489,8 +497,8 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   (`data.popFx`). Citizen slot never shows it.
 - **Mercenaries** (`hireMercenary` / `mercEligible`, cost `mercCost` — **halved by Hospitality
   Rites**): during **prep**, every empty tile that can host ≥1 of your unlocked roster **combat**
-  units (`_placeableUnitsAt` excludes **utility** units like the Baker) shows a **Hire** button (+ a
-  gold ring when affordable). Clicking spawns a **random valid roster unit** (at that slot's level) flagged
+  units (`_placeableUnitsAt` excludes **utility** units like the Baker) shows a **Hire** button (no tile
+  glow — the button alone signals it). Clicking spawns a **random valid roster unit** (at that slot's level) flagged
   `mercenary` (dashed frame) — it fights this one battle and **disbands when the battle ends**
   (removed in `_endCombat`, and in `_defeat` so a lost battle leaves no stragglers). Mercenaries
   can't be repaired/upgraded (no sinking gold into a disposable unit). Hire buttons are **hidden
@@ -602,10 +610,11 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   (`hp`/`maxHp`/`damaged`/`cdTimer`/`lastAttackSeq`).
 - **Juice** (driven by `data.combatEvents`, rebuilt each step, keyed by `combatSeq`): `CombatFx`
   (inside `.tableau-content`) floats **damage / gold-gained / legitimacy-lost** numbers over the
-  source cell; each unit **thrusts** toward the enemy on attack (a `.tc-lunge` wrapper keyed by
-  `lastAttackSeq` remounts to replay it, and only carries the `.attacking` class — which holds the
-  animation — when it actually attacked THIS step, so entering/leaving combat no longer jerks every
-  card; `_startCombat` clears `lastAttackSeq`); destroyed cards **shake then fade to gray** (CSS on
+  source cell; each unit **thrusts in the direction of its target** on attack (a `.tc-lunge` wrapper
+  keyed by `lastAttackSeq` remounts to replay it, reading the `occ.lastAttackDir` screen-space vector
+  via `--lunge-dx`/`--lunge-dy`; it only carries the `.attacking` class — which holds the animation —
+  when it actually attacked THIS step, so entering/leaving combat no longer jerks every card;
+  `_startCombat` clears `lastAttackSeq`/`lastAttackDir`); destroyed cards **shake then fade to gray** (CSS on
   `.damaged`); the panel gold/legitimacy values **pulse** as they change during combat.
 
 ### HUD (`components/Hud`)
@@ -649,7 +658,7 @@ button is **grayed out when gold is insufficient**; the mutator re-checks and de
   (# thresholds reached) + **bar** (`value / threshold` toward the current level's requirement) +
   per-tick delta. Shape `{ value, output, level, threshold }`.
 - **Item groups** are **icon side tabs** (`.panel-tabs`, a vertical strip on the left of the dropdown
-  area) — **Units**, **Buildings (8)**, **Policies (5)**, **Population (5)** — **all four always
+  area) — **Units**, **Buildings**, **Policies (5)**, **Population (8: Citizen + 7 specialists)** — **all four always
   visible** as `TAB_ICON` images (`ui/{unit,building,policy,pop}.png`); the tabs **split the full
   height** and extend a few px right (negative margin) to tuck under the content box's 9-slice frame.
   The **active** tab's slots fill the dark `Box Dark`-framed content body (`.tab-body`, rendered by
