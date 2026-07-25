@@ -589,16 +589,17 @@ export default function Tableau() {
             so it slides smoothly from the battlefield into the columns. */}
         {bounds && game.data.enemies.map((e) => {
           if (e.breached) return null // broke through — no longer on the board
-          const j = e.col - bounds.minCol
-          const i = enemyRows + (bounds.maxRow - e.row)
-          const x = j * CELL
-          const y = i * CELL
+          // Bosses span a footprint (extends right + up from the anchor col/row). The card is
+          // sized to the whole footprint and anchored at its top-left cell.
+          const [ew, eh] = e.footprint ?? [1, 1]
+          const x = (e.col - bounds.minCol) * CELL
+          const y = (enemyRows + (bounds.maxRow - (e.row + eh - 1))) * CELL
           const edim = repos?.enemy && repos.fromRow === e.row && repos.fromCol === e.col
           return (
             <div
               key={`enemy-${e.id}`}
-              className={`enemy-piece${enemyDraggable ? ' enemy-grabbable' : ''}${edim ? ' reposition-src' : ''}`}
-              style={{ left: x, top: y, width: CELL, height: CELL }}
+              className={`enemy-piece${ew > 1 || eh > 1 ? ' enemy-boss' : ''}${enemyDraggable ? ' enemy-grabbable' : ''}${edim ? ' reposition-src' : ''}`}
+              style={{ left: x, top: y, width: ew * CELL, height: eh * CELL }}
               onMouseDown={enemyDraggable ? (ev) => onEnemyGrab(ev, e) : undefined}
             >
               <TileCard occupant={e} era={era} combat={combat} combatSeq={combatSeq} side="enemy" slide={slideFor(e, x, y)} />

@@ -1391,5 +1391,29 @@ console.log('TEST 58: Jäger routes around player ranged coverage')
   g.stop()
 }
 
+console.log('TEST 59: multi-tile bosses — footprint, no overlap, movement, Azazoth fallout trail')
+{
+  const g = new GameManager(140); g.setEra(20)
+  const titan = g.data.enemies.find((e) => e.key === 'titan')
+  assert(titan && titan.footprint[0] === 2 && titan.footprint[1] === 2, 'Titan is a 2x2 boss')
+  const tcells = g._enemyCells(titan)
+  assert(tcells.length === 4, 'Titan occupies 4 cells')
+  assert(!g.data.enemies.some((o) => o !== titan && tcells.some((c) => g._enemyCovers(o, c.r, c.c))), 'no normal enemy overlaps the Titan footprint')
+  assert(g._enemyDistance(titan, titan.row - 2, titan.col) === 2, 'range targeting uses the nearest boss cell')
+  g.stop()
+
+  const g2 = new GameManager(141); g2.setEra(27)
+  const b2 = g2.data.tableau.visibleBounds(27)
+  const az = g2.data.enemies[0]
+  assert(az.key === 'azazoth' && az.footprint[0] === (b2.maxCol - b2.minCol + 1) && az.footprint[1] === 1, 'Azazoth spans the whole row')
+  az.row = b2.maxRow // bottom edge on the top grid row
+  g2.data.phase = 'battle'; g2.data.combatIntro = false; g2.data.combatTurn = 1
+  g2._bossAct(az, b2) // marches down, vacating row maxRow
+  assert(az.row === b2.maxRow - 1, 'Azazoth marched down one row')
+  const falloutRow = g2.data.tableau.visibleTiles(27).filter((t) => t.row === b2.maxRow && t.terrain === 'fallout').length
+  assert(falloutRow > 0, 'Azazoth leaves a row of Fallout behind it')
+  g2.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

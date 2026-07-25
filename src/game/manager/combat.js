@@ -47,30 +47,66 @@ class CombatMixin {
   }
 
   /** Boss ("special") waves: generateHost excludes bosses, so add the era's boss here. Titan
-   *  (20)/Flagship (24) spearhead the normal horde; Azazoth (27) is the ONLY enemy that wave.
-   *  Runs on normal era advance AND the debug era slider (both route through _generateEnemies). */
+   *  (20)/Flagship (24) spearhead the normal horde; Azazoth (27) is the ONLY enemy that wave and
+   *  literally spans a whole row. Runs on normal era advance AND the debug era slider. */
   _injectBossWave(era, bounds) {
     if (!bounds) return
     const boss = Object.values(ENEMY_DEFS).find((d) => d.boss && d.era === era)
     if (!boss) return
-    const mid = Math.floor((bounds.minCol + bounds.maxCol) / 2)
     const frontRow = bounds.maxRow + 1 // the spawn row just above the grid
-    if (boss.special === 'azazoth') this.data.enemies = [] // the only enemy that wave
-    else this.data.enemies = this.data.enemies.filter((e) => !(e.row === frontRow && e.col === mid))
-    this._registerBoss(boss, mid, frontRow)
+    if (boss.special === 'azazoth') {
+      this.data.enemies = [] // the only enemy that wave
+      const width = bounds.maxCol - bounds.minCol + 1
+      const az = this._registerBoss(boss, bounds.minCol, frontRow)
+      az.footprint = [width, 1] // spans the entire row
+    } else {
+      // Titan/Flagship: centre the footprint in the spawn zone, then clear any overlapping normals.
+      const [w] = boss.footprint ?? [1, 1]
+      const anchorCol = Math.max(bounds.minCol, Math.min(bounds.maxCol - w + 1, Math.floor((bounds.minCol + bounds.maxCol) / 2) - Math.floor(w / 2)))
+      const b = this._registerBoss(boss, anchorCol, frontRow)
+      const cells = this._enemyCells(b)
+      this.data.enemies = this.data.enemies.filter((o) => o === b || !cells.some((c) => this._enemyCovers(o, c.r, c.c)))
+    }
     this.data.enemyHostType = 'boss'
   }
 
-  /** Push a scaled boss enemy onto the host at (col,row). */
+  /** Push a scaled boss enemy onto the host at (col,row); returns it. */
   _registerBoss(d, col, row) {
     const era = this.data.era
     const hp = Math.max(1, Math.round(d.def * Math.pow(1.25, era)))
     this.data.enemySpawnSeq = (this.data.enemySpawnSeq ?? 1_000_000) + 1
-    this.data.enemies.push({
+    const e = {
       id: this.data.enemySpawnSeq, kind: 'unit', key: d.key, name: d.name, types: d.types ?? ['melee'], level: 1,
       col, row, hp, maxHp: hp, atk: d.atk + era, chip: d.chip ?? 1, boss: true, footprint: d.footprint,
       elite: false, damaged: false, breached: false,
-    })
+    }
+    this.data.enemies.push(e)
+    return e
+  }
+
+  /** True if `e` spans more than one tile (a boss with a footprint). */
+  _isMultiTileEnemy(e) { const f = e.footprint; return !!f && (f[0] > 1 || f[1] > 1) }
+
+  /** Every {r,c} an enemy occupies (footprint extends right + up from its anchor col/row). */
+  _enemyCells(e) {
+    const [w, h] = e.footprint ?? [1, 1]
+    const cells = []
+    for (let dr = 0; dr < h; dr++) for (let dc = 0; dc < w; dc++) cells.push({ r: e.row + dr, c: e.col + dc })
+    return cells
+  }
+
+  /** Whether enemy `e` covers cell (r,c). */
+  _enemyCovers(e, r, c) {
+    const [w, h] = e.footprint ?? [1, 1]
+    return c >= e.col && c < e.col + w && r >= e.row && r < e.row + h
+  }
+
+  /** Manhattan distance from (r,c) to the NEAREST cell of enemy `e` (for range targeting). */
+  _enemyDistance(e, r, c) {
+    const [w, h] = e.footprint ?? [1, 1]
+    const dc = c < e.col ? e.col - c : (c > e.col + w - 1 ? c - (e.col + w - 1) : 0)
+    const dr = r < e.row ? e.row - r : (r > e.row + h - 1 ? r - (e.row + h - 1) : 0)
+    return dc + dr
   }
 
   _startCombat() {
@@ -226,7 +262,7 @@ class CombatMixin {
     let best = null
     for (const e of this.data.enemies) {
       if (e.damaged || e.breached) continue
-      if (Math.abs(e.row - row) + Math.abs(e.col - col) > range) continue
+      if (this._enemyDistance(e, row, col) > range) continue // nearest covered cell (multi-tile bosses)
       if (!best || e.hp < best.hp ||
         (e.hp === best.hp && (e.row < best.row || (e.row === best.row && e.col < best.col)))) best = e
     }
@@ -339,7 +375,7 @@ class CombatMixin {
    *  Juggernaut's every-other-turn skip. Alien is only fast in space. */
   _enemyActsThisTurn(e) {
     const s = ENEMY_DEFS[e.key]?.special
-    if (e.key === 'azazoth') return this.data.combatTurn % 2 === 1 ? 1 : 0 // marches every other turn
+    if (e.key === 'azazoth' || e.key === 'flagship') return this.data.combatTurn % 2 === 1 ? 1 : 0 // move every other turn
     if (s === 'skip_alt_turn') return this.data.combatTurn % 2 === 1 ? 1 : 0
     if (s === 'triple_speed') {
       if (e.key === 'alien') { const t = this.data.tableau.tileAt(e.row, e.col); return t?.def?.place === 'space' ? 3 : 1 }
@@ -493,6 +529,7 @@ class CombatMixin {
   _enemyAct(e, bounds) {
     if (e.damaged || e.breached) return
     if (e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; return } // stunned (Azazoth is immune to freeze)
+    if (this._isMultiTileEnemy(e)) { this._bossAct(e, bounds); return } // multi-tile bosses move as a unit
     const belowRow = e.row - 1
     // Off the bottom → breach: subtract atk from legitimacy, then remove.
     if (belowRow < bounds.minRow) {
@@ -559,7 +596,7 @@ class CombatMixin {
     // column least covered by player ranged units before descending.
     if (e.key === 'jager' && this._jagerMove(e, bounds)) return
     // Blocked by another live enemy queued directly ahead → hold this turn.
-    if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && o.row === belowRow && o.col === e.col)) return
+    if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && this._enemyCovers(o, belowRow, e.col))) return
     // Clear path → march down one tile.
     e.row = belowRow
     this._pushEvent({ kind: 'march', col: e.col, row: e.row })
@@ -568,6 +605,48 @@ class CombatMixin {
     // Manhattan Project fallout tile: 100 damage to an enemy that enters it.
     if (landed?.terrain === 'fallout' && !e.damaged) this._dealDamageToEnemy(e, 100)
     this._triggerWalkoverTrap(landed, e) // Caltrops (every cross) / Sea Mine (first entry, consumed)
+  }
+
+  /** A multi-tile boss acts as one unit: chip/plow the blockers along its bottom edge, else march
+   *  the whole footprint down one row. Azazoth irradiates every row it leaves behind (Fallout). */
+  _bossAct(e, bounds) {
+    const [w, h] = e.footprint
+    const belowRow = e.row - 1
+    // Bottom edge off the grid → breach.
+    if (belowRow < bounds.minRow) {
+      const fw = this._hasPolicy('firewall') ? 0.75 : 1
+      const lost = this._damageLegitimacy(Math.round(this._enemyBreachAtk(e) * fw))
+      e.breached = true
+      this._pushEvent({ kind: 'legit', amount: lost, col: e.col, row: e.row })
+      return
+    }
+    // Chip/plow every blocker directly below the footprint's bottom edge; hold if any remain.
+    let blocked = false
+    for (let c = e.col; c < e.col + w; c++) {
+      const t = this.data.tableau.tileAt(belowRow, c)
+      if (!t) continue
+      const bl = (t.unit && !t.unit.damaged) ? t.unit : (t.building && !t.building.damaged) ? t.building : null
+      if (!bl) continue
+      blocked = true
+      this._pushEvent({ kind: 'attack', side: 'enemy', col: c, row: e.row })
+      e.lastAttackSeq = this.data.combatSeq
+      this._enemyChip(e, bl, t) // Titan chips (×4), Azazoth destroys outright
+      if (bl.damaged) this._onTrapDestroyed(bl, t, e)
+    }
+    if (blocked) return
+    // Another live enemy occupying a cell below → hold.
+    for (let c = e.col; c < e.col + w; c++) {
+      if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && this._enemyCovers(o, belowRow, c))) return
+    }
+    e.row = belowRow
+    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
+    // Azazoth: every row it leaves behind turns to Fallout (extra sauce).
+    if (e.key === 'azazoth') {
+      const vacated = e.row + h // the row no longer covered after moving down
+      if (vacated >= bounds.minRow && vacated <= bounds.maxRow) {
+        for (let c = e.col; c < e.col + w; c++) { const t = this.data.tableau.tileAt(vacated, c); if (t) t.terrain = 'fallout' }
+      }
+    }
   }
 
   /** A "wall-style" building (Mud Brick / Stone Wall / Castle / Shield Matrix / Great Wall):
