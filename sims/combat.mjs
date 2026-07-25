@@ -1482,5 +1482,33 @@ console.log('TEST 63: end-of-era effects fire AFTER the era transition (in the n
   g.stop()
 }
 
+console.log('TEST 64: reposition & gold actions are piece-aware (never clobber the coexisting piece)')
+{
+  const g = new GameManager(190)
+  const b = g.data.tableau.visibleBounds(0)
+  const src = g.data.tableau.tileAt(b.minRow, b.minCol); src.terrain = 'plains'; src.unit = null; src.building = null
+  const dst = g.data.tableau.tileAt(b.minRow, b.minCol + 1); dst.terrain = 'plains'; dst.unit = null; dst.building = null
+  g._createInstance({ kind: 'building', key: 'mud_wall', level: 1 }, src)
+  g._createInstance({ kind: 'unit', key: 'warrior', level: 1 }, src)
+  assert(src.unit?.key === 'warrior' && src.building?.key === 'mud_wall', 'unit + wall coexist on the source')
+  // Repositioning the UNIT to an empty tile must leave the wall behind (the old occupant-shim
+  // clear wiped BOTH slots — this is the data-loss regression guard).
+  assert(g.canReposition(src.row, src.col, dst.row, dst.col), 'unit can reposition to the empty neighbour')
+  g.moveUnit(src.row, src.col, dst.row, dst.col)
+  assert(!src.unit && src.building?.key === 'mud_wall', 'the wall SURVIVES the unit moving off its tile')
+  assert(dst.unit?.key === 'warrior', 'the unit landed on the destination')
+  // Moving the unit BACK onto the wall tile is a valid coexist (not blocked by the building).
+  assert(g.canReposition(dst.row, dst.col, src.row, src.col), 'a unit may move onto a building-occupied tile')
+  g.moveUnit(dst.row, dst.col, src.row, src.col)
+  assert(src.unit?.key === 'warrior' && src.building?.key === 'mud_wall', 'unit + wall coexist again after the move back')
+  // Piece-aware upgrade: upgrading the building must not touch the unit, and vice versa.
+  g.data.civilization.gold.value = 100000
+  g.upgradeOccupant(src.row, src.col, 'building')
+  assert(src.building.level === 2 && src.unit.level === 1, 'upgrade(building) raised only the wall')
+  g.upgradeOccupant(src.row, src.col, 'unit')
+  assert(src.unit.level === 2 && src.building.level === 2, 'upgrade(unit) raised only the unit')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

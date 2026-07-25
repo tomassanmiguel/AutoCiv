@@ -44,7 +44,7 @@ function defColor(ratio) {
  * level in the tooltip (tinted green). `onGrab` starts a reposition drag.
  * `terrain` is the tile's terrain key (for the Forest combat-def note).
  */
-export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1, anchorClass = '', strip = false }) {
+export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus = 0, combat = false, side = 'player', action = null, onGrab, terrain, slide = null, combatSeq = -1, anchorClass = '', strip = false, compact = false }) {
   const occ = occupant
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
@@ -195,7 +195,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
 
   return (
     <InfoTip
-      className={`tile-card-anchor ${anchorClass}`}
+      className={`tile-card-anchor ${compact ? 'compact' : ''} ${anchorClass}`}
       tipClassName={showPreview ? 'upgrade-preview' : ''}
       title={def.name + (damaged ? ' (damaged)' : occ.mercenary ? ' (mercenary)' : '')}
       text={renderTip(showPreview)}
@@ -216,7 +216,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
             hire "pop" (green flash + scale). Suppressed in combat so the per-attack
             lunge remount (which also remounts this wrapper) doesn't re-flash it. */}
         <div className={`tc-fx${!combat && occ.fxSeq ? ' animate ' + (occ.fxKind ?? '') : ''}`} key={`fx-${occ.fxSeq ?? 0}`}>
-          <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''} ${combat && damaged ? 'combat-death' : ''} ${occ.mercenary ? 'mercenary' : ''}`}>
+          <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${compact ? 'compact' : ''} ${damaged ? 'damaged' : ''} ${combat && damaged ? 'combat-death' : ''} ${occ.mercenary ? 'mercenary' : ''}`}>
             {/* Visual content — grayed out when damaged. The action button lives
                 OUTSIDE this wrapper so the grayscale filter never dims it. */}
             <div className="tc-body">
@@ -226,7 +226,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
                 <span className="tc-name">{def.name}</span>
                 <span className="tc-level">{occ.level}</span>
               </div>
-              {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
+              {!compact && typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
               <div className="tc-stats">
                 {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>

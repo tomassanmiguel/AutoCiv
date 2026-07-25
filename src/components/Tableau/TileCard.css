@@ -13,6 +13,37 @@
    ~20% for the underlap strip. */
 .tile-card-anchor.has-underlap { inset: 8% 15% 30% 15%; }
 
+/* Multi-piece tile: a unit + building coexisting on one cell (e.g. infantry on a wall), or a
+   City's several buildings, are laid out as a compact vertical stack — each card ~half the tile
+   height — so every piece stays visible and individually actionable. */
+.tile-stack {
+  position: absolute;
+  inset: 5%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.tile-card-anchor.compact {
+  position: relative;
+  inset: auto;
+  flex: 1 1 0;
+  min-height: 0;
+  z-index: auto;
+}
+.tile-card-anchor.compact:hover { transform: scale(1.18); z-index: 6; }
+/* Compact card: no type icon, tighter spacing, smaller name/stats so it reads at half height. */
+.tile-card.compact { padding: 1px 3px; gap: 1px; }
+.tile-card.compact .tc-header { gap: 2px; }
+.tile-card.compact .tc-name { font-size: 8px; -webkit-line-clamp: 1; line-clamp: 1; line-height: 1; }
+.tile-card.compact .tc-level { font-size: 7px; padding: 0 2px; }
+.tile-card.compact .tc-stats { gap: 3px; }
+.tile-card.compact .tc-stat { font-size: 8px; }
+.tile-card.compact .tc-stat img { width: 9px; height: 9px; }
+.tile-card.compact .tc-action { margin-top: 1px; padding: 0 3px; font-size: 7.5px; }
+.tile-card.compact .tc-action img { width: 8px; height: 8px; }
+
 /* Boss card: ominous red slab with a huge name; fills its whole footprint. No hover-scale. */
 .tile-card.boss {
   display: flex;

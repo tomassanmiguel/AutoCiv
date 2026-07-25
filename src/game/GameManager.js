@@ -1722,6 +1722,15 @@ export class GameManager {
     occ.fxKind = kind
   }
 
+  /** The specific deployed piece on a tile: `kind` 'unit' → the unit slot, 'building' → the
+   *  building slot, null → the occupant shim (unit-preferred). Lets piece-aware actions target
+   *  one of a coexisting unit+building pair rather than always hitting the unit. */
+  _pieceAt(row, col, kind = null) {
+    const tile = this.data.tableau.tileAt(row, col)
+    if (!tile) return null
+    return kind === 'unit' ? tile.unit : kind === 'building' ? tile.building : tile.occupant
+  }
+
   /** Repair cost for a damaged occupant: Code of Laws (−75%, both) × the best matching v2
    *  repair reducer (Blueprints/Rapid Reconstruction for buildings; Levee en Masse/Cortical
    *  Stacks for units). */
@@ -1733,9 +1742,9 @@ export class GameManager {
   }
 
   /** Repair a damaged unit/building back to full HP for gold. */
-  repairOccupant(row, col) {
+  repairOccupant(row, col, kind = null) {
     if (!this._canEconomize()) return
-    const occ = this.data.tableau.tileAt(row, col)?.occupant
+    const occ = this._pieceAt(row, col, kind)
     if (!occ || !occ.damaged || occ.mercenary) return // mercenaries are disposable, not repaired
     const cost = this.repairCostFor(occ)
     const civ = this.data.civilization
@@ -1749,9 +1758,9 @@ export class GameManager {
   }
 
   /** Upgrade an undamaged unit/building one level for gold (raises Atk/HP). */
-  upgradeOccupant(row, col) {
+  upgradeOccupant(row, col, kind = null) {
     if (!this._canEconomize()) return
-    const occ = this.data.tableau.tileAt(row, col)?.occupant
+    const occ = this._pieceAt(row, col, kind)
     if (!occ || occ.damaged || occ.mercenary) return // mercenaries disband; don't sink gold into them
     const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : defOf(occ.key)
     if (def?.noUpgrade) return // Cave Painting / wonders can't be gold-upgraded
@@ -1954,13 +1963,15 @@ export class GameManager {
     if (!canPlaceOn(def.placement, to.terrain)) return false // the moving piece must fit dest
     // Region restriction: the destination must be in the piece's connected region (bridged by tech).
     if (!this._repositionRegion(fromRow, fromCol, def.placement).has(`${toRow},${toCol}`)) return false
-    if (!to.occupant) return true // move onto an empty tile
-    // Swap: the destination must hold a piece of the SAME kind that also fits the source terrain
-    // AND can reach the source tile from its own region.
+    // v2 split tiles: only the SAME-category slot at the destination matters. A unit may move onto
+    // a tile that already holds a building (they coexist); a swap happens only against another
+    // same-kind piece, and the destination's OTHER category slot is never disturbed.
+    const destSame = occ.kind === 'unit' ? to.unit : to.building
+    if (!destSame) return true // same-category slot empty → move in (coexist with the other kind)
     // A wonder is never a swap target (it moves only into free space); guarded above anyway.
-    if (to.occupant.wonder) return false
-    const toDef = to.occupant.kind === 'unit' ? UNIT_DEFS[to.occupant.key] : defOf(to.occupant.key)
-    return to.occupant.kind === occ.kind && canPlaceOn(toDef.placement, from.terrain) &&
+    if (destSame.wonder) return false
+    const toDef = destSame.kind === 'unit' ? UNIT_DEFS[destSame.key] : defOf(destSame.key)
+    return canPlaceOn(toDef.placement, from.terrain) &&
       this._repositionRegion(toRow, toCol, toDef.placement).has(`${fromRow},${fromCol}`)
   }
 
@@ -1973,9 +1984,11 @@ export class GameManager {
     // Multi-tile piece: relocate the whole footprint (the 1×1 wonder falls through to the plain
     // move below, where canReposition has already guaranteed the single destination cell is free).
     if (this._isMultiTile(def)) { this._moveMultiTile(occ, def, { row: toRow, col: toCol }); return }
-    const swapped = to.occupant // null = plain move; a unit = swap
-    to.occupant = from.occupant
-    from.occupant = swapped
+    // Split-tile move: relocate ONLY the moving piece's own category slot, swapping with the
+    // destination's same-category piece (null = plain move). The OTHER category slot on each tile
+    // is left untouched, so a coexisting unit+building pair is never clobbered by a reposition.
+    if (occ.kind === 'unit') { const s = to.unit; to.unit = from.unit; from.unit = s }
+    else { const s = to.building; to.building = from.building; from.building = s }
     this._syncUnitStats() // positions changed → refresh Brewery-aura membership
     this._recomputeOutputs() // …and Brewery gold (units-in-range changed)
     this._emit()

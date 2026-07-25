@@ -395,15 +395,16 @@ export default function Tableau() {
   // Panopticon wonder: enemy pieces become draggable during prep.
   const enemyDraggable = prepping && game._hasWonder('panopticon')
   const mercCost = prepping ? game.mercCost() : 0
-  const tileAction = (tile, occ) => {
+  const tileAction = (tile, occ, pkind = null) => {
     if (!canAct || !occ || occ.mercenary) return null // mercenaries are disposable — no repair/upgrade
+    // pkind ('unit'|'building') targets one of a coexisting pair; null falls back to the occupant.
     if (occ.damaged) {
       const cost = game.repairCostFor(occ) // Code of Laws discount applies
-      return { kind: 'repair', cost, affordable: gold >= cost, onClick: () => game.repairOccupant(tile.row, tile.col) }
+      return { kind: 'repair', cost, affordable: gold >= cost, onClick: () => game.repairOccupant(tile.row, tile.col, pkind) }
     }
     if (occ.kind === 'building' && defOf(occ.key)?.noUpgrade) return null // e.g. Cave Painting
     const cost = upgradeCost(occ, era)
-    return { kind: 'upgrade', cost, affordable: gold >= cost, onClick: () => game.upgradeOccupant(tile.row, tile.col) }
+    return { kind: 'upgrade', cost, affordable: gold >= cost, onClick: () => game.upgradeOccupant(tile.row, tile.col, pkind) }
   }
 
   return (
@@ -484,33 +485,23 @@ export default function Tableau() {
                   backgroundImage: tile.sprite ? `url("${tile.sprite}")` : 'none',
                 }}
               />
-              {/* A CITY tile shows its buildings (primary + extras) as name-only strips
-                  stacked in the cell; a plain tile shows the full occupant card. */}
-              {tile.city ? (
-                ([occ, ...(tile.extras ?? [])].filter(Boolean).length > 0 || null) && (
-                  <div className="city-stack">
-                    {[occ, ...(tile.extras ?? [])].filter(Boolean).map((b, k) => (
-                      <TileCard
-                        key={`${b.key}-${k}`}
-                        occupant={b}
-                        era={era}
-                        hpBonus={hpBonus}
-                        buildingHpBonus={buildingHpBonus}
-                        combat={combat}
-                        combatSeq={combatSeq}
-                        side="player"
-                        terrain={tile.terrain}
-                        strip
-                        action={b === occ ? tileAction(tile, b) : null}
-                        onGrab={repositionable && grabbable(b) && b === occ ? (e) => onUnitGrab(e, tile) : undefined}
-                      />
-                    ))}
-                  </div>
-                )
-              ) : (
-                occ && !isMT && (
+              {/* Deployed pieces: a tile can hold a unit AND a building at once (they coexist —
+                  e.g. infantry standing on a wall), plus a City's extra buildings. One piece → a
+                  full card; two or more → a compact vertical stack (each ~half height) so every
+                  piece stays visible and individually actionable. Multi-tile buildings are excluded
+                  here — they render once as a spanning card in the pass below. */}
+              {(() => {
+                const big = (o) => o?.footprint && (o.footprint[0] > 1 || o.footprint[1] > 1)
+                const pieces = []
+                if (tile.unit && !big(tile.unit)) pieces.push({ occ: tile.unit, pkind: 'unit' })
+                if (tile.building && !big(tile.building)) pieces.push({ occ: tile.building, pkind: 'building' })
+                if (tile.extras) for (const ex of tile.extras) pieces.push({ occ: ex, pkind: 'building', extra: true })
+                if (pieces.length === 0) return null
+                const stacked = pieces.length >= 2
+                const cards = pieces.map((p, k) => (
                   <TileCard
-                    occupant={occ}
+                    key={`${p.pkind}-${p.occ.key}-${k}`}
+                    occupant={p.occ}
                     era={era}
                     hpBonus={hpBonus}
                     buildingHpBonus={buildingHpBonus}
@@ -518,13 +509,15 @@ export default function Tableau() {
                     combatSeq={combatSeq}
                     side="player"
                     terrain={tile.terrain}
-                    action={tileAction(tile, occ)}
-                    slide={slideFor(occ, j * CELL, i * CELL)}
-                    onGrab={repositionable && grabbable(occ) ? (e) => onUnitGrab(e, tile) : undefined}
-                    anchorClass={tile.underlap ? 'has-underlap' : ''}
+                    compact={stacked}
+                    action={p.extra ? null : tileAction(tile, p.occ, p.pkind)}
+                    slide={slideFor(p.occ, j * CELL, i * CELL)}
+                    onGrab={repositionable && grabbable(p.occ) && !p.extra ? (e) => onUnitGrab(e, tile) : undefined}
+                    anchorClass={!stacked && tile.underlap ? 'has-underlap' : ''}
                   />
-                )
-              )}
+                ))
+                return stacked ? <div className="tile-stack">{cards}</div> : cards
+              })()}
               {/* A City marks the tile (its own underlaid badge); a Road underlaps in a strip. */}
               {tile.city && <span className="city-badge">City</span>}
               {tile.underlap && <TileCard occupant={tile.underlap} era={era} side="player" />}
