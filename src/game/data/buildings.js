@@ -674,6 +674,16 @@ export const BUILDING_DEFS = {
   },
 }
 
+// Buildings are ECONOMIC / UTILITY structures, not tanks: default EVERY building to a flat 1
+// :defense: (no HP growth) so it can't soak the enemy advance. The only exceptions are WALLS
+// (special 'wall'), which keep their tiered blocker HP, and underlaid buildings (Road / City,
+// hp 0), which have no combat presence at all.
+for (const d of Object.values(BUILDING_DEFS)) {
+  if (d.special === 'wall' || d.hp === 0) continue
+  d.hp = 1
+  d.upHp = 0
+}
+
 /** Resolve a DEPLOYED building's def by key — buildings first, then wonders (which are placed
  *  on the board as combat buildings while under construction). Single source of truth for every
  *  building-context def lookup so a placed wonder never resolves to undefined. */

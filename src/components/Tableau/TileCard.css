@@ -234,21 +234,26 @@
 }
 .tc-wonder-progress.danger { background: rgba(224, 92, 74, 0.9); color: #1a0a08; }
 
-/* Damaged/slain: shake once, then fade to gray. The shake (transform) stays on the
-   card; the grayscale is applied to the inner content only, so an on-card Repair
-   button remains full-color and clearly clickable. */
+/* Damaged (post-combat): grayed out, present for repair. The grayscale is on the inner
+   content only, so an on-card Repair button stays full-color and clickable. */
 .tile-card.damaged {
   border-color: rgba(150, 150, 150, 0.5);
-  animation: death-shake 0.42s ease;
 }
 .tile-card.damaged .tc-body { filter: grayscale(1) brightness(0.68); }
-@keyframes death-shake {
-  0%, 100% { transform: translateX(0); }
-  15% { transform: translateX(-12%) rotate(-3deg); }
-  30% { transform: translateX(11%) rotate(3deg); }
-  45% { transform: translateX(-8%) rotate(-2deg); }
-  60% { transform: translateX(7%) rotate(2deg); }
-  80% { transform: translateX(-3%); }
+
+/* Killed DURING combat: the piece shatters out of existence — a quick jolt, then it
+   fractures (skew + scale) and blows away to nothing. Player units reappear (grayed,
+   for repair) once combat ends; enemies are simply gone. */
+.tile-card.combat-death {
+  animation: shatter 0.5s ease-in forwards;
+  transform-origin: center;
+  pointer-events: none;
+}
+@keyframes shatter {
+  0% { transform: translateX(0) scale(1) rotate(0); opacity: 1; filter: brightness(1); }
+  16% { transform: translateX(-9%) rotate(-4deg) scale(1.06); filter: brightness(1.8) saturate(0.4); }
+  32% { transform: translateX(7%) rotate(3deg) scale(1.04); filter: brightness(1.4); }
+  100% { transform: translateY(14%) rotate(10deg) scale(0.35) skewX(18deg); opacity: 0; filter: brightness(0.4) blur(2px); }
 }
 
 /* Combat cooldown bar (ticks down toward the next attack). */

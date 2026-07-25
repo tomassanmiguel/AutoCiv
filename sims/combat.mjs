@@ -411,7 +411,7 @@ console.log('TEST 20: Cosmic Celebration — end-of-era effects trigger 2 extra 
     g.data.civilization.pops.shaman = 1 // +10 legit per end-of-era application
     if (policy) g.data.civilization.policies[0] = { key: policy }
     const l0 = g.data.civilization.legitimacy.value
-    g._endCombat() // applies end-of-era effects `times` times
+    g._runEraEndEffects() // applies end-of-era effects `times` times
     const gain = g.data.civilization.legitimacy.value - l0
     g.stop(); return gain
   }
@@ -528,7 +528,7 @@ console.log('TEST 28: Stonehenge legit/era scales with wonder-yield')
     g.data.civilization.completedWonders.push('stonehenge')
     if (policy) g.data.civilization.policies[0] = { key: policy }
     const l0 = g.data.civilization.legitimacy.value
-    g._endCombat()
+    g._runEraEndEffects()
     g.stop(); return g.data.civilization.legitimacy.value - l0
   }
   const base = mk(null), boosted = mk('pilgrimage')
@@ -1190,7 +1190,7 @@ console.log('TEST 51: a DESTROYED wonder procs no end-of-era effect (until repai
     g.data.civilization.completedWonders.push('stonehenge')
     t.building.damaged = damaged
     const l0 = g.data.civilization.legitimacy.value
-    g._endCombat()
+    g._runEraEndEffects()
     g.stop(); return g.data.civilization.legitimacy.value - l0
   }
   const alive = mk(false), destroyed = mk(true)
@@ -1467,6 +1467,18 @@ console.log('TEST 62: unit tiers stay unlocked and cycle at build time (no destr
   // Cycle back to Warrior.
   g.cycleRosterSlot('units', 0, -1)
   assert(civ.units[0]?.key === 'warrior', 'cycling switches the active tier back to Warrior')
+  g.stop()
+}
+
+console.log('TEST 63: end-of-era effects fire AFTER the era transition (in the new era)')
+{
+  const g = new GameManager(180); g.setEra(5)
+  g.data.civilization.pops = { shaman: 1 } // Shaman: +10 legit at each era end
+  g.data.phase = 'transition'
+  const l0 = g.data.civilization.legitimacy.value
+  g.completeTransition()
+  assert(g.data.era === 6, 'the transition advanced the era')
+  assert(g.data.civilization.legitimacy.value - l0 === 10, 'the end-of-era Shaman legit applied after the transition')
   g.stop()
 }
 

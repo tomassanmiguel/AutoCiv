@@ -216,7 +216,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
             hire "pop" (green flash + scale). Suppressed in combat so the per-attack
             lunge remount (which also remounts this wrapper) doesn't re-flash it. */}
         <div className={`tc-fx${!combat && occ.fxSeq ? ' animate ' + (occ.fxKind ?? '') : ''}`} key={`fx-${occ.fxSeq ?? 0}`}>
-          <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''} ${occ.mercenary ? 'mercenary' : ''}`}>
+          <div className={`tile-card ${isUnit ? 'unit' : 'building'} ${side} ${damaged ? 'damaged' : ''} ${combat && damaged ? 'combat-death' : ''} ${occ.mercenary ? 'mercenary' : ''}`}>
             {/* Visual content — grayed out when damaged. The action button lives
                 OUTSIDE this wrapper so the grayscale filter never dims it. */}
             <div className="tc-body">

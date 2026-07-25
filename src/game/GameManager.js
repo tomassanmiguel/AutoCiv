@@ -773,9 +773,10 @@ export class GameManager {
         // Wonders are pinned to their flat base def (2, or Death Star 5): NO region free-levels,
         // Hereditary Rule, terrain, or policy inflation — otherwise a persistent wonder balloons.
         const isWonder = !!WONDER_DEFS[occ.key]
+        // Terrain cover (Forest/Mountain :defense:) benefits UNITS only, never buildings.
         const newMax = isWonder
           ? buildingHp(defOf(occ.key), occ.level, 0)
-          : buildingHp(defOf(occ.key), occ.level + this._regionLevelBonus(tile, 'building'), civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
+          : buildingHp(defOf(occ.key), occ.level + this._regionLevelBonus(tile, 'building'), civ.modifiers.buildingHpBonus) + policyBuildingDef
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         occ.maxHp = Math.max(1, newMax)
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
@@ -2117,6 +2118,7 @@ export class GameManager {
   completeTransition() {
     if (this.data.phase !== 'transition') return
     if (this.data.era >= ERA_COUNT - 1) {
+      this._runEraEndEffects() // the final era's end effects resolve, then the game is won
       this.data.won = true
       this.data.phase = 'development'
       this.data.speed = 'paused'
@@ -2127,7 +2129,20 @@ export class GameManager {
     this.data.civilization.poetBonus += 2 // Poetry: every era, each Poet permanently gains +2 :progress:
     this._ageCavePaintings() // stored progress doubles each era after combat
     this._beginEra()
+    // End-of-era effects fire AFTER the transition, in the NEW era — a buff to era-scaled effects
+    // (and Pier/Library output, whose food/progress crossings now add pops at the higher era).
+    this._runEraEndEffects()
+    this._maybeOpenSelection() // open any progress/production choices those effects banked
     this._emit()
+  }
+
+  /** Run the end-of-era pass, Festivals/Cosmic Celebration triggering it extra times. */
+  _runEraEndEffects() {
+    let times = 1
+    if (this._hasPolicy('festivals')) times += 1
+    if (this._hasPolicy('cosmic_celebration')) times += 2
+    for (let i = 0; i < times; i++) this._applyEraEndEffects()
+    this._syncUnitStats()
   }
 
   /** Each surviving Cave Painting's stored :progress: doubles per era (capped). */
