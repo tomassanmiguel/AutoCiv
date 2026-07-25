@@ -521,7 +521,7 @@ console.log('TEST 36: Wonders — Hanging Gardens, Hadron Collider, Statue of Li
   // Statue of Liberty: production thresholds grow slower (×0.8).
   const g4 = new GameManager(67); g4.setEra(10)
   const m0 = g4.data.civilization.modifiers.productionThresholdMult ?? 1
-  g4.data.civilization.wonder = { key: 'statue_of_liberty', buildsLeft: 1 }; g4._advanceWonder()
+  g4.data.civilization.wonder = { key: 'statue_of_liberty', buildsLeft: 1, placed: true, inst: null }; g4._completeWonder()
   assert(Math.abs((g4.data.civilization.modifiers.productionThresholdMult ?? 1) - m0 * 0.8) < 1e-9, `Statue of Liberty ×0.8 production threshold`)
   g4.stop()
   // Ecumenopolis: planet tile yields ×10.

@@ -4,6 +4,8 @@ const { ENEMY_DEFS } = await import('../src/game/data/enemies.js')
 const { UNIT_DEFS, unitStats } = await import('../src/game/data/units.js')
 const { BUILDING_DEFS, buildingHp } = await import('../src/game/data/buildings.js')
 const { canPlaceOn } = await import('../src/game/data/terrain.js')
+const { WONDER_BUILDS } = await import('../src/game/data/wonders.js')
+const { buildingRepairCost } = await import('../src/game/data/costs.js')
 
 function mkEnemy(key, name, col, row, hp, atk) {
   return { key, name, col, row, hp, maxHp: hp, atk, damaged: false, breached: false }
@@ -534,10 +536,10 @@ console.log('TEST 29: Hagia Sophia completion legit scales with wonder-yield')
 {
   const mk = (policy) => {
     const g = new GameManager(32); g.setEra(5)
-    g.data.civilization.wonder = { key: 'hagia_sophia', buildsLeft: 1 }
+    g.data.civilization.wonder = { key: 'hagia_sophia', buildsLeft: 1, placed: true, inst: null }
     g.data.civilization.legitimacy.value = 100
     if (policy) g.data.civilization.policies[0] = { key: policy }
-    g._advanceWonder() // completes it → _completeWonder
+    g._completeWonder() // finish it → on-completion legit doubling
     g.stop(); return g.data.civilization.legitimacy.value
   }
   const base = mk(null), boosted = mk('tourism')
@@ -877,13 +879,6 @@ console.log('TEST 39: Wonders — Skynet, Taj Mahal, Death Star, Panopticon, Gre
   g6.moveUnit(src.row, src.col, dst.row, dst.col)
   assert(dst.building?.key === 'totem' && !src.building, 'Stargate moved the building')
   g6.stop()
-  // Great Wall: places a physical structure on completion (detailed in TEST 47).
-  const g5 = new GameManager(64); g5.setEra(3)
-  g5.data.civilization.wonder = { key: 'great_wall', buildsLeft: 1 }; g5._advanceWonder()
-  const placed = g5.data.tableau.visibleTiles(3).some((t) => t.building?.key === 'great_wall_structure')
-  console.log(`  Great Wall: structure placed = ${placed}`)
-  assert(placed || g5.data.civilization.modifiers.buildingHpBonus === 20, `Great Wall places a wall (or +20 fallback)`)
-  g5.stop()
 }
 
 console.log('TEST 40: Machine Gun underlay — the unit on its tile attacks +level extra times')
@@ -1028,22 +1023,32 @@ console.log('TEST 46: Multi-tile footprint building (Shinkansen 3×1) — placem
   g.stop()
 }
 
-console.log('TEST 47: Great Wall wonder places a real 4-lane shared-HP blocker structure')
+console.log('TEST 47: Great Wall wonder — player places a real 4-lane shared-HP blocker')
 {
   const g = new GameManager(91); g.setEra(3)
-  // Completing the wonder places the 4×1 structure on the board.
-  g.data.civilization.wonder = { key: 'great_wall', buildsLeft: 1 }
-  g._advanceWonder() // → _completeWonder → places the structure
-  const anchors = g.data.tableau.visibleTiles(3).filter((t) => t.building?.key === 'great_wall_structure' && g._isAnchor(t, t.building))
-  assert(anchors.length === 1, `one Great Wall structure placed (got ${anchors.length})`)
-  const wall = anchors[0].building
-  // It spans 4 tiles with the shared instance.
+  g._unlockWonder({ key: 'great_wall' })
+  const b = g.data.tableau.visibleBounds(3)
+  // Force a 4-wide empty land strip on the front row and place the wall there.
+  const row = b.minRow
+  for (let c = b.minCol; c <= b.minCol + 3; c++) { const t = g.data.tableau.tileAt(row, c); t.terrain = 'plains'; t.unit = null; t.building = null }
+  const anchor = g.data.tableau.tileAt(row, b.minCol)
+  assert(g._canPlaceHere({ kind: 'building', key: 'great_wall', wonder: true }, anchor), 'great wall placeable on a 4-wide land strip')
+  // The first production pick PLACES the incomplete structure (placement = build #1).
+  g._createInstance({ kind: 'building', key: 'great_wall', level: 1, wonder: true }, anchor)
+  const wall = anchor.building
   const span = g.data.tableau.visibleTiles(3).filter((t) => t.building === wall)
   console.log(`  Great Wall spans ${span.length} tiles (footprint ${wall.footprint}), shared HP ${wall.maxHp}`)
   assert(span.length === 4, `structure spans 4 tiles (got ${span.length})`)
-  assert(g._hasWonder('great_wall'), 'wonder marked complete')
-  // It blocks an enemy in one of its lanes (shared HP; combat-only, no economy).
-  const b = g.data.tableau.visibleBounds(3)
+  assert(wall.wonder && !wall.complete, 'placed wall is an incomplete wonder')
+  assert(g.data.civilization.wonder && g.data.civilization.wonder.placed, 'wonder marked placed, still in flight')
+  // Subsequent production picks advance it to completion.
+  let guard = 10
+  while (g.data.civilization.wonder && guard-- > 0) g.advanceWonderProgress()
+  assert(g._hasWonder('great_wall') && wall.complete, 'wonder marked complete after its builds')
+  // Shared HP: damaging via any cell hits the one shared instance.
+  span[2].building.hp -= 3
+  assert(span[0].building.hp === span[0].building.maxHp - 3, 'HP is shared across all 4 lanes')
+  // It blocks an enemy in one of its lanes (combat-only, no economy).
   const wallTile = span.find((t) => t.row === b.minRow) || span[0]
   const e = mkEnemy('warrior', 'X', wallTile.col, wallTile.row + 1, 100, 5)
   g.data.enemies = [e]
@@ -1053,6 +1058,52 @@ console.log('TEST 47: Great Wall wonder places a real 4-lane shared-HP blocker s
   console.log(`  enemy in a wall lane: breached=${e.breached}, legit lost=${l0 - g.data.civilization.legitimacy.value}`)
   assert(!e.breached || l0 === g.data.civilization.legitimacy.value, 'the wall blocks its lane')
   g.stop()
+}
+
+console.log('TEST 48: wonder lifecycle — pick→place→advance→complete; destroy retains progress, repair 3×')
+{
+  // Find a valid empty land tile for a 1×1 wonder in the current view.
+  const landSpot = (g, era) => {
+    for (const t of g.data.tableau.visibleTiles(era)) {
+      if (!t.unit && !t.building && !t.underlay) { t.terrain = 'plains'; return t }
+    }
+    return null
+  }
+  // (a) Full flow via the production selection: pick the wonder, place it, keep picking to finish.
+  const g = new GameManager(101); g.setEra(0)
+  g._unlockWonder({ key: 'stonehenge' })
+  assert(g.data.civilization.wonder && !g.data.civilization.wonder.placed, 'unlocked into the wonder slot, not placed')
+  g.data.pendingProduction = 5
+  g._openProductionSelection()
+  g.pickWonder()
+  assert(g.data.selection.stage === 'place' && g.data.selection.chosen.wonder, 'pickWonder routes to the place stage')
+  const spot = landSpot(g, 0)
+  g.placeAt(spot.row, spot.col)
+  const inst = spot.building
+  assert(inst && inst.wonder && !inst.complete, 'an incomplete wonder now sits on the board')
+  assert(g.data.civilization.wonder.buildsLeft === WONDER_BUILDS - 1, 'placement counts as the first build')
+  let guard = 10
+  while (g.data.civilization.wonder && guard-- > 0) { g._openProductionSelection(); g.pickWonder() }
+  assert(g._hasWonder('stonehenge') && inst.complete, `completed after ${WONDER_BUILDS} production picks`)
+  g.stop()
+
+  // (b) Destroyed incomplete wonder: progress remains, advance blocked, repair costs 3× and unblocks.
+  const g2 = new GameManager(102); g2.setEra(0)
+  g2._unlockWonder({ key: 'stonehenge' })
+  const spot2 = landSpot(g2, 0)
+  g2._createInstance({ kind: 'building', key: 'stonehenge', level: 1, wonder: true }, spot2)
+  const inst2 = spot2.building
+  const leftBefore = g2.data.civilization.wonder.buildsLeft
+  inst2.damaged = true // enemies destroyed it mid-build
+  assert(!g2.canAdvanceWonder(), 'a destroyed wonder cannot be advanced')
+  g2.advanceWonderProgress()
+  assert(g2.data.civilization.wonder.buildsLeft === leftBefore, 'build progress is retained through destruction')
+  const wcost = g2.repairCostFor(inst2)
+  assert(wcost === buildingRepairCost(0) * 3, `wonder repair is 3× a building repair (got ${wcost} vs ${buildingRepairCost(0) * 3})`)
+  g2.data.phase = 'prep'; g2.data.civilization.gold.value = wcost
+  g2.repairOccupant(spot2.row, spot2.col)
+  assert(!inst2.damaged && g2.canAdvanceWonder(), 'repairing un-damages it → progress can continue')
+  g2.stop()
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

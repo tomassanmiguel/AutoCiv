@@ -70,20 +70,32 @@ console.log('\nTEST 4: Basket Weaving lowers the food threshold multiplier')
   assert(after < before, 'food threshold multiplier decreased')
 }
 
-// --- TEST 5: wonder flow — unlock → advance via production-builds → complete + effect ---
-console.log('\nTEST 5: wonder flow (unlock, auto-build, complete, ongoing effect)')
+// --- TEST 5: wonder flow — unlock → pick+place → advance via production picks → complete ---
+console.log('\nTEST 5: wonder flow (unlock, place, advance, complete, ongoing effect)')
 {
   const g = new GameManager(11)
   const wi = IMPLEMENTED['Mysticism']
   assert(wi && wi.kind === 'wonder' && wi.key === 'stonehenge', 'Mysticism → Stonehenge wonder')
   g._unlockWonder({ key: 'stonehenge' })
-  assert(g.data.civilization.wonder?.key === 'stonehenge' && g.data.civilization.wonder.buildsLeft === 3, 'Stonehenge queued with 3 builds')
-  g.data.pendingProduction = 3
+  assert(g.data.civilization.wonder?.key === 'stonehenge' && g.data.civilization.wonder.buildsLeft === 3 && !g.data.civilization.wonder.placed, 'Stonehenge queued with 3 builds, not yet placed')
+  // A production-build now opens the normal build selection, which offers the wonder.
+  g.data.pendingProduction = 5
   g.data.phase = 'development'
   g._maybeOpenSelection()
-  assert(g.data.civilization.wonder === null, 'wonder completes after 3 production-builds')
+  assert(g.data.selection?.type === 'production' && g.data.selection.stage === 'pick', 'production selection opens (wonder is pickable, not auto-consumed)')
+  // Pick the wonder → place the incomplete structure on a land tile.
+  g.pickWonder()
+  assert(g.data.selection.stage === 'place' && g.data.selection.chosen.wonder, 'pickWonder → place stage')
+  const spot = g.data.tableau.visibleTiles(0).find((t) => !t.unit && !t.building && !t.underlay)
+  spot.terrain = 'plains'
+  g.placeAt(spot.row, spot.col)
+  assert(spot.building?.wonder && !spot.building.complete, 'incomplete Stonehenge placed on the board')
+  // Keep producing + picking the wonder until it completes.
+  let guard = 10
+  while (g.data.civilization.wonder && guard-- > 0) { g._maybeOpenSelection(); if (g.data.selection?.type === 'production') g.pickWonder() }
+  assert(g.data.civilization.wonder === null, 'wonder completes after its production picks')
   assert(g.data.civilization.completedWonders.includes('stonehenge'), 'Stonehenge completed')
-  assert(!g.data.selection, 'the builds went to the wonder — no normal production selection')
+  assert(spot.building?.complete, 'the placed structure is marked complete')
   const legit0 = g.data.civilization.legitimacy.value
   g._applyEraEndEffects()
   const dl = g.data.civilization.legitimacy.value - legit0

@@ -12,6 +12,10 @@
 
 const eraMul = (era) => Math.pow(1.25, era)
 
+// A wonder is far costlier to repair than an ordinary building — a destroyed wonder keeps
+// its build progress but repairing the massive structure costs 3× a normal building repair.
+export const WONDER_REPAIR_MULT = 3
+
 export function unitUpgradeCost(level, era) {
   return Math.round(50 * eraMul(era) * Math.pow(level, 1.5))
 }
@@ -35,9 +39,10 @@ export function mercenaryCost(era) {
 export function upgradeCost(occ, era) {
   return occ.kind === 'unit' ? unitUpgradeCost(occ.level, era) : buildingUpgradeCost(occ.level, era)
 }
-/** Repair cost for a damaged occupant (unit or building). */
+/** Repair cost for a damaged occupant (unit or building). A wonder structure costs 3×. */
 export function repairCost(occ, era) {
-  return occ.kind === 'unit' ? unitRepairCost(era) : buildingRepairCost(era)
+  if (occ.kind === 'unit') return unitRepairCost(era)
+  return Math.round(buildingRepairCost(era) * (occ.wonder ? WONDER_REPAIR_MULT : 1))
 }
 
 /** How many citizens one gold-funded specialist conversion turns over: era+1

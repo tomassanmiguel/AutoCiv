@@ -851,13 +851,9 @@ export class GameManager {
       this._restartTimer() // holds the game paused
       return
     }
-    // A wonder in flight consumes production-builds (the "sacrifice") until it completes;
-    // any builds beyond that open the normal production selection.
-    const civ = this.data.civilization
-    while (this.data.pendingProduction > 0 && civ.wonder) {
-      this.data.pendingProduction -= 1
-      this._advanceWonder()
-    }
+    // Production-builds open the normal build selection, which ALSO offers the in-flight
+    // wonder as a pickable structure — the player chooses when to spend a build on it (place
+    // it, then advance it toward completion). No more auto-consuming builds behind the scenes.
     if (this.data.pendingProduction > 0) this._openProductionSelection()
   }
 
@@ -1063,61 +1059,69 @@ export class GameManager {
   }
 
   // ---------------------------------------------------------------------------
-  // Wonders. Unlocking one queues it (buildsLeft = N − reductions); production-builds
-  // advance it (see _maybeOpenSelection) until it completes and its effect turns on.
-  // Only one wonder in flight at a time (gated in _pickProgressOptions).
+  // Wonders. Unlocking one puts it in the wonder slot (placed:false). The player then picks
+  // it in a production selection like any building: the FIRST pick PLACES an incomplete
+  // structure on the board; each LATER pick advances it; the final pick completes it and its
+  // effect turns on. A destroyed structure keeps its progress but must be repaired (3× gold)
+  // before it can advance. Only one wonder in flight at a time (gated in _pickProgressOptions).
   // ---------------------------------------------------------------------------
   _unlockWonder(unlock) {
     let reduce = 0
     for (const def of this._activeEffectDefs()) if (def.wonderCostReduce) reduce += def.wonderCostReduce
-    this.data.civilization.wonder = { key: unlock.key, buildsLeft: Math.max(1, WONDER_BUILDS - reduce) }
+    this.data.civilization.wonder = { key: unlock.key, buildsLeft: Math.max(1, WONDER_BUILDS - reduce), placed: false, inst: null }
   }
 
-  /** Spend one production-build on the in-flight wonder; complete it at 0. */
-  _advanceWonder() {
+  /** Player picked the in-flight wonder during a production selection. The FIRST pick routes to
+   *  placement (place the incomplete structure); LATER picks advance the placed structure. */
+  pickWonder() {
+    const sel = this.data.selection
+    if (!sel || sel.type !== 'production' || sel.stage !== 'pick') return
     const w = this.data.civilization.wonder
     if (!w) return
-    w.buildsLeft -= 1
-    if (w.buildsLeft <= 0) this._completeWonder()
+    if (!w.placed) {
+      sel.chosen = { kind: 'building', key: w.key, level: 1, wonder: true }
+      sel.stage = 'place'
+      this._emit()
+      return
+    }
+    this.advanceWonderProgress()
   }
 
+  /** True when the placed wonder can currently be advanced (in flight, on the board, not
+   *  destroyed). A destroyed structure must be repaired before progress may continue. */
+  canAdvanceWonder() {
+    const w = this.data.civilization.wonder
+    return !!(w && w.placed && w.inst && !w.inst.damaged)
+  }
+
+  /** Spend the current production-build advancing the placed wonder toward completion. */
+  advanceWonderProgress() {
+    const sel = this.data.selection
+    const w = this.data.civilization.wonder
+    if (!this.canAdvanceWonder()) return
+    w.buildsLeft = Math.max(0, w.buildsLeft - 1)
+    w.inst.buildsLeft = w.buildsLeft
+    if (w.buildsLeft <= 0) this._completeWonder()
+    if (sel && sel.type === 'production') this._resolveProduction()
+    else this._emit()
+  }
+
+  /** The wonder's Nth build finished it: record completion, mark the on-board structure
+   *  complete, and fire any on-completion effect. Ongoing effects are read via _hasWonder(). */
   _completeWonder() {
     const civ = this.data.civilization
-    const key = civ.wonder?.key
+    const w = civ.wonder
+    const key = w?.key
     if (!key) return
     civ.completedWonders.push(key)
+    if (w.inst) { w.inst.complete = true; delete w.inst.buildsLeft }
     civ.wonder = null
     // Immediate (on-completion) effects; ongoing effects are read via _hasWonder().
     if (key === 'hagia_sophia') civ.legitimacy.value *= (1 + this._wonderYieldMult()) // +100% legit (×2), boosted by wonder-yield policies
-    // Great Wall: place its real 4-lane, shared-HP blocker structure on the board. If the board
-    // is too crowded to fit the 4×1 footprint, fall back to a +20 civ-wide building :defense:.
-    if (key === 'great_wall' && !this._placeWonderStructure('great_wall_structure')) civ.modifiers.buildingHpBonus += 20
     // Statue of Liberty: production thresholds grow 20% slower (build more freely).
     if (key === 'statue_of_liberty') civ.modifiers.productionThresholdMult = (civ.modifiers.productionThresholdMult ?? 1) * 0.8
     this._recomputeOutputs()
     this._syncUnitStats()
-  }
-
-  /** Place a wonder's physical multi-tile structure (e.g. Great Wall's 4-lane blocker) on the
-   *  first valid empty footprint, preferring the front line (lowest visible row). Returns true
-   *  if placed, false if no spot fits. */
-  _placeWonderStructure(structureKey) {
-    const sdef = BUILDING_DEFS[structureKey]
-    if (!sdef) return false
-    const [w] = sdef.footprint ?? [1, 1]
-    const t = this.data.tableau
-    const bounds = t.visibleBounds(this.data.era)
-    if (!bounds) return false
-    for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
-      for (let c = bounds.minCol; c + w - 1 <= bounds.maxCol; c++) {
-        const anchor = t.tileAt(r, c)
-        if (anchor && this._footprintValid({ kind: 'building', key: structureKey }, sdef, anchor)) {
-          this._createInstance({ kind: 'building', key: structureKey, level: 1 }, anchor)
-          return true
-        }
-      }
-    }
-    return false
   }
 
   /** True once a wonder is completed (its ongoing effect is active). */
@@ -1307,6 +1311,8 @@ export class GameManager {
     if (!sel || sel.type !== 'production' || sel.stage !== 'place' || !sel.chosen) return null
     const tile = this.data.tableau.tileAt(row, col)
     if (!tile || !this._canPlaceHere(sel.chosen, tile)) return 'invalid'
+    // Wonders never replace — they require empty cells, so a valid wonder tile always reads green.
+    if (sel.chosen.wonder) return 'valid'
     const def = defOf(sel.chosen.key)
     // Underlaid buildings (Road / City) coexist with the occupant → always a plain placement.
     if (sel.chosen.kind === 'building' && (def?.underlap || def?.underlaidCity)) return 'valid'
@@ -1434,7 +1440,7 @@ export class GameManager {
 
   _createInstance(chosen, tile) {
     const civ = this.data.civilization
-    const bdef = chosen.kind === 'building' ? BUILDING_DEFS[chosen.key] : null
+    const bdef = chosen.kind === 'building' ? defOf(chosen.key) : null
     // Road: an underlapping utility in the tile's own underlap slot (adjacency only).
     if (bdef?.underlap) {
       tile.underlap = { kind: 'building', key: chosen.key, level: chosen.level }
@@ -1488,6 +1494,20 @@ export class GameManager {
         if (t) t.building = inst
       }
       if (bdef.linksAdjacency) this._netsCache = null // Shinkansen rail links the adjacency network
+    }
+    // Wonder: the placed structure starts INCOMPLETE. Placing it IS the first build; later
+    // production picks (advanceWonderProgress) finish it. Its effect only turns on at completion.
+    if (chosen.wonder) {
+      inst.wonder = true
+      inst.complete = false
+      const w = civ.wonder
+      if (w) {
+        w.placed = true
+        w.inst = inst
+        w.buildsLeft = Math.max(0, (w.buildsLeft ?? WONDER_BUILDS) - 1)
+        inst.buildsLeft = w.buildsLeft
+        if (w.buildsLeft <= 0) this._completeWonder()
+      }
     }
     // Alphabet: building a :progress: building upgrades it once for free (on creation).
     if (chosen.kind === 'building' && bdef.types.includes('progress') && !bdef.noUpgrade &&
@@ -1628,8 +1648,8 @@ export class GameManager {
     if (!this._canEconomize()) return
     const occ = this.data.tableau.tileAt(row, col)?.occupant
     if (!occ || occ.damaged || occ.mercenary) return // mercenaries disband; don't sink gold into them
-    const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
-    if (def?.noUpgrade) return // e.g. Cave Painting can't be upgraded
+    const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : defOf(occ.key)
+    if (def?.noUpgrade) return // Cave Painting / wonders can't be gold-upgraded
     // Upgrade-cost reducers: the best policy discount (Modernization ×0.7 / Futurization ×0.4,
     // supersede) × The Pyramids wonder (×0.75, stacks).
     let mult = 1
