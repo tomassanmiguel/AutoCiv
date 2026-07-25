@@ -546,6 +546,25 @@ export class GameManager {
     return { atkMult: 1 + atkPct, cd }
   }
 
+  /** Aggregate Command-building auras affecting a unit at (row, col): additive :attack:%,
+   *  flat :defense:, extra ranged range, and act-twice. Each command building's aura range is
+   *  its base range widened +1 per upgrade level. */
+  _commandAuras(row, col) {
+    let atkPct = 0, def = 0, rangedRange = 0, actTwice = false
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.damaged) continue
+      const d = BUILDING_DEFS[occ.key]
+      if (!d.special?.startsWith('command_')) continue
+      const range = (d.range ?? 1) + (occ.level - 1) // upgrades widen the aura +1 range/level
+      if (!this._reachableWithin(tile.row, tile.col, range).has(`${row},${col}`)) continue
+      if (d.special === 'command_atk') atkPct += d.commandAtk ?? 0
+      else if (d.special === 'command_def') def += d.commandDef ?? 0
+      else if (d.special === 'command_range') rangedRange += d.commandRange ?? 0
+      else if (d.special === 'command_act_twice') actTwice = true
+    }
+    return { atkPct, def, rangedRange, actTwice }
+  }
+
   // --- Warband (Tribalism): units gain +1 atk / +1 def per OTHER deployed friendly
   // unit of the same key. Snapshotted onto occ.warband via _syncUnitStats. ---
   _deployedUnitCounts() {
@@ -660,10 +679,15 @@ export class GameManager {
         // occ.permDef / occ.permAtk = permanent :defense: (Baker) / :attack: (Public Baths)
         // granted mid-combat; both persist across combats.
         const mercBonus = occ.mercenary ? mercDef : 0 // Defensive Pact: mercenaries +1 :defense:
+        // Command-building auras: +atk% (into dmgBonus), flat +def, extra ranged range / act-twice.
+        const cmd = this._commandAuras(tile.row, tile.col)
+        dmgBonus += cmd.atkPct
+        occ.cmdRange = cmd.rangedRange // read by _pieceRange (ranged units only)
+        occ.cmdActTwice = cmd.actTwice // read by _playerPhase
         // Region free-upgrade-levels (Colonialism/Martian Freedom/… + wonders): inflate the
         // level used for stats WITHOUT touching occ.level (display/upgrade-cost keep the real one).
         const effLevel = occ.level + this._regionLevelBonus(tile, 'unit')
-        const s = unitStats(UNIT_DEFS[occ.key], effLevel, hpBonus + wb + terrainDef + (occ.permDef ?? 0) + mercBonus, wb + pack + (occ.permAtk ?? 0) + flatAtk)
+        const s = unitStats(UNIT_DEFS[occ.key], effLevel, hpBonus + wb + terrainDef + (occ.permDef ?? 0) + mercBonus + cmd.def, wb + pack + (occ.permAtk ?? 0) + flatAtk)
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         const posMult = (brew ? 1.1 : 1) * brothel.atkMult * (1 + dmgBonus) // Brewery × Brothel × v2 damage %
         occ.warband = wb

@@ -120,7 +120,11 @@ class CombatMixin {
       if (tile.building && !tile.building.damaged) pieces.push({ occ: tile.building, row: tile.row, col: tile.col })
     }
     pieces.sort((a, b) => a.row - b.row || a.col - b.col)
-    for (const p of pieces) this._pieceAttack(p)
+    for (const p of pieces) {
+      this._pieceAttack(p)
+      // Chronobooster aura: units in range act a second time this turn (cooldown bypassed).
+      if (p.occ.kind === 'unit' && p.occ.cmdActTwice && !p.occ.damaged) { p.occ.cdTimer = 0; this._pieceAttack(p) }
+    }
   }
 
   /** One tower's attack: strike the lowest-HP enemy within its range. Units with a
@@ -165,6 +169,8 @@ class CombatMixin {
       if (unitRole(def) === 'ranged') for (const d of this._activeEffectDefs()) if (d.rangedReach) range += d.rangedReach
       // Automobile: +1 attack (pursuit) range to ALL units.
       if (this._activeEffectDefs().some((d) => d.special === 'pursuit_range')) range += 1
+      // Command-range aura (Star Fort / Radio Tower): +range to ranged-role units.
+      if (unitRole(def) === 'ranged') range += occ.cmdRange ?? 0
       return range
     }
     return BUILDING_DEFS[occ.key]?.range ?? 0
@@ -469,9 +475,10 @@ class CombatMixin {
     }
     // Deployed buildings' end-of-era output (e.g. Pier food, Library progress).
     this._accrueBuildingOutputs()
-    // Forging: upgrade a random adjacent (road-augmented) unit.
+    // Forging / Armory: upgrade a random adjacent (road-augmented) unit +1 level for free.
     for (const { tile, occ } of this._buildingInstances()) {
-      if (occ.key !== 'forging' || occ.damaged) continue
+      const upgrader = occ.key === 'forging' || BUILDING_DEFS[occ.key]?.special === 'command_free_upgrade'
+      if (!upgrader || occ.damaged) continue
       const adj = this._adjacentTiles(tile.row, tile.col).filter((t) => t.unit && !t.unit.damaged)
       if (adj.length === 0) continue
       adj[Math.floor(Math.random() * adj.length)].unit.level += 1

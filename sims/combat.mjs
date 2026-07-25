@@ -735,5 +735,46 @@ console.log('TEST 35: Trap subsystem — Caltrops / Sea Mine / Powder Magazine /
   }
 }
 
+console.log('TEST 36: Command auras — Command Post atk%, Deflector def, Star Fort range, Chronobooster act-twice')
+{
+  const g = new GameManager(52); g.setEra(22)
+  const b = g.data.tableau.visibleBounds(22)
+  const ut = g.data.tableau.tileAt(b.minRow, b.minCol); ut.terrain = 'plains'
+  ut.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true); const atk0 = ut.unit.atk, def0 = ut.unit.maxHp
+  // Command Post adjacent → +50% attack.
+  const ct = g.data.tableau.tileAt(b.minRow, b.minCol + 1); ct.terrain = 'plains'
+  ct.building = { kind: 'building', key: 'command_post', level: 1, hp: 2, maxHp: 2, damaged: false }
+  g._syncUnitStats(true)
+  console.log(`  Command Post: atk ${atk0} → ${ut.unit.atk} (expect ×1.5)`)
+  assert(ut.unit.atk === Math.round(atk0 * 1.5), `Command Post +50% atk (got ${ut.unit.atk} vs ${Math.round(atk0 * 1.5)})`)
+  // Swap in a Deflector Array → +2 defense.
+  ct.building = { kind: 'building', key: 'deflector_array', level: 1, hp: 2, maxHp: 2, damaged: false }
+  g._syncUnitStats(true)
+  assert(ut.unit.maxHp === def0 + 2, `Deflector Array +2 def (got ${ut.unit.maxHp} vs ${def0 + 2})`)
+  // Star Fort → +1 range to a ranged unit.
+  ut.unit = { kind: 'unit', key: 'slinger', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true); const r0 = g._pieceRange(ut.unit)
+  ct.building = { kind: 'building', key: 'star_fort', level: 1, hp: 2, maxHp: 2, damaged: false }
+  g._syncUnitStats(true); const r1 = g._pieceRange(ut.unit)
+  console.log(`  Star Fort: Slinger range ${r0} → ${r1} (expect +1)`)
+  assert(r1 - r0 === 1, `Star Fort +1 ranged range (got +${r1 - r0})`)
+  // Chronobooster → warrior fires twice per turn.
+  const g2 = new GameManager(53); g2.setEra(26)
+  const bb = g2.data.tableau.visibleBounds(26)
+  const wt = g2.data.tableau.tileAt(bb.minRow, bb.minCol); wt.terrain = 'plains'
+  wt.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g2.data.tableau.tileAt(bb.minRow, bb.minCol + 1).building = { kind: 'building', key: 'chronobooster', level: 1, hp: 1, maxHp: 1, damaged: false }
+  const e = mkEnemy('warrior', 'X', bb.minCol, bb.minRow + 1, 100000, 5)
+  g2.data.enemies = [e]
+  g2._startCombat(); g2.dismissCombatIntro()
+  const wAtk = wt.unit.atk
+  g2.data.combatEvents = []
+  g2._playerPhase()
+  console.log(`  Chronobooster: warrior atk ${wAtk}, enemy took ${100000 - e.hp} in one player phase (expect 2×)`)
+  assert(100000 - e.hp === wAtk * 2, `Chronobooster: two attacks/turn (got ${100000 - e.hp} vs ${wAtk * 2})`)
+  g.stop(); g2.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
