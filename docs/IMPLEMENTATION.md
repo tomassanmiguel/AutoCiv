@@ -37,8 +37,9 @@
 >    and are placeable); combat triggers for Caltrops/Sea Mine/Powder Magazine/Singularity/Discombobulator;
 >    Guerilla Warfare doubles trap damage.
 >
-> Remaining polish (non-blocking): roster no-replace versioning, multi-tile wonder footprints, boss
-> set-pieces, and balance tuning. A trap-category slot art asset (currently reuses Defense art).
+> Remaining polish (non-blocking): roster no-replace versioning, boss set-pieces, and balance tuning.
+> A trap-category slot art asset (currently reuses Defense art). (Multi-tile footprints + the full
+> player-driven wonder build/repair lifecycle are now implemented — see the Wonder system entry below.)
 
 
 Strategy (per the user): **implement the new mechanics slice by slice → wipe v1 content → re-add v2
@@ -107,8 +108,9 @@ is still the full v2 content set. Progress:
   ticksPerEra/policySlots/unitAtkPct/def-bonuses/…) + the ~40 `special`-tagged effects; display via
   `policyEffect()`. **Every def now carries a `tech`** → the registry can be AUTO-GENERATED from defs.
 - [x] **Wonders data** (`wonders.js`): 20 wonder defs (era/tech/footprint/placement/special/effect) +
-    `WONDER_BUILDS=3` + `wonderForTech()`. Manhattan Project → `special:'nuke_and_fallout'` (Fallout tile,
-    staged). Remaining: the Wonder **slot** + one-in-flight gate + N-build completion mechanic (systems pass).
+    `WONDER_BUILDS=3` + `wonderForTech()` + `hp`/`upHp`/`combatOnly`/`noUpgrade` normalization (wonders are
+    real combat buildings resolved via `defOf`). Manhattan Project → `special:'nuke_and_fallout'`. The
+    Wonder slot + one-in-flight gate + place/advance/complete + destroy/repair lifecycle are wired (above).
 - [x] **Registry annotations** — every wireable def now carries `tech`+`era` (units/pops/policies/
     wonders + the 15 carry-over buildings + 13 carry-over policies). Unblocks the auto-gen below.
 
@@ -141,13 +143,17 @@ is still the full v2 content set. Progress:
   REMAINING: the ~24 enemy `special` abilities (heal/pathing/spawn/ranged-chip/pierce/split/teleport/
   self-destruct/…), multi-tile bosses (Titan 2×2, Flagship 4×2, Azazoth row-span), scripted waves,
   difficulty selection.
-- [x] **Wonder system** — `civ.wonder`/`completedWonders`; unlock (kind wonder) → sacrifice N=3
-  production-builds (auto-advanced by `_maybeOpenSelection` intercept) → complete → ongoing effect;
-  one-in-flight gate; wonder card in ProgressOverlay. Effects wired: Stonehenge/Eiffel/Pyramids/Hagia
-  Sophia + **Manhattan Project** (combat-start nuke 2000 + permanent **Fallout** tile dealing 100 to
-  enemies entering). Other 15 wonders unlock+complete but their effects are stubs (incremental).
-  REMAINING (New systems): roster no-replace + version cycling; multi-tile wonders (Great Wall/
-  Death Star/Hadron); a wonder-in-progress UI indicator.
+- [x] **Wonder system** — `civ.wonder`/`completedWonders`; unlock (kind wonder) puts it in the wonder
+  slot (`placed:false`). The player then builds it like any structure: `_maybeOpenSelection` opens the
+  normal production selection, `pickWonder()` places the incomplete structure on the FIRST pick and
+  `advanceWonderProgress()` advances it on each LATER pick, `_completeWonder()` finishing it at N=3
+  (placement is build #1). Wonders live on `tile.building` as **real combat structures** (routed via
+  `defOf`), multi-tile for Great Wall (4×1) / Hadron (3×3) / Death Star (2×2); a destroyed wonder KEEPS
+  its progress but blocks advancement until **repaired at 3× building cost** (`WONDER_REPAIR_MULT`).
+  One-in-flight gate; wonder card in ProgressOverlay; build-progress + repair UI on the tile card;
+  Stargate makes wonders/multi-tile buildings repositionable into free space (no swap). **All 20 wonder
+  effects wired** incl. **Manhattan Project** (combat-start nuke 2000 + permanent **Fallout** tile).
+  REMAINING (New systems): roster no-replace + version cycling.
 - [x] **Civilizations + difficulty + pre-game screen** — `civilizations.js` (5 civs: marquee policy +
   starting unit/building; 3 difficulties scaling the enemy wave budget). `PreGameScreen` (title→pregame→
   game); `GameManager(seed, {civ, difficulty})` applies the head-start + scales `generateHost`. Verified

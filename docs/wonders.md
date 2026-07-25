@@ -1,10 +1,16 @@
 # Wonders
 
-Each occupies the dedicated **Wonder slot**, unlocks a placeable **incomplete** building, and needs
-**N = 3 additional production-builds** to finish (nothing until complete; one wonder in flight at a time;
-destroyed → restart). Monumentality/Megastructure Engineering cut N; Pilgrimage/Tourism/Star Hopping
-scale finished yields. Multi-tile footprints per SCALING §8. Each wonder lists the **tech** that unlocks
-it (from PROGRESSION.md). All **`[proposed]`**.
+Unlocking a wonder puts it in the dedicated **Wonder slot**. The player then **builds it like any
+structure**: a production threshold offers it in the normal build selection — the **first pick places
+an incomplete structure** on the board (only valid tiles shown), each **later pick advances** it, and
+the **final pick completes** it and turns on its effect. Total **N = 3 production picks** (placement is
+build #1). One wonder in flight at a time; nothing happens until complete. A wonder is a **real combat
+structure** while it builds — if enemies destroy it, its **build progress is retained** but it must be
+**repaired (3× a building's repair cost)** before construction can continue. Wonders and multi-tile
+buildings are **repositionable** into free space (no swap) once **Stargate** is complete.
+Monumentality/Megastructure Engineering cut N; Pilgrimage/Tourism/Star Hopping scale finished yields.
+Multi-tile footprints per SCALING §8. Each wonder lists the **tech** that unlocks it (from
+PROGRESSION.md). **Implemented** (lifecycle + all 20 effects wired).
 
 | Wonder | Era | Unlocking tech | Foot | Placement | Effect |
 |---|--|--|--|--|---|
