@@ -58,6 +58,21 @@ export function canPlaceOn(placement, terrainKey) {
   return placement === cls
 }
 
+// Enemy DOMAIN terrain buckets — which terrains each enemy domain can path through:
+//   'forbidden' — star / singularity (no enemy may ever enter)
+//   'water'     — sea/coast tiles (Amphibious domain and up)
+//   'exotic'    — asteroid / moon / mars / planet (Astral domain only)
+//   'basic'     — everything else: ordinary land + plain space (every domain)
+const EXOTIC_TERRAIN = new Set(['asteroid', 'moon', 'mars', 'planet'])
+const FORBIDDEN_TERRAIN = new Set(['star', 'singularity'])
+export function terrainDomain(terrainKey) {
+  if (FORBIDDEN_TERRAIN.has(terrainKey)) return 'forbidden'
+  if (EXOTIC_TERRAIN.has(terrainKey)) return 'exotic'
+  const cls = TERRAIN[terrainKey]?.place
+  if (cls === 'sea' || cls === 'coast') return 'water'
+  return 'basic'
+}
+
 // Wonder placement classes are richer than the four unit placement classes: some wonders
 // require a SPECIFIC terrain (Machu Picchu → mountain, Happy Valley → mars, Death Star →
 // deep space, Ecumenopolis → planet, Stargate → the exoplanet's land). Each entry tests a

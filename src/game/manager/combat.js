@@ -13,7 +13,7 @@ import { UNIT_DEFS, unitStats, unitRole } from '../data/units.js'
 import { defOf } from '../data/buildings.js'
 import { canPlaceOn } from '../data/terrain.js'
 import { POP_TYPES } from '../data/pops.js'
-import { generateHost, ENEMY_DEFS } from '../data/enemies.js'
+import { generateHost, ENEMY_DEFS, BOSSES, bossHP, domainCanTraverse } from '../data/enemies.js'
 
 // Turns-per-second per speed setting (0 = paused). The battle timer fires every
 // COMBAT_INTERVAL_MS of real time and advances the turn accumulator by tps·interval;
@@ -56,43 +56,32 @@ class CombatMixin {
     const host = generateHost(era, bounds, t.enemyRowCount(era), t.battlefieldColumns(era), Math.random, mult)
     this.data.enemies = host.units
     this.data.enemyHostType = host.type
-    this._injectBossWave(era, bounds) // special (boss) waves at Titan/Flagship/Azazoth eras
+    this._injectBossWave(era, bounds) // boss-only waves at the 7 boss eras (replaces the host)
   }
 
-  /** Boss ("special") waves: generateHost excludes bosses, so add the era's boss here. Titan
-   *  (20)/Flagship (24) spearhead the normal horde; Azazoth (27) is the ONLY enemy that wave and
-   *  literally spans a whole row. Runs on normal era advance AND the debug era slider. */
+  /** Boss waves: every boss is an Azazoth-style wall that spans the whole enemy row and is the ONLY
+   *  enemy that wave. Runs on normal era advance AND the debug era slider. */
   _injectBossWave(era, bounds) {
     if (!bounds) return
-    const boss = Object.values(ENEMY_DEFS).find((d) => d.boss && d.era === era)
+    const boss = BOSSES[era]
     if (!boss) return
-    const frontRow = bounds.maxRow + 1 // the spawn row just above the grid
-    if (boss.special === 'azazoth') {
-      this.data.enemies = [] // the only enemy that wave
-      const width = bounds.maxCol - bounds.minCol + 1
-      const backRow = bounds.maxRow + this.data.tableau.enemyRowCount(era) // starts at the very back
-      const az = this._registerBoss(boss, bounds.minCol, backRow)
-      az.footprint = [width, 1] // spans the entire row
-    } else {
-      // Titan/Flagship: centre the footprint in the spawn zone, then clear any overlapping normals.
-      const [w] = boss.footprint ?? [1, 1]
-      const anchorCol = Math.max(bounds.minCol, Math.min(bounds.maxCol - w + 1, Math.floor((bounds.minCol + bounds.maxCol) / 2) - Math.floor(w / 2)))
-      const b = this._registerBoss(boss, anchorCol, frontRow)
-      const cells = this._enemyCells(b)
-      this.data.enemies = this.data.enemies.filter((o) => o === b || !cells.some((c) => this._enemyCovers(o, c.r, c.c)))
-    }
+    this.data.enemies = [] // boss-only wave
+    const width = bounds.maxCol - bounds.minCol + 1
+    const backRow = bounds.maxRow + this.data.tableau.enemyRowCount(era) // starts at the very back
+    const b = this._registerBoss(boss, bounds.minCol, backRow, era)
+    b.footprint = [width, 1] // spans the entire row
     this.data.enemyHostType = 'boss'
   }
 
   /** Push a scaled boss enemy onto the host at (col,row); returns it. */
-  _registerBoss(d, col, row) {
-    const era = this.data.era
-    const hp = Math.max(1, Math.round(d.def * Math.pow(1.25, era)))
+  _registerBoss(boss, col, row, era) {
+    const hp = bossHP(era)
     this.data.enemySpawnSeq = (this.data.enemySpawnSeq ?? 1_000_000) + 1
     const e = {
-      id: this.data.enemySpawnSeq, kind: 'unit', key: d.key, name: d.name, types: d.types ?? ['melee'], level: 1,
-      col, row, hp, maxHp: hp, atk: d.atk + era, chip: d.chip ?? 1, boss: true, footprint: d.footprint,
-      elite: false, damaged: false, breached: false,
+      id: this.data.enemySpawnSeq, kind: 'unit', key: boss.key, name: boss.name, types: ['melee'], level: 1,
+      col, row, hp, maxHp: hp, atk: hp, chip: 1, range: 1, acts: 1,
+      boss: true, azazoth: !!boss.azazoth, bossDmg: boss.dmg ?? 0, domain: 'astral',
+      damaged: false, breached: false,
     }
     this.data.enemies.push(e)
     return e
@@ -318,7 +307,7 @@ class CombatMixin {
       if (e.damaged || e.breached) continue
       e._acts = this._enemyActsThisTurn(e)
       e._moved = false
-      if (e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; e._skip = true } else e._skip = false
+      if (e.skipTurns > 0 && !e.boss) { e.skipTurns -= 1; e._skip = true } else e._skip = false
     }
   }
 
@@ -633,12 +622,14 @@ class CombatMixin {
     if (aza) this._dealDamageToEnemy(aza, 5000)
   }
 
-  /** Nanite Warfare: each turn, poison every live enemy for 5% of its max HP. */
+  /** Nanite Warfare: each turn, poison every live enemy for 5% of its max HP — bosses take a
+   *  reduced 0.5% (they resist, but aren't immune). */
   _applyPoison() {
     if (!this._activeEffectDefs().some((d) => d.special === 'poison_on_start')) return
     for (const e of this.data.enemies) {
-      if (e.damaged || e.breached || e.key === 'azazoth') continue // Azazoth is immune to poison
-      this._dealDamageToEnemy(e, Math.max(1, Math.round(e.maxHp * 0.05)))
+      if (e.damaged || e.breached) continue
+      const rate = e.boss ? 0.005 : 0.05
+      this._dealDamageToEnemy(e, Math.max(1, Math.round(e.maxHp * rate)))
     }
   }
 
@@ -727,16 +718,8 @@ class CombatMixin {
   /** How many times an enemy acts this turn: speed modifiers (double/triple/ninja) and the
    *  Juggernaut's every-other-turn skip. Alien is only fast in space. */
   _enemyActsThisTurn(e) {
-    const s = ENEMY_DEFS[e.key]?.special
-    if (e.key === 'azazoth' || e.key === 'flagship') return this.data.combatTurn % 2 === 1 ? 1 : 0 // move every other turn
-    if (s === 'skip_alt_turn') return this.data.combatTurn % 2 === 1 ? 1 : 0
-    if (s === 'triple_speed') {
-      if (e.key === 'alien') { const t = this.data.tableau.tileAt(e.row, e.col); return t?.def?.place === 'space' ? 3 : 1 }
-      return 3
-    }
-    if (s === 'double_speed') return 2
-    if (s === 'least_resistance' && e.key === 'ninja') return 2 // Ninja moves twice
-    return 1
+    if (e.boss) return this.data.combatTurn % 2 === 1 ? 1 : 0 // all bosses march every other turn
+    return e.acts ?? 1 // per-type speed (melee 1, cavalry 2, ranged 1)
   }
 
   /** Bundled enemy phase (auras + all movement + all attacks), front-most first. The live turn
@@ -747,7 +730,7 @@ class CombatMixin {
     this._applyEnemyAuras() // Shaman heals, Leader buffs, Flagship spawns — before anyone acts
     for (const e of this._liveEnemiesFrontFirst()) {
       e._acts = this._enemyActsThisTurn(e); e._moved = false
-      if (e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; e._skip = true } else e._skip = false
+      if (e.skipTurns > 0 && !e.boss) { e.skipTurns -= 1; e._skip = true } else e._skip = false
     }
     for (const e of this._liveEnemiesFrontFirst()) e._moved = this._enemyMove(e, bounds)
     for (const e of this._liveEnemiesFrontFirst()) if (!e._moved) this._enemyAttack(e, bounds)
@@ -789,9 +772,7 @@ class CombatMixin {
 
   /** Column chip reach: Deadeye 4, Ranger/Mongol 2, everyone else 1 (adjacent only). */
   _enemyChipRange(e) {
-    if (e.key === 'deadeye') return 4
-    if (e.key === 'ranger' || e.key === 'mongol') return 2
-    return 1
+    return e.range ?? 1 // per-type attack range (ranged grows with era)
   }
 
   /** An enemy chips a blocker, applying its destroy/pierce specials. */
@@ -884,7 +865,7 @@ class CombatMixin {
   _enemyAct(e, bounds) {
     if (e.damaged || e.breached) return
     e._acts = this._enemyActsThisTurn(e)
-    e._skip = e.skipTurns > 0 && e.key !== 'azazoth' // stunned (Azazoth is immune to freeze)
+    e._skip = e.skipTurns > 0 && !e.boss // stunned (bosses are immune to freeze)
     if (e._skip) { e.skipTurns -= 1; return }
     if (!this._enemyMove(e, bounds)) this._enemyAttack(e, bounds)
   }
@@ -896,7 +877,7 @@ class CombatMixin {
     if (e.damaged || e.breached) return false
     // Stun (Discombobulator/Cryo) is consumed once per turn — in upkeep normally; here as a
     // fallback when this method is driven without upkeep having stamped the flag.
-    if (e._skip == null && e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; return false }
+    if (e._skip == null && e.skipTurns > 0 && !e.boss) { e.skipTurns -= 1; return false }
     if (e._skip) return false
     const acts = e._acts != null ? e._acts : this._enemyActsThisTurn(e)
     if (acts <= 0) return false // Juggernaut/Azazoth off-turn
@@ -926,7 +907,7 @@ class CombatMixin {
     }
     const below = this.data.tableau.tileAt(belowRow, e.col)
     // Terrain gate: a LAND enemy can't march onto water — route laterally toward a land column.
-    if (below && !ENEMY_DEFS[e.key]?.boss && !this._enemyCanTraverse(e, below.terrain)) {
+    if (below && !e.boss && !this._enemyCanTraverse(e, below.terrain)) {
       const col0 = e.col
       this._enemyReroute(e, bounds)
       return e.col !== col0 ? 'lateral' : 'blocked'
@@ -954,7 +935,7 @@ class CombatMixin {
     const belowRow = e.row - 1
     if (belowRow < bounds.minRow) return null // would breach, not attack
     const below = this.data.tableau.tileAt(belowRow, e.col)
-    if (below && !ENEMY_DEFS[e.key]?.boss && !this._enemyCanTraverse(e, below.terrain)) return null // reroutes
+    if (below && !e.boss && !this._enemyCanTraverse(e, below.terrain)) return null // reroutes
     // Ranged chippers (Ranger/Deadeye/Mongol) strike the nearest blocker down-column from afar —
     // only when it's NOT adjacent; an adjacent one falls through to the melee blocker below.
     const chipRange = this._enemyChipRange(e)
@@ -1006,17 +987,15 @@ class CombatMixin {
     return true
   }
 
-  /** A multi-tile boss marches its whole footprint down one row (or breaches off the bottom).
-   *  Azazoth irradiates every row it vacates (Fallout). Holds without moving if any blocker or
-   *  enemy sits below its bottom edge (it will chip in step 4). Returns true if it moved/breached. */
+  /** A boss marches its whole footprint down one row. **Breaching = instant defeat** for any boss.
+   *  Azazoth alone irradiates every row it vacates (Fallout). Holds without moving if any blocker
+   *  or enemy sits below its bottom edge (it attacks in step 4). Returns true if it moved/breached. */
   _bossMove(e, bounds) {
     const [w, h] = e.footprint
     const belowRow = e.row - 1
-    if (belowRow < bounds.minRow) {
-      const fw = this._hasPolicy('firewall') ? 0.75 : 1
-      const lost = this._damageLegitimacy(Math.round(this._enemyBreachAtk(e) * fw))
+    if (belowRow < bounds.minRow) { // off the bottom → the boss breaks through: instant loss
       e.breached = true
-      this._pushEvent({ kind: 'legit', amount: lost, col: e.col, row: e.row })
+      this._defeat()
       return true
     }
     for (let c = e.col; c < e.col + w; c++) { // any blocker below the bottom edge → don't move (attack instead)
@@ -1028,7 +1007,7 @@ class CombatMixin {
     }
     e.row = belowRow
     this._pushEvent({ kind: 'march', col: e.col, row: e.row })
-    if (e.key === 'azazoth') {
+    if (e.azazoth) { // Azazoth keeps its scorched-earth Fallout trail; other bosses spare the terrain
       const vacated = e.row + h // the row no longer covered after moving down
       if (vacated >= bounds.minRow && vacated <= bounds.maxRow) {
         for (let c = e.col; c < e.col + w; c++) { const t = this.data.tableau.tileAt(vacated, c); if (t) t.terrain = 'fallout' }
@@ -1037,7 +1016,8 @@ class CombatMixin {
     return true
   }
 
-  /** A blocked boss chips every blocker directly below its bottom edge (Titan ×4, Azazoth outright). */
+  /** A blocked boss hits EVERY entity in the obstructing row: Azazoth destroys them outright,
+   *  every other boss deals its flat `bossDmg` (2/3/4 early/mid/late) to each. */
   _bossAttack(e, bounds) {
     const [w] = e.footprint
     const belowRow = e.row - 1
@@ -1046,14 +1026,15 @@ class CombatMixin {
     for (let c = e.col; c < e.col + w; c++) {
       const t = this.data.tableau.tileAt(belowRow, c)
       if (!t) continue
-      const bl = (t.unit && !t.unit.damaged) ? t.unit : (t.building && !t.building.damaged) ? t.building : null
-      if (!bl) continue
-      blocked = true
-      this._pushEvent({ kind: 'attack', side: 'enemy', col: c, row: e.row })
-      e.lastAttackSeq = this.data.combatSeq
-      e.lastAttackDir = this._attackDir(e.row, e.col, belowRow, c)
-      this._enemyChip(e, bl, t) // Titan chips (×4), Azazoth destroys outright
-      if (bl.damaged) this._onTrapDestroyed(bl, t, e)
+      for (const bl of [t.unit, t.building]) {
+        if (!bl || bl.damaged) continue
+        blocked = true
+        this._pushEvent({ kind: 'attack', side: 'enemy', col: c, row: e.row })
+        e.lastAttackSeq = this.data.combatSeq
+        e.lastAttackDir = this._attackDir(e.row, e.col, belowRow, c)
+        this._chipBlocker(bl, e.azazoth ? bl.hp : (e.bossDmg ?? 2), t)
+        if (bl.damaged) this._onTrapDestroyed(bl, t, e)
+      }
     }
     return blocked
   }
@@ -1069,11 +1050,8 @@ class CombatMixin {
    *  space stay passable (space routing is a separate concern). Naval, aerial, astral, and
    *  aquatic/unimpeded enemies can traverse water; ordinary land enemies cannot. */
   _enemyCanTraverse(e, terrainKey) {
-    if (!canPlaceOn('water', terrainKey)) return true // not water → passable to everyone
-    const def = ENEMY_DEFS[e.key]
-    const types = e.types ?? def?.types ?? []
-    return types.includes('naval') || types.includes('aerial') || types.includes('astral') ||
-      def?.special === 'aquatic_path' || def?.special === 'not_impeded' || !!def?.waterMove
+    if (e.boss) return true // bosses plow through any terrain
+    return domainCanTraverse(e.domain ?? 'default', terrainKey)
   }
 
   /** A land enemy blocked by water below steps ONE column toward the nearest column it can

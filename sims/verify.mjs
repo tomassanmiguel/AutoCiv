@@ -41,9 +41,11 @@ for (const [k, d] of Object.entries(WONDER_DEFS)) {
   if (d.key !== k) bad(`wonder ${k}: key mismatch`)
   if (typeof d.era !== 'number' || !d.tech || !d.effect) bad(`wonder ${k}: missing era/tech/effect`)
 }
+// Enemies are composed (type × domain) + bosses; the ENEMY_DEFS proxy carries display fields only
+// (per-spawn atk/def/hp are computed in generateHost). Validate key + name + types.
 for (const [k, d] of Object.entries(ENEMY_DEFS)) {
   if (d.key !== k) bad(`enemy ${k}: key mismatch`)
-  if (typeof d.atk !== 'number' || typeof d.def !== 'number') bad(`enemy ${k}: missing atk/def`)
+  if (!d.name || !Array.isArray(d.types) || d.types.length === 0) bad(`enemy ${k}: missing name/types`)
 }
 console.log(`   units ${Object.keys(UNIT_DEFS).length}, buildings ${Object.keys(BUILDING_DEFS).length}, pops ${Object.keys(POP_TYPES).length}, policies ${Object.keys(POLICY_DEFS).length}, wonders ${Object.keys(WONDER_DEFS).length}, enemies ${Object.keys(ENEMY_DEFS).length}`)
 

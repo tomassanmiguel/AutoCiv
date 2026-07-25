@@ -1,6 +1,6 @@
 // Headless test of the v2 turn-based combat engine.
 const { GameManager } = await import('../src/game/GameManager.js')
-const { ENEMY_DEFS, generateHost } = await import('../src/game/data/enemies.js')
+const { ENEMY_DEFS, ENEMY_TYPES, BOSSES, bossHP, generateHost } = await import('../src/game/data/enemies.js')
 const { UNIT_DEFS, unitStats } = await import('../src/game/data/units.js')
 const { BUILDING_DEFS, buildingHp } = await import('../src/game/data/buildings.js')
 const { canPlaceOn } = await import('../src/game/data/terrain.js')
@@ -204,25 +204,27 @@ console.log('TEST 8: unit-death trigger — Nationalism grants :gold: = the dead
 }
 
 // ---------------------------------------------------------------------------
-console.log('TEST 9: hand-authored enemy host scales HP ×1.25^E and breach atk +E (elites ×2)')
+console.log('TEST 9: generated host = 3 types × 3 domains × 3 tiers; HP ×1.25^E, atk = base+2E, chip 1')
 {
   const era = 4
   const g = new GameManager(9); g.setEra(era)
   const scale = Math.pow(1.25, era)
+  const TIER_MULT = { grunt: 0.5, normal: 1, elite: 2 }
   let ok = g.data.enemies.length > 0
   for (const e of g.data.enemies) {
-    const base = ENEMY_DEFS[e.key]
-    if (!base) { ok = false; console.log(`  ✗ ${e.key} not in ENEMY_DEFS`); continue }
-    const m = e.elite ? 2 : 1
-    const expHp = Math.max(1, Math.round(base.def * scale)) * m
-    const expAtk = (base.atk + era) * m
-    if (e.maxHp !== expHp || e.atk !== expAtk) { ok = false; console.log(`  ✗ ${e.key} hp ${e.maxHp}≠${expHp} atk ${e.atk}≠${expAtk}`) }
-    if (base.era > era) { ok = false; console.log(`  ✗ ${e.key} from future era ${base.era}`) }
-    if (base.boss) { ok = false; console.log(`  ✗ boss ${e.key} in a normal wave`) }
+    const t = ENEMY_TYPES[e.type]
+    if (!t) { ok = false; console.log(`  ✗ ${e.key} unknown type ${e.type}`); continue }
+    const m = TIER_MULT[e.tier]
+    const expHp = Math.max(1, Math.round(Math.round(t.def * scale) * m))
+    const expAtk = Math.max(1, Math.round((t.atk + 2 * era) * m))
+    if (e.maxHp !== expHp || e.atk !== expAtk) { ok = false; console.log(`  ✗ ${e.key}/${e.tier} hp ${e.maxHp}≠${expHp} atk ${e.atk}≠${expAtk}`) }
+    if (e.chip !== 1) { ok = false; console.log(`  ✗ ${e.key} chip ${e.chip}≠1`) }
+    if (e.boss) { ok = false; console.log(`  ✗ boss ${e.key} in a normal wave`) }
+    if (e.domain === 'astral' && era < 13) { ok = false; console.log(`  ✗ astral enemy at era ${era} (weight should be 0)`) }
   }
   const e0 = g.data.enemies[0]
   console.log(`  era-${era} host: ${g.data.enemies.length} enemies; e.g. ${e0?.name} HP ${e0?.maxHp} atk ${e0?.atk}`)
-  assert(ok, 'every enemy is a non-boss ≤era with era-scaled HP/atk')
+  assert(ok, 'every enemy is a non-boss ≤era with correct type/tier-scaled HP/atk/chip')
   g.stop()
 }
 
@@ -1229,17 +1231,18 @@ console.log('TEST 53: land enemies route around water; naval enemies cross it')
     const tl = g.data.tableau.tileAt(r, cL); tl.terrain = 'plains'; tl.unit = null; tl.building = null
   }
   g.data.phase = 'battle'; g.data.combatIntro = false
-  const land = mkEnemy('raider', 'L', cW, b.maxRow + 1, 500, 5) // melee land enemy over a water column
+  const land = mkEnemy('default_melee', 'L', cW, b.maxRow + 1, 500, 5) // DEFAULT domain over a water column
+  land.domain = 'default'
   g.data.enemies = [land]
   let steppedOnWater = false
   for (let i = 0; i < 40 && !land.breached; i++) {
     g._enemyPhase(b)
     if (land.row >= b.minRow && land.row <= b.maxRow && g.data.tableau.tileAt(land.row, land.col)?.terrain === 'ocean') steppedOnWater = true
   }
-  console.log(`  land raider: final col=${land.col} (land col ${cL}), breached=${land.breached}, everOnWater=${steppedOnWater}`)
-  assert(!steppedOnWater, 'land enemy never stands on water')
-  assert(land.col === cL, `land enemy rerouted to the land column (got ${land.col}, want ${cL})`)
-  assert(land.breached, 'land enemy eventually breaches down the land column')
+  console.log(`  default melee: final col=${land.col} (land col ${cL}), breached=${land.breached}, everOnWater=${steppedOnWater}`)
+  assert(!steppedOnWater, 'default-domain enemy never stands on water')
+  assert(land.col === cL, `default-domain enemy rerouted to the land column (got ${land.col}, want ${cL})`)
+  assert(land.breached, 'default-domain enemy eventually breaches down the land column')
   g.stop()
 
   const g2 = new GameManager(99); g2.setEra(7)
@@ -1247,12 +1250,13 @@ console.log('TEST 53: land enemies route around water; naval enemies cross it')
   const wc = b2.minCol
   for (let r = b2.minRow; r <= b2.maxRow; r++) { const tw = g2.data.tableau.tileAt(r, wc); tw.terrain = 'ocean'; tw.unit = null; tw.building = null }
   g2.data.phase = 'battle'; g2.data.combatIntro = false
-  const navy = mkEnemy('corsair', 'N', wc, b2.maxRow + 1, 500, 5) // naval enemy — crosses water
+  const navy = mkEnemy('amphibious_melee', 'N', wc, b2.maxRow + 1, 500, 5) // AMPHIBIOUS — crosses water
+  navy.domain = 'amphibious'
   g2.data.enemies = [navy]
   for (let i = 0; i < 40 && !navy.breached; i++) g2._enemyPhase(b2)
-  console.log(`  naval corsair: final col=${navy.col} (start ${wc}), breached=${navy.breached}`)
-  assert(navy.col === wc, 'naval enemy stays in its water column')
-  assert(navy.breached, 'naval enemy crosses water and breaches')
+  console.log(`  amphibious melee: final col=${navy.col} (start ${wc}), breached=${navy.breached}`)
+  assert(navy.col === wc, 'amphibious enemy stays in its water column')
+  assert(navy.breached, 'amphibious enemy crosses water and breaches')
   g2.stop()
 }
 
@@ -1280,141 +1284,74 @@ console.log('TEST 54: a wall shields a unit sharing its tile — enemies chip th
   g.stop()
 }
 
-console.log('TEST 55: enemy abilities — Swarm, Warper, Berserker, speed modifiers')
+console.log('TEST 55: enemy taxonomy — per-type speed/range + domain traversal')
 {
-  const g = new GameManager(110); g.setEra(5)
-  const b = g.data.tableau.visibleBounds(5)
-  g.data.phase = 'battle'; g.data.combatIntro = false; g.data.combatSeq = 1
-  const sw = mkEnemy('swarm', 'W', b.minCol, b.maxRow + 1, 5, 50)
-  g.data.enemies = [sw]
-  g._dealDamageToEnemy(sw, 100) // huge hit → capped to 1
-  assert(sw.hp === 4, `Swarm takes only 1 damage per hit (lost ${5 - sw.hp})`)
-  assert(g.data.enemies.length === 2, 'Swarm splits (spawns another Swarm) when damaged')
-  g.stop()
-
-  // Warper: teleports somewhere else when damaged.
-  const g2 = new GameManager(111); g2.setEra(24)
-  const b2 = g2.data.tableau.visibleBounds(24)
-  g2.data.phase = 'battle'; g2.data.combatIntro = false
-  const wp = mkEnemy('enemy_warper', 'T', b2.minCol + 1, b2.maxRow, 100, 9); wp.types = ['astral']
-  g2.data.enemies = [wp]
-  const r0 = wp.row, c0 = wp.col
-  g2._dealDamageToEnemy(wp, 10)
-  assert(wp.row !== r0 || wp.col !== c0, 'Warper teleports when damaged')
-  g2.stop()
-
-  // Berserker: breach attack grows by its missing HP.
-  const g3 = new GameManager(112); g3.setEra(5)
-  assert(g3._enemyBreachAtk({ key: 'berserker', maxHp: 20, hp: 8, atk: 7 }) === 19, 'Berserker breach atk = base + missing HP')
-  g3.stop()
-
-  // Speed modifiers: Mongol ×2, Dervish ×3, Juggernaut skips even turns.
-  const g4 = new GameManager(113); g4.setEra(6)
-  g4.data.combatTurn = 1
-  assert(g4._enemyActsThisTurn({ key: 'mongol' }) === 2, 'Mongol acts twice (double speed)')
-  assert(g4._enemyActsThisTurn({ key: 'dervish' }) === 3, 'Dervish acts thrice (triple speed)')
-  assert(g4._enemyActsThisTurn({ key: 'juggernaut' }) === 1, 'Juggernaut acts on an odd turn')
-  g4.data.combatTurn = 2
-  assert(g4._enemyActsThisTurn({ key: 'juggernaut' }) === 0, 'Juggernaut skips an even turn')
-  g4.stop()
-}
-
-console.log('TEST 56: enemy abilities — blockers, ranged chip, auras')
-{
-  // Obliterator instantly destroys the blocker below it.
-  const g = new GameManager(120); g.setEra(9)
-  const b = g.data.tableau.visibleBounds(9)
-  const col = b.minCol
-  for (let r = b.minRow; r <= b.maxRow; r++) g.data.tableau.tileAt(r, col).terrain = 'plains'
-  g.data.phase = 'battle'; g.data.combatIntro = false; g.data.combatSeq = 1
-  const wall = { kind: 'building', key: 'stone_wall', level: 1, hp: 50, maxHp: 50, damaged: false }
-  g.data.tableau.tileAt(b.minRow, col).building = wall
-  const ob = mkEnemy('obliterator', 'O', col, b.minRow + 1, 100, 20)
-  g.data.enemies = [ob]
-  g._enemyAct(ob, b)
-  assert(wall.damaged, 'Obliterator destroys a blocker instantly')
-  g.stop()
-
-  // Deadeye chips a blocker two tiles away without moving (ranged chip r4).
-  const g2 = new GameManager(121); g2.setEra(9)
-  const b2 = g2.data.tableau.visibleBounds(9)
-  const c2 = b2.minCol
-  for (let r = b2.minRow; r <= b2.maxRow; r++) g2.data.tableau.tileAt(r, c2).terrain = 'plains'
-  const u = { kind: 'unit', key: 'warrior', level: 1, hp: 10, maxHp: 10, damaged: false }
-  g2.data.tableau.tileAt(b2.maxRow - 1, c2).unit = u
-  const de = mkEnemy('deadeye', 'D', c2, b2.maxRow + 1, 100, 3) // two tiles above the unit
-  g2.data.enemies = [de]
-  g2.data.phase = 'battle'; g2.data.combatIntro = false
-  const dr0 = de.row
-  g2._enemyAct(de, b2)
-  assert(u.hp < u.maxHp && de.row === dr0, 'Deadeye chips a blocker at range without moving')
-  g2.stop()
-
-  // Leader buffs an adjacent enemy's breach attack (x2); Shaman heals an adjacent one.
-  const g3 = new GameManager(122); g3.setEra(9)
-  const b3 = g3.data.tableau.visibleBounds(9)
-  const ld = mkEnemy('leader', 'L', b3.minCol, b3.maxRow + 1, 100, 3)
-  const buddy = mkEnemy('raider', 'R', b3.minCol + 1, b3.maxRow + 1, 50, 5)
-  const sh = mkEnemy('enemy_shaman', 'S', b3.minCol + 2, b3.maxRow + 1, 100, 1)
-  const hurt = mkEnemy('raider', 'H', b3.minCol + 3, b3.maxRow + 1, 100, 5); hurt.hp = 50
-  g3.data.enemies = [ld, buddy, sh, hurt]
-  g3.data.phase = 'battle'; g3.data.combatIntro = false
-  g3._applyEnemyAuras()
-  assert(buddy.buffed === true && g3._enemyBreachAtk(buddy) === 10, 'Leader buffs adjacent enemy (x2 breach)')
-  assert(hurt.hp > 50, 'Shaman heals an adjacent damaged enemy')
-  g3.stop()
-}
-
-console.log('TEST 57: boss / special waves spawn at boss eras (incl. via the era slider)')
-{
-  const g = new GameManager(130); g.setEra(20)
-  assert(g.data.enemies.some((e) => e.key === 'titan'), 'Titan spawns at era 20')
-  g.setEra(24)
-  assert(g.data.enemies.some((e) => e.key === 'flagship'), 'Flagship spawns at era 24')
-  g.setEra(27)
-  assert(g.data.enemies.length > 0 && g.data.enemies.every((e) => e.key === 'azazoth'), 'Azazoth is the only enemy at era 27')
-  g.data.combatTurn = 1; assert(g._enemyActsThisTurn({ key: 'azazoth' }) === 1, 'Azazoth marches on an odd turn')
-  g.data.combatTurn = 2; assert(g._enemyActsThisTurn({ key: 'azazoth' }) === 0, 'Azazoth skips an even turn')
+  const g = new GameManager(110); g.setEra(6)
+  // acts (movement speed): melee 1, cavalry 2, ranged 1.
+  assert(g._enemyActsThisTurn({ type: 'melee', acts: 1 }) === 1, 'melee acts once (slow)')
+  assert(g._enemyActsThisTurn({ type: 'cavalry', acts: 2 }) === 2, 'cavalry acts twice (fast)')
+  assert(g._enemyActsThisTurn({ type: 'ranged', acts: 1 }) === 1, 'ranged acts once')
+  // range: ranged grows with era (2 + floor(era/6)); melee/cavalry 1.
+  assert(g._enemyChipRange({ range: ENEMY_TYPES.ranged.range(6) }) === 3, 'ranged range = 2 + floor(6/6) = 3')
+  assert(g._enemyChipRange({ range: 1 }) === 1, 'melee/cavalry range 1')
+  // domain traversal: default blocked by water, amphibious crosses it, astral crosses exotic; nobody crosses star.
+  assert(g._enemyCanTraverse({ domain: 'default' }, 'plains'), 'default crosses basic land')
+  assert(!g._enemyCanTraverse({ domain: 'default' }, 'ocean'), 'default cannot cross water')
+  assert(g._enemyCanTraverse({ domain: 'amphibious' }, 'ocean'), 'amphibious crosses water')
+  assert(!g._enemyCanTraverse({ domain: 'amphibious' }, 'asteroid'), 'amphibious cannot cross exotic (asteroid)')
+  assert(g._enemyCanTraverse({ domain: 'astral' }, 'asteroid'), 'astral crosses exotic (asteroid)')
+  assert(!g._enemyCanTraverse({ domain: 'astral' }, 'star'), 'nobody crosses forbidden (star)')
   g.stop()
 }
 
-console.log('TEST 58: Jäger routes around player ranged coverage')
+console.log('TEST 57: boss-only waves at the 7 boss eras (row-spanning, named, alternating turns)')
 {
-  const g = new GameManager(131); g.setEra(11)
-  const b = g.data.tableau.visibleBounds(11)
-  for (let c = b.minCol; c <= b.minCol + 4 && c <= b.maxCol; c++)
-    for (let r = b.minRow; r <= b.maxRow; r++) { const t = g.data.tableau.tileAt(r, c); t.terrain = 'plains'; t.unit = null; t.building = null }
-  g.data.tableau.tileAt(b.minRow, b.minCol).unit = { kind: 'unit', key: 'slinger', level: 1, hp: 5, maxHp: 5, damaged: false } // ranged, covers its column
-  const jg = mkEnemy('jager', 'J', b.minCol, b.maxRow + 1, 100, 20)
-  g.data.enemies = [jg]
-  g.data.phase = 'battle'; g.data.combatIntro = false
-  g._enemyPhase(b)
-  console.log(`  Jäger moved from col ${b.minCol} to ${jg.col}`)
-  assert(jg.col > b.minCol, 'Jäger sidesteps away from the ranged-covered column')
-  g.stop()
+  for (const [eraStr, boss] of Object.entries(BOSSES)) {
+    const era = Number(eraStr)
+    const g = new GameManager(130 + era); g.setEra(era)
+    const bnd = g.data.tableau.visibleBounds(era)
+    assert(g.data.enemies.length === 1 && g.data.enemies[0].key === boss.key, `${boss.name} is the ONLY enemy at era ${era}`)
+    const bz = g.data.enemies[0]
+    assert(bz.boss && bz.footprint[0] === (bnd.maxCol - bnd.minCol + 1) && bz.footprint[1] === 1, `${boss.name} spans the whole row`)
+    assert(bz.maxHp === bossHP(era), `${boss.name} HP = bossHP(${era})`)
+    g.data.combatTurn = 1; assert(g._enemyActsThisTurn(bz) === 1, `${boss.name} marches on an odd turn`)
+    g.data.combatTurn = 2; assert(g._enemyActsThisTurn(bz) === 0, `${boss.name} skips an even turn`)
+    g.stop()
+  }
 }
 
-console.log('TEST 59: multi-tile bosses — footprint, no overlap, movement, Azazoth fallout trail')
+console.log('TEST 59: bosses — breach = instant defeat; Azazoth fallout trail; others deal bossDmg, no trail')
 {
-  const g = new GameManager(140); g.setEra(20)
-  const titan = g.data.enemies.find((e) => e.key === 'titan')
-  assert(titan && titan.footprint[0] === 2 && titan.footprint[1] === 2, 'Titan is a 2x2 boss')
-  const tcells = g._enemyCells(titan)
-  assert(tcells.length === 4, 'Titan occupies 4 cells')
-  assert(!g.data.enemies.some((o) => o !== titan && tcells.some((c) => g._enemyCovers(o, c.r, c.c))), 'no normal enemy overlaps the Titan footprint')
-  assert(g._enemyDistance(titan, titan.row - 2, titan.col) === 2, 'range targeting uses the nearest boss cell')
+  // Azazoth: marches, irradiates the vacated row, and breaching loses the game.
+  const g = new GameManager(141); g.setEra(27)
+  const b = g.data.tableau.visibleBounds(27)
+  const az = g.data.enemies[0]
+  assert(az.key === 'azazoth' && az.azazoth && az.footprint[0] === (b.maxCol - b.minCol + 1), 'Azazoth spans the row w/ its flag')
+  az.row = b.maxRow
+  g.data.phase = 'battle'; g.data.combatIntro = false; g.data.combatTurn = 1
+  g._bossMove(az, b)
+  assert(az.row === b.maxRow - 1, 'Azazoth marched down one row')
+  assert(g.data.tableau.visibleTiles(27).some((t) => t.row === b.maxRow && t.terrain === 'fallout'), 'Azazoth leaves Fallout behind')
+  az.row = b.minRow // step off the bottom → breach = defeat
+  g._bossMove(az, b)
+  assert(g.data.defeated, 'a boss breaching the bottom instantly defeats the player')
   g.stop()
 
-  const g2 = new GameManager(141); g2.setEra(27)
-  const b2 = g2.data.tableau.visibleBounds(27)
-  const az = g2.data.enemies[0]
-  assert(az.key === 'azazoth' && az.footprint[0] === (b2.maxCol - b2.minCol + 1) && az.footprint[1] === 1, 'Azazoth spans the whole row')
-  az.row = b2.maxRow // bottom edge on the top grid row
+  // Barbarian Horde (era 3, dmg 2): hits EVERY entity in the obstructing row, leaves no fallout.
+  const g2 = new GameManager(142); g2.setEra(3)
+  const b2 = g2.data.tableau.visibleBounds(3)
+  const bh = g2.data.enemies[0]
+  assert(bh.key === 'barbarian_horde' && bh.bossDmg === 2 && !bh.azazoth, 'Barbarian Horde: dmg 2, not Azazoth')
+  const col = b2.minCol, t = g2.data.tableau.tileAt(b2.minRow, col)
+  t.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 10, maxHp: 10, damaged: false }
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 10, maxHp: 10, damaged: false }
+  bh.row = b2.minRow + 1
   g2.data.phase = 'battle'; g2.data.combatIntro = false; g2.data.combatTurn = 1
-  g2._bossMove(az, b2) // marches down, vacating row maxRow
-  assert(az.row === b2.maxRow - 1, 'Azazoth marched down one row')
-  const falloutRow = g2.data.tableau.visibleTiles(27).filter((t) => t.row === b2.maxRow && t.terrain === 'fallout').length
-  assert(falloutRow > 0, 'Azazoth leaves a row of Fallout behind it')
+  g2._bossAttack(bh, b2)
+  assert(t.building.hp === 8 && t.unit.hp === 8, 'non-Azazoth boss deals bossDmg (2) to BOTH the wall and the unit')
+  t.building = null; t.unit = null; bh.row = b2.maxRow
+  g2._bossMove(bh, b2)
+  assert(!g2.data.tableau.visibleTiles(3).some((tl) => tl.terrain === 'fallout'), 'a non-Azazoth boss leaves NO fallout trail')
   g2.stop()
 }
 
@@ -1424,15 +1361,16 @@ console.log('TEST 60: Panopticon repositions large enemies by placement (no swap
   g.data.civilization.completedWonders.push('panopticon')
   g.data.phase = 'prep'
   const bounds = g.data.tableau.visibleBounds(20)
-  const titan = g.data.enemies.find((e) => e.key === 'titan')
-  g.data.enemies = [titan] // isolate
+  // Hand-author a 2×2 footprint enemy to exercise the multi-cell placement (bosses now span the
+  // whole row, which can't be repositioned within its own columns).
+  const big = { id: 7, kind: 'unit', key: 'default_melee', name: 'Big', type: 'melee', domain: 'default', types: ['melee'], col: bounds.minCol, row: bounds.maxRow + 3, hp: 100, maxHp: 100, atk: 5, chip: 1, range: 1, acts: 1, footprint: [2, 2], damaged: false, breached: false }
+  g.data.enemies = [big]
   const destRow = bounds.maxRow + 1, destCol = bounds.minCol
-  assert(g.canRepositionEnemy(titan.row, titan.col, destRow, destCol), 'large enemy places into free space')
-  g.moveEnemy(titan.row, titan.col, destRow, destCol)
-  assert(titan.row === destRow && titan.col === destCol, 'large enemy moved by placement (no swap)')
-  // A raider inside a candidate footprint blocks placement there.
-  g.data.enemies.push(mkEnemy('raider', 'R', destCol + 3, destRow, 50, 5))
-  assert(!g.canRepositionEnemy(titan.row, titan.col, destRow, destCol + 3), 'blocked — footprint overlaps another enemy')
+  assert(g.canRepositionEnemy(big.row, big.col, destRow, destCol), 'large enemy places into free space')
+  g.moveEnemy(big.row, big.col, destRow, destCol)
+  assert(big.row === destRow && big.col === destCol, 'large enemy moved by placement (no swap)')
+  g.data.enemies.push(mkEnemy('default_melee', 'R', destCol + 3, destRow, 50, 5))
+  assert(!g.canRepositionEnemy(big.row, big.col, destRow, destCol + 3), 'blocked — footprint overlaps another enemy')
   g.stop()
 }
 
@@ -1627,11 +1565,11 @@ console.log('TEST 71: enemyReachCells — down-column chip range + advance (spee
   const b = g.data.tableau.visibleBounds(2)
   for (const t of g.data.tableau.visibleTiles(2)) { t.terrain = 'plains'; t.unit = null; t.building = null }
   const col = b.minCol
-  const e = { id: 1, kind: 'unit', key: 'dervish', types: ['cavalry'], row: b.maxRow, col, hp: 5, maxHp: 5, atk: 1, chip: 1, damaged: false, breached: false } // chip 1, triple speed
+  const e = { id: 1, kind: 'unit', key: 'default_cavalry', type: 'cavalry', domain: 'default', types: ['cavalry'], row: b.maxRow, col, hp: 5, maxHp: 5, atk: 1, chip: 1, range: 1, acts: 3, damaged: false, breached: false } // chip 1, 3 acts
   g.data.enemies = [e]
   const r = g.enemyReachCells(e)
   assert(r.attack.has(`${b.maxRow - 1},${col}`), 'threatens the tile directly below (chip 1)')
-  assert(r.move.has(`${b.maxRow - 2},${col}`) && r.move.has(`${b.maxRow - 3},${col}`), 'advances up to 3 tiles down (triple speed), beyond chip range')
+  assert(r.move.has(`${b.maxRow - 2},${col}`) && r.move.has(`${b.maxRow - 3},${col}`), 'advances up to 3 tiles down (3 acts), beyond chip range')
   for (const k of r.attack) assert(!r.move.has(k), 'move excludes the attack cell')
   g.data.tableau.tileAt(b.maxRow - 1, col).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 2, maxHp: 2, damaged: false }
   assert(g.enemyReachCells(e).move.size === 0, 'a blocker directly below stops the advance')

@@ -1,97 +1,146 @@
-// Enemy roster + host generation (v2 turn-based tower defense). Hand-authored enemies
-// (docs/enemies.md) march DOWN the shared grid toward the player. Two numbers per enemy:
-//   def = base HP  → scaled ×1.25^E at spawn (HP outpaces player attack 1.15^E on purpose).
-//   atk = base breach legitimacy damage → +1/era at spawn (dealt only if it reaches the bottom).
-// Blocker chip = per-enemy `chip` (default 1). `special` tags mark abilities wired incrementally.
+// Enemy roster (v2 — simplified for the testing period). Enemies are composed from a TYPE
+// (Melee / Cavalry / Ranged) × a DOMAIN (default / amphibious / astral), rolled with a spawn
+// TIER (Grunt / Normal / Elite). generateHost buys them against a per-era budget. Bosses are
+// Azazoth-style row-spanning walls injected separately (see combat.js `_injectBossWave`).
 //
-// A wave draws weighted-random enemies until their summed (scaled) HP meets a budget that grows
-// with the era; 5% of spawns are Elite (double HP + double breach atk). Bosses are excluded from
-// normal waves (scripted waves come later).
+// Per-enemy combat fields (set on the spawned object, read directly by combat.js):
+//   hp/maxHp  = base HP × 1.25^era × tier-mult
+//   atk       = (base breach atk + 2·era) × tier-mult   (legitimacy damage on breach)
+//   chip      = 1 ALWAYS (blocker damage per attack)
+//   acts      = movement speed (cells/turn): melee 1, cavalry 2, ranged 1
+//   range     = attack diamond radius: melee/cavalry 1, ranged 2 + floor(era/6)
+//   type/domain/tier = taxonomy tags; `types:[type]` mirrors it for shared UI helpers.
 
-export const ENEMY_DEFS = {
-  // --- Ordinary ---
-  thrall: { key: 'thrall', name: 'Thrall', era: 17, types: ['melee'], atk: 1, def: 1, chip: 1, ability: 'Cannon fodder (from the Invasion era on).' },
-  raider: { key: 'raider', name: 'Raider', era: 0, types: ['melee'], atk: 5, def: 10, chip: 1, ability: 'Baseline marcher.' },
-  marauder: { key: 'marauder', name: 'Marauder', era: 2, types: ['melee'], atk: 8, def: 12, chip: 1, waterMove: true, ability: 'Can move on water.' },
-  enemy_shaman: { key: 'enemy_shaman', name: 'Shaman', era: 1, types: ['ranged'], atk: 1, def: 15, chip: 1, special: 'heal_adjacent', ability: 'Heals adjacent enemies 10% max HP/turn; moves toward an enemy at range 2 if none adjacent.' },
-  sentinel: { key: 'sentinel', name: 'Sentinel', era: 2, types: ['melee'], atk: 1, def: 30, chip: 1, ability: 'Pure damage-sponge.' },
-  juggernaut: { key: 'juggernaut', name: 'Juggernaut', era: 2, types: ['melee'], atk: 25, def: 50, chip: 1, special: 'skip_alt_turn', ability: 'Skips every other turn (slow, huge breach threat).' },
-  leader: { key: 'leader', name: 'Leader', era: 2, types: ['cavalry'], atk: 3, def: 20, chip: 1, special: 'buff_adjacent', ability: 'Adjacent enemies deal +100% breach :attack:; Shaman-like movement.' },
-  barbarian: { key: 'barbarian', name: 'Barbarian', era: 3, types: ['melee'], atk: 5, def: 7, chip: 2, ability: 'Double chip vs units (2/turn).' },
-  ranger: { key: 'ranger', name: 'Ranger', era: 4, types: ['ranged'], atk: 4, def: 5, chip: 1, special: 'ranged_chip', ability: 'Chips blockers at range 2.' },
-  berserker: { key: 'berserker', name: 'Berserker', era: 5, types: ['melee'], atk: 2, def: 15, chip: 1, special: 'grows_when_damaged', ability: 'Breach :attack: grows as it is damaged (2 + missing HP).' },
-  dervish: { key: 'dervish', name: 'Dervish', era: 5, types: ['cavalry'], atk: 20, def: 1, chip: 1, special: 'triple_speed', ability: 'Triple speed, glass.' },
-  ninja: { key: 'ninja', name: 'Ninja', era: 6, types: ['cavalry'], atk: 5, def: 8, chip: 1, special: 'least_resistance', ability: 'Takes the path of least resistance; moves 2/turn.' },
-  mongol: { key: 'mongol', name: 'Mongol', era: 6, types: ['cavalry'], atk: 8, def: 8, chip: 1, special: 'double_speed', ability: 'Double speed; removes blockers at range 2.' },
-  corsair: { key: 'corsair', name: 'Corsair', era: 7, types: ['naval'], atk: 6, def: 12, chip: 1, special: 'aquatic_path', ability: 'Attacks via the nearest aquatic route; can hit you at sea.' },
-  sapper: { key: 'sapper', name: 'Sapper', era: 8, types: ['siege'], atk: 3, def: 8, chip: 1, special: 'destroy_buildings', ability: 'Chips all adjacent blockers; destroys buildings instantly.' },
-  quartermaster: { key: 'quartermaster', name: 'Quartermaster', era: 8, types: ['melee'], atk: 1, def: 12, chip: 1, special: 'spawn_on_move', ability: 'After moving, spawns a Raider on an adjacent tile.' },
-  deadeye: { key: 'deadeye', name: 'Deadeye', era: 9, types: ['ranged'], atk: 3, def: 7, chip: 1, special: 'ranged_chip', ability: 'Chips blockers at range 4.' },
-  dreadnought: { key: 'dreadnought', name: 'Dreadnought', era: 9, types: ['naval'], atk: 15, def: 30, chip: 1, special: 'aquatic_path', ability: 'Corsair movement (aquatic), heavy.' },
-  kamikaze: { key: 'kamikaze', name: 'Kamikaze', era: 11, types: ['aerial'], atk: 10, def: 2, chip: 1, special: 'self_destruct', ability: 'Double speed; on first attack self-destructs, killing everything within range 2 of the target.' },
-  jager: { key: 'jager', name: 'Jäger', era: 11, types: ['melee'], atk: 20, def: 20, chip: 1, special: 'least_resistance', ability: 'Takes the path with the fewest tiles in player ranged-range.' },
-  beamer: { key: 'beamer', name: 'Beamer', era: 16, types: ['ranged'], atk: 3, def: 17, chip: 1, special: 'pierce_blockers', ability: 'Chipping a blocker pierces to all blockers behind it.' },
-  alien: { key: 'alien', name: 'Alien', era: 17, types: ['cavalry'], atk: 4, def: 12, chip: 1, special: 'triple_speed', ability: 'Triple movement in space.' },
-  phantom: { key: 'phantom', name: 'Phantom', era: 18, types: ['aerial'], atk: 10, def: 8, chip: 1, special: 'not_impeded', ability: 'Not impeded by anything; may attack over water (not space).' },
-  obliterator: { key: 'obliterator', name: 'Obliterator', era: 21, types: ['siege'], atk: 20, def: 40, chip: 1, special: 'destroy_blockers', ability: 'Instantly destroys all blockers in its path.' },
-  swarm: { key: 'swarm', name: 'Swarm', era: 23, types: ['melee'], atk: 50, def: 5, chip: 1, special: 'split_when_damaged', ability: 'HP does not scale, takes only 1 dmg/hit; when damaged, spawns another Swarm on an empty adjacent tile.' },
-  enemy_warper: { key: 'enemy_warper', name: 'Warper', era: 24, types: ['astral'], atk: 9, def: 9, chip: 1, special: 'teleport_when_damaged', ability: 'When damaged, teleports to a random tile within range 3.' },
+import { terrainDomain } from './terrain.js'
 
-  // --- Bosses (excluded from normal waves; scripted waves later) ---
-  titan: { key: 'titan', name: 'Titan', era: 20, types: ['melee'], atk: 50, def: 75, chip: 4, boss: true, footprint: [2, 2], special: 'plows_planets', ability: '2×2; plows through Mars/Moon; ×4 chip vs units & buildings — a mobile wall-breaker.' },
-  flagship: { key: 'flagship', name: 'Flagship', era: 24, types: ['naval'], atk: 100, def: 4000, chip: 1, boss: true, footprint: [4, 2], special: 'spawns_enemies', ability: 'Moves on odd turns; each turn spawns 2 random enemies in the nearest empty tiles.' },
-  azazoth: { key: 'azazoth', name: 'Azazoth', era: 27, types: ['astral'], atk: 99999, def: 10000, chip: 1, boss: true, special: 'azazoth', ability: 'Fills the enemy row (the only enemy that wave). Immune to freeze/pushback/poison. Marches every other turn, instantly destroying anything in its path.' },
+// Era-0 anchors per type (tunable — first pass, revisit in playtest).
+export const ENEMY_TYPES = {
+  melee:   { type: 'melee',   name: 'Melee',   def: 16, atk: 6, acts: 1, range: () => 1 },
+  cavalry: { type: 'cavalry', name: 'Cavalry', def: 10, atk: 4, acts: 2, range: () => 1 },
+  ranged:  { type: 'ranged',  name: 'Ranged',  def: 6,  atk: 6, acts: 1, range: (era) => 2 + Math.floor(era / 6) },
 }
 
-/** Wave HP budget for an era: 40 · 1.3^E · difficulty (grows a bit faster than per-enemy HP). */
+// Domains: the terrain-domain buckets each can path through, a spawn weight(era) (ramps toward
+// permissive later), and a display prefix. 'basic' = all; 'water' = amphibious+; 'exotic' = astral.
+export const ENEMY_DOMAINS = {
+  default:    { domain: 'default',    prefix: '',            buckets: new Set(['basic']),                    weight: () => 6 },
+  amphibious: { domain: 'amphibious', prefix: 'Amphibious ', buckets: new Set(['basic', 'water']),           weight: (era) => 2 + 0.5 * era },
+  astral:     { domain: 'astral',     prefix: 'Astral ',     buckets: new Set(['basic', 'water', 'exotic']), weight: (era) => Math.max(0, era - 12) },
+}
+
+/** Whether an enemy DOMAIN can traverse a terrain (used by combat movement/pathing). */
+export function domainCanTraverse(domain, terrainKey) {
+  const d = ENEMY_DOMAINS[domain] ?? ENEMY_DOMAINS.default
+  return d.buckets.has(terrainDomain(terrainKey))
+}
+
+// Spawn tiers: rolled per enemy. Grunts (½) are cheap → more bodies; Elites (×2) are rare walls.
+const TIERS = [
+  { key: 'grunt',  prefix: 'Grunt ', mult: 0.5, p: 0.5 },
+  { key: 'normal', prefix: '',       mult: 1,   p: 0.4 },
+  { key: 'elite',  prefix: 'Elite ', mult: 2,   p: 0.1 },
+]
+function rollTier(rng) {
+  let r = rng()
+  for (const t of TIERS) { if (r < t.p) return t; r -= t.p }
+  return TIERS[1]
+}
+
+// Boss roster — Azazoth-style row-spanning walls, keyed by ERA INDEX. `dmg` = per-attack damage
+// dealt to each entity in the obstructed row (2/3/4 early/mid/late); Azazoth instead insta-destroys.
+export const BOSSES = {
+  3:  { key: 'barbarian_horde', name: 'Barbarian Horde', dmg: 2 },
+  6:  { key: 'mongol_horde',    name: 'Mongol Horde',    dmg: 2 },
+  11: { key: 'the_axis',        name: 'The Axis',        dmg: 3 },
+  17: { key: 'alien_invasion',  name: 'Alien Invasion',  dmg: 3 },
+  20: { key: 'the_machines',    name: 'The Machines',    dmg: 4 },
+  24: { key: 'galactic_armada', name: 'Galactic Armada', dmg: 4 },
+  27: { key: 'azazoth',         name: 'Azazoth',         azazoth: true },
+}
+const BOSS_HP_BASE = 200
+const BOSS_GROWTH = 1.3
+/** Scaled boss HP for an era (tuning knob — must feel like a wall vs player damage; revisit). */
+export function bossHP(era) { return Math.max(1, Math.round(BOSS_HP_BASE * Math.pow(BOSS_GROWTH, era))) }
+
+/** Wave HP budget for an era. Base +50% vs the pre-redesign value (was 40). */
 export function waveBudget(era, difficulty = 1) {
-  return 40 * Math.pow(1.3, era) * difficulty
+  return 60 * Math.pow(1.3, era) * difficulty
 }
 
 /**
- * Compose an enemy host for an era. Draws weighted-random (non-boss) enemies with era ≤ E until
- * their summed scaled-HP meets the budget or the spawn zone is full; 5% Elite (×2 HP + ×2 atk).
- * @param bounds    { minRow, maxRow, minCol, maxCol } of the visible grid.
- * @param spawnRows battlefield rows above the grid.
- * @param columns   [{ col, places }] visible columns.
- * @returns { type, units: [{ id, kind:'unit', key, name, types, col, row, hp, maxHp, atk, chip, elite, damaged, breached }] }
+ * Compose an enemy host for an era. Buys weighted (type × domain) enemies — each rolling a spawn
+ * tier — onto random free spawn cells until the budget is spent or the zone fills. Amphibious
+ * enemies bias toward water columns.
+ * @param columns [{ col, places:Set }] battlefield columns (from TableauData.battlefieldColumns).
  */
 export function generateHost(era, bounds, spawnRows, columns, rng = Math.random, difficulty = 1) {
   if (!bounds || columns.length === 0 || spawnRows <= 0) return { type: 'mixed', units: [] }
   const scale = Math.pow(1.25, era)
   const budget = waveBudget(era, difficulty)
-  const pool = Object.values(ENEMY_DEFS).filter((d) => !d.boss && d.era <= era)
-  if (pool.length === 0) return { type: 'mixed', units: [] }
 
-  const totalW = pool.reduce((s, d) => s + Math.pow(2, d.era), 0)
+  // Weighted (type × domain) combos for this era.
+  const combos = []
+  let totalW = 0
+  for (const t of Object.values(ENEMY_TYPES)) {
+    for (const d of Object.values(ENEMY_DOMAINS)) {
+      const w = d.weight(era)
+      if (w <= 0) continue
+      combos.push({ t, d, w })
+      totalW += w
+    }
+  }
+  if (!combos.length) return { type: 'mixed', units: [] }
   const pick = () => {
     let r = rng() * totalW
-    for (const d of pool) { r -= Math.pow(2, d.era); if (r <= 0) return d }
-    return pool[pool.length - 1]
+    for (const c of combos) { r -= c.w; if (r <= 0) return c }
+    return combos[combos.length - 1]
   }
 
-  // Every spawn cell in the battlefield zone (each column × each spawn row). Enemies are placed
-  // on a UNIFORMLY RANDOM free cell so they're equally likely to spawn anywhere — no bottom bias.
+  // Free spawn cells, tagged by whether the column contains water (for amphibious biasing).
+  const waterCols = new Set(columns.filter((c) => c.places?.has?.('sea') || c.places?.has?.('coast')).map((c) => c.col))
   const freeCells = []
-  for (const c of columns) for (let k = 0; k < spawnRows; k++) freeCells.push({ col: c.col, row: bounds.maxRow + 1 + k })
+  for (const c of columns) for (let k = 0; k < spawnRows; k++) freeCells.push({ col: c.col, row: bounds.maxRow + 1 + k, water: waterCols.has(c.col) })
+  const takeCell = (preferWater) => {
+    let idx = -1
+    if (preferWater) {
+      const waterIdxs = freeCells.map((c, i) => (c.water ? i : -1)).filter((i) => i >= 0)
+      if (waterIdxs.length) idx = waterIdxs[Math.floor(rng() * waterIdxs.length)]
+    }
+    if (idx < 0) idx = Math.floor(rng() * freeCells.length)
+    return freeCells.splice(idx, 1)[0]
+  }
+
   const units = []
   let spentHp = 0, id = 0
   while (spentHp < budget && freeCells.length > 0) {
-    const d = pick()
-    const elite = rng() < 0.05
-    const mult = elite ? 2 : 1
-    // Swarm's HP deliberately does NOT scale with era (it tanks via the 1-damage-per-hit rule).
-    const hp = Math.max(1, d.special === 'split_when_damaged' ? d.def : Math.round(d.def * scale)) * mult
-    const atk = (d.atk + era) * mult
-    const cell = freeCells.splice(Math.floor(rng() * freeCells.length), 1)[0]
+    const { t, d } = pick()
+    const tier = rollTier(rng)
+    const hp = Math.max(1, Math.round(Math.round(t.def * scale) * tier.mult))
+    const atk = Math.max(1, Math.round((t.atk + 2 * era) * tier.mult))
+    const cell = takeCell(d.domain === 'amphibious')
     units.push({
-      id: id++, kind: 'unit', key: d.key, name: (elite ? 'Elite ' : '') + d.name,
-      types: d.types ?? ['melee'], level: 1,
+      id: id++, kind: 'unit', key: `${d.domain}_${t.type}`,
+      name: tier.prefix + d.prefix + t.name,
+      type: t.type, domain: d.domain, tier: tier.key, types: [t.type], level: 1,
       col: cell.col, row: cell.row,
-      hp, maxHp: hp, atk, chip: d.chip ?? 1,
-      elite, damaged: false, breached: false,
+      hp, maxHp: hp, atk, chip: 1, range: t.range(era), acts: t.acts,
+      damaged: false, breached: false,
     })
     spentHp += hp
   }
   return { type: 'mixed', units }
+}
+
+// Lightweight def registry so `ENEMY_DEFS[key]` lookups (display cards, sims/verify) resolve for
+// the 9 type×domain combos + the 7 bosses. Per-spawn specifics (tiered name, hp, range) live on
+// the enemy OBJECT; these are the generic fallbacks.
+export const ENEMY_DEFS = {}
+for (const t of Object.values(ENEMY_TYPES)) {
+  for (const d of Object.values(ENEMY_DOMAINS)) {
+    const key = `${d.domain}_${t.type}`
+    ENEMY_DEFS[key] = { key, name: d.prefix + t.name, types: [t.type], type: t.type, domain: d.domain }
+  }
+}
+for (const [era, b] of Object.entries(BOSSES)) {
+  ENEMY_DEFS[b.key] = { key: b.key, name: b.name, types: ['melee'], boss: true, era: Number(era) }
 }

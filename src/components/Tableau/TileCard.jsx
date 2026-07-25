@@ -62,6 +62,9 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   // Enemies use their own ENEMY_DEFS roster (keys aren't in UNIT_DEFS). Wonders resolve via
   // defOf (WONDER_DEFS), so an in-flight wonder structure renders like any building.
   const def = isUnit ? (UNIT_DEFS[occ.key] ?? ENEMY_DEFS[occ.key]) : defOf(occ.key)
+  // Enemies carry a per-spawn `name` (tier + domain + type, e.g. "Grunt Amphibious Melee"); player
+  // pieces have none, so fall back to the def name.
+  const dispName = occ.name ?? def.name
   const isWonder = !isUnit && !!occ.wonder
   // Incomplete wonder: how many production-builds remain before it finishes.
   const wonderBuildsLeft = isWonder && !occ.complete ? (occ.buildsLeft ?? 0) : null
@@ -72,7 +75,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   if (occ.boss) {
     return (
       <div className={`tile-card boss ${side} ${damaged ? 'damaged' : ''}`}>
-        <span className="tc-boss-name">{def.name}</span>
+        <span className="tc-boss-name">{dispName}</span>
       </div>
     )
   }
@@ -225,7 +228,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
     <InfoTip
       className={`tile-card-anchor ${compact ? 'compact' : ''} ${anchorClass}`}
       tipClassName={showPreview ? 'upgrade-preview' : ''}
-      title={def.name + (damaged ? ' (damaged)' : occ.mercenary ? ' (mercenary)' : '')}
+      title={dispName + (damaged ? ' (damaged)' : occ.mercenary ? ' (mercenary)' : '')}
       text={renderTip(showPreview)}
       onMouseDown={onGrab}
     >
@@ -255,13 +258,13 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
               {/* Name + level share a row (in-flow) so the level badge can't
                   overlap the name. */}
               <div className="tc-header">
-                <span className="tc-name">{def.name}</span>
+                <span className="tc-name">{dispName}</span>
                 <span className="tc-level">{occ.level}</span>
               </div>
               {/* Buildings keep a type icon; unit cards drop it in favour of Range + Pursuit. */}
               {!compact && !isUnit && typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
               <div className="tc-stats">
-                {isUnit && <IconVal src={STAT_ICON.range}>{def.range}</IconVal>}
+                {isUnit && <IconVal src={STAT_ICON.range}>{occ.range ?? def.range}</IconVal>}
                 {isUnit && (def.pursuit ?? 0) > 0 && <IconVal src={STAT_ICON.pursuit}>{def.pursuit}</IconVal>}
                 {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
