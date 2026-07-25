@@ -922,19 +922,19 @@ console.log('TEST 41: Impassable building (Moon Base) — enemies cannot pass or
   g.stop()
 }
 
-console.log('TEST 42: Support combat buildings — Campfire heal + Embassy free mercenary')
+console.log('TEST 42: Support combat buildings — Campfire era-end atk buff + Embassy free mercenary')
 {
   const g = new GameManager(75); g.setEra(3)
   const b = g.data.tableau.visibleBounds(3)
-  // Campfire heals an adjacent damaged unit.
+  // Campfire: at the end of each era, permanently grant +1 atk to adjacent units.
   const ct = g.data.tableau.tileAt(b.minRow, b.minCol); ct.terrain = 'plains'
   ct.building = { kind: 'building', key: 'campfire', level: 1, hp: 1, maxHp: 1, damaged: false }
   const nb = g._adjacentTiles(ct.row, ct.col).find((t) => t.def?.place === 'land' && !t.unit && !t.building)
-  nb.terrain = 'plains'; nb.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 1, maxHp: 20, damaged: false }
-  const hp0 = nb.unit.hp
-  g._applySupportBuildings()
-  console.log(`  Campfire: adjacent unit hp ${hp0} → ${nb.unit.hp}`)
-  assert(nb.unit.hp > hp0, `Campfire heals adjacent unit (got ${hp0}→${nb.unit.hp})`)
+  nb.terrain = 'plains'; nb.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 20, maxHp: 20, damaged: false }
+  g._applyEraEndEffects()
+  assert((nb.unit.permAtk ?? 0) === 1, `Campfire grants +1 permanent atk to an adjacent unit (got ${nb.unit.permAtk})`)
+  g._applyEraEndEffects()
+  assert((nb.unit.permAtk ?? 0) === 2, 'the buff stacks each era')
   g.stop()
   // Embassy hires a free mercenary every 8 turns onto an adjacent tile.
   const g2 = new GameManager(76); g2.setEra(4)

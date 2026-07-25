@@ -947,7 +947,14 @@ class CombatMixin {
         occ.ranchStep = (occ.ranchStep ?? 2) + 1
       }
     }
-    // Legitimacy: Totems, Colosseums, Shamans, and Sacred Grounds' empty land.
+    // Campfire: at the end of each era, permanently grant +1 :attack: to adjacent units.
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.key !== 'campfire' || occ.damaged) continue
+      for (const nb of this._adjacentTiles(tile.row, tile.col)) {
+        if (nb.unit && !nb.unit.damaged) nb.unit.permAtk = (nb.unit.permAtk ?? 0) + 1
+      }
+    }
+    // Legitimacy: Colosseums, Shamans, and Sacred Grounds' empty land.
     let legit = 0
     let deployedUnits = 0
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {

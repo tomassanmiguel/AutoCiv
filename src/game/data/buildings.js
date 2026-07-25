@@ -8,8 +8,6 @@ import { WONDER_DEFS } from './wonders.js'
 // Pier food is a FLAT amount by upgrade level (no era scaling): 200, +100/upgrade.
 const pierFood = (level = 1) => 200 + 100 * Math.max(0, level - 1)
 
-// Campfire combat heal: % of a neighbour's max HP restored per combat-second.
-const campfireHeal = (level = 1) => 5 + 2 * Math.max(0, level - 1) // 5 / 7 / 9 / ...
 // Per-tick output buildings (resolved with instance/tile context in GameManager):
 const kilnPerAdjacent = (level = 1) => level + 1 // +2 / +3 / +4 … :production: per adjacent building
 const mineGold = (level = 1) => 8 * level         // :gold: per tick (×2 on a mountain)
@@ -44,8 +42,8 @@ export const BUILDING_DEFS = {
   campfire: {
     key: 'campfire', name: 'Campfire', era: 0, tech: 'Fire', types: ['utility'], placement: 'land',
     hp: 1, upHp: 0,
-    heal: campfireHeal, // % of max HP healed per combat turn
-    effect: (level) => `Each combat turn, heals adjacent units & buildings for ${campfireHeal(level)}% of their max :defense:.`,
+    special: 'era_end_adjacent_atk',
+    effect: 'At the end of each era, permanently grant +1 :attack: to all adjacent units.',
   },
   brothel: {
     key: 'brothel', name: 'Brothel', types: ['utility'], placement: 'land',

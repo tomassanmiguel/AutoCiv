@@ -945,6 +945,19 @@ export class GameManager {
       this._resolveProgress()
       return
     }
+    // Specialists: record the tier as unlocked. If the SAME chain is already slotted, this higher
+    // tier only ENABLES the gold-upgrade toward it — it does NOT take another population slot.
+    if (opt.unlock.kind === 'pop') {
+      const civ = this.data.civilization
+      civ.unlockedSpecialists.add(opt.unlock.key)
+      const pdef = POP_TYPES[opt.unlock.key]
+      if (pdef?.chain && civ.population.some((k, si) => si > 0 && k && POP_TYPES[k]?.chain === pdef.chain)) {
+        this._markChosen(opt.id)
+        this._resolveProgress()
+        return
+      }
+      // else fall through to the normal fill/replace flow (fills the first empty specialist slot)
+    }
 
     const target = this._unlockTarget(opt.unlock)
     const empties = target.slotIndices.filter((i) => this._slotEmpty(target.group, i))
@@ -1739,6 +1752,7 @@ export class GameManager {
     const def = POP_TYPES[popKey]
     if (!def?.next || !POP_TYPES[def.next]) return null
     const civ = this.data.civilization
+    if (!civ.unlockedSpecialists?.has(def.next)) return null // the next tier must be UNLOCKED first
     const slotIndex = civ.population.indexOf(popKey)
     const count = civ.pops[popKey] ?? 0
     if (slotIndex < 0 || count <= 0) return null

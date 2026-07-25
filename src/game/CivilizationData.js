@@ -83,6 +83,13 @@ export class CivilizationData {
     // :progress: at each era end.
     this.tajBank = 0
 
+    // Unlocked tiers per roster axis. A category slot shows ONE active tier, but every unlocked
+    // tier stays available: units/buildings are cycled at build time (see cycleRosterSlot), and a
+    // specialist can only be gold-upgraded UP its chain to a tier that's actually been unlocked.
+    this.unlockedUnits = new Set(['warrior']) // Warrior is pre-unlocked (Melee)
+    this.unlockedBuildings = new Set()
+    this.unlockedSpecialists = new Set()
+
     // Advancement bookkeeping.
     this.chosenAdvancements = new Set() // ids chosen (removed from the pool)
     this.askBeforeReplace = true        // "are you sure" before overwriting a full slot

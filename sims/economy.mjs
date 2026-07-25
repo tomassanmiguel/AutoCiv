@@ -173,6 +173,9 @@ console.log('TEST 14: specialist gold-upgrade chain — Astrologer → Scholar (
   const civ = g.data.civilization
   civ.population[1] = 'astrologer'; civ.pops.astrologer = 3
   civ.gold.value = 100000
+  // The upgrade is gated: only offered once Scholar (the next tier) has actually been unlocked.
+  assert(g.specialistUpgradeInfo('astrologer') === null, 'no upgrade until the next tier is unlocked')
+  civ.unlockedSpecialists.add('scholar')
   const info = g.specialistUpgradeInfo('astrologer')
   assert(info && info.next === 'scholar', `Astrologer upgrades to Scholar (got ${info?.next})`)
   g.upgradeSpecialistChain('astrologer')
