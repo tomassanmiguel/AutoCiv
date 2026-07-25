@@ -846,13 +846,29 @@ console.log('TEST 39: Wonders — Skynet, Taj Mahal, Death Star, Panopticon, Gre
   assert(vaporized >= 1, 'Death Star vaporizes an enemy')
   assert(g3.data.enemies[1].hp <= 15000, `Death Star hits Azazoth for 5000 (got ${20000 - g3.data.enemies[1].hp})`)
   g3.stop()
-  // Panopticon: enemies stall (skip) their first turn.
-  const g4 = new GameManager(63); g4.setEra(21)
+  // Panopticon: reposition an enemy to an empty battlefield cell during prep.
+  const g4 = new GameManager(63); g4.setEra(21); g4.data.phase = 'prep'
   g4.data.civilization.completedWonders.push('panopticon')
-  g4.data.enemies = [mkEnemy('warrior', 'A', 1, 5, 100, 5)]
-  g4._startCombat()
-  assert(g4.data.enemies[0].skipTurns === 1, `Panopticon stalls enemies turn 1 (got ${g4.data.enemies[0].skipTurns})`)
+  const eb = g4.data.tableau.visibleBounds(21)
+  g4.data.enemies = [{ key: 'warrior', name: 'A', row: eb.maxRow + 1, col: eb.minCol, hp: 100, maxHp: 100, damaged: false, breached: false }]
+  assert(g4.canRepositionEnemy(eb.maxRow + 1, eb.minCol, eb.maxRow + 1, eb.minCol + 1), 'enemy repositionable to an empty cell')
+  g4.moveEnemy(eb.maxRow + 1, eb.minCol, eb.maxRow + 1, eb.minCol + 1)
+  assert(g4.data.enemies[0].col === eb.minCol + 1, `Panopticon moved the enemy (col ${g4.data.enemies[0].col})`)
+  g4.data.phase = 'battle'
+  assert(!g4.canRepositionEnemy(eb.maxRow + 1, eb.minCol + 1, eb.maxRow + 1, eb.minCol), 'no enemy reposition outside prep')
   g4.stop()
+  // Stargate: buildings become repositionable during prep.
+  const g6 = new GameManager(65); g6.setEra(20); g6.data.phase = 'prep'
+  const sb = g6.data.tableau.visibleBounds(20)
+  const src = g6.data.tableau.tileAt(sb.minRow, sb.minCol); src.terrain = 'plains'
+  src.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  const dst = g6.data.tableau.tileAt(sb.minRow, sb.minCol + 1); dst.terrain = 'plains'
+  assert(!g6.canReposition(src.row, src.col, dst.row, dst.col), 'building NOT repositionable without Stargate')
+  g6.data.civilization.completedWonders.push('stargate')
+  assert(g6.canReposition(src.row, src.col, dst.row, dst.col), 'Stargate → building repositionable in prep')
+  g6.moveUnit(src.row, src.col, dst.row, dst.col)
+  assert(dst.building?.key === 'totem' && !src.building, 'Stargate moved the building')
+  g6.stop()
   // Great Wall: +20 building defense on completion.
   const g5 = new GameManager(64); g5.setEra(3)
   const bh0 = g5.data.civilization.modifiers.buildingHpBonus

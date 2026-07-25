@@ -233,7 +233,9 @@ export default function Tableau() {
   const onUnitGrab = (e, tile) => {
     if (e.button !== 0) return
     const occ = tile.occupant
-    if (!occ || occ.kind !== 'unit') return
+    // Units always; buildings only with the Stargate wonder during prep (canReposition enforces it too).
+    const stargateBuilding = occ?.kind === 'building' && game._hasWonder('stargate') && game.data.phase === 'prep'
+    if (!occ || (occ.kind !== 'unit' && !stargateBuilding)) return
     e.stopPropagation() // don't start a camera pan
     e.preventDefault()
     setTooltip(null)
@@ -242,7 +244,7 @@ export default function Tableau() {
     // can't unmount this drag's ghost.
     if (snapTimerRef.current) { clearTimeout(snapTimerRef.current); snapTimerRef.current = null }
     const seq = ++reposSeqRef.current
-    const name = UNIT_DEFS[occ.key]?.name ?? ''
+    const name = (occ.kind === 'unit' ? UNIT_DEFS[occ.key]?.name : BUILDING_DEFS[occ.key]?.name) ?? ''
     reposPendingRef.current = { seq, fromRow: tile.row, fromCol: tile.col, name, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false }
 
     const onMove = (ev) => {
@@ -272,6 +274,37 @@ export default function Tableau() {
       } else {
         snapBackGhost(p)
       }
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  // --- Panopticon wonder: drag an ENEMY to an empty battlefield cell during prep ---
+  const onEnemyGrab = (ev0, enemy) => {
+    if (ev0.button !== 0) return
+    if (!(game.data.phase === 'prep' && game._hasWonder('panopticon'))) return
+    ev0.stopPropagation(); ev0.preventDefault(); setTooltip(null)
+    if (snapTimerRef.current) { clearTimeout(snapTimerRef.current); snapTimerRef.current = null }
+    const seq = ++reposSeqRef.current
+    reposPendingRef.current = { seq, enemy: true, fromRow: enemy.row, fromCol: enemy.col, name: enemy.name ?? '', startX: ev0.clientX, startY: ev0.clientY, x: ev0.clientX, y: ev0.clientY, active: false }
+    const onMove = (ev) => {
+      const p = reposPendingRef.current; if (!p) return
+      p.x = ev.clientX; p.y = ev.clientY
+      if (!p.active) {
+        if (Math.abs(ev.clientX - p.startX) + Math.abs(ev.clientY - p.startY) <= 4) return
+        p.active = true; setRepos({ seq: p.seq, enemy: true, fromRow: p.fromRow, fromCol: p.fromCol, name: p.name })
+      }
+      const g = ghostRef.current; if (g) { g.style.left = `${ev.clientX}px`; g.style.top = `${ev.clientY}px` }
+    }
+    const onUp = (ev) => {
+      window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp)
+      const p = reposPendingRef.current; reposPendingRef.current = null
+      if (!p || !p.active) { setRepos(null); return }
+      const slot = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.enemy-slot')
+      if (slot?.dataset.erow && game.canRepositionEnemy(p.fromRow, p.fromCol, Number(slot.dataset.erow), Number(slot.dataset.ecol))) {
+        game.moveEnemy(p.fromRow, p.fromCol, Number(slot.dataset.erow), Number(slot.dataset.ecol))
+      }
+      setRepos(null)
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
@@ -344,6 +377,11 @@ export default function Tableau() {
   // (pick or place) — rearrange freely, or drag a unit aside to make room to build.
   const repositionable = canAct || !!(sel && sel.type === 'production')
   const prepping = phase === 'prep'
+  // Stargate wonder: buildings become grabbable (repositionable) during prep.
+  const stargateGrab = prepping && game._hasWonder('stargate')
+  const grabbable = (occ) => occ && (occ.kind === 'unit' || (occ.kind === 'building' && stargateGrab))
+  // Panopticon wonder: enemy pieces become draggable during prep.
+  const enemyDraggable = prepping && game._hasWonder('panopticon')
   const mercCost = prepping ? game.mercCost() : 0
   const tileAction = (tile, occ) => {
     if (!canAct || !occ || occ.mercenary) return null // mercenaries are disposable — no repair/upgrade
@@ -366,16 +404,22 @@ export default function Tableau() {
         {/* Battlefield backdrop zone atop each visible column — enemies spawn here
             (during development) and march DOWN into the grid (during battle). */}
         {cols.map((c) =>
-          Array.from({ length: enemyRows }, (_, k) => (
-            <div
-              key={`bf-${c}-${k}`}
-              className="enemy-slot"
-              style={{ left: (c - bounds.minCol) * CELL, top: k * CELL, width: CELL, height: CELL }}
-              onMouseEnter={(e) => showTip(BATTLEFIELD_TIP, e)}
-              onMouseMove={moveTooltip}
-              onMouseLeave={() => setTooltip(null)}
-            />
-          )),
+          Array.from({ length: enemyRows }, (_, k) => {
+            const erow = bounds.maxRow + enemyRows - k // battlefield row for this backdrop cell
+            const evalid = repos?.enemy && game.canRepositionEnemy(repos.fromRow, repos.fromCol, erow, c)
+            return (
+              <div
+                key={`bf-${c}-${k}`}
+                className={`enemy-slot${evalid ? ' reposition-valid' : ''}`}
+                data-erow={erow}
+                data-ecol={c}
+                style={{ left: (c - bounds.minCol) * CELL, top: k * CELL, width: CELL, height: CELL }}
+                onMouseEnter={(e) => showTip(BATTLEFIELD_TIP, e)}
+                onMouseMove={moveTooltip}
+                onMouseLeave={() => setTooltip(null)}
+              />
+            )
+          }),
         )}
 
         {/* Player tiles */}
@@ -437,7 +481,7 @@ export default function Tableau() {
                         terrain={tile.terrain}
                         strip
                         action={b === occ ? tileAction(tile, b) : null}
-                        onGrab={repositionable && b.kind === 'unit' && b === occ ? (e) => onUnitGrab(e, tile) : undefined}
+                        onGrab={repositionable && grabbable(b) && b === occ ? (e) => onUnitGrab(e, tile) : undefined}
                       />
                     ))}
                   </div>
@@ -455,7 +499,7 @@ export default function Tableau() {
                     terrain={tile.terrain}
                     action={tileAction(tile, occ)}
                     slide={slideFor(occ, j * CELL, i * CELL)}
-                    onGrab={repositionable && occ.kind === 'unit' ? (e) => onUnitGrab(e, tile) : undefined}
+                    onGrab={repositionable && grabbable(occ) ? (e) => onUnitGrab(e, tile) : undefined}
                     anchorClass={tile.underlap ? 'has-underlap' : ''}
                   />
                 )
@@ -490,11 +534,13 @@ export default function Tableau() {
           const i = enemyRows + (bounds.maxRow - e.row)
           const x = j * CELL
           const y = i * CELL
+          const edim = repos?.enemy && repos.fromRow === e.row && repos.fromCol === e.col
           return (
             <div
               key={`enemy-${e.id}`}
-              className="enemy-piece"
+              className={`enemy-piece${enemyDraggable ? ' enemy-grabbable' : ''}${edim ? ' reposition-src' : ''}`}
               style={{ left: x, top: y, width: CELL, height: CELL }}
+              onMouseDown={enemyDraggable ? (ev) => onEnemyGrab(ev, e) : undefined}
             >
               <TileCard occupant={e} era={era} combat={combat} combatSeq={combatSeq} side="enemy" slide={slideFor(e, x, y)} />
             </div>

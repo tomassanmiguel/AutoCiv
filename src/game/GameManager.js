@@ -1728,6 +1728,32 @@ export class GameManager {
     this._emit()
   }
 
+  // --- Panopticon wonder: reposition ENEMY units freely during prep (drag an enemy to an
+  // empty cell in the battlefield spawn zone). ---
+  _liveEnemyAt(row, col) {
+    return this.data.enemies.find((e) => e.row === row && e.col === col && !e.damaged && !e.breached)
+  }
+
+  canRepositionEnemy(fromRow, fromCol, toRow, toCol) {
+    if (this.data.phase !== 'prep' || !this._hasWonder('panopticon')) return false
+    if (fromRow === toRow && fromCol === toCol) return false
+    if (!this._liveEnemyAt(fromRow, fromCol)) return false
+    const t = this.data.tableau
+    const bounds = t.visibleBounds(this.data.era)
+    if (!bounds || toCol < bounds.minCol || toCol > bounds.maxCol) return false
+    // Enemies must stay in the battlefield spawn zone (the rows above the visible grid).
+    const rows = t.enemyRowCount(this.data.era)
+    if (toRow <= bounds.maxRow || toRow > bounds.maxRow + rows) return false
+    return !this._liveEnemyAt(toRow, toCol) // target cell empty (no swap; move to a free cell)
+  }
+
+  moveEnemy(fromRow, fromCol, toRow, toCol) {
+    if (!this.canRepositionEnemy(fromRow, fromCol, toRow, toCol)) return
+    const e = this._liveEnemyAt(fromRow, fromCol)
+    e.row = toRow; e.col = toCol
+    this._emit()
+  }
+
   // ---------------------------------------------------------------------------
   // Phase machine
   // ---------------------------------------------------------------------------

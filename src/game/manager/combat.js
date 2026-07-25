@@ -65,9 +65,6 @@ class CombatMixin {
       e.breached = false
       delete e.skipTurns
     }
-    // Panopticon wonder: surveillance stalls the enemy — every enemy skips its first turn.
-    // (A functional stand-in for the prep-phase enemy-reposition until that UI exists.)
-    if (this._hasWonder('panopticon')) for (const e of this.data.enemies) e.skipTurns = 1
     this._applyManhattanProject() // nuke a random enemy + lay a fallout tile
     this.data.combatTurn = 0
     this.data.combatAccum = 0

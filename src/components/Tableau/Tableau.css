@@ -113,6 +113,10 @@
 .tableau-tile.reposition-valid { cursor: grabbing; z-index: 3; }
 .tableau-tile.reposition-valid .tile-bg { animation: tile-valid-flash 1.4s ease-in-out infinite; }
 .tableau-tile.reposition-src .tile-card-anchor { opacity: 0.4; }
+/* Panopticon: enemy pieces draggable during prep. */
+.enemy-piece.enemy-grabbable { cursor: grab; }
+.enemy-piece.reposition-src { opacity: 0.4; }
+.enemy-slot.reposition-valid { z-index: 3; animation: tile-valid-flash 1.4s ease-in-out infinite; }
 
 /* The dragged-unit label that follows the cursor. */
 .unit-drag-ghost {
