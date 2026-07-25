@@ -850,12 +850,19 @@ console.log('TEST 39: Wonders — Skynet, Taj Mahal, Death Star, Panopticon, Gre
   const g4 = new GameManager(63); g4.setEra(21); g4.data.phase = 'prep'
   g4.data.civilization.completedWonders.push('panopticon')
   const eb = g4.data.tableau.visibleBounds(21)
-  g4.data.enemies = [{ key: 'warrior', name: 'A', row: eb.maxRow + 1, col: eb.minCol, hp: 100, maxHp: 100, damaged: false, breached: false }]
-  assert(g4.canRepositionEnemy(eb.maxRow + 1, eb.minCol, eb.maxRow + 1, eb.minCol + 1), 'enemy repositionable to an empty cell')
-  g4.moveEnemy(eb.maxRow + 1, eb.minCol, eb.maxRow + 1, eb.minCol + 1)
-  assert(g4.data.enemies[0].col === eb.minCol + 1, `Panopticon moved the enemy (col ${g4.data.enemies[0].col})`)
+  const eA = { key: 'warrior', name: 'A', row: eb.maxRow + 1, col: eb.minCol, hp: 100, maxHp: 100, damaged: false, breached: false }
+  const eB = { key: 'warrior', name: 'B', row: eb.maxRow + 1, col: eb.minCol + 2, hp: 80, maxHp: 80, damaged: false, breached: false }
+  g4.data.enemies = [eA, eB]
+  // Move A to an empty cell.
+  assert(g4.canRepositionEnemy(eA.row, eA.col, eb.maxRow + 1, eb.minCol + 1), 'enemy repositionable to an empty cell')
+  g4.moveEnemy(eA.row, eA.col, eb.maxRow + 1, eb.minCol + 1)
+  assert(eA.col === eb.minCol + 1, `Panopticon moved the enemy (col ${eA.col})`)
+  // SWAP A and B (both live enemies) — mirrors friendly-unit swapping.
+  assert(g4.canRepositionEnemy(eA.row, eA.col, eB.row, eB.col), 'enemies can swap')
+  g4.moveEnemy(eA.row, eA.col, eB.row, eB.col)
+  assert(eA.col === eb.minCol + 2 && eB.col === eb.minCol + 1, `Panopticon swapped the two enemies (A@${eA.col}, B@${eB.col})`)
   g4.data.phase = 'battle'
-  assert(!g4.canRepositionEnemy(eb.maxRow + 1, eb.minCol + 1, eb.maxRow + 1, eb.minCol), 'no enemy reposition outside prep')
+  assert(!g4.canRepositionEnemy(eA.row, eA.col, eb.maxRow + 1, eb.minCol), 'no enemy reposition outside prep')
   g4.stop()
   // Stargate: buildings become repositionable during prep.
   const g6 = new GameManager(65); g6.setEra(20); g6.data.phase = 'prep'
@@ -942,6 +949,42 @@ console.log('TEST 42: Support combat buildings — Campfire heal + Embassy free 
   console.log(`  Embassy: units ${before} → (7) ${mid} → (8th) ${after}`)
   assert(mid === before && after === before + 1, `Embassy spawns a merc on the 8th turn`)
   g2.stop()
+}
+
+console.log('TEST 43: Reposition is region-limited by default; bridge techs cross regions')
+{
+  const g = new GameManager(80); g.setEra(9); g.data.phase = 'prep'
+  const b = g.data.tableau.visibleBounds(9)
+  const strait = b.minCol + 1
+  for (let r = 1; r <= 9; r++) { const tl = g.data.tableau.tileAt(r, strait); if (tl) tl.terrain = 'ocean' } // full-height ocean strait
+  const A = g.data.tableau.tileAt(b.minRow, b.minCol); A.terrain = 'plains'
+  const D = g.data.tableau.tileAt(b.minRow + 1, b.minCol); D.terrain = 'plains' // same continent as A
+  const C = g.data.tableau.tileAt(b.minRow, b.minCol + 2); C.terrain = 'plains' // across the strait
+  g._netsCache = null
+  A.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  assert(g.canReposition(A.row, A.col, D.row, D.col), 'within-continent reposition allowed')
+  assert(!g.canReposition(A.row, A.col, C.row, C.col), 'cross-ocean reposition blocked by default')
+  g._applyModifier({ kind: 'modifier', key: 'combustion' })
+  console.log(`  land unit across an ocean strait: blocked by default, allowed with Combustion`)
+  assert(g.canReposition(A.row, A.col, C.row, C.col), 'Combustion bridges the ocean → cross reposition allowed')
+  g.stop()
+}
+
+console.log('TEST 44: Reposition region — naval along a connected shoreline, not to an isolated coast')
+{
+  const g = new GameManager(81); g.setEra(20); g.data.phase = 'prep'
+  const b = g.data.tableau.visibleBounds(20)
+  // Naval units stand on COAST tiles; their region is the connected shoreline.
+  const W1 = g.data.tableau.tileAt(b.minRow, b.minCol); W1.terrain = 'coast'
+  const W2 = g.data.tableau.tileAt(b.minRow, b.minCol + 1); W2.terrain = 'coast' // same shoreline (adjacent)
+  const EX = g.data.tableau.tileAt(b.maxRow, b.maxCol); EX.terrain = 'coast'    // a coast island…
+  for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nt = g.data.tableau.tileAt(EX.row + dr, EX.col + dc); if (nt) nt.terrain = 'space' } // …isolated by space
+  g._netsCache = null
+  const naval = Object.values(UNIT_DEFS).find((d) => d.types.includes('naval') && d.era <= 20)?.key
+  W1.unit = { kind: 'unit', key: naval, level: 1, hp: 5, maxHp: 5, damaged: false }
+  assert(g.canReposition(W1.row, W1.col, W2.row, W2.col), 'naval reposition along a connected shoreline allowed')
+  assert(!g.canReposition(W1.row, W1.col, EX.row, EX.col), 'naval cannot reach a disconnected (space-isolated) coast')
+  g.stop()
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

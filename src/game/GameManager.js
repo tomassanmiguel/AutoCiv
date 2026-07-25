@@ -1698,6 +1698,29 @@ export class GameManager {
 
   // --- Free unit repositioning: drag a unit to an empty valid tile, OR onto
   // another unit to SWAP places (both must be able to stand on the other's terrain). ---
+  /** Every "r,c" a piece with `placement` at (sr,sc) can reach for repositioning: its connected
+   *  REGION — tiles it can stand on, reached by orthogonal adjacency — PLUS any road/bridge net that
+   *  links across otherwise-blocking terrain (Combustion=ocean, Mass Drivers=space, FTL=deep space,
+   *  Reuseable Rocketry=Moon↔Earth). Without a bridge tech, a unit can't leave its continent / water
+   *  body / space region (and land↔Moon/Mars/exoplanet stay separate). */
+  _repositionRegion(sr, sc, placement) {
+    const t = this.data.tableau
+    const NBRS = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+    const nets = this._portNets() // roads + active terrain bridges
+    const standable = (r, c) => { const tile = t.tileAt(r, c); return !!tile && canPlaceOn(placement, tile.terrain) }
+    const seen = new Set([`${sr},${sc}`])
+    const q = [[sr, sc]]
+    let head = 0
+    while (head < q.length) {
+      const [r, c] = q[head++]
+      const cur = `${r},${c}`
+      for (const [dr, dc] of NBRS) { const nr = r + dr, nc = c + dc, nk = `${nr},${nc}`; if (!seen.has(nk) && standable(nr, nc)) { seen.add(nk); q.push([nr, nc]) } }
+      // A bridge/road net links all its ports; hop to any standable port (the far side of the bridge).
+      for (const ports of nets) if (ports.has(cur)) for (const p of ports) { if (seen.has(p)) continue; const [pr, pc] = p.split(',').map(Number); if (standable(pr, pc)) { seen.add(p); q.push([pr, pc]) } }
+    }
+    return seen
+  }
+
   canReposition(fromRow, fromCol, toRow, toCol) {
     if (fromRow === toRow && fromCol === toCol) return false
     const from = this.data.tableau.tileAt(fromRow, fromCol)
@@ -1710,10 +1733,14 @@ export class GameManager {
     const to = this.data.tableau.tileAt(toRow, toCol)
     if (!to || !this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
     if (!canPlaceOn(def.placement, to.terrain)) return false // the moving piece must fit dest
+    // Region restriction: the destination must be in the piece's connected region (bridged by tech).
+    if (!this._repositionRegion(fromRow, fromCol, def.placement).has(`${toRow},${toCol}`)) return false
     if (!to.occupant) return true // move onto an empty tile
-    // Swap: the destination must hold a piece of the SAME kind that also fits the source terrain.
+    // Swap: the destination must hold a piece of the SAME kind that also fits the source terrain
+    // AND can reach the source tile from its own region.
     const toDef = to.occupant.kind === 'unit' ? UNIT_DEFS[to.occupant.key] : BUILDING_DEFS[to.occupant.key]
-    return to.occupant.kind === occ.kind && canPlaceOn(toDef.placement, from.terrain)
+    return to.occupant.kind === occ.kind && canPlaceOn(toDef.placement, from.terrain) &&
+      this._repositionRegion(toRow, toCol, toDef.placement).has(`${fromRow},${fromCol}`)
   }
 
   moveUnit(fromRow, fromCol, toRow, toCol) {
@@ -1744,13 +1771,15 @@ export class GameManager {
     // Enemies must stay in the battlefield spawn zone (the rows above the visible grid).
     const rows = t.enemyRowCount(this.data.era)
     if (toRow <= bounds.maxRow || toRow > bounds.maxRow + rows) return false
-    return !this._liveEnemyAt(toRow, toCol) // target cell empty (no swap; move to a free cell)
+    return true // empty cell → move; a live enemy there → SWAP (mirrors friendly-unit repositioning)
   }
 
   moveEnemy(fromRow, fromCol, toRow, toCol) {
     if (!this.canRepositionEnemy(fromRow, fromCol, toRow, toCol)) return
     const e = this._liveEnemyAt(fromRow, fromCol)
+    const other = this._liveEnemyAt(toRow, toCol) // swap partner, if any (captured before the move)
     e.row = toRow; e.col = toCol
+    if (other) { other.row = fromRow; other.col = fromCol }
     this._emit()
   }
 
