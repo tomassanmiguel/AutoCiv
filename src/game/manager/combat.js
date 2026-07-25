@@ -23,6 +23,9 @@ export const COMBAT_INTERVAL_MS = 50
 export const COMBAT_DURATION = 25 // legacy export (kept for HUD compat)
 const MIN_COOLDOWN = 1
 const MAX_TURNS = 500 // stalemate safety cap (a held line that can't kill ends as a win)
+// After the final enemy is slain, hold the battle phase this long (real ms) so the killing
+// blow's shatter animation (.combat-death, 0.5s) finishes before we transition away.
+const COMBAT_OUTRO_MS = 600
 
 // A combat turn resolves in FOUR ordered steps, one unit at a time (for readability): enemies
 // move, then player units pursue into range, then player pieces attack, then enemies attack.
@@ -154,6 +157,7 @@ class CombatMixin {
     // beat rolls over into a fresh turn (upkeep → the 4 steps). See _nextActor.
     this._combatPhaseIdx = PHASE_ENEMY_ATTACK
     this._combatQueue = []
+    this._combatOutro = 0 // >0 = final enemy slain, counting down the shatter hold before transition
     this.data.combatIntro = true // hold the fight until the "Battle" banner clears
     this.data.phase = 'battle'
     this._restartTimer()
@@ -174,6 +178,12 @@ class CombatMixin {
   // ---------------------------------------------------------------------------
   _combatStep() {
     if (this.data.phase !== 'battle' || this.data.combatIntro) return
+    // Final enemy slain: hold the battle a beat so its shatter finishes, THEN transition.
+    if (this._combatOutro > 0) {
+      this._combatOutro -= COMBAT_INTERVAL_MS
+      if (this._combatOutro <= 0) { this._combatOutro = 0; this._endCombat() }
+      return
+    }
     const tps = SPEED_TPS[this.data.speed] || 0
     if (tps <= 0) return
     this.data.combatAccum += tps * (COMBAT_INTERVAL_MS / 1000)
@@ -186,6 +196,9 @@ class CombatMixin {
    *  silently skipping actors that have nothing to do (a blocked enemy, an out-of-range
    *  unit, a recharging tower). Advances the step/turn when a queue empties. */
   _runBeat() {
+    // A win outro is pending but this is a DIRECT drive (headless sims — no _combatStep interval
+    // to count it down): finalize now so the battle concludes instead of spinning on dead enemies.
+    if (this._combatOutro > 0) { this._combatOutro = 0; this._endCombat(); return }
     for (let guard = 0; guard < 4000; guard++) {
       const actor = this._nextActor()
       if (this.data.phase !== 'battle') return // ended mid-advance (defeat / all slain / MAX_TURNS)
@@ -198,8 +211,10 @@ class CombatMixin {
       if (did && this.data.combatEvents.length > 0) {
         const civ = this.data.civilization
         if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
-        if (!this.data.enemies.some((e) => !e.damaged && !e.breached)) { this._endCombat(); return }
-        this._emit()
+        this._emit() // render this beat — including a killing blow's float + the enemy's shatter
+        // Last enemy slain → hold in 'battle' so the shatter plays out; _combatStep counts the
+        // outro down then transitions (a direct sim drive finalizes on its next _runBeat).
+        if (!this.data.enemies.some((e) => !e.damaged && !e.breached)) this._combatOutro = COMBAT_OUTRO_MS
         return
       }
       // no-op actor: keep scanning without spending this beat
