@@ -57,7 +57,8 @@ class CombatMixin {
     if (boss.special === 'azazoth') {
       this.data.enemies = [] // the only enemy that wave
       const width = bounds.maxCol - bounds.minCol + 1
-      const az = this._registerBoss(boss, bounds.minCol, frontRow)
+      const backRow = bounds.maxRow + this.data.tableau.enemyRowCount(era) // starts at the very back
+      const az = this._registerBoss(boss, bounds.minCol, backRow)
       az.footprint = [width, 1] // spans the entire row
     } else {
       // Titan/Flagship: centre the footprint in the spawn zone, then clear any overlapping normals.

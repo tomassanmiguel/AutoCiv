@@ -10,7 +10,7 @@
 
 export const ENEMY_DEFS = {
   // --- Ordinary ---
-  thrall: { key: 'thrall', name: 'Thrall', era: 0, types: ['melee'], atk: 1, def: 1, chip: 1, ability: 'Cannon fodder.' },
+  thrall: { key: 'thrall', name: 'Thrall', era: 17, types: ['melee'], atk: 1, def: 1, chip: 1, ability: 'Cannon fodder (from the Invasion era on).' },
   raider: { key: 'raider', name: 'Raider', era: 0, types: ['melee'], atk: 5, def: 10, chip: 1, ability: 'Baseline marcher.' },
   marauder: { key: 'marauder', name: 'Marauder', era: 2, types: ['melee'], atk: 8, def: 12, chip: 1, waterMove: true, ability: 'Can move on water.' },
   enemy_shaman: { key: 'enemy_shaman', name: 'Shaman', era: 1, types: ['ranged'], atk: 1, def: 15, chip: 1, special: 'heal_adjacent', ability: 'Heals adjacent enemies 10% max HP/turn; moves toward an enemy at range 2 if none adjacent.' },

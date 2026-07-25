@@ -1415,5 +1415,23 @@ console.log('TEST 59: multi-tile bosses — footprint, no overlap, movement, Aza
   g2.stop()
 }
 
+console.log('TEST 60: Panopticon repositions large enemies by placement (no swap)')
+{
+  const g = new GameManager(150); g.setEra(20)
+  g.data.civilization.completedWonders.push('panopticon')
+  g.data.phase = 'prep'
+  const bounds = g.data.tableau.visibleBounds(20)
+  const titan = g.data.enemies.find((e) => e.key === 'titan')
+  g.data.enemies = [titan] // isolate
+  const destRow = bounds.maxRow + 1, destCol = bounds.minCol
+  assert(g.canRepositionEnemy(titan.row, titan.col, destRow, destCol), 'large enemy places into free space')
+  g.moveEnemy(titan.row, titan.col, destRow, destCol)
+  assert(titan.row === destRow && titan.col === destCol, 'large enemy moved by placement (no swap)')
+  // A raider inside a candidate footprint blocks placement there.
+  g.data.enemies.push(mkEnemy('raider', 'R', destCol + 3, destRow, 50, 5))
+  assert(!g.canRepositionEnemy(titan.row, titan.col, destRow, destCol + 3), 'blocked — footprint overlaps another enemy')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

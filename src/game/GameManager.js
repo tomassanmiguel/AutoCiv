@@ -1936,25 +1936,41 @@ export class GameManager {
   // --- Panopticon wonder: reposition ENEMY units freely during prep (drag an enemy to an
   // empty cell in the battlefield spawn zone). ---
   _liveEnemyAt(row, col) {
-    return this.data.enemies.find((e) => e.row === row && e.col === col && !e.damaged && !e.breached)
+    return this.data.enemies.find((e) => !e.damaged && !e.breached && this._enemyCovers(e, row, col))
   }
 
   canRepositionEnemy(fromRow, fromCol, toRow, toCol) {
     if (this.data.phase !== 'prep' || !this._hasWonder('panopticon')) return false
     if (fromRow === toRow && fromCol === toCol) return false
-    if (!this._liveEnemyAt(fromRow, fromCol)) return false
+    const e = this._liveEnemyAt(fromRow, fromCol)
+    if (!e) return false
     const t = this.data.tableau
     const bounds = t.visibleBounds(this.data.era)
-    if (!bounds || toCol < bounds.minCol || toCol > bounds.maxCol) return false
-    // Enemies must stay in the battlefield spawn zone (the rows above the visible grid).
+    if (!bounds) return false
     const rows = t.enemyRowCount(this.data.era)
-    if (toRow <= bounds.maxRow || toRow > bounds.maxRow + rows) return false
-    return true // empty cell → move; a live enemy there → SWAP (mirrors friendly-unit repositioning)
+    // Battlefield spawn zone = the rows above the visible grid.
+    const inZone = (r, c) => c >= bounds.minCol && c <= bounds.maxCol && r > bounds.maxRow && r <= bounds.maxRow + rows
+    // Large enemies (bosses) behave like large buildings: NO swap, and the whole destination
+    // footprint (anchored at to) must be free. toRow/toCol is the destination anchor.
+    if (this._isMultiTileEnemy(e)) {
+      const [w, h] = e.footprint
+      for (let dr = 0; dr < h; dr++) for (let dc = 0; dc < w; dc++) {
+        const r = toRow + dr, c = toCol + dc
+        if (!inZone(r, c)) return false
+        if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && this._enemyCovers(o, r, c))) return false
+      }
+      return true
+    }
+    if (!inZone(toRow, toCol)) return false
+    const target = this._liveEnemyAt(toRow, toCol)
+    if (target && this._isMultiTileEnemy(target)) return false // can't swap into a boss
+    return true // empty cell → move; a single-tile enemy there → SWAP
   }
 
   moveEnemy(fromRow, fromCol, toRow, toCol) {
     if (!this.canRepositionEnemy(fromRow, fromCol, toRow, toCol)) return
     const e = this._liveEnemyAt(fromRow, fromCol)
+    if (this._isMultiTileEnemy(e)) { e.row = toRow; e.col = toCol; this._emit(); return } // placement only, no swap
     const other = this._liveEnemyAt(toRow, toCol) // swap partner, if any (captured before the move)
     e.row = toRow; e.col = toCol
     if (other) { other.row = fromRow; other.col = fromCol }
