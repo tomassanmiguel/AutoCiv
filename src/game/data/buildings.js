@@ -571,7 +571,7 @@ export const BUILDING_DEFS = {
   shinkansen: {
     key: 'shinkansen', name: 'Shinkansen', era: 13, tech: 'Maglev',
     types: ['gold'], placement: 'land',
-    hp: 1, upHp: 0, upgradeTarget: 'none',
+    hp: 1, upHp: 0, upgradeTarget: 'none', noUpgrade: true,
     special: 'underlay',
     effect: '3×1 road underlay (links the adjacency network). +3 :gold: per tick to each adjacent building.',
   },
@@ -580,7 +580,7 @@ export const BUILDING_DEFS = {
   shrine: {
     key: 'shrine', name: 'Shrine', era: 0, tech: 'Sacred Grounds',
     types: ['legitimacy'], placement: 'land',
-    hp: 2, upHp: 0, upgradeTarget: 'none',
+    hp: 2, upHp: 0, upgradeTarget: 'none', noUpgrade: true,
     legitOnComplete: 10,
     special: 'legit_on_complete',
     effect: 'On completion, gain +10 :legitimacy:.',

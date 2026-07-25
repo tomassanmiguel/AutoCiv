@@ -42,9 +42,9 @@ export class CivilizationData {
     // 5 policy slots. Warrior is unlocked from the start (Melee = index 0).
     this.units = new Array(9).fill(null)
     this.units[0] = { key: 'warrior', level: 1 }
-    // Buildings index-aligned to BUILDING_CATEGORIES (9: 6 typed + two Utility + one Trap);
-    // Totem pre-unlocked (Legitimacy = index 4).
-    this.buildings = new Array(9).fill(null)
+    // Buildings index-aligned to BUILDING_CATEGORIES (12: 6 typed + two Utility + Trap +
+    // Command + Spawner + Support); Totem pre-unlocked (Legitimacy = index 4).
+    this.buildings = new Array(12).fill(null)
     this.buildings[4] = { key: 'totem', level: 1 }
     this.policies = new Array(5).fill(null)
     // Population slot 0 holds the auto-unlocked Citizen; the rest are specialists.

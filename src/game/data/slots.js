@@ -52,6 +52,15 @@ export const BUILDING_CATEGORIES = [
   // some deal damage, some disrupt.
   { key: 'trap', label: 'Trap', silhouette: '/sprites/ui/trap.png',
     description: ':trap: Trap buildings punish enemies that reach them — dealing damage or disrupting their advance' },
+  // Command slot (index 9): auras that boost the units within range. (Placeholder art.)
+  { key: 'command', label: 'Command', silhouette: '/sprites/ui/siege.png',
+    description: ':defense: Command buildings project an aura that strengthens the units in range' },
+  // Spawner slot (index 10): periodically create fresh units mid-combat. (Placeholder art.)
+  { key: 'spawner', label: 'Spawner', silhouette: '/sprites/ui/unit.png',
+    description: 'Spawner buildings periodically create your best unit of a type onto an adjacent tile during combat' },
+  // Support slot (index 11): global economy / terraforming / power effects. (Placeholder art.)
+  { key: 'support', label: 'Support', silhouette: '/sprites/ui/utility-building.png',
+    description: ':utility: Support buildings power up nearby pieces, reshape terrain, or boost your economy' },
 ]
 
 // Policies and Population are generic slots (no per-slot category); every slot
