@@ -674,5 +674,62 @@ console.log('TEST 34: P=NP projected legitimacy loss')
   g.stop()
 }
 
+console.log('TEST 35: Trap subsystem — Caltrops / Sea Mine / Powder Magazine / Discombobulator + Guerilla Warfare')
+{
+  const marchTrap = (key, seed) => {
+    const g = new GameManager(seed); g.setEra(8)
+    const b = g.data.tableau.visibleBounds(8)
+    const col = b.minCol
+    const tt = g.data.tableau.tileAt(b.minRow, col); tt.terrain = 'plains'
+    tt.building = { kind: 'building', key, level: 1, hp: 1, maxHp: 1, damaged: false }
+    const e = mkEnemy('warrior', 'X', col, b.minRow + 1, 100000, 5)
+    g.data.enemies = [e]
+    g._startCombat(); g.dismissCombatIntro()
+    g._runTurn() // enemy marches onto the trap tile
+    return { g, e, tt }
+  }
+  // Caltrops: 20 on every crossing.
+  let r = marchTrap('caltrops', 44)
+  console.log(`  Caltrops dmg = ${100000 - r.e.hp} (expect 20)`)
+  assert(100000 - r.e.hp === 20, `Caltrops deals 20 (got ${100000 - r.e.hp})`); r.g.stop()
+  // Guerilla Warfare doubles it.
+  {
+    const g = new GameManager(45); g.setEra(8)
+    const b = g.data.tableau.visibleBounds(8); const col = b.minCol
+    g.data.tableau.tileAt(b.minRow, col).building = { kind: 'building', key: 'caltrops', level: 1, hp: 1, maxHp: 1, damaged: false }
+    g.data.civilization.policies[0] = { key: 'guerilla_warfare' }
+    const e = mkEnemy('warrior', 'X', col, b.minRow + 1, 100000, 5); g.data.enemies = [e]
+    g._startCombat(); g.dismissCombatIntro(); g._runTurn()
+    console.log(`  Caltrops + Guerilla Warfare dmg = ${100000 - e.hp} (expect 40)`)
+    assert(100000 - e.hp === 40, `Guerilla Warfare doubles trap damage (got ${100000 - e.hp})`); g.stop()
+  }
+  // Sea Mine: 89 to the first enemy, then consumed.
+  r = marchTrap('sea_mine', 46)
+  console.log(`  Sea Mine dmg = ${100000 - r.e.hp} (expect 89); consumed = ${r.tt.building === null}`)
+  assert(100000 - r.e.hp === 89, `Sea Mine deals 89 (got ${100000 - r.e.hp})`)
+  assert(r.tt.building === null, 'Sea Mine consumed after firing'); r.g.stop()
+  // Powder Magazine: blocks, explodes for 45 AoE when destroyed.
+  {
+    const g = new GameManager(47); g.setEra(8)
+    const b = g.data.tableau.visibleBounds(8); const col = b.minCol
+    g.data.tableau.tileAt(b.minRow, col).building = { kind: 'building', key: 'powder_magazine', level: 1, hp: 1, maxHp: 1, damaged: false }
+    const e = mkEnemy('warrior', 'X', col, b.minRow + 1, 100000, 5); g.data.enemies = [e]
+    g._startCombat(); g.dismissCombatIntro()
+    g._runTurn() // enemy chips the hp-1 magazine → destroyed → 45 AoE (enemy is adjacent)
+    console.log(`  Powder Magazine AoE dmg = ${100000 - e.hp} (expect 45)`)
+    assert(100000 - e.hp === 45, `Powder Magazine explodes for 45 (got ${100000 - e.hp})`); g.stop()
+  }
+  // Discombobulator: stuns nearby enemies (skipTurns).
+  {
+    const g = new GameManager(48); g.setEra(14)
+    const b = g.data.tableau.visibleBounds(14); const col = b.minCol
+    g.data.tableau.tileAt(b.minRow, col).building = { kind: 'building', key: 'discombobulator', level: 1, hp: 2, maxHp: 2, damaged: false }
+    const e = mkEnemy('warrior', 'X', col, b.minRow + 1, 100, 5); g.data.enemies = [e]
+    g._applyTrapTriggers()
+    console.log(`  Discombobulator set enemy skipTurns = ${e.skipTurns} (expect 1)`)
+    assert(e.skipTurns === 1, `Discombobulator stuns nearby enemy (got ${e.skipTurns})`); g.stop()
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

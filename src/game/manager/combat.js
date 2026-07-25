@@ -100,6 +100,7 @@ class CombatMixin {
 
     this._applyPoison() // Nanite Warfare: 5% max-HP poison to all enemies each turn
     this._playerPhase()
+    this._applyTrapTriggers() // Discombobulator: stun nearby enemies before they act
     this._enemyPhase(bounds)
 
     const civ = this.data.civilization
@@ -209,6 +210,7 @@ class CombatMixin {
   /** One enemy acts: breach off the bottom, chip a blocker below, or march down. */
   _enemyAct(e, bounds) {
     if (e.damaged || e.breached) return
+    if (e.skipTurns > 0) { e.skipTurns -= 1; return } // stunned by a Discombobulator this turn
     const belowRow = e.row - 1
     // Off the bottom → breach: subtract atk from legitimacy, then remove.
     if (belowRow < bounds.minRow) {
@@ -219,13 +221,17 @@ class CombatMixin {
       return
     }
     const below = this.data.tableau.tileAt(belowRow, e.col)
+    // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it and trigger it.
+    const belowB = below?.building
+    const walkover = belowB && ['cross', 'first'].includes(BUILDING_DEFS[belowB.key]?.trapTrigger)
     // Impeded by a blocker in the path — chip the unit first, then the building.
     const blocker = (below?.unit && !below.unit.damaged) ? below.unit
-      : (below?.building && !below.building.damaged) ? below.building : null
+      : (belowB && !belowB.damaged && !walkover) ? belowB : null
     if (blocker) {
       const chip = e.chip ?? 1 // per-enemy blocker chip (Barbarian 2, …); baked at generation
       this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
       this._chipBlocker(blocker, chip, below)
+      if (blocker.damaged) this._onTrapDestroyed(blocker, below, e) // Powder Magazine AoE / Singularity→Azazoth
       return
     }
     // Blocked by another live enemy queued directly ahead → hold this turn.
@@ -233,9 +239,66 @@ class CombatMixin {
     // Clear path → march down one tile.
     e.row = belowRow
     this._pushEvent({ kind: 'march', col: e.col, row: e.row })
+    const landed = this.data.tableau.tileAt(belowRow, e.col)
     // Manhattan Project fallout tile: 100 damage to an enemy that enters it.
-    if (this.data.tableau.tileAt(belowRow, e.col)?.terrain === 'fallout' && !e.damaged) {
-      this._dealDamageToEnemy(e, 100)
+    if (landed?.terrain === 'fallout' && !e.damaged) this._dealDamageToEnemy(e, 100)
+    this._triggerWalkoverTrap(landed, e) // Caltrops (every cross) / Sea Mine (first entry, consumed)
+  }
+
+  /** Damage a trap deals, scaled by its upgrade level (+25%/level) and DOUBLED by
+   *  Guerilla Warfare (special 'trap_damage_plus'). */
+  _trapDamage(occ, base) {
+    let dmg = base * (1 + 0.25 * ((occ?.level ?? 1) - 1))
+    if (this._activeEffectDefs().some((d) => d.special === 'trap_damage_plus')) dmg *= 2
+    return Math.round(dmg)
+  }
+
+  /** Walkover traps fire when an enemy marches onto their tile: Caltrops damages every
+   *  crosser; a Sea Mine damages the first enemy and is then consumed. */
+  _triggerWalkoverTrap(tile, e) {
+    const b = tile?.building
+    if (!b || e.damaged) return
+    const def = BUILDING_DEFS[b.key]
+    if (def?.trapTrigger === 'cross' && def.trapDamage) this._dealDamageToEnemy(e, this._trapDamage(b, def.trapDamage))
+    else if (def?.trapTrigger === 'first' && def.trapDamage) {
+      this._dealDamageToEnemy(e, this._trapDamage(b, def.trapDamage))
+      tile.building = null // sea mine consumed
+      this._recomputeOutputs()
+    }
+  }
+
+  /** Traps that fire on destruction: a Powder Magazine explodes for AoE damage to nearby
+   *  enemies; a Singularity, when the enemy that broke it is Azazoth, deals its huge hit. */
+  _onTrapDestroyed(blocker, tile, killer) {
+    const def = BUILDING_DEFS[blocker.key]
+    if (!def) return
+    if (def.trapTrigger === 'death' && def.trapDamage) {
+      const range = def.range ?? 2
+      const dmg = this._trapDamage(blocker, def.trapDamage)
+      for (const e of this.data.enemies) {
+        if (e.damaged || e.breached) continue
+        if (Math.abs(e.row - tile.row) + Math.abs(e.col - tile.col) <= range) this._dealDamageToEnemy(e, dmg)
+      }
+    } else if (def.trapTrigger === 'impassable' && def.trapDamage && killer?.key === 'azazoth') {
+      this._dealDamageToEnemy(killer, this._trapDamage(blocker, def.trapDamage))
+    }
+  }
+
+  /** Timed traps (Discombobulator): every trapCooldown turns, stun enemies in range so they
+   *  skip their next turn. */
+  _applyTrapTriggers() {
+    for (const { tile, occ } of this._buildingInstances()) {
+      if (occ.damaged) continue
+      const def = BUILDING_DEFS[occ.key]
+      if (def?.trapTrigger !== 'skip') continue
+      occ.trapCd = (occ.trapCd ?? 0) - 1
+      if (occ.trapCd > 0) continue
+      occ.trapCd = def.trapCooldown ?? 5
+      const range = def.range ?? 1
+      for (const e of this.data.enemies) {
+        if (e.damaged || e.breached) continue
+        if (Math.abs(e.row - tile.row) + Math.abs(e.col - tile.col) <= range) e.skipTurns = (e.skipTurns ?? 0) + 1
+      }
     }
   }
 
