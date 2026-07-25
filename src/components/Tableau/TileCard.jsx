@@ -254,8 +254,11 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
                 <span className="tc-name">{def.name}</span>
                 <span className="tc-level">{occ.level}</span>
               </div>
-              {!compact && typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
+              {/* Buildings keep a type icon; unit cards drop it in favour of Range + Pursuit. */}
+              {!compact && !isUnit && typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
               <div className="tc-stats">
+                {isUnit && <IconVal src={STAT_ICON.range}>{def.range}</IconVal>}
+                {isUnit && (def.pursuit ?? 0) > 0 && <IconVal src={STAT_ICON.pursuit}>{def.pursuit}</IconVal>}
                 {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}

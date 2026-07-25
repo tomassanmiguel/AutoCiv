@@ -346,7 +346,9 @@
 .tc-type-icon { width: 14px; height: 14px; object-fit: contain; opacity: 0.9; }
 .tc-stats {
   display: flex;
-  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 5px;
   align-items: center;
   max-width: 100%;
 }
