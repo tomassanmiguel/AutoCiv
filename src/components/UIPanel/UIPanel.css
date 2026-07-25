@@ -256,6 +256,7 @@
 .slot-card-head { display: flex; align-items: center; gap: 0.3rem; min-width: 0; }
 .slot-card-type { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; opacity: 0.9; }
 .slot-card-name {
+  flex: 1 1 auto; /* grow so a trailing cycler / Def stat packs to the right edge */
   font-weight: 700;
   color: var(--brass);
   font-size: 0.92rem;
@@ -265,6 +266,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Building Def shown on the title row (right-aligned); never shrinks. */
+.slot-card-headstat { flex: 0 0 auto; }
 /* Tier cycler: ◄ N ► to switch a category slot between its unlocked tiers at build time. */
 .slot-cycler { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .slot-cycle-btn {

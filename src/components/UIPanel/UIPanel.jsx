@@ -411,17 +411,14 @@ function SlotRow({ slot, mark, onActivate, slam = false }) {
                 onClick={(e) => { e.stopPropagation(); slot.cycle.onNext() }}>›</button>
             </span>
           )}
+          {/* Buildings show their Def on the title row (saves a line vs. its own stats row). */}
+          {slot.def != null && (
+            <span className="stat slot-card-headstat"><img src={STAT_ICON.def} alt={STAT_LABEL.def} title={STAT_LABEL.def} />{slot.def}</span>
+          )}
         </div>
         {slot.stats
           ? <StatIcons stats={slot.stats} keys={slot.statKeys} />
-          : <>
-              {slot.def != null && (
-                <span className="slot-card-stats">
-                  <span className="stat"><img src={STAT_ICON.def} alt={STAT_LABEL.def} title={STAT_LABEL.def} />{slot.def}</span>
-                </span>
-              )}
-              {slot.line && <div className="slot-card-line"><IconText>{slot.line}</IconText></div>}
-            </>}
+          : slot.line && <div className="slot-card-line"><IconText>{slot.line}</IconText></div>}
       </div>
     </div>
   ) : (
