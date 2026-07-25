@@ -239,7 +239,7 @@ console.log('TEST 19: Columbian Exchange — New-World units/buildings produce +
   const g = new GameManager(9); g.setEra(7)
   const tiles = g.data.tableau.visibleTiles(7).filter((t) => !t.building && !t.unit)
   tiles[0].label = 'New World'; tiles[0].unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
-  tiles[1].label = 'New World'; tiles[1].building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  tiles[1].label = 'New World'; tiles[1].building = { kind: 'building', key: 'mud_wall', level: 1, hp: 15, maxHp: 15, damaged: false }
   g._recomputeOutputs(); const gold0 = g.data.civilization.gold.output
   g.data.civilization.policies[0] = { key: 'columbian_exchange' }
   g._recomputeOutputs(); const gold1 = g.data.civilization.gold.output
@@ -330,7 +330,7 @@ console.log('TEST 26: Maritime Law — +500% water-tile gold terrain bonus (×6)
   const g = new GameManager(16); g.setEra(6)
   const tile = g.data.tableau.visibleTiles(6).find((t) => !t.building && !t.unit)
   tile.terrain = 'ocean' // a sea tile yields gold from terrain
-  tile.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  tile.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 15, maxHp: 15, damaged: false }
   g._recomputeOutputs(); const gold0 = g.data.civilization.gold.output
   g.data.civilization.policies[0] = { key: 'maritime_law' }
   g._recomputeOutputs(); const gold1 = g.data.civilization.gold.output
@@ -372,11 +372,11 @@ console.log('TEST 29: Military / Architectural Tradition — overbuilding keeps 
   const t1 = g.data.tableau.tileAt(b.minRow, b.minCol); t1.terrain = 'plains'
   const t2 = g.data.tableau.tileAt(b.minRow, b.minCol + 1); t2.terrain = 'plains'
   t1.unit = { kind: 'unit', key: 'warrior', level: 4, hp: 10, maxHp: 10, damaged: false }
-  t2.building = { kind: 'building', key: 'totem', level: 3, hp: 20, maxHp: 20, damaged: false }
+  t2.building = { kind: 'building', key: 'mud_wall', level: 3, hp: 20, maxHp: 20, damaged: false }
   g.data.civilization.policies[0] = { key: 'military_tradition' }
   g.data.civilization.policies[1] = { key: 'architectural_tradition' }
   g._createInstance({ kind: 'unit', key: 'warrior', level: 1 }, t1)
-  g._createInstance({ kind: 'building', key: 'totem', level: 1 }, t2)
+  g._createInstance({ kind: 'building', key: 'mud_wall', level: 1 }, t2)
   console.log(`  overbuilt unit lvl ${t1.unit.level} (expect 4), building lvl ${t2.building.level} (expect 3)`)
   assert(t1.unit.level === 4, `Military Tradition keeps unit level 4 (got ${t1.unit.level})`)
   assert(t2.building.level === 3, `Architectural Tradition keeps building level 3 (got ${t2.building.level})`)
@@ -466,7 +466,7 @@ console.log('TEST 34: National Park (terrain-yield %) + Carbon Sink (permanent g
 {
   const g = new GameManager(56); g.setEra(10); g.data.civilization.pops = {}
   const lands = g.data.tableau.visibleTiles(10).filter((x) => !x.building && !x.unit && x.def?.place === 'land')
-  lands[0].terrain = 'plains'; lands[0].building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  lands[0].terrain = 'plains'; lands[0].building = { kind: 'building', key: 'mud_wall', level: 1, hp: 15, maxHp: 15, damaged: false }
   g._recomputeOutputs(); const f0 = g.data.civilization.food.output
   lands[1].terrain = 'plains'; lands[1].building = { kind: 'building', key: 'national_park', level: 1, hp: 3, maxHp: 3, damaged: false }
   g._recomputeOutputs(); const f1 = g.data.civilization.food.output
@@ -528,7 +528,7 @@ console.log('TEST 36: Wonders — Hanging Gardens, Hadron Collider, Statue of Li
   const g5 = new GameManager(68); g5.setEra(25); g5.data.civilization.pops = {}
   const planet = g5.data.tableau.visibleTiles(25).find((x) => !x.building && !x.unit && x.terrain === 'planet')
   if (planet) {
-    planet.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+    planet.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 15, maxHp: 15, damaged: false }
     g5._recomputeOutputs()
     const c5 = g5.data.civilization
     // A building on a Planet produces +500 of ALL FOUR: production, gold, food, progress.

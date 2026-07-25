@@ -43,9 +43,8 @@ export class CivilizationData {
     this.units = new Array(9).fill(null)
     this.units[0] = { key: 'warrior', level: 1 }
     // Buildings index-aligned to BUILDING_CATEGORIES (12: 6 typed + two Utility + Trap +
-    // Command + Spawner + Support); Totem pre-unlocked (Legitimacy = index 4).
+    // Command + Spawner + Support). No building is pre-unlocked.
     this.buildings = new Array(12).fill(null)
-    this.buildings[4] = { key: 'totem', level: 1 }
     this.policies = new Array(5).fill(null)
     // Population slot 0 holds the auto-unlocked Citizen; the rest are specialists.
     this.population = new Array(5).fill(null)

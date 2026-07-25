@@ -10,8 +10,6 @@ const pierFood = (level = 1) => 200 + 100 * Math.max(0, level - 1)
 
 // Campfire combat heal: % of a neighbour's max HP restored per combat-second.
 const campfireHeal = (level = 1) => 5 + 2 * Math.max(0, level - 1) // 5 / 7 / 9 / ...
-// Totem legitimacy granted at the end of each combat (per level).
-const totemLegit = (level = 1) => 10 + 5 * Math.max(0, level - 1) // 10 / 15 / 20 / ...
 // Per-tick output buildings (resolved with instance/tile context in GameManager):
 const kilnPerAdjacent = (level = 1) => level + 1 // +2 / +3 / +4 … :production: per adjacent building
 const mineGold = (level = 1) => 8 * level         // :gold: per tick (×2 on a mountain)
@@ -28,12 +26,6 @@ export const BUILDING_DEFS = {
     key: 'mud_wall', name: 'Mud Brick Wall', era: 0, tech: 'Mud Brick', types: ['defense'], placement: 'land',
     hp: 3, upHp: 1, upgradeTarget: 'def', special: 'wall',
     effect: 'A crude wall that briefly stalls the enemy advance. A unit sharing its tile is shielded until it falls.',
-  },
-  totem: {
-    key: 'totem', name: 'Totem', types: ['legitimacy'], placement: 'land',
-    hp: 15, upHp: 5,
-    combatLegit: totemLegit,
-    effect: (level) => `At the end of combat, gain ${totemLegit(level)} :legitimacy:.`,
   },
   brewery: {
     key: 'brewery', name: 'Brewery', types: ['gold'], placement: 'land',
@@ -52,8 +44,8 @@ export const BUILDING_DEFS = {
   campfire: {
     key: 'campfire', name: 'Campfire', era: 0, tech: 'Fire', types: ['utility'], placement: 'land',
     hp: 1, upHp: 0,
-    heal: campfireHeal, // % of max HP healed per combat-second
-    effect: (level) => `Each second in combat, heals adjacent units & buildings for ${campfireHeal(level)}% of their max :defense:.`,
+    heal: campfireHeal, // % of max HP healed per combat turn
+    effect: (level) => `Each combat turn, heals adjacent units & buildings for ${campfireHeal(level)}% of their max :defense:.`,
   },
   brothel: {
     key: 'brothel', name: 'Brothel', types: ['utility'], placement: 'land',

@@ -70,13 +70,14 @@ console.log('TEST 3: enemies queue behind a blocker (no tile-sharing)')
   const col = b.minCol + 1
   const bottom = g.data.tableau.tileAt(b.minRow, col)
   // A very tough wall that never dies, so enemies must queue and eventually stalemate.
-  bottom.building = { kind: 'building', key: 'totem', level: 1, hp: 100000, maxHp: 100000, damaged: false }
+  bottom.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 100000, maxHp: 100000, damaged: false }
   g.data.enemies = [
     mkEnemy('warrior', 'A', col, b.maxRow + 1, 5, 3),
     mkEnemy('warrior', 'B', col, b.maxRow + 2, 5, 3),
   ]
   g._startCombat()
   g.dismissCombatIntro()
+  bottom.building.maxHp = bottom.building.hp = 100000 // indestructible (re-apply after the combat-start stat sync)
   // Step a handful of turns and check the two enemies never share a tile.
   let shared = false
   for (let i = 0; i < 12 && g.data.phase === 'battle'; i++) {
@@ -145,11 +146,13 @@ console.log('TEST 6: Siege cooldown — a Ballista (cd 2) fires every 3rd turn')
   const colA = b.minCol, colB = b.minCol + 1
   // Ballista in colA (range 3); a huge wall in colB halts the enemy in range of it.
   g.data.tableau.tileAt(b.minRow, colA).unit = { kind: 'unit', key: 'ballista', level: 1, hp: 50, maxHp: 50, damaged: false }
-  g.data.tableau.tileAt(b.minRow, colB).building = { kind: 'building', key: 'totem', level: 1, hp: 1e9, maxHp: 1e9, damaged: false }
+  g.data.tableau.tileAt(b.minRow, colB).building = { kind: 'building', key: 'mud_wall', level: 1, hp: 1e9, maxHp: 1e9, damaged: false }
   const enemy = mkEnemy('warrior', 'Bruiser', colB, b.maxRow + 1, 100000, 5)
   g.data.enemies = [enemy]
   g._startCombat()
   g.dismissCombatIntro()
+  const wallB = g.data.tableau.tileAt(b.minRow, colB).building
+  wallB.maxHp = wallB.hp = 1e9 // indestructible (re-apply after the combat-start stat sync)
   // March the enemy down to the wall first (colB is minCol+1; enemy needs to reach minRow+1).
   for (let i = 0; i < 6; i++) g._runTurn()
   const hpAtStart = enemy.hp
@@ -495,13 +498,13 @@ console.log('TEST 26: Marine Construction / Gravboots — land buildings on wate
   water.terrain = 'ocean' // a sea tile
   const rock = g.data.tableau.visibleTiles(14).find((t) => t !== water && !t.occupant && g.data.tableau.isUnlocked(t.row, t.col, 14))
   rock.terrain = 'asteroid'
-  const totem = { kind: 'building', key: 'totem', level: 1 }
-  assert(!g._canPlaceHere(totem, water), 'land building blocked on water by default')
-  assert(!g._canPlaceHere(totem, rock), 'land building blocked on asteroid by default')
+  const bld = { kind: 'building', key: 'mud_wall', level: 1 }
+  assert(!g._canPlaceHere(bld, water), 'land building blocked on water by default')
+  assert(!g._canPlaceHere(bld, rock), 'land building blocked on asteroid by default')
   g.data.civilization.bonuses.push('marine_construction')
   g.data.civilization.policies[0] = { key: 'gravboots' }
-  assert(g._canPlaceHere(totem, water), 'Marine Construction allows land building on water')
-  assert(g._canPlaceHere(totem, rock), 'Gravboots allows land building on asteroid')
+  assert(g._canPlaceHere(bld, water), 'Marine Construction allows land building on water')
+  assert(g._canPlaceHere(bld, rock), 'Gravboots allows land building on asteroid')
   console.log('  land building placeable on water (Marine Construction) + asteroid (Gravboots)')
   g.stop()
 }
@@ -593,7 +596,7 @@ console.log('TEST 31: Region upgrade-levels — Skyscrapers (building-only) + Hi
   const c = g2.data.tableau.tileAt(bb.minRow + 1, bb.minCol + 1); c.terrain = 'plains'
   c.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 10, maxHp: 10, damaged: false }
   const nbrs = g2._adjacentTiles(c.row, c.col).slice(0, 2)
-  for (const nb of nbrs) { nb.terrain = 'plains'; nb.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false } }
+  for (const nb of nbrs) { nb.terrain = 'plains'; nb.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 15, maxHp: 15, damaged: false } }
   g2.data.civilization.policies[0] = { key: 'hive_mind' }
   g2._syncUnitStats(true)
   const exp2 = buildingHp(BUILDING_DEFS.mud_wall, 1 + nbrs.length, g2.data.civilization.modifiers.buildingHpBonus)
@@ -873,13 +876,13 @@ console.log('TEST 39: Wonders — Skynet, Taj Mahal, Death Star, Panopticon, Gre
   const g6 = new GameManager(65); g6.setEra(20); g6.data.phase = 'prep'
   const sb = g6.data.tableau.visibleBounds(20)
   const src = g6.data.tableau.tileAt(sb.minRow, sb.minCol); src.terrain = 'plains'
-  src.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  src.building = { kind: 'building', key: 'mud_wall', level: 1, hp: 15, maxHp: 15, damaged: false }
   const dst = g6.data.tableau.tileAt(sb.minRow, sb.minCol + 1); dst.terrain = 'plains'
   assert(!g6.canReposition(src.row, src.col, dst.row, dst.col), 'building NOT repositionable without Stargate')
   g6.data.civilization.completedWonders.push('stargate')
   assert(g6.canReposition(src.row, src.col, dst.row, dst.col), 'Stargate → building repositionable in prep')
   g6.moveUnit(src.row, src.col, dst.row, dst.col)
-  assert(dst.building?.key === 'totem' && !src.building, 'Stargate moved the building')
+  assert(dst.building?.key === 'mud_wall' && !src.building, 'Stargate moved the building')
   g6.stop()
 }
 
@@ -1438,15 +1441,15 @@ console.log('TEST 61: a unit and a building coexist on one tile (replace only wi
   const g = new GameManager(160)
   const b = g.data.tableau.visibleBounds(0)
   const t = g.data.tableau.tileAt(b.minRow, b.minCol); t.terrain = 'plains'; t.unit = null; t.building = null
-  g._createInstance({ kind: 'building', key: 'totem', level: 1 }, t)
-  assert(t.building?.key === 'totem' && !t.unit, 'building placed, no unit yet')
+  g._createInstance({ kind: 'building', key: 'mud_wall', level: 1 }, t)
+  assert(t.building?.key === 'mud_wall' && !t.unit, 'building placed, no unit yet')
   // Placing a UNIT on the building's tile is a valid COEXIST, not a replace.
   g.data.selection = { type: 'production', stage: 'place', chosen: { kind: 'unit', key: 'warrior', level: 1 } }
   assert(g.placementState(b.minRow, b.minCol) === 'valid', 'unit on a building tile is valid (coexist)')
   g._createInstance({ kind: 'unit', key: 'warrior', level: 1 }, t)
-  assert(t.unit?.key === 'warrior' && t.building?.key === 'totem', 'unit + building now coexist on the tile')
+  assert(t.unit?.key === 'warrior' && t.building?.key === 'mud_wall', 'unit + building now coexist on the tile')
   // Same-category is still a replace.
-  g.data.selection = { type: 'production', stage: 'place', chosen: { kind: 'building', key: 'totem', level: 1 } }
+  g.data.selection = { type: 'production', stage: 'place', chosen: { kind: 'building', key: 'mud_wall', level: 1 } }
   assert(g.placementState(b.minRow, b.minCol) === 'replace', 'building-on-building is a replace')
   g.stop()
 }

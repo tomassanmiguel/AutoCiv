@@ -106,16 +106,16 @@ console.log('\nTEST 5: wonder flow (unlock, place, advance, complete, ongoing ef
 // --- TEST 6: civilization + difficulty pre-game setup ---
 console.log('\nTEST 6: civilization + difficulty setup')
 {
-  // Only the neutral "dummy" civ exists for now: default Warrior + Totem, no marquee policy / ability.
+  // Only the neutral "dummy" civ exists for now: a Warrior, no starting building, no marquee/ability.
   const gg = new GameManager(1, { civ: 'dummy', difficulty: 'brutal' })
   assert(gg.data.civilization.policies[0] == null, 'dummy civ grants no starting policy')
   assert(gg.data.civilization.units.some((u) => u?.key === 'warrior'), 'starts with a Warrior')
-  assert(gg.data.civilization.buildings.some((b) => b?.key === 'totem'), 'starts with a Totem')
+  assert(gg.data.civilization.buildings.every((b) => b == null), 'no building is pre-unlocked')
   assert(Math.abs(gg.difficultyMult - 1.6) < 1e-9, `Brutal → enemy budget ×1.6 (got ${gg.difficultyMult})`)
   const hh = new GameManager(2, { civ: 'dummy' })
   assert(hh.difficultyMult === 1, 'default (Normal) difficulty ×1')
   assert(hh.data.civilization.legitimacy.value === 50, `starting legitimacy is 50 (got ${hh.data.civilization.legitimacy.value})`)
-  console.log('  dummy civ: Warrior + Totem, no ability; starting legit 50; Brutal ×1.6 / Normal ×1')
+  console.log('  dummy civ: Warrior, no building/ability; starting legit 50; Brutal ×1.6 / Normal ×1')
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

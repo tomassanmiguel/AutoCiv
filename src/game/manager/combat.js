@@ -955,8 +955,7 @@ class CombatMixin {
     }
     for (const { occ } of this._buildingInstances()) {
       if (occ.damaged) continue
-      if (occ.key === 'totem') legit += defOf('totem').combatLegit(occ.level)
-      else if (occ.key === 'colosseum') legit += 5 * deployedUnits
+      if (occ.key === 'colosseum') legit += 5 * deployedUnits
     }
     legit += (POP_TYPES.shaman?.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
     // v2 Priest — legitPerEra, +1 more each with Evangelism.
