@@ -28,7 +28,7 @@ const ICON = {
 const TAB_ICON = {
   units: '/sprites/ui/unit.png',
   buildings: '/sprites/ui/building.png',
-  military: '/sprites/ui/unit.png', // placeholder — reuses the unit icon for now
+  military: '/sprites/icons/defense.png',
   policies: '/sprites/ui/policy.png',
   population: '/sprites/ui/pop.png',
   wonder: '/sprites/ui/wonder.png',
@@ -245,7 +245,7 @@ export default function UIPanel() {
   const groups = [
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
     { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era, 'buildings') },
-    { key: 'military', label: 'Military', slots: buildingSlots(civ, era, 'military') },
+    { key: 'military', label: 'Military Infrastructure', slots: buildingSlots(civ, era, 'military') },
     ...(civ.wonder ? [{ key: 'wonder', label: 'Wonder', slots: wonderSlots(civ) }] : []),
     { key: 'policies', label: 'Policies', slots: policySlots(civ) },
     { key: 'population', label: 'Population', slots: populationSlots(civ, game, canConvert) },
