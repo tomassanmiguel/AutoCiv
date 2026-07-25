@@ -1106,5 +1106,35 @@ console.log('TEST 48: wonder lifecycle — pick→place→advance→complete; de
   g2.stop()
 }
 
+console.log('TEST 49: Stargate — a multi-tile wonder repositions into free space (no swap)')
+{
+  const g = new GameManager(93); g.setEra(13)
+  g.data.civilization.completedWonders.push('stargate') // enables building reposition in prep
+  g.data.phase = 'prep'
+  const b = g.data.tableau.visibleBounds(13)
+  const row = b.minRow
+  // Clear the whole front row to land so we have room for the 4-wide wall + a move target.
+  for (let c = b.minCol; c <= b.maxCol; c++) { const t = g.data.tableau.tileAt(row, c); t.terrain = 'plains'; t.unit = null; t.building = null }
+  const anchor = g.data.tableau.tileAt(row, b.minCol)
+  g.data.civilization.wonder = { key: 'great_wall', buildsLeft: WONDER_BUILDS, placed: false, inst: null }
+  g._createInstance({ kind: 'building', key: 'great_wall', level: 1, wonder: true }, anchor)
+  const wall = anchor.building
+  const destCol = b.minCol + 4
+  if (destCol + 3 <= b.maxCol) {
+    assert(g.canReposition(row, b.minCol, row, destCol), 'wall repositionable to a free 4-wide strip')
+    g.moveUnit(row, b.minCol, row, destCol)
+    const newAnchor = g.data.tableau.tileAt(row, destCol)
+    assert(newAnchor.building === wall && !anchor.building, 'wall moved to the new anchor; old cells cleared')
+    const span = g.data.tableau.visibleTiles(13).filter((t) => t.building === wall)
+    assert(span.length === 4 && wall.anchor.col === destCol, `wall still spans 4 tiles at new anchor (got ${span.length})`)
+    // Space must be available: a unit sitting in the target footprint blocks the move.
+    g.data.tableau.tileAt(row, b.minCol).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 10, maxHp: 10, damaged: false }
+    assert(!g.canReposition(row, destCol, row, b.minCol), 'blocked — destination footprint is not free (no swap)')
+  } else {
+    console.log('  (skipped move assertions — board too narrow at era 13)')
+  }
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

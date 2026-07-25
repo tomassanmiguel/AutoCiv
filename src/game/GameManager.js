@@ -1833,8 +1833,16 @@ export class GameManager {
     // Units always reposition; buildings only with the Stargate wonder (during prep).
     const buildingOk = occ.kind === 'building' && this._hasWonder('stargate') && this.data.phase === 'prep'
     if (occ.kind !== 'unit' && !buildingOk) return false
-    const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
-    if (this._isMultiTile(def)) return false // a multi-tile structure can't be dragged as a single tile
+    const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : defOf(occ.key)
+    // Wonders + multi-tile buildings (Great Wall / Shinkansen / Hadron Collider / Death Star):
+    // moved as a whole by their anchor to a NEW anchor whose entire footprint is already free
+    // (NO swap — the space must already be available). Requires Stargate (buildingOk); `to` is
+    // the destination anchor. _footprintOpenForMove handles the 1×1 wonder case too.
+    if (occ.wonder || this._isMultiTile(def)) {
+      if (!buildingOk) return false
+      if (!this.data.tableau.tileAt(toRow, toCol) || !this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
+      return this._footprintOpenForMove(def, occ, { row: toRow, col: toCol })
+    }
     const to = this.data.tableau.tileAt(toRow, toCol)
     if (!to || !this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
     if (!canPlaceOn(def.placement, to.terrain)) return false // the moving piece must fit dest
@@ -1843,7 +1851,9 @@ export class GameManager {
     if (!to.occupant) return true // move onto an empty tile
     // Swap: the destination must hold a piece of the SAME kind that also fits the source terrain
     // AND can reach the source tile from its own region.
-    const toDef = to.occupant.kind === 'unit' ? UNIT_DEFS[to.occupant.key] : BUILDING_DEFS[to.occupant.key]
+    // A wonder is never a swap target (it moves only into free space); guarded above anyway.
+    if (to.occupant.wonder) return false
+    const toDef = to.occupant.kind === 'unit' ? UNIT_DEFS[to.occupant.key] : defOf(to.occupant.key)
     return to.occupant.kind === occ.kind && canPlaceOn(toDef.placement, from.terrain) &&
       this._repositionRegion(toRow, toCol, toDef.placement).has(`${fromRow},${fromCol}`)
   }
@@ -1852,11 +1862,49 @@ export class GameManager {
     if (!this.canReposition(fromRow, fromCol, toRow, toCol)) return
     const from = this.data.tableau.tileAt(fromRow, fromCol)
     const to = this.data.tableau.tileAt(toRow, toCol)
+    const occ = from.occupant
+    const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : defOf(occ.key)
+    // Multi-tile piece: relocate the whole footprint (the 1×1 wonder falls through to the plain
+    // move below, where canReposition has already guaranteed the single destination cell is free).
+    if (this._isMultiTile(def)) { this._moveMultiTile(occ, def, { row: toRow, col: toCol }); return }
     const swapped = to.occupant // null = plain move; a unit = swap
     to.occupant = from.occupant
     from.occupant = swapped
     this._syncUnitStats() // positions changed → refresh Brewery-aura membership
     this._recomputeOutputs() // …and Brewery gold (units-in-range changed)
+    this._emit()
+  }
+
+  /** Every destination footprint cell for MOVING an existing multi-tile/wonder piece is
+   *  unlocked, terrain-valid, and free — except cells the piece already occupies (a shift may
+   *  overlap its own old footprint). Requires the destination space to already be available. */
+  _footprintOpenForMove(def, occ, anchor) {
+    for (const { r, c } of this._footprintCells(def, anchor.row, anchor.col)) {
+      const tile = this.data.tableau.tileAt(r, c)
+      if (!tile || !this.data.tableau.isUnlocked(r, c, this.data.era)) return false
+      if (!this._terrainAllows(occ, def, tile)) return false
+      if (tile.unit || tile.city) return false
+      if (tile.building && tile.building !== occ) return false // occupied by a DIFFERENT piece
+    }
+    return true
+  }
+
+  /** Relocate an existing multi-tile piece: clear its current footprint cells (all reference the
+   *  same instance) and re-stamp that instance across the new footprint anchored at `anchor`. */
+  _moveMultiTile(occ, def, anchor) {
+    const old = occ.anchor ?? anchor
+    for (const { r, c } of this._footprintCells(def, old.row, old.col)) {
+      const t = this.data.tableau.tileAt(r, c)
+      if (t && t.building === occ) t.building = null
+    }
+    occ.anchor = { row: anchor.row, col: anchor.col }
+    for (const { r, c } of this._footprintCells(def, anchor.row, anchor.col)) {
+      const t = this.data.tableau.tileAt(r, c)
+      if (t) t.building = occ
+    }
+    if (def.linksAdjacency) this._netsCache = null
+    this._syncUnitStats()
+    this._recomputeOutputs()
     this._emit()
   }
 
