@@ -64,6 +64,17 @@
 .tableau-tile.place-valid .tile-card-anchor:hover,
 .tableau-tile.place-replace .tile-card-anchor:hover { transform: none; }
 
+/* An incomplete wonder awaiting a production build: click it to continue. Reuse the
+   valid-placement gold flash so the "click me to build" cue reads consistently. */
+.tableau-tile.wonder-advance,
+.multitile-card.wonder-advance { cursor: pointer; z-index: 4; }
+.tableau-tile.wonder-advance .tile-bg { animation: tile-valid-flash 1.4s ease-in-out infinite; }
+.multitile-card.wonder-advance { animation: mt-advance-flash 1.4s ease-in-out infinite; border-radius: 8px; }
+@keyframes mt-advance-flash {
+  0%, 100% { box-shadow: inset 0 0 0 2px rgba(255, 207, 51, 0.6); }
+  50% { box-shadow: inset 0 0 0 5px #ffcf33, 0 0 18px 3px rgba(255, 207, 51, 0.9); }
+}
+
 /* Preparation: empty tiles where a mercenary can be hired get a soft gold ring
    and a centered Hire button. */
 .tableau-tile.merc-open .tile-bg {

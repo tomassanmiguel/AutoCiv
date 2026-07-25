@@ -9,8 +9,9 @@ import './ProductionPrompt.css'
  * flashes yellow (choose what to build); in 'place' the valid tiles flash yellow
  * (empty) / red (replace) on the tableau. Skip declines; Back returns to picking.
  *
- * A wonder in flight is offered here too — the FIRST pick places its incomplete
- * structure, later picks advance it. A destroyed wonder must be repaired first.
+ * A wonder is built like any structure now: pick it in the panel's Wonder tab to
+ * place it, then click the incomplete structure on the map to advance it — so there
+ * is no bespoke wonder button here, just an extra hint when one can be advanced.
  */
 export default function ProductionPrompt() {
   const game = useGame()
@@ -19,34 +20,15 @@ export default function ProductionPrompt() {
 
   if (sel.stage === 'pick') {
     const w = game.data.civilization.wonder
-    const wDef = w ? defOf(w.key) : null
-    // Wonder button state: place it (first pick), advance it, or blocked until repaired.
-    let wonderBtn = null
-    if (w && wDef) {
-      const damaged = w.placed && w.inst?.damaged
-      const label = !w.placed
-        ? `Place ${wDef.name}`
-        : damaged
-          ? `${wDef.name} — repair first`
-          : `Build ${wDef.name} (${w.buildsLeft} left)`
-      wonderBtn = (
-        <button
-          className={`prod-btn wonder frame-box-dark${damaged ? ' disabled' : ''}`}
-          disabled={!!damaged}
-          onClick={() => game.pickWonder()}
-          title={damaged ? 'The structure was destroyed — repair it with gold before building continues.' : 'Spend this build on the wonder.'}
-        >
-          <img className="prod-wonder-icon" src="/sprites/ui/wonder.png" alt="" />
-          {label}
-        </button>
-      )
-    }
+    const canAdvanceWonder = !!(w && w.placed && game.canAdvanceWonder())
+    const hint = canAdvanceWonder
+      ? 'Choose a highlighted unit or building — or click your wonder on the map to build it.'
+      : 'Choose a highlighted unit or building to build.'
     return (
       <div className="prod-prompt-wrap">
         <div className="prod-prompt frame-box">
           <div className="prod-prompt-title">Production!</div>
-          <div className="prod-prompt-hint">Choose a highlighted unit or building to build.</div>
-          {wonderBtn}
+          <div className="prod-prompt-hint">{hint}</div>
           <button className="prod-btn frame-box-dark" onClick={() => game.cancelBuild()}>Skip</button>
         </div>
       </div>

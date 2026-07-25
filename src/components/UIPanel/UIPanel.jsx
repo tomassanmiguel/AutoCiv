@@ -8,7 +8,7 @@ import {
   POPULATION_INFO,
 } from '../../game/data/slots.js'
 import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
-import { BUILDING_DEFS, buildingEffect, buildingHp } from '../../game/data/buildings.js'
+import { BUILDING_DEFS, buildingEffect, buildingHp, defOf } from '../../game/data/buildings.js'
 import { POLICY_DEFS } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
@@ -130,6 +130,21 @@ function buildingSlots(civ, era, which = 'buildings') {
       return { index, kind: 'item', silhouette: sil, name: def.name, sub: cat.label, line: eff, tip: eff, def: buildingDef }
     })
 }
+// The in-flight wonder as a single pickable slot (its own tab, shown only while a wonder is
+// unlocked). Picking it during production PLACES it; once placed you click it on the map to
+// advance. civ.wonder lives outside the fixed civ.buildings array, hence a synthetic slot.
+function wonderSlots(civ) {
+  if (!civ.wonder) return []
+  const w = civ.wonder
+  const def = defOf(w.key)
+  const damaged = w.placed && w.inst?.damaged
+  const line = !w.placed
+    ? 'Choose it during production to place it.'
+    : damaged
+      ? 'Destroyed — repair it, then click it on the map to continue.'
+      : `Placed — click it on the map to build (${w.buildsLeft} left).`
+  return [{ index: 0, kind: 'item', silhouette: '/sprites/ui/wonder.png', name: def.name, sub: 'Wonder', line, tip: def.effect }]
+}
 function policySlots(civ) {
   return civ.policies.map((occ, index) => {
     if (!occ) return { index, kind: 'empty', silhouette: POLICY_INFO.silhouette, name: POLICY_INFO.label, tip: POLICY_INFO.description }
@@ -217,16 +232,20 @@ export default function UIPanel() {
   // When a build PICK begins, jump to a pickable tab (Units) unless already on one.
   const wasPicking = useRef(false)
   useEffect(() => {
-    if (buildPicking && !wasPicking.current && !['units', 'buildings', 'military'].includes(activeTab)) {
+    if (buildPicking && !wasPicking.current && !['units', 'buildings', 'military', 'wonder'].includes(activeTab)) {
       setActiveTab('units')
     }
     wasPicking.current = buildPicking
   }, [buildPicking, activeTab])
 
+  // The wonder slot is pickable (to PLACE it) only while it's unlocked, unplaced, and not destroyed.
+  const wonderPickable = buildPicking && !!civ.wonder && !civ.wonder.placed && !civ.wonder.inst?.damaged
+
   const groups = [
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
     { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era, 'buildings') },
     { key: 'military', label: 'Military', slots: buildingSlots(civ, era, 'military') },
+    ...(civ.wonder ? [{ key: 'wonder', label: 'Wonder', slots: wonderSlots(civ) }] : []),
     { key: 'policies', label: 'Policies', slots: policySlots(civ) },
     { key: 'population', label: 'Population', slots: populationSlots(civ, game, canConvert) },
   ]
@@ -269,8 +288,8 @@ export default function UIPanel() {
         <div className="panel-tabs">
           {groups.map((g) => {
             const isActive = effectiveTab === g.key
-            // During a build pick, highlight the pickable (Units/Buildings/Military) tabs.
-            const pickHl = buildPicking && ['units', 'buildings', 'military'].includes(g.key)
+            // During a build pick, highlight the pickable tabs (the wonder tab only while placeable).
+            const pickHl = buildPicking && (['units', 'buildings', 'military'].includes(g.key) || (g.key === 'wonder' && wonderPickable))
             return (
               <button
                 key={g.key}
@@ -289,8 +308,8 @@ export default function UIPanel() {
             slots={active.slots}
             candidates={activeCandidates}
             onReplace={(i) => game.resolveReplace(i)}
-            pickable={buildPicking && ['units', 'buildings', 'military'].includes(active.key)}
-            onPick={(i) => game.pickBuild(TAB_GROUP[active.key], i)}
+            pickable={active.key === 'wonder' ? wonderPickable : (buildPicking && ['units', 'buildings', 'military'].includes(active.key))}
+            onPick={active.key === 'wonder' ? (() => game.pickWonder()) : ((i) => game.pickBuild(TAB_GROUP[active.key], i))}
             slamIndex={slamIdx}
           />
         </NineSlice>

@@ -361,6 +361,11 @@ export default function Tableau() {
   // Production placement mode: valid tiles flash yellow, occupied ones red.
   const sel = game.data.selection
   const placing = !!(sel && sel.type === 'production' && sel.stage === 'place')
+  // Advancing a placed-but-incomplete wonder: during a production PICK, clicking the on-map
+  // structure spends the build on it (canAdvanceWonder gates: placed, on-board, not destroyed).
+  const picking = !!(sel && sel.type === 'production' && sel.stage === 'pick')
+  const wonderInst = game.data.civilization.wonder?.placed ? game.data.civilization.wonder.inst : null
+  const canAdvanceMap = picking && game.canAdvanceWonder()
   const hpBonus = game.data.civilization.modifiers.unitHpBonus
   const buildingHpBonus = game.data.civilization.modifiers.buildingHpBonus
 
@@ -442,11 +447,14 @@ export default function Tableau() {
           const mercAfford = mercOK && gold >= mercCost
           const reposSrc = repos && repos.fromRow === tile.row && repos.fromCol === tile.col
           const reposValid = repos && !reposSrc && game.canReposition(repos.fromRow, repos.fromCol, tile.row, tile.col)
+          // Single-tile wonder awaiting a build → clickable to advance (multi-tile handled below).
+          const advanceHere = canAdvanceMap && !isMT && wonderInst && tile.building === wonderInst
           const cls = [
             'tableau-tile',
             occ ? 'occupied' : '',
             pstate === 'valid' ? 'place-valid' : '',
             pstate === 'replace' ? 'place-replace' : '',
+            advanceHere ? 'wonder-advance' : '',
             mercAfford ? 'merc-open' : '', // only ring the tile when a hire is actually affordable
             reposValid ? 'reposition-valid' : '',
             reposSrc ? 'reposition-src' : '',
@@ -461,7 +469,11 @@ export default function Tableau() {
               onMouseEnter={(e) => tileTip(tile, e)}
               onMouseMove={(e) => tileTip(tile, e)}
               onMouseLeave={() => setTooltip(null)}
-              onClick={placeable ? () => { if (!movedRef.current) game.placeAt(tile.row, tile.col) } : undefined}
+              onClick={
+                placeable ? () => { if (!movedRef.current) game.placeAt(tile.row, tile.col) }
+                  : advanceHere ? () => { if (!movedRef.current) game.advanceWonderProgress() }
+                    : undefined
+              }
             >
               {/* Background layer holds the sprite (and the west-coast mirror) so
                   the on-tile card is never flipped/mirrored. */}
@@ -543,14 +555,17 @@ export default function Tableau() {
           const [w, h] = bd.footprint
           const left = (t.col - bounds.minCol) * CELL
           const top = (enemyRows + (bounds.maxRow - (t.row + h - 1))) * CELL
+          // Multi-tile wonder awaiting a build → the spanning card is clickable to advance.
+          const advanceMT = canAdvanceMap && bd === wonderInst
           return (
             <div
               key={`mt-${t.row},${t.col}`}
-              className="multitile-card"
+              className={`multitile-card${advanceMT ? ' wonder-advance' : ''}`}
               style={{ left, top, width: w * CELL, height: h * CELL }}
               onMouseEnter={(e) => tileTip(t, e)}
               onMouseMove={(e) => tileTip(t, e)}
               onMouseLeave={() => setTooltip(null)}
+              onClick={advanceMT ? () => { if (!movedRef.current) game.advanceWonderProgress() } : undefined}
             >
               <TileCard
                 occupant={bd}
