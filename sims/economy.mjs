@@ -462,5 +462,44 @@ console.log('TEST 33: Traps are combat-only — no terrain yield, no Ownership g
   g.stop()
 }
 
+console.log('TEST 34: National Park (terrain-yield %) + Carbon Sink (permanent growth)')
+{
+  const g = new GameManager(56); g.setEra(10); g.data.civilization.pops = {}
+  const lands = g.data.tableau.visibleTiles(10).filter((x) => !x.building && !x.unit && x.def?.place === 'land')
+  lands[0].terrain = 'plains'; lands[0].building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+  g._recomputeOutputs(); const f0 = g.data.civilization.food.output
+  lands[1].terrain = 'plains'; lands[1].building = { kind: 'building', key: 'national_park', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._recomputeOutputs(); const f1 = g.data.civilization.food.output
+  console.log(`  terrain food/tick ${f0} → ${f1} with a National Park (+10% global)`)
+  assert(f1 > f0, `National Park boosts terrain yields (got ${f0}→${f1})`)
+  lands[2].terrain = 'plains'; lands[2].building = { kind: 'building', key: 'carbon_sink', level: 2, hp: 3, maxHp: 3, damaged: false }
+  const ng0 = g.data.civilization.naturalGrowth
+  g._applyEraEndEffects()
+  console.log(`  naturalGrowth ${ng0} → ${g.data.civilization.naturalGrowth} (Carbon Sink lvl 2)`)
+  assert(g.data.civilization.naturalGrowth === ng0 + 2, `Carbon Sink +level to naturalGrowth`)
+  g.stop()
+}
+
+console.log('TEST 35: Convert-tile (Artificial Island) + Tleilaxu Tanks (end-era pop)')
+{
+  const g = new GameManager(57); g.setEra(16)
+  const spot = g.data.tableau.visibleTiles(16).find((x) => !x.building && !x.unit && x.def?.place === 'land')
+  const anOcean = g.data.tableau.visibleTiles(16).find((x) => !x.building && !x.unit && x !== spot); anOcean.terrain = 'ocean'
+  const islands0 = g.data.tableau.visibleTiles(16).filter((x) => x.terrain === 'island').length
+  g._createInstance({ kind: 'building', key: 'artificial_island', level: 1 }, spot)
+  const islands1 = g.data.tableau.visibleTiles(16).filter((x) => x.terrain === 'island').length
+  console.log(`  Artificial Island: island tiles ${islands0} → ${islands1}`)
+  assert(islands1 === islands0 + 1, `an ocean tile converted to island (got ${islands0}→${islands1})`)
+  const g2 = new GameManager(58); g2.setEra(23)
+  const tt = g2.data.tableau.visibleTiles(23).find((x) => !x.building && !x.unit && x.def?.place === 'land')
+  tt.building = { kind: 'building', key: 'tleilaxu_tanks', level: 1, hp: 2, maxHp: 2, damaged: false }
+  const total = (c) => Object.values(c.pops).reduce((a, b) => a + b, 0)
+  const p0 = total(g2.data.civilization)
+  g2._applyEraEndEffects()
+  console.log(`  Tleilaxu Tanks: population ${p0} → ${total(g2.data.civilization)} (+225)`)
+  assert(total(g2.data.civilization) - p0 === 225, `Tleilaxu +225 pop (got +${total(g2.data.civilization) - p0})`)
+  g.stop(); g2.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

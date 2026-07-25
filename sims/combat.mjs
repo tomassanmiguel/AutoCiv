@@ -800,5 +800,21 @@ console.log('TEST 37: Spawner — Stables creates a cavalry unit every 8 turns')
   g.stop()
 }
 
+console.log('TEST 38: Power building (Windmill) grants +1 free upgrade level to a unit in range')
+{
+  const g = new GameManager(55); g.setEra(6)
+  const b = g.data.tableau.visibleBounds(6)
+  const ut = g.data.tableau.tileAt(b.minRow, b.minCol); ut.terrain = 'plains'
+  ut.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true); const a0 = ut.unit.atk
+  const wt = g.data.tableau.tileAt(b.minRow, b.minCol + 1); wt.terrain = 'plains'
+  wt.building = { kind: 'building', key: 'windmill', level: 1, hp: 2, maxHp: 2, damaged: false }
+  g._syncUnitStats(true)
+  const expect = unitStats(UNIT_DEFS.warrior, 2, 0, 0).atk // level 1 + 1
+  console.log(`  Windmill: warrior atk ${a0} → ${ut.unit.atk} (expect ${expect})`)
+  assert(ut.unit.atk === expect && ut.unit.level === 1, `Windmill +1 in-range level (got ${ut.unit.atk})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

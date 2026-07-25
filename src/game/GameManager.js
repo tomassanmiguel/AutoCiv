@@ -316,6 +316,7 @@ export class GameManager {
   _buildingTickOutputs() {
     const civ = this.data.civilization
     const totals = { progress: 0, food: 0, production: 0, gold: 0, legitimacy: 0 }
+    const parkMult = 1 + this._nationalParkBonus() // National Parks: global terrain-yield %
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
       const def = BUILDING_DEFS[occ.key]
@@ -362,13 +363,27 @@ export class GameManager {
         for (const def of this._activeEffectDefs()) {
           if (def.terrainDouble && (def.terrainDouble === 'all' || def.terrainDouble === tile.terrain)) tmult *= (def.terrainDouble === 'asteroid' ? 3 : 2)
         }
-        const amt = ty.res === 'gold' ? Math.round(ty.amount * tmult * exoGold * waterGold) : ty.amount * tmult
+        // Carbon Sink (naturalGrowth, land tiles only) + National Park (parkMult) fold into the yield.
+        const natural = tile.def?.place === 'land' ? civ.naturalGrowth : 0
+        const scaled = (ty.amount + natural) * tmult * parkMult
+        const amt = ty.res === 'gold' ? Math.round(scaled * exoGold * waterGold) : scaled
         totals[ty.res] += amt
         occ.terrainYield = { res: ty.res, amount: amt }
       } else occ.terrainYield = null
       if (civ.bonuses.includes('gas_light')) totals.production += 2 // Gas Light bonus: every building +2 :production:/t
     }
     return totals
+  }
+
+  /** Global terrain-yield multiplier bonus from all National Parks (+parkYieldPct × level each). */
+  _nationalParkBonus() {
+    let b = 0
+    for (const { occ } of this._buildingInstances()) {
+      if (occ.damaged) continue
+      const d = BUILDING_DEFS[occ.key]
+      if (d?.special === 'stacks' && d.parkYieldPct) b += d.parkYieldPct * occ.level
+    }
+    return b
   }
 
   /** Count of Plains tiles among a Farm's own tile + its (road-augmented) neighbours. */
@@ -606,6 +621,14 @@ export class GameManager {
     }
     for (const def of this._activeEffectDefs()) add(def.special, def.levelBonus ?? 0)
     for (const key of this.data.civilization.completedWonders) { const w = WONDER_DEFS[key]; if (w?.levelBonus) add(w.special, w.levelBonus) }
+    // Power buildings (Windmill/Coal/Nuclear/Fusion): +N free upgrade levels to units AND
+    // buildings within range (range widens +1 per upgrade level).
+    for (const { tile: pt, occ } of this._buildingInstances()) {
+      const d = BUILDING_DEFS[occ.key]
+      if (occ.damaged || d?.special !== 'power' || !d.powerLevels) continue
+      const range = (d.range ?? 1) + (occ.level - 1)
+      if (this._reachableWithin(pt.row, pt.col, range).has(`${tile.row},${tile.col}`)) bonus += d.powerLevels
+    }
     return bonus
   }
 
@@ -1364,6 +1387,15 @@ export class GameManager {
         if (g.key === 'glassworks' && !g.damaged && g !== inst) legit += BUILDING_DEFS.glassworks.legitOnBuild(g.level)
       }
       if (legit > 0) civ.legitimacy.value += legit
+      // Convert-tile support (Artificial Island / Asteroid Foundry / Artificial Planet):
+      // permanently transform a random visible source-terrain tile into the target terrain.
+      if (bdef.special === 'convert_tile' && bdef.convertFrom && bdef.convertTo) {
+        const cands = this.data.tableau.visibleTiles(this.data.era).filter((t) => t.terrain === bdef.convertFrom)
+        if (cands.length) {
+          cands[Math.floor(Math.random() * cands.length)].terrain = bdef.convertTo
+          this._netsCache = null // terrain changed → drop the bridge/adjacency memo
+        }
+      }
     }
     // Midwivery: creating a unit yields production equal to its (effective) defense.
     // In development, so crossing a production threshold opens a build (may chain).

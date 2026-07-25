@@ -523,6 +523,13 @@ class CombatMixin {
       if (adj.length === 0) continue
       adj[Math.floor(Math.random() * adj.length)].unit.level += 1
     }
+    // Support end-of-era: Carbon Sink grows the permanent natural yield; Tleilaxu Tanks add pops.
+    for (const { occ } of this._buildingInstances()) {
+      if (occ.damaged) continue
+      const d = BUILDING_DEFS[occ.key]
+      if (d?.special === 'growth') civ.naturalGrowth += occ.level
+      if (d?.output?.res === 'population' && d.output.when === 'eraEnd') this.addPops(d.output.amount)
+    }
     // Surveying: lay a Road on a random valid tile.
     if (this._hasPolicy('surveying')) this._layRandomRoad()
   }

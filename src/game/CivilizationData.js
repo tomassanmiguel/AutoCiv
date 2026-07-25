@@ -72,6 +72,10 @@ export class CivilizationData {
     // Poet specialist is first unlocked so a fresh Poet starts at its base +1).
     this.poetBonus = 0
 
+    // Carbon Sink: a permanent, stacking flat bonus added to every terrestrial tile's terrain
+    // yield (grows by each Carbon Sink's level at the end of each combat).
+    this.naturalGrowth = 0
+
     // Advancement bookkeeping.
     this.chosenAdvancements = new Set() // ids chosen (removed from the pool)
     this.askBeforeReplace = true        // "are you sure" before overwriting a full slot
