@@ -238,7 +238,7 @@ console.log('TEST 10: Siege splash — Catapult hits the target in full + neighb
   const nb2 = mkEnemy('raider', 'N2', col, r + 2, 1000, 3)
   g.data.enemies = [target, nb1, nb2]
   g._startCombat(); g.dismissCombatIntro()
-  g._runTurn()
+  g._playerPhase() // isolate the Catapult's shot (enemies would otherwise MOVE first — step 1 — and shift targeting)
   const dT = 1000 - target.hp, dN1 = 1000 - nb1.hp, dN2 = 1000 - nb2.hp
   console.log(`  target ${dT} dmg; neighbours ${dN1}, ${dN2} (Catapult atk 14, splash 0.5)`)
   assert(dT === 14, `target takes full 14 (got ${dT})`)
@@ -1411,7 +1411,7 @@ console.log('TEST 59: multi-tile bosses — footprint, no overlap, movement, Aza
   assert(az.key === 'azazoth' && az.footprint[0] === (b2.maxCol - b2.minCol + 1) && az.footprint[1] === 1, 'Azazoth spans the whole row')
   az.row = b2.maxRow // bottom edge on the top grid row
   g2.data.phase = 'battle'; g2.data.combatIntro = false; g2.data.combatTurn = 1
-  g2._bossAct(az, b2) // marches down, vacating row maxRow
+  g2._bossMove(az, b2) // marches down, vacating row maxRow
   assert(az.row === b2.maxRow - 1, 'Azazoth marched down one row')
   const falloutRow = g2.data.tableau.visibleTiles(27).filter((t) => t.row === b2.maxRow && t.terrain === 'fallout').length
   assert(falloutRow > 0, 'Azazoth leaves a row of Fallout behind it')
@@ -1507,6 +1507,41 @@ console.log('TEST 64: reposition & gold actions are piece-aware (never clobber t
   assert(src.building.level === 2 && src.unit.level === 1, 'upgrade(building) raised only the wall')
   g.upgradeOccupant(src.row, src.col, 'unit')
   assert(src.unit.level === 2 && src.building.level === 2, 'upgrade(unit) raised only the unit')
+  g.stop()
+}
+
+console.log('TEST 65: player pursuit movement (step 2) + units return home after combat')
+{
+  const g = new GameManager(200); g.setEra(0)
+  const b = g.data.tableau.visibleBounds(0)
+  for (let r = b.minRow; r <= b.maxRow; r++) for (let c = b.minCol; c <= b.maxCol; c++) { const t = g.data.tableau.tileAt(r, c); if (t) { t.terrain = 'plains'; t.unit = null; t.building = null } }
+  const wt = g.data.tableau.tileAt(b.minRow, b.minCol)
+  wt.unit = { kind: 'unit', key: 'wolf', level: 1, hp: 2, maxHp: 2, damaged: false } // Wolf: range 1, pursuit 2
+  g.data.enemies = [{ id: 9001, kind: 'unit', key: 'raider', types: ['melee'], row: b.minRow + 2, col: b.minCol, hp: 1e6, maxHp: 1e6, atk: 1, chip: 1, damaged: false, breached: false }]
+  g._startCombat(); g.dismissCombatIntro()
+  assert(wt.unit?.key === 'wolf' && wt.unit.homeRow === b.minRow && wt.unit.homeCol === b.minCol, 'wolf starts home; home tile recorded at combat start')
+  assert(!g._lowestHpEnemyInRange(b.minRow, b.minCol, 1), 'the enemy is out of the wolf’s attack range at the start')
+  g._playerMovePhase() // pursuit step in isolation
+  assert(!g.data.tableau.tileAt(b.minRow, b.minCol).unit && g.data.tableau.tileAt(b.minRow + 1, b.minCol).unit?.key === 'wolf', 'wolf pursued one tile toward the out-of-range enemy')
+  g._endCombat()
+  assert(g.data.tableau.tileAt(b.minRow, b.minCol).unit?.key === 'wolf' && !g.data.tableau.tileAt(b.minRow + 1, b.minCol).unit, 'wolf returned to its home tile once combat ended')
+  g.stop()
+}
+
+console.log('TEST 66: the beat state machine resolves a full battle to a win, surfacing step labels')
+{
+  const g = new GameManager(210); g.setEra(1)
+  const b = g.data.tableau.visibleBounds(1)
+  for (const t of g.data.tableau.visibleTiles(1)) { t.unit = null; t.building = null }
+  const pt = g.data.tableau.tileAt(b.minRow, b.minCol); pt.terrain = 'plains'
+  pt.unit = { kind: 'unit', key: 'warrior', level: 10, hp: 5, maxHp: 5, damaged: false } // strong enough to grind the raider down over a few turns
+  g.data.enemies = [{ id: 9100, kind: 'unit', key: 'raider', types: ['melee'], row: b.minRow + 1, col: b.minCol, hp: 40, maxHp: 40, atk: 1, chip: 1, damaged: false, breached: false }]
+  g._startCombat(); g.dismissCombatIntro()
+  let guard = 0, sawLabel = false
+  while (g.data.phase === 'battle' && guard < 5000) { g._runBeat(); if (g.data.combatStepLabel) sawLabel = true; guard++ }
+  assert(g.data.phase !== 'battle', 'the beat machine ran the battle to a conclusion (no stall)')
+  assert(!g.data.defeated, 'the player won the lopsided battle via the beat machine')
+  assert(sawLabel, 'a turn-step label was surfaced during the battle')
   g.stop()
 }
 

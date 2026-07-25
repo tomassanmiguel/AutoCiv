@@ -24,6 +24,16 @@ export const COMBAT_DURATION = 25 // legacy export (kept for HUD compat)
 const MIN_COOLDOWN = 1
 const MAX_TURNS = 500 // stalemate safety cap (a held line that can't kill ends as a win)
 
+// A combat turn resolves in FOUR ordered steps, one unit at a time (for readability): enemies
+// move, then player units pursue into range, then player pieces attack, then enemies attack.
+// Phase 0 is per-turn upkeep (poison / auras / spawns / heals) that runs before the steps.
+const PHASE_UPKEEP = 0
+const PHASE_ENEMY_MOVE = 1
+const PHASE_PLAYER_MOVE = 2
+const PHASE_PLAYER_ATTACK = 3
+const PHASE_ENEMY_ATTACK = 4
+const STEP_LABELS = { 1: 'Enemy Movement', 2: 'Player Pursuit', 3: 'Player Attacks', 4: 'Enemy Attacks' }
+
 // Default attack range (Manhattan diamond) by combat role, when a def omits `range`.
 const DEFAULT_RANGE = {
   melee: 1, cavalry: 2, ranged: 3, siege: 4, naval: 2, aerial: 3, astral: 3,
@@ -122,6 +132,9 @@ class CombatMixin {
         delete occ.bathsCd // Public Baths timer
         delete occ.mercCd  // Embassy timer
         delete occ.lastAttackSeq
+        // Units may reposition (pursuit) during combat — remember where they started so
+        // they slide back home when the battle ends (_restoreUnitHomes).
+        if (occ.kind === 'unit') { occ.homeRow = tile.row; occ.homeCol = tile.col }
       }
     }
     for (const e of this.data.enemies) {
@@ -136,6 +149,11 @@ class CombatMixin {
     this.data.combatTime = 0
     this.data.combatEvents = []
     this.data.combatSeq = 0
+    this.data.combatStepLabel = '' // which of the 4 turn-steps is currently resolving (HUD)
+    // Beat state machine (one unit acts per beat): start "past" the last phase so the first
+    // beat rolls over into a fresh turn (upkeep → the 4 steps). See _nextActor.
+    this._combatPhaseIdx = PHASE_ENEMY_ATTACK
+    this._combatQueue = []
     this.data.combatIntro = true // hold the fight until the "Battle" banner clears
     this.data.phase = 'battle'
     this._restartTimer()
@@ -149,7 +167,10 @@ class CombatMixin {
   }
 
   // ---------------------------------------------------------------------------
-  // Turn loop
+  // Turn loop — a turn resolves in FOUR ordered steps (enemy move → player pursuit →
+  // player attack → enemy attack), ONE unit at a time (a "beat"), so the action reads
+  // clearly. The battle timer fires one beat per crossing of the speed accumulator, so
+  // the speed setting now controls how fast each individual step plays.
   // ---------------------------------------------------------------------------
   _combatStep() {
     if (this.data.phase !== 'battle' || this.data.combatIntro) return
@@ -158,26 +179,147 @@ class CombatMixin {
     this.data.combatAccum += tps * (COMBAT_INTERVAL_MS / 1000)
     if (this.data.combatAccum < 1) return
     this.data.combatAccum -= 1
-    this._runTurn()
+    this._runBeat()
   }
 
-  /** Execute one discrete combat turn: player towers fire, then enemies act. */
+  /** Resolve exactly ONE effective beat — a single unit's action for the current step —
+   *  silently skipping actors that have nothing to do (a blocked enemy, an out-of-range
+   *  unit, a recharging tower). Advances the step/turn when a queue empties. */
+  _runBeat() {
+    for (let guard = 0; guard < 4000; guard++) {
+      const actor = this._nextActor()
+      if (this.data.phase !== 'battle') return // ended mid-advance (defeat / all slain / MAX_TURNS)
+      if (!actor) continue // crossed a step/turn boundary — loop to fetch the first real actor
+      const bounds = this.data.tableau.visibleBounds(this.data.era)
+      if (!bounds) { this._endCombat(); return }
+      this.data.combatSeq++
+      this.data.combatEvents = []
+      const did = this._performActor(actor, bounds)
+      if (did && this.data.combatEvents.length > 0) {
+        const civ = this.data.civilization
+        if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
+        if (!this.data.enemies.some((e) => !e.damaged && !e.breached)) { this._endCombat(); return }
+        this._emit()
+        return
+      }
+      // no-op actor: keep scanning without spending this beat
+    }
+    this._emit() // guard tripped (deep stalemate) — yield; MAX_TURNS ends it across ticks
+  }
+
+  /** Pop the next actor from the current step's queue; when a queue empties, advance to the
+   *  next step (or roll over into a new turn, running upkeep). Returns null when it only
+   *  advanced (the caller loops again). */
+  _nextActor() {
+    if (this._combatQueue.length) return this._combatQueue.shift()
+    this._combatPhaseIdx++
+    if (this._combatPhaseIdx > PHASE_ENEMY_ATTACK) {
+      this._combatPhaseIdx = PHASE_UPKEEP
+      this.data.combatTurn++
+      if (this.data.combatTurn > MAX_TURNS) { this._endCombat(); return null }
+    }
+    if (STEP_LABELS[this._combatPhaseIdx]) this.data.combatStepLabel = STEP_LABELS[this._combatPhaseIdx]
+    this._combatQueue = this._buildPhaseQueue(this._combatPhaseIdx)
+    return null
+  }
+
+  /** The ordered actor list for a step. Enemies/pieces are referenced indirectly (id / cell)
+   *  and re-validated when executed, since the board changes as a step resolves. */
+  _buildPhaseQueue(idx) {
+    if (idx === PHASE_UPKEEP) return [{ kind: 'upkeep' }]
+    if (idx === PHASE_ENEMY_MOVE) return this._liveEnemiesFrontFirst().map((e) => ({ kind: 'emove', id: e.id }))
+    if (idx === PHASE_PLAYER_MOVE) return this._pursuitQueue()
+    if (idx === PHASE_PLAYER_ATTACK) return this._playerPieceQueue()
+    if (idx === PHASE_ENEMY_ATTACK) return this._liveEnemiesFrontFirst().filter((e) => !e._moved).map((e) => ({ kind: 'eatk', id: e.id }))
+    return []
+  }
+
+  /** Execute one actor's action for its step; returns true if it did something visible. */
+  _performActor(actor, bounds) {
+    if (actor.kind === 'upkeep') { this._turnUpkeep(); return this.data.combatEvents.length > 0 }
+    if (actor.kind === 'emove') {
+      const e = this._enemyById(actor.id)
+      if (!e || e.damaged || e.breached) return false
+      e._moved = this._enemyMove(e, bounds)
+      return this.data.combatEvents.length > 0
+    }
+    if (actor.kind === 'pmove') {
+      const t = this.data.tableau.tileAt(actor.row, actor.col)
+      if (!t || t.unit !== actor.unit || t.unit.damaged) return false
+      return this._pursueUnit(t.unit, actor.row, actor.col)
+    }
+    if (actor.kind === 'patk') {
+      const t = this.data.tableau.tileAt(actor.row, actor.col)
+      const occ = actor.pkind === 'unit' ? t?.unit : t?.building
+      if (!occ || occ.damaged || occ !== actor.occ) return false
+      this._resolvePlayerPiece({ occ, row: actor.row, col: actor.col })
+      return this.data.combatEvents.length > 0
+    }
+    if (actor.kind === 'eatk') {
+      const e = this._enemyById(actor.id)
+      if (!e || e.damaged || e.breached || e._moved) return false
+      return this._enemyAttack(e, bounds)
+    }
+    return false
+  }
+
+  _enemyById(id) { return this.data.enemies.find((e) => e.id === id) }
+  _liveEnemiesFrontFirst() {
+    return this.data.enemies.filter((e) => !e.damaged && !e.breached).sort((a, b) => a.row - b.row || a.col - b.col)
+  }
+
+  /** Pursuit-capable player units, bottom-to-top (eligibility re-checked as each acts). */
+  _pursuitQueue() {
+    const q = []
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const u = tile.unit
+      if (u && !u.damaged && (UNIT_DEFS[u.key]?.pursuit ?? 0) > 0) q.push({ kind: 'pmove', unit: u, row: tile.row, col: tile.col })
+    }
+    return q.sort((a, b) => a.row - b.row || a.col - b.col)
+  }
+
+  /** Every attacking player piece (unit + tower), bottom-to-top, left-to-right. */
+  _playerPieceQueue() {
+    const q = []
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      if (tile.unit && !tile.unit.damaged) q.push({ kind: 'patk', occ: tile.unit, pkind: 'unit', row: tile.row, col: tile.col })
+      if (tile.building && !tile.building.damaged) q.push({ kind: 'patk', occ: tile.building, pkind: 'building', row: tile.row, col: tile.col })
+    }
+    return q.sort((a, b) => a.row - b.row || a.col - b.col)
+  }
+
+  /** Per-turn upkeep (before the four steps): environmental / passive effects that aren't one
+   *  unit's action — poison, Death Star, enemy auras, trap stuns, spawners, support heals. Also
+   *  stamps each live enemy's per-turn act count + stun flag for the move/attack steps. */
+  _turnUpkeep() {
+    this._jagerCoverage = null
+    this._applyPoison() // Nanite Warfare: 5% max-HP poison to all enemies each turn
+    if (this._hasWonder('death_star') && this.data.combatTurn % 5 === 0) this._applyDeathStar()
+    this._applyEnemyAuras()        // Shaman heals, Leader buffs, Flagship spawns
+    this._applyTrapTriggers()      // Discombobulator: stun nearby enemies before they act
+    this._applySpawners()          // Drydock/Stables/Aircraft Carrier/Spaceport: periodic spawns
+    this._applySupportBuildings()  // Campfire/Public Baths heals + Embassy free mercenaries
+    for (const e of this.data.enemies) {
+      if (e.damaged || e.breached) continue
+      e._acts = this._enemyActsThisTurn(e)
+      e._moved = false
+      if (e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; e._skip = true } else e._skip = false
+    }
+  }
+
+  /** Run a WHOLE turn synchronously (headless sims + the logical "turn" unit): upkeep, then
+   *  the four steps in order. The animated UI instead advances one beat at a time via _runBeat. */
   _runTurn() {
     this.data.combatSeq++
     this.data.combatEvents = []
     this.data.combatTurn++
     const bounds = this.data.tableau.visibleBounds(this.data.era)
     if (!bounds) { this._endCombat(); return }
-
-    this._applyPoison() // Nanite Warfare: 5% max-HP poison to all enemies each turn
-    // Death Star wonder: every 5 turns, vaporize a random enemy (+5000 to Azazoth).
-    if (this._hasWonder('death_star') && this.data.combatTurn % 5 === 0) this._applyDeathStar()
-    this._playerPhase()
-    this._applyTrapTriggers() // Discombobulator: stun nearby enemies before they act
-    this._applySpawners()     // Drydock/Stables/Aircraft Carrier/Spaceport: periodic unit spawns
-    this._applySupportBuildings() // Campfire/Public Baths heals + Embassy free mercenaries
-    this._enemyPhase(bounds)
-
+    this._turnUpkeep()
+    for (const e of this._liveEnemiesFrontFirst()) e._moved = this._enemyMove(e, bounds) // 1) enemy movement
+    this._playerMovePhase()                                                              // 2) player pursuit
+    this._playerPhase()                                                                  // 3) player attacks
+    for (const e of this._liveEnemiesFrontFirst()) if (!e._moved) this._enemyAttack(e, bounds) // 4) enemy attacks
     const civ = this.data.civilization
     if (civ.legitimacy.value <= 0) { civ.legitimacy.value = 0; this._defeat(); return }
     const remaining = this.data.enemies.some((e) => !e.damaged && !e.breached)
@@ -185,27 +327,91 @@ class CombatMixin {
     this._emit()
   }
 
-  /** All player pieces act: each fires at the lowest-HP enemy in range. Processed
-   *  bottom-to-top, left-to-right. Units always fire; buildings only if they're towers. */
-  _playerPhase() {
-    const pieces = []
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      if (tile.unit && !tile.unit.damaged) pieces.push({ occ: tile.unit, row: tile.row, col: tile.col })
-      if (tile.building && !tile.building.damaged) pieces.push({ occ: tile.building, row: tile.row, col: tile.col })
+  /** Step 2: every pursuit unit that can reach an out-of-range enemy closes toward it. */
+  _playerMovePhase() {
+    for (const a of this._pursuitQueue()) {
+      const t = this.data.tableau.tileAt(a.row, a.col)
+      if (t?.unit === a.unit && !a.unit.damaged) this._pursueUnit(a.unit, a.row, a.col)
     }
-    pieces.sort((a, b) => a.row - b.row || a.col - b.col)
-    for (const p of pieces) {
-      this._pieceAttack(p)
-      // Chronobooster aura: units in range act a second time this turn (cooldown bypassed).
-      if (p.occ.kind === 'unit' && p.occ.cmdActTwice && !p.occ.damaged) { p.occ.cdTimer = 0; this._pieceAttack(p) }
-      // Machine Gun underlay: the unit sharing its tile attacks +level extra times.
-      if (p.occ.kind === 'unit' && !p.occ.damaged) {
-        const bld = this.data.tableau.tileAt(p.row, p.col)?.building
-        if (bld && !bld.damaged && bld.key === 'machine_gun') {
-          for (let i = 0; i < bld.level && !p.occ.damaged; i++) { p.occ.cdTimer = 0; this._pieceAttack(p) }
-        }
+  }
+
+  /** Step 3: all player pieces fire at the lowest-HP enemy in range, bottom-to-top. */
+  _playerPhase() {
+    for (const a of this._playerPieceQueue()) this._resolvePlayerPiece({ occ: a.occ, row: a.row, col: a.col })
+  }
+
+  /** Resolve one player piece's attacks for the turn: its shot, plus bonus shots granted by a
+   *  Chronobooster aura or a Machine Gun underlay (all within its single beat). */
+  _resolvePlayerPiece(p) {
+    this._pieceAttack(p)
+    // Chronobooster aura: units in range act a second time this turn (cooldown bypassed).
+    if (p.occ.kind === 'unit' && p.occ.cmdActTwice && !p.occ.damaged) { p.occ.cdTimer = 0; this._pieceAttack(p) }
+    // Machine Gun underlay: the unit sharing its tile attacks +level extra times.
+    if (p.occ.kind === 'unit' && !p.occ.damaged) {
+      const bld = this.data.tableau.tileAt(p.row, p.col)?.building
+      if (bld && !bld.damaged && bld.key === 'machine_gun') {
+        for (let i = 0; i < bld.level && !p.occ.damaged; i++) { p.occ.cdTimer = 0; this._pieceAttack(p) }
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Player pursuit movement (step 2)
+  // ---------------------------------------------------------------------------
+  /** A pursuit unit with no enemy in attack range, but one reachable within range+pursuit,
+   *  closes up to `pursuit` tiles toward it (through its `move` domains) until in range. */
+  _pursueUnit(unit, fromRow, fromCol) {
+    const def = UNIT_DEFS[unit.key]
+    const pursuit = def?.pursuit ?? 0
+    const range = this._pieceRange(unit)
+    if (pursuit <= 0 || range <= 0) return false
+    if (this._lowestHpEnemyInRange(fromRow, fromCol, range)) return false // already able to strike → hold
+    // Nearest live enemy this unit could reach into range of.
+    let target = null, bestD = Infinity
+    for (const e of this.data.enemies) {
+      if (e.damaged || e.breached) continue
+      const d = this._enemyDistance(e, fromRow, fromCol)
+      if (d <= range + pursuit && d < bestD) { bestD = d; target = e }
+    }
+    if (!target) return false
+    let r = fromRow, c = fromCol, steps = pursuit, moved = false
+    while (steps > 0 && this._enemyDistance(target, r, c) > range) {
+      const next = this._pursueStepCell(unit, def, r, c, target)
+      if (!next) break
+      const cur = this.data.tableau.tileAt(r, c)
+      if (cur?.unit === unit) cur.unit = null
+      this.data.tableau.tileAt(next.r, next.c).unit = unit
+      r = next.r; c = next.c; steps -= 1; moved = true
+    }
+    if (moved) {
+      this._pushEvent({ kind: 'march', col: c, row: r }) // no float (drives the slide + marks a beat)
+      this._syncUnitStats(true) // new tile → refresh terrain/Brewery/Tribalism bonuses
+    }
+    return moved
+  }
+
+  /** Best orthogonally-adjacent cell that steps `unit` closer to `target` (empty of a live unit,
+   *  on the player grid, terrain in the unit's move domains). Null if none improves. */
+  _pursueStepCell(unit, def, r, c, target) {
+    const bounds = this.data.tableau.visibleBounds(this.data.era)
+    let best = null, bestD = this._enemyDistance(target, r, c)
+    for (const [nr, nc] of [[r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1]]) {
+      if (nr < bounds.minRow || nr > bounds.maxRow || nc < bounds.minCol || nc > bounds.maxCol) continue
+      if (!this.data.tableau.isUnlocked(nr, nc, this.data.era)) continue
+      const t = this.data.tableau.tileAt(nr, nc)
+      if (!t || !this._unitCanMoveOnto(unit, def, t)) continue
+      const d = this._enemyDistance(target, nr, nc)
+      if (d < bestD) { bestD = d; best = { r: nr, c: nc } }
+    }
+    return best
+  }
+
+  /** True if `unit` may step onto `tile`: no other live unit there, and the terrain is one of
+   *  the unit's `move` domains (land / water / space). */
+  _unitCanMoveOnto(unit, def, tile) {
+    if (tile.unit && !tile.unit.damaged && tile.unit !== unit) return false
+    const domains = def.move ?? ['land']
+    return domains.some((d) => canPlaceOn(d, tile.terrain))
   }
 
   /** One tower's attack: strike the lowest-HP enemy within its range. Units with a
@@ -213,10 +419,10 @@ class CombatMixin {
   _pieceAttack(p) {
     const occ = p.occ
     const range = this._pieceRange(occ)
-    if (range <= 0) return
-    if (occ.cdTimer > 0) { occ.cdTimer -= 1; return } // recharging after a shot
+    if (range <= 0) return false
+    if (occ.cdTimer > 0) { occ.cdTimer -= 1; return false } // recharging after a shot
     const target = this._lowestHpEnemyInRange(p.row, p.col, range)
-    if (!target) return
+    if (!target) return false
     let atk = this._effectiveAtk(occ)
     // Adaptive Strategy: units gain +5% attack per elapsed combat turn (resets each battle;
     // turn 1 = base). Applies to units only, not towers.
@@ -237,6 +443,7 @@ class CombatMixin {
     }
     const cd = UNIT_DEFS[occ.key]?.cooldown ?? defOf(occ.key)?.cooldown ?? 0
     if (cd > 0) occ.cdTimer = cd
+    return true
   }
 
   /** Attack range for a player piece (0 = doesn't attack). Utility units never attack;
@@ -387,17 +594,18 @@ class CombatMixin {
     return 1
   }
 
-  /** All enemies act, front-most (lowest row) first so a column flows downward. Fast enemies
-   *  act multiple times; the Juggernaut skips alternate turns. */
+  /** Bundled enemy phase (auras + all movement + all attacks), front-most first. The live turn
+   *  splits movement (step 1) and attacks (step 4) across the player steps; this convenience keeps
+   *  the headless sims that exercise enemy pathing/breach/chip in isolation working unchanged. */
   _enemyPhase(bounds) {
     this._jagerCoverage = null // recompute player-range coverage once per turn (for Jäger)
     this._applyEnemyAuras() // Shaman heals, Leader buffs, Flagship spawns — before anyone acts
-    const list = this.data.enemies.filter((e) => !e.damaged && !e.breached)
-    list.sort((a, b) => a.row - b.row || a.col - b.col)
-    for (const e of list) {
-      const acts = this._enemyActsThisTurn(e)
-      for (let n = 0; n < acts && !e.damaged && !e.breached; n++) this._enemyAct(e, bounds)
+    for (const e of this._liveEnemiesFrontFirst()) {
+      e._acts = this._enemyActsThisTurn(e); e._moved = false
+      if (e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; e._skip = true } else e._skip = false
     }
+    for (const e of this._liveEnemiesFrontFirst()) e._moved = this._enemyMove(e, bounds)
+    for (const e of this._liveEnemiesFrontFirst()) if (!e._moved) this._enemyAttack(e, bounds)
   }
 
   /** Per-turn enemy auras + boss spawns: enemy_shaman heals adjacent allies, Leader buffs
@@ -526,11 +734,42 @@ class CombatMixin {
     this._pushEvent({ kind: 'damage', side: 'enemy', amount: 9999, killed: true, col: e.col, row: e.row })
   }
 
-  /** One enemy acts: breach off the bottom, chip a blocker below, or march down. */
+  /** Legacy single-call enemy action (move, else attack) — kept for the headless sims that drive
+   *  one enemy at a time. The live turn uses _enemyMove (step 1) and _enemyAttack (step 4). */
   _enemyAct(e, bounds) {
     if (e.damaged || e.breached) return
-    if (e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; return } // stunned (Azazoth is immune to freeze)
-    if (this._isMultiTileEnemy(e)) { this._bossAct(e, bounds); return } // multi-tile bosses move as a unit
+    e._acts = this._enemyActsThisTurn(e)
+    e._skip = e.skipTurns > 0 && e.key !== 'azazoth' // stunned (Azazoth is immune to freeze)
+    if (e._skip) { e.skipTurns -= 1; return }
+    if (!this._enemyMove(e, bounds)) this._enemyAttack(e, bounds)
+  }
+
+  /** Step 1: the enemy moves — marches down toward the player, sidesteps water/danger, or breaches
+   *  off the bottom — up to its per-turn act count, stopping the moment it's engaged with a blocker
+   *  (which it then attacks in step 4). Returns true if it changed position or breached. */
+  _enemyMove(e, bounds) {
+    if (e.damaged || e.breached) return false
+    // Stun (Discombobulator/Cryo) is consumed once per turn — in upkeep normally; here as a
+    // fallback when this method is driven without upkeep having stamped the flag.
+    if (e._skip == null && e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; return false }
+    if (e._skip) return false
+    const acts = e._acts != null ? e._acts : this._enemyActsThisTurn(e)
+    if (acts <= 0) return false // Juggernaut/Azazoth off-turn
+    if (this._isMultiTileEnemy(e)) return this._bossMove(e, bounds)
+    let moved = false
+    for (let n = 0; n < acts; n++) {
+      const step = this._enemyMoveOnce(e, bounds)
+      if (step === 'breached') return true
+      if (step === 'stepped') { moved = true; continue } // fast enemies keep marching
+      if (step === 'lateral') { moved = true; break }    // one sidestep per turn
+      break // 'blocked' — engaged with a blocker or held behind another enemy
+    }
+    return moved
+  }
+
+  /** One movement attempt: breach / reroute around water / Jäger sidestep / march down one tile.
+   *  Returns 'breached' | 'stepped' | 'lateral' | 'blocked'. Never attacks. */
+  _enemyMoveOnce(e, bounds) {
     const belowRow = e.row - 1
     // Off the bottom → breach: subtract atk from legitimacy, then remove.
     if (belowRow < bounds.minRow) {
@@ -538,17 +777,41 @@ class CombatMixin {
       const lost = this._damageLegitimacy(Math.round(this._enemyBreachAtk(e) * fw)) // Democracy doubles the loss
       e.breached = true
       this._pushEvent({ kind: 'legit', amount: lost, col: e.col, row: e.row })
-      return
+      return 'breached'
     }
     const below = this.data.tableau.tileAt(belowRow, e.col)
-    // Terrain gate: a LAND enemy can't march onto water — it routes laterally around it toward a
-    // column with a land path down. Bosses (Titan/Flagship/Azazoth) plow straight through.
+    // Terrain gate: a LAND enemy can't march onto water — route laterally toward a land column.
     if (below && !ENEMY_DEFS[e.key]?.boss && !this._enemyCanTraverse(e, below.terrain)) {
+      const col0 = e.col
       this._enemyReroute(e, bounds)
-      return
+      return e.col !== col0 ? 'lateral' : 'blocked'
     }
-    // Ranged chippers (Ranger/Deadeye/Mongol) strike the nearest blocker down their column from
-    // afar — if it's NOT adjacent, chip it in place; an adjacent one falls through to melee below.
+    // Engaged with a blocker (adjacent, wall-shielded, or a ranged-chipper's target) → don't move.
+    if (this._enemyBlocker(e, bounds)) return 'blocked'
+    // Jäger: with a clear path, sidestep toward the column least covered by player ranged units.
+    if (e.key === 'jager' && this._jagerMove(e, bounds)) return 'lateral'
+    // Blocked by another live enemy queued directly ahead → hold this turn.
+    if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && this._enemyCovers(o, belowRow, e.col))) return 'blocked'
+    // Clear path → march down one tile.
+    e.row = belowRow
+    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
+    if (ENEMY_DEFS[e.key]?.special === 'spawn_on_move') this._spawnEnemyAdjacent(e, 'raider') // Quartermaster
+    const landed = this.data.tableau.tileAt(belowRow, e.col)
+    if (landed?.terrain === 'fallout' && !e.damaged) this._dealDamageToEnemy(e, 100) // Manhattan Project fallout
+    this._triggerWalkoverTrap(landed, e) // Caltrops (every cross) / Sea Mine (first entry, consumed)
+    return 'stepped'
+  }
+
+  /** What this enemy would strike down its column: the front blocker (a wall shields the unit
+   *  behind it — chipped first), or a ranged-chipper's target at range. Returns { blocker, tile }
+   *  or null when the enemy would instead march / reroute / breach. */
+  _enemyBlocker(e, bounds) {
+    const belowRow = e.row - 1
+    if (belowRow < bounds.minRow) return null // would breach, not attack
+    const below = this.data.tableau.tileAt(belowRow, e.col)
+    if (below && !ENEMY_DEFS[e.key]?.boss && !this._enemyCanTraverse(e, below.terrain)) return null // reroutes
+    // Ranged chippers (Ranger/Deadeye/Mongol) strike the nearest blocker down-column from afar —
+    // only when it's NOT adjacent; an adjacent one falls through to the melee blocker below.
     const chipRange = this._enemyChipRange(e)
     if (chipRange > 1) {
       for (let d = 1; d <= chipRange; d++) {
@@ -558,70 +821,81 @@ class CombatMixin {
         const bl = (t?.unit && !t.unit.damaged) ? t.unit
           : (t?.building && !t.building.damaged && !['cross', 'first'].includes(defOf(t.building.key)?.trapTrigger)) ? t.building : null
         if (!bl) continue
-        if (d > 1) {
-          this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
-          e.lastAttackSeq = this.data.combatSeq
-          this._enemyChip(e, bl, t)
-          return
-        }
-        break // adjacent blocker → normal melee below
+        if (d > 1) return { blocker: bl, tile: t }
+        break // adjacent → fall through to the melee blocker below
       }
     }
-    // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it and trigger it.
+    // A walkover trap (Caltrops/Sea Mine) never blocks. A WALL shields the unit sharing its tile:
+    // chipped first, and only once it falls does the unit behind become the blocker.
     const belowB = below?.building
     const walkover = belowB && ['cross', 'first'].includes(defOf(belowB.key)?.trapTrigger)
-    // A WALL shields any unit sharing its tile: the wall is chipped FIRST, and only once it
-    // falls does the unit behind it become the blocker — so a wall + a unit is a hard repellent.
-    // Otherwise the unit is the front blocker (chipped first), then the building.
     const wall = belowB && !belowB.damaged && !walkover && this._isWall(belowB) ? belowB : null
     const blocker = wall
       ? wall
       : (below?.unit && !below.unit.damaged) ? below.unit
         : (belowB && !belowB.damaged && !walkover) ? belowB : null
-    if (blocker) {
-      // Impassable buildings (Moon Base / Singularity): normal enemies can't chip or pass them
-      // and simply hold; only Azazoth can force through (and takes the Singularity's huge hit).
-      const bdef = blocker.kind === 'building' ? defOf(blocker.key) : null
-      const impassable = bdef?.trapTrigger === 'impassable' || bdef?.special === 'trap_impassable'
-      if (impassable && e.key !== 'azazoth') return
-      this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
-      e.lastAttackSeq = this.data.combatSeq // drives the enemy attack "thrust" (accelerate down, slide back)
-      // Kamikaze detonates on its first attack instead of chipping.
-      if (ENEMY_DEFS[e.key]?.special === 'self_destruct') { this._enemyExplode(e, below, 2); return }
-      this._enemyChip(e, blocker, below) // handles Obliterator/Sapper/Beamer specials
-      if (ENEMY_DEFS[e.key]?.special === 'destroy_buildings') this._sapperAdjacent(e, below) // Sapper hits all adjacent too
-      if (blocker.damaged) this._onTrapDestroyed(blocker, below, e) // Powder Magazine AoE / Singularity→Azazoth
-      return
-    }
-    // Jäger: with a clear path ahead, take the path of least resistance — sidestep toward the
-    // column least covered by player ranged units before descending.
-    if (e.key === 'jager' && this._jagerMove(e, bounds)) return
-    // Blocked by another live enemy queued directly ahead → hold this turn.
-    if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && this._enemyCovers(o, belowRow, e.col))) return
-    // Clear path → march down one tile.
-    e.row = belowRow
-    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
-    if (ENEMY_DEFS[e.key]?.special === 'spawn_on_move') this._spawnEnemyAdjacent(e, 'raider') // Quartermaster
-    const landed = this.data.tableau.tileAt(belowRow, e.col)
-    // Manhattan Project fallout tile: 100 damage to an enemy that enters it.
-    if (landed?.terrain === 'fallout' && !e.damaged) this._dealDamageToEnemy(e, 100)
-    this._triggerWalkoverTrap(landed, e) // Caltrops (every cross) / Sea Mine (first entry, consumed)
+    return blocker ? { blocker, tile: below } : null
   }
 
-  /** A multi-tile boss acts as one unit: chip/plow the blockers along its bottom edge, else march
-   *  the whole footprint down one row. Azazoth irradiates every row it leaves behind (Fallout). */
-  _bossAct(e, bounds) {
+  /** Step 4: an engaged enemy chips its front blocker (Obliterator/Sapper/Beamer/Kamikaze specials
+   *  applied). Enemies that MOVED this turn don't also attack. Returns true if it struck. */
+  _enemyAttack(e, bounds) {
+    if (e.damaged || e.breached || e._skip) return false
+    if ((e._acts != null ? e._acts : this._enemyActsThisTurn(e)) <= 0) return false
+    if (this._isMultiTileEnemy(e)) return this._bossAttack(e, bounds)
+    const hit = this._enemyBlocker(e, bounds)
+    if (!hit) return false
+    const { blocker, tile } = hit
+    // Impassable buildings (Moon Base / Singularity): normal enemies can't chip them and simply
+    // hold; only Azazoth forces through (and takes the Singularity's huge hit via _onTrapDestroyed).
+    const bdef = blocker.kind === 'building' ? defOf(blocker.key) : null
+    if ((bdef?.trapTrigger === 'impassable' || bdef?.special === 'trap_impassable') && e.key !== 'azazoth') return false
+    this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
+    e.lastAttackSeq = this.data.combatSeq // drives the enemy attack "thrust" (accelerate down, slide back)
+    // Kamikaze detonates on its attack instead of chipping.
+    if (ENEMY_DEFS[e.key]?.special === 'self_destruct') { this._enemyExplode(e, tile, 2); return true }
+    this._enemyChip(e, blocker, tile) // handles Obliterator/Sapper/Beamer specials
+    if (ENEMY_DEFS[e.key]?.special === 'destroy_buildings') this._sapperAdjacent(e, tile) // Sapper hits all adjacent too
+    if (blocker.damaged) this._onTrapDestroyed(blocker, tile, e) // Powder Magazine AoE / Singularity→Azazoth
+    return true
+  }
+
+  /** A multi-tile boss marches its whole footprint down one row (or breaches off the bottom).
+   *  Azazoth irradiates every row it vacates (Fallout). Holds without moving if any blocker or
+   *  enemy sits below its bottom edge (it will chip in step 4). Returns true if it moved/breached. */
+  _bossMove(e, bounds) {
     const [w, h] = e.footprint
     const belowRow = e.row - 1
-    // Bottom edge off the grid → breach.
     if (belowRow < bounds.minRow) {
       const fw = this._hasPolicy('firewall') ? 0.75 : 1
       const lost = this._damageLegitimacy(Math.round(this._enemyBreachAtk(e) * fw))
       e.breached = true
       this._pushEvent({ kind: 'legit', amount: lost, col: e.col, row: e.row })
-      return
+      return true
     }
-    // Chip/plow every blocker directly below the footprint's bottom edge; hold if any remain.
+    for (let c = e.col; c < e.col + w; c++) { // any blocker below the bottom edge → don't move (attack instead)
+      const t = this.data.tableau.tileAt(belowRow, c)
+      if (t && ((t.unit && !t.unit.damaged) || (t.building && !t.building.damaged))) return false
+    }
+    for (let c = e.col; c < e.col + w; c++) { // another live enemy below → hold
+      if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && this._enemyCovers(o, belowRow, c))) return false
+    }
+    e.row = belowRow
+    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
+    if (e.key === 'azazoth') {
+      const vacated = e.row + h // the row no longer covered after moving down
+      if (vacated >= bounds.minRow && vacated <= bounds.maxRow) {
+        for (let c = e.col; c < e.col + w; c++) { const t = this.data.tableau.tileAt(vacated, c); if (t) t.terrain = 'fallout' }
+      }
+    }
+    return true
+  }
+
+  /** A blocked boss chips every blocker directly below its bottom edge (Titan ×4, Azazoth outright). */
+  _bossAttack(e, bounds) {
+    const [w] = e.footprint
+    const belowRow = e.row - 1
+    if (belowRow < bounds.minRow) return false
     let blocked = false
     for (let c = e.col; c < e.col + w; c++) {
       const t = this.data.tableau.tileAt(belowRow, c)
@@ -634,20 +908,7 @@ class CombatMixin {
       this._enemyChip(e, bl, t) // Titan chips (×4), Azazoth destroys outright
       if (bl.damaged) this._onTrapDestroyed(bl, t, e)
     }
-    if (blocked) return
-    // Another live enemy occupying a cell below → hold.
-    for (let c = e.col; c < e.col + w; c++) {
-      if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && this._enemyCovers(o, belowRow, c))) return
-    }
-    e.row = belowRow
-    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
-    // Azazoth: every row it leaves behind turns to Fallout (extra sauce).
-    if (e.key === 'azazoth') {
-      const vacated = e.row + h // the row no longer covered after moving down
-      if (vacated >= bounds.minRow && vacated <= bounds.maxRow) {
-        for (let c = e.col; c < e.col + w; c++) { const t = this.data.tableau.tileAt(vacated, c); if (t) t.terrain = 'fallout' }
-      }
-    }
+    return blocked
   }
 
   /** A "wall-style" building (Mud Brick / Stone Wall / Castle / Shield Matrix / Great Wall):
@@ -910,6 +1171,7 @@ class CombatMixin {
   // ---------------------------------------------------------------------------
   _endCombat() {
     this._disbandMercenaries()
+    this._restoreUnitHomes() // pursuit units slide back to where the player placed them
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
       for (const occ of [tile.unit, tile.building]) {
         if (occ && !occ.damaged) { occ.hp = occ.maxHp; delete occ.cdTimer } // survivors heal to full
@@ -923,10 +1185,28 @@ class CombatMixin {
     this.data.combatAccum = 0
     this.data.combatTime = 0
     this.data.combatEvents = []
+    this.data.combatStepLabel = ''
     this.data.combatIntro = false
     this.data.phase = 'transition'
     this._restartTimer()
     this._emit()
+  }
+
+  /** Return every unit that repositioned (pursuit) during the battle to its home tile — the tile
+   *  the player placed it on (recorded in _startCombat). Homes are unique, so lift all movers then
+   *  drop each at its home; the coexisting building slot is never touched. */
+  _restoreUnitHomes() {
+    const movers = []
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const u = tile.unit
+      if (u && u.homeRow != null) { movers.push(u); tile.unit = null }
+    }
+    for (const u of movers) {
+      const t = this.data.tableau.tileAt(u.homeRow, u.homeCol)
+      if (t) t.unit = u
+      delete u.homeRow; delete u.homeCol
+    }
+    this._recomputeOutputs() // positions settled → refresh Brewery/Tribalism-driven outputs
   }
 
   /** The "end of era" (= end of combat) effects that Festivals can trigger an extra
@@ -1032,8 +1312,10 @@ class CombatMixin {
 
   _defeat() {
     this._disbandMercenaries()
+    this._restoreUnitHomes() // put pursuit units back where the player placed them
     this.data.defeated = true
     this.data.combatTime = 0
+    this.data.combatStepLabel = ''
     this._restartTimer()
     this._emit()
   }
