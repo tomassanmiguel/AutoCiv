@@ -15,16 +15,16 @@ import { terrainDomain } from './terrain.js'
 
 // Era-0 anchors per type (tunable — first pass, revisit in playtest).
 export const ENEMY_TYPES = {
-  melee:   { type: 'melee',   name: 'Melee',   def: 16, atk: 6, acts: 1, range: () => 1 },
+  melee:   { type: 'melee',   name: 'Raider', def: 16, atk: 6, acts: 1, range: () => 1 },
   cavalry: { type: 'cavalry', name: 'Cavalry', def: 10, atk: 4, acts: 2, range: () => 1 },
-  ranged:  { type: 'ranged',  name: 'Ranged',  def: 6,  atk: 6, acts: 1, range: (era) => 2 + Math.floor(era / 6) },
+  ranged:  { type: 'ranged',  name: 'Ranger', def: 6,  atk: 6, acts: 1, range: (era) => 2 + Math.floor(era / 6) },
 }
 
 // Domains: the terrain-domain buckets each can path through, a spawn weight(era) (ramps toward
 // permissive later), and a display prefix. 'basic' = all; 'water' = amphibious+; 'exotic' = astral.
 export const ENEMY_DOMAINS = {
   default:    { domain: 'default',    prefix: '',            buckets: new Set(['basic']),                    weight: () => 6 },
-  amphibious: { domain: 'amphibious', prefix: 'Amphibious ', buckets: new Set(['basic', 'water']),           weight: (era) => 2 + 0.5 * era },
+  amphibious: { domain: 'amphibious', prefix: 'Amphibious ', buckets: new Set(['basic', 'water']),           weight: (era) => (era < 2 ? 0 : 2 + 0.5 * era) }, // not until Iron (era 2)
   astral:     { domain: 'astral',     prefix: 'Astral ',     buckets: new Set(['basic', 'water', 'exotic']), weight: (era) => Math.max(0, era - 12) },
 }
 
@@ -96,28 +96,35 @@ export function generateHost(era, bounds, spawnRows, columns, rng = Math.random,
     return combos[combos.length - 1]
   }
 
-  // Free spawn cells, tagged by whether the column contains water (for amphibious biasing).
+  // Free spawn cells, tagged by whether the column has water (amphibious biasing) and whether it's
+  // the FRONT row (maxRow+1, closest to the player — ranged enemies never spawn there).
+  const frontRow = bounds.maxRow + 1
   const waterCols = new Set(columns.filter((c) => c.places?.has?.('sea') || c.places?.has?.('coast')).map((c) => c.col))
   const freeCells = []
-  for (const c of columns) for (let k = 0; k < spawnRows; k++) freeCells.push({ col: c.col, row: bounds.maxRow + 1 + k, water: waterCols.has(c.col) })
-  const takeCell = (preferWater) => {
+  for (const c of columns) for (let k = 0; k < spawnRows; k++) freeCells.push({ col: c.col, row: frontRow + k, water: waterCols.has(c.col), front: k === 0 })
+  const takeCell = (preferWater, avoidFront) => {
+    let pool = freeCells.map((_, i) => i)
+    if (avoidFront) { const back = pool.filter((i) => !freeCells[i].front); if (!back.length) return null; pool = back }
     let idx = -1
     if (preferWater) {
-      const waterIdxs = freeCells.map((c, i) => (c.water ? i : -1)).filter((i) => i >= 0)
+      const waterIdxs = pool.filter((i) => freeCells[i].water)
       if (waterIdxs.length) idx = waterIdxs[Math.floor(rng() * waterIdxs.length)]
     }
-    if (idx < 0) idx = Math.floor(rng() * freeCells.length)
+    if (idx < 0) idx = pool[Math.floor(rng() * pool.length)]
     return freeCells.splice(idx, 1)[0]
   }
 
   const units = []
   let spentHp = 0, id = 0
   while (spentHp < budget && freeCells.length > 0) {
-    const { t, d } = pick()
+    let { t, d } = pick()
+    // Ranged enemies stay in the 2nd row or behind — never the front row.
+    let cell = takeCell(d.domain === 'amphibious', t.type === 'ranged')
+    if (!cell) { t = ENEMY_TYPES.melee; cell = takeCell(d.domain === 'amphibious', false) } // only front cells left → a Raider fills it
+    if (!cell) break
     const tier = rollTier(rng)
     const hp = Math.max(1, Math.round(Math.round(t.def * scale) * tier.mult))
     const atk = Math.max(1, Math.round((t.atk + 2 * era) * tier.mult))
-    const cell = takeCell(d.domain === 'amphibious')
     units.push({
       id: id++, kind: 'unit', key: `${d.domain}_${t.type}`,
       name: tier.prefix + d.prefix + t.name,

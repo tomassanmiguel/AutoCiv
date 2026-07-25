@@ -337,6 +337,14 @@
   -webkit-box-orient: vertical;
   overflow-wrap: anywhere;
 }
+/* Enemy names can be long ("Grunt Amphibious Ranger") — SHRINK the text and allow more lines so
+   the full name always fits, rather than truncating with an ellipsis. */
+.tile-card.enemy .tc-name {
+  font-size: 7.5px;
+  line-height: 1.02;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
 /* Type shown as an icon (no text). */
 .tc-type-icon { width: 14px; height: 14px; object-fit: contain; opacity: 0.9; }
 .tc-stats {

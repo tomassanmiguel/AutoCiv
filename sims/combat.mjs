@@ -1594,5 +1594,21 @@ console.log('TEST 72: pursuit units advance UP into the battlefield to reach an 
   g.stop()
 }
 
+console.log('TEST 73: ranged enemies never spawn in the front row; amphibious absent before Iron')
+{
+  const g = new GameManager(730); g.setEra(5)
+  const b = g.data.tableau.visibleBounds(5)
+  let sawRanged = false, frontRanged = false
+  for (let i = 0; i < 40; i++) {
+    const host = generateHost(5, b, g.data.tableau.enemyRowCount(5), g.data.tableau.battlefieldColumns(5), Math.random, 1)
+    for (const e of host.units) if (e.type === 'ranged') { sawRanged = true; if (e.row <= b.maxRow + 1) frontRanged = true }
+  }
+  assert(sawRanged && !frontRanged, 'ranged enemies appear, but never in the front spawn row (maxRow+1)')
+  const h1g = new GameManager(731); h1g.setEra(1)
+  const h1 = generateHost(1, h1g.data.tableau.visibleBounds(1), h1g.data.tableau.enemyRowCount(1), h1g.data.tableau.battlefieldColumns(1), Math.random, 1)
+  assert(!h1.units.some((e) => e.domain === 'amphibious'), 'no amphibious enemies before Iron (era 1)')
+  g.stop(); h1g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
