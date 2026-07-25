@@ -1,6 +1,15 @@
 # v2 Implementation Tracker
 
-> **STATUS (effect-wiring COMPLETE):** every major v2 pillar is implemented + verified — turn-based TD
+> **STATUS (CONTENT COMPLETE):** `node sims/verify.mjs` → **351/351 advancements implemented**,
+> **166/166 policies/bonuses wired (0 stubbed)**, **all 20 wonders wired**, and **0 genuinely-unwired
+> unit/building/pop defs** (a full-registry scan). Added the last three building categories —
+> **Command** (7 aura buildings), **Spawner** (4 timed unit-spawners), **Support** (10: power plants,
+> national parks, carbon sink, terraforming, vats) — so every building is placeable and functional;
+> wired all 12 remaining wonders and the last v1-carryover combat buildings (Campfire/Embassy/
+> Lighthouse/Public Baths). New Trap + Wonder icons are in `public/sprites/ui/` (command/spawner/
+> support reuse placeholder art pending their own icons). Below is the earlier milestone note.
+>
+> **(effect-wiring milestone):** every major v2 pillar is implemented + verified — turn-based TD
 > combat (splash/doctrines/cooldowns/abilities/traps), split tile model, PROGRESSION-accurate unlockable
 > content (**330/351 advancements**), data-driven economy (terrain yields, legit-leverage, specialist
 > gold-upgrade chains), hand-authored scaled enemy roster, the wonder system (incl. Manhattan
