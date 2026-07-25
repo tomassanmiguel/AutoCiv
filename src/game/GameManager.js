@@ -10,7 +10,7 @@ import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
 import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount, defOf } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
 import { canPlaceOn, canPlaceWonder, terrainDefBonus, terrainEconYield, EARTH_TERRAINS } from './data/terrain.js'
-import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost } from './data/costs.js'
+import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost, rerollCost } from './data/costs.js'
 import { installCombat, SPEED_TPS, COMBAT_INTERVAL_MS } from './manager/combat.js'
 
 // Combat methods live in ./manager/combat.js and are installed onto the prototype
@@ -964,14 +964,23 @@ export class GameManager {
     this._emit()
   }
 
-  /** Discard the current advancement options and draw a fresh set, spending one free
-   *  reroll. No-op unless we're in the progress 'choose' stage with rerolls available.
-   *  Rerolled options are NOT marked chosen, so any of them may re-appear in the draw. */
+  /** Gold cost of a reroll at the current era (only charged when no free reroll is banked). */
+  rerollGoldCost() { return rerollCost(this.data.era) }
+
+  /** Discard the current advancement options and draw a fresh set. Spends a FREE reroll if one
+   *  is banked, otherwise spends gold (rerollGoldCost). No-op in any other state or if it can't
+   *  be paid. Rerolled options are NOT marked chosen, so any of them may re-appear in the draw. */
   rerollAdvancement() {
     const sel = this.data.selection
     if (!sel || sel.type !== 'progress' || sel.stage !== 'choose') return
-    if (this.data.civilization.freeRerolls <= 0) return
-    this.data.civilization.freeRerolls -= 1
+    const civ = this.data.civilization
+    if (civ.freeRerolls > 0) {
+      civ.freeRerolls -= 1
+    } else {
+      const cost = this.rerollGoldCost()
+      if (civ.gold.value < cost) return
+      civ.gold.value -= cost
+    }
     sel.options = this._pickProgressOptions()
     this._emit()
   }

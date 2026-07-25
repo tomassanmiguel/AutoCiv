@@ -52,9 +52,9 @@ const STAT_ICON = {
 }
 const STAT_LABEL = { speed: 'Range', atk: 'Attack', def: 'Defense' }
 
-/** A row of stat icon+value pairs (default order: Range, Atk, Def). Utility units pass
- *  keys without 'atk' since they don't attack. */
-function StatIcons({ stats, keys = ['speed', 'atk', 'def'], className = 'slot-card-stats' }) {
+/** A row of stat icon+value pairs (Atk, Def). Utility units pass keys without 'atk'
+ *  since they don't attack. Range is intentionally omitted from unit cards. */
+function StatIcons({ stats, keys = ['atk', 'def'], className = 'slot-card-stats' }) {
   return (
     <span className={className}>
       {keys.map((k) => (
@@ -67,7 +67,7 @@ function StatIcons({ stats, keys = ['speed', 'atk', 'def'], className = 'slot-ca
   )
 }
 
-const unitStatKeys = (def) => (unitRole(def) === 'utility' ? ['speed', 'def'] : ['speed', 'atk', 'def'])
+const unitStatKeys = (def) => (unitRole(def) === 'utility' ? ['def'] : ['atk', 'def'])
 
 // 9-slice frames: light box wraps the whole panel, dark box wraps each dropdown.
 const FRAME = { light: '/sprites/ui/box.png', dark: '/sprites/ui/box-dark.png' }
@@ -291,15 +291,15 @@ export default function UIPanel() {
             // During a build pick, highlight the pickable tabs (the wonder tab only while placeable).
             const pickHl = buildPicking && (['units', 'buildings', 'military'].includes(g.key) || (g.key === 'wonder' && wonderPickable))
             return (
-              <button
-                key={g.key}
-                className={`panel-tab${isActive ? ' active' : ''}${pickHl ? ' pick-hl' : ''}`}
-                onClick={() => setActiveTab(g.key)}
-                title={g.label}
-                aria-label={g.label}
-              >
-                <img className="panel-tab-icon" src={TAB_ICON[g.key]} alt={g.label} />
-              </button>
+              <InfoTip key={g.key} className="panel-tab-wrap" title={g.label}>
+                <button
+                  className={`panel-tab${isActive ? ' active' : ''}${pickHl ? ' pick-hl' : ''}`}
+                  onClick={() => setActiveTab(g.key)}
+                  aria-label={g.label}
+                >
+                  <img className="panel-tab-icon" src={TAB_ICON[g.key]} alt={g.label} />
+                </button>
+              </InfoTip>
             )
           })}
         </div>

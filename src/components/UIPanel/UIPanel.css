@@ -130,6 +130,10 @@
   gap: 0.3rem;
   z-index: 0;
 }
+/* Each tab is wrapped in an InfoTip (hover shows the tab name); the wrapper becomes the
+   flex item so the buttons still split the height evenly. */
+.panel-tab-wrap { flex: 1 1 0; min-height: 0; display: flex; }
+.panel-tab-wrap .panel-tab { flex: 1 1 0; }
 .panel-tab {
   flex: 1 1 0;            /* split the full vertical height evenly */
   min-height: 0;

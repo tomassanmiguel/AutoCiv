@@ -78,9 +78,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const ratio = clamp01((occ.hp ?? maxHp) / maxHp)
   const defStyle = combat && ratio < 1 ? { color: defColor(ratio) } : undefined
 
-  // v2 units show RANGE (Manhattan diamond) in the first stat slot. A cooldown bar
-  // only appears for units that actually recharge after firing (Siege = 2 turns).
-  const rangeVal = isUnit ? (def.range ?? 1) : 0
+  // A cooldown bar only appears for units that actually recharge after firing (Siege = 2 turns).
+  // (Range is no longer shown on unit cards — only Atk + Def.)
   const cdMax = isUnit ? (def.cooldown ?? 0) : 0
   const cdFrac = combat && isUnit && cdMax > 0 && occ.cdTimer != null ? clamp01(occ.cdTimer / cdMax) : null
 
@@ -108,7 +107,6 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
     const lvl = isPrev ? occ.level + 1 : occ.level
     const ps = isUnit && isPrev ? statsAt(lvl) : null
     const bOuts = isUnit ? [] : buildingOutputs(def, lvl, era)
-    const dispSpeed = isUnit ? (isPrev ? ps.range : rangeVal) : null
     const dispAtk = isUnit ? (isPrev ? ps.atk : shownAtk) : null
     const dispDef = isUnit
       ? (isPrev ? ps.def : (combat ? `${occ.hp}/${maxHp}` : maxHp))
@@ -128,7 +126,6 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         )}
         <br /><br />
         <span className="tc-tip-stats">
-          {isUnit && <IconVal src={STAT_ICON.speed}>{dispSpeed}</IconVal>}
           {showAtk && <IconVal src={STAT_ICON.atk}>{dispAtk}</IconVal>}
           <IconVal src={STAT_ICON.def} style={isPrev ? undefined : defStyle}>{dispDef}</IconVal>
           {bOuts.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
@@ -220,7 +217,6 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
               </div>
               {typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
               <div className="tc-stats">
-                {isUnit && <IconVal src={STAT_ICON.speed}>{rangeVal}</IconVal>}
                 {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
                 <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
                 {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}

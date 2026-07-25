@@ -46,7 +46,6 @@ function UnlockDetail({ opt, era }) {
         <div className="pc-unlocks">Unlocks {def.name}</div>
         <div className="pc-type"><IconText>{`:${def.types[0]}: ${catLabel(UNIT_CATEGORIES, def.types[0])} unit`}</IconText></div>
         <div className="pc-stats">
-          <Stat icon={STAT_ICON.speed}>{s.speed}</Stat>
           {unitRole(def) !== 'utility' && <Stat icon={STAT_ICON.atk}>{s.atk}</Stat>}
           <Stat icon={STAT_ICON.def}>{s.def}</Stat>
         </div>
@@ -123,6 +122,8 @@ export default function ProgressOverlay() {
   const game = useGame()
   const sel = game.data.selection
   const freeRerolls = game.data.civilization.freeRerolls ?? 0
+  const rerollCost = game.rerollGoldCost()
+  const canReroll = freeRerolls > 0 || game.data.civilization.gold.value >= rerollCost
   const [dontAsk, setDontAsk] = useState(false)
   if (!sel || sel.type !== 'progress') return null
 
@@ -192,10 +193,12 @@ export default function ProgressOverlay() {
           </button>
           <button
             className="progress-btn frame-box-dark progress-reroll"
-            disabled={freeRerolls === 0}
+            disabled={!canReroll}
             onClick={() => game.rerollAdvancement()}
           >
-            Reroll{freeRerolls > 0 ? ` (${freeRerolls})` : ''}
+            Reroll{freeRerolls > 0
+              ? ` (${freeRerolls} free)`
+              : <span className="reroll-cost"><img src="/sprites/icons/gold.png" alt="gold" />{rerollCost}</span>}
           </button>
         </div>
       </div>

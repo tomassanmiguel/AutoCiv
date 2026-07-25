@@ -34,6 +34,10 @@ export function specialistCost(era) {
 export function mercenaryCost(era) {
   return Math.round((50 + 25 * era) * eraMul(era))
 }
+// Gold to reroll an advancement draw when no FREE reroll is available (era-scaled).
+export function rerollCost(era) {
+  return Math.round(40 * eraMul(era))
+}
 
 /** Upgrade cost for an occupant (unit or building) at its current level. */
 export function upgradeCost(occ, era) {
