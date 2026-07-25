@@ -367,6 +367,13 @@ export default function Tableau() {
   // Enemy host (visible during development as a preview, fighting during battle).
   const combat = game.data.phase === 'battle'
   const combatSeq = game.data.combatSeq // drives the per-attack "thrust" (only when a unit attacked)
+  // Combat runs discrete turns at 1/3/5/10 per second; the march-slide + attack-lunge must fit
+  // INSIDE one turn or they get cut off (the old fixed 0.22s couldn't keep up at 5x/10x — the
+  // "jumpy" feel). Scale their duration to ~80% of the current turn interval, so animations
+  // stay smooth at every speed. Outside combat, a fixed 220ms drives reposition slides.
+  const TURN_TPS = { paused: 0, standard: 1, fast: 3, super: 5, ultra: 10 }
+  const tps = TURN_TPS[game.data.speed] ?? 1
+  const turnMs = combat && tps > 0 ? Math.max(90, Math.min(300, Math.round((1000 / tps) * 0.8))) : 220
 
   // Gold actions (repair/upgrade) are offered on deployed instances during
   // development + preparation (not mid-battle, not during a selection).
@@ -399,7 +406,7 @@ export default function Tableau() {
       <div
         className="tableau-content"
         ref={contentRef}
-        style={{ width: contentW, height: contentH }}
+        style={{ width: contentW, height: contentH, '--turn-dur': `${turnMs}ms` }}
       >
         {/* Battlefield backdrop zone atop each visible column — enemies spawn here
             (during development) and march DOWN into the grid (during battle). */}

@@ -89,26 +89,31 @@
 
 /* Slide layer: a unit that changed tiles mounts here and animates from its old cell
    (offset --sx/--sy) to this one, so shifts/repositions slide instead of teleport. */
+/* Slide layer: a piece that changed tiles (march / reposition / shift) mounts here and
+   glides from its old cell (offset --sx/--sy) to this one instead of teleporting. Its
+   duration (--turn-dur, set on .tableau-content) tracks the combat turn cadence so the
+   glide always fits inside one turn — smooth at 1x through 10x. */
 .tc-slide { width: 100%; height: 100%; }
-.tc-slide.animate { animation: tc-slide 0.22s ease-out; }
+.tc-slide.animate { animation: tc-slide var(--turn-dur, 0.22s) ease-out; }
 @keyframes tc-slide {
   from { transform: translate(var(--sx, 0), var(--sy, 0)); }
   to { transform: translate(0, 0); }
 }
 
-/* Attack "thrust": the wrapper remounts on each attack (keyed by lastAttackSeq)
-   and lunges toward the enemy — player up, enemy down. */
+/* Attack "thrust": the wrapper remounts on each attack (keyed by lastAttackSeq) and lunges
+   toward the foe — player up, enemy down. It ACCELERATES forward to the peak, then eases
+   (slides) back into place, and its duration tracks the turn cadence like the slide. */
 .tc-lunge { width: 100%; height: 100%; }
-.tc-lunge.attacking.player { animation: thrust-up 0.24s ease; }
-.tc-lunge.attacking.enemy { animation: thrust-down 0.24s ease; }
+.tc-lunge.attacking.player { animation: thrust-up var(--turn-dur, 0.24s); }
+.tc-lunge.attacking.enemy { animation: thrust-down var(--turn-dur, 0.24s); }
 @keyframes thrust-up {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-26%); }
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.35); } /* accelerate forward */
+  40% { transform: translateY(-38%); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); } /* slide back, decelerate */
   100% { transform: translateY(0); }
 }
 @keyframes thrust-down {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(26%); }
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.35); }
+  40% { transform: translateY(38%); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
   100% { transform: translateY(0); }
 }
 

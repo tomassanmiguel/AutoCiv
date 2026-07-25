@@ -275,6 +275,7 @@ class CombatMixin {
       if (impassable && e.key !== 'azazoth') return
       const chip = e.chip ?? 1 // per-enemy blocker chip (Barbarian 2, …); baked at generation
       this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
+      e.lastAttackSeq = this.data.combatSeq // drives the enemy attack "thrust" (accelerate down, slide back)
       this._chipBlocker(blocker, chip, below)
       if (blocker.damaged) this._onTrapDestroyed(blocker, below, e) // Powder Magazine AoE / Singularity→Azazoth
       return
