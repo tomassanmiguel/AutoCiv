@@ -58,7 +58,6 @@ export function waveBudget(era, difficulty = 1) {
  */
 export function generateHost(era, bounds, spawnRows, columns, rng = Math.random, difficulty = 1) {
   if (!bounds || columns.length === 0 || spawnRows <= 0) return { type: 'mixed', units: [] }
-  const capacity = spawnRows * columns.length
   const scale = Math.pow(1.25, era)
   const budget = waveBudget(era, difficulty)
   const pool = Object.values(ENEMY_DEFS).filter((d) => !d.boss && d.era <= era)
@@ -71,30 +70,28 @@ export function generateHost(era, bounds, spawnRows, columns, rng = Math.random,
     return pool[pool.length - 1]
   }
 
-  const perCol = new Map(columns.map((c) => [c.col, 0]))
+  // Every spawn cell in the battlefield zone (each column × each spawn row). Enemies are placed
+  // on a UNIFORMLY RANDOM free cell so they're equally likely to spawn anywhere — no bottom bias.
+  const freeCells = []
+  for (const c of columns) for (let k = 0; k < spawnRows; k++) freeCells.push({ col: c.col, row: bounds.maxRow + 1 + k })
   const units = []
-  let spentHp = 0, placed = 0, id = 0
-  while (spentHp < budget && placed < capacity) {
-    const open = columns.filter((c) => perCol.get(c.col) < spawnRows)
-    if (open.length === 0) break
+  let spentHp = 0, id = 0
+  while (spentHp < budget && freeCells.length > 0) {
     const d = pick()
     const elite = rng() < 0.05
     const mult = elite ? 2 : 1
     // Swarm's HP deliberately does NOT scale with era (it tanks via the 1-damage-per-hit rule).
     const hp = Math.max(1, d.special === 'split_when_damaged' ? d.def : Math.round(d.def * scale)) * mult
     const atk = (d.atk + era) * mult
-    const c = open[Math.floor(rng() * open.length)]
-    const idx = perCol.get(c.col)
-    perCol.set(c.col, idx + 1)
+    const cell = freeCells.splice(Math.floor(rng() * freeCells.length), 1)[0]
     units.push({
       id: id++, kind: 'unit', key: d.key, name: (elite ? 'Elite ' : '') + d.name,
       types: d.types ?? ['melee'], level: 1,
-      col: c.col, row: bounds.maxRow + 1 + idx,
+      col: cell.col, row: cell.row,
       hp, maxHp: hp, atk, chip: d.chip ?? 1,
       elite, damaged: false, breached: false,
     })
     spentHp += hp
-    placed++
   }
   return { type: 'mixed', units }
 }
