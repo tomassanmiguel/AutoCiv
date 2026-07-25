@@ -265,6 +265,17 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Tier cycler: ◄ N ► to switch a category slot between its unlocked tiers at build time. */
+.slot-cycler { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.slot-cycle-btn {
+  width: 15px; height: 15px; line-height: 1; padding: 0;
+  border: 1px solid var(--brass); border-radius: 3px;
+  background: rgba(60, 40, 15, 0.16); color: var(--ink);
+  font-weight: 700; font-size: 12px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.slot-cycle-btn:hover { background: rgba(60, 40, 15, 0.34); }
+.slot-cycle-count { font-size: 10px; font-weight: 700; min-width: 8px; text-align: center; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .slot-card-line {
   font-size: 0.74rem;
   line-height: 1.22;

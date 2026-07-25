@@ -1454,5 +1454,21 @@ console.log('TEST 61: a unit and a building coexist on one tile (replace only wi
   g.stop()
 }
 
+console.log('TEST 62: unit tiers stay unlocked and cycle at build time (no destructive replace)')
+{
+  const g = new GameManager(170)
+  const civ = g.data.civilization
+  assert(civ.units[0]?.key === 'warrior' && civ.unlockedUnits.has('warrior'), 'Warrior pre-unlocked in the Melee slot')
+  // Unlock a second melee tier (Spearman) — it activates but Warrior stays unlocked.
+  g._unlockTierAndActivate({ kind: 'unit', key: 'spearman' })
+  assert(civ.units[0]?.key === 'spearman', 'Spearman becomes the active Melee tier')
+  assert(civ.unlockedUnits.has('warrior') && civ.unlockedUnits.has('spearman'), 'both tiers stay unlocked')
+  assert(g.rosterSlotOptions('units', 0).length === 2, 'the Melee slot offers 2 cyclable tiers')
+  // Cycle back to Warrior.
+  g.cycleRosterSlot('units', 0, -1)
+  assert(civ.units[0]?.key === 'warrior', 'cycling switches the active tier back to Warrior')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -79,10 +79,12 @@ export class GameManager {
     if (c.startUnit && UNIT_DEFS[c.startUnit]) {
       const i = UNIT_CATEGORIES.findIndex((x) => x.key === UNIT_DEFS[c.startUnit].types[0])
       if (i >= 0) civ.units[i] = { key: c.startUnit, level: 1 }
+      civ.unlockedUnits.add(c.startUnit)
     }
     if (c.startBuilding && BUILDING_DEFS[c.startBuilding]) {
       const i = BUILDING_CATEGORIES.findIndex((x) => x.key === BUILDING_DEFS[c.startBuilding].types[0])
       if (i >= 0) civ.buildings[i] = { key: c.startBuilding, level: 1 }
+      civ.unlockedBuildings.add(c.startBuilding)
     }
   }
 
@@ -958,6 +960,14 @@ export class GameManager {
       }
       // else fall through to the normal fill/replace flow (fills the first empty specialist slot)
     }
+    // Units/buildings: tiers stay unlocked and are cycled at build time — activate the new tier
+    // in its category slot(s); the previous tier stays in the unlocked set (reachable via the cycler).
+    if (opt.unlock.kind === 'unit' || opt.unlock.kind === 'building') {
+      this._unlockTierAndActivate(opt.unlock)
+      this._markChosen(opt.id)
+      this._resolveProgress()
+      return
+    }
 
     const target = this._unlockTarget(opt.unlock)
     const empties = target.slotIndices.filter((i) => this._slotEmpty(target.group, i))
@@ -1254,6 +1264,55 @@ export class GameManager {
     else if (group === 'policies') { civ.policies[i] = { key: unlock.key }; this._grantPolicyUnlock(unlock.key); this._syncUnitStats() }
     else if (group === 'population') this._unlockSpecialist(i, unlock.key)
     this._markFilled(group, i)
+  }
+
+  /** Unlock a unit/building tier and make it the ACTIVE tier in each of its category slots. The
+   *  key is added to the unlocked set; previously-active tiers stay unlocked (cyclable). */
+  _unlockTierAndActivate(unlock) {
+    const civ = this.data.civilization
+    const group = unlock.kind === 'unit' ? 'units' : 'buildings'
+    const cats = group === 'units' ? UNIT_CATEGORIES : BUILDING_CATEGORIES
+    const defs = group === 'units' ? UNIT_DEFS : BUILDING_DEFS
+    ;(group === 'units' ? civ.unlockedUnits : civ.unlockedBuildings).add(unlock.key)
+    const types = defs[unlock.key].types
+    let first = -1
+    cats.forEach((c, i) => {
+      if (!types.includes(c.key)) return
+      civ[group][i] = { key: unlock.key, level: 1 }
+      if (first < 0) first = i
+    })
+    if (first >= 0) this._markFilled(group, first)
+    this._recomputeOutputs()
+    this._syncUnitStats()
+  }
+
+  /** Every unlocked unit/building key that can occupy category slot `i` (its type matches). */
+  rosterSlotOptions(group, i) {
+    if (group !== 'units' && group !== 'buildings') return []
+    const civ = this.data.civilization
+    const cats = group === 'units' ? UNIT_CATEGORIES : BUILDING_CATEGORIES
+    const defs = group === 'units' ? UNIT_DEFS : BUILDING_DEFS
+    const catKey = cats[i]?.key
+    if (!catKey) return []
+    const set = group === 'units' ? civ.unlockedUnits : civ.unlockedBuildings
+    return [...set].filter((k) => defs[k]?.types.includes(catKey))
+  }
+
+  /** Cycle a unit/building category slot to the next/prev unlocked tier of that category
+   *  (build-time tier selection). No-op mid-battle or when there's nothing else to cycle to. */
+  cycleRosterSlot(group, i, dir) {
+    if (this.data.phase === 'battle') return
+    const options = this.rosterSlotOptions(group, i)
+    if (options.length <= 1) return
+    const civ = this.data.civilization
+    let idx = options.indexOf(civ[group][i]?.key)
+    if (idx < 0) idx = 0
+    idx = (idx + dir + options.length) % options.length
+    civ[group][i] = { key: options[idx], level: 1 }
+    this._markFilled(group, i)
+    this._recomputeOutputs()
+    this._syncUnitStats()
+    this._emit()
   }
 
   /** Apply a policy's on-unlock one-time grants (currently: free advancement rerolls). */

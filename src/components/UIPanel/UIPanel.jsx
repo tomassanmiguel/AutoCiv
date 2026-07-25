@@ -100,7 +100,13 @@ const activateKey = (e, fn) => {
 
 // --- Build the per-group list of slot descriptors ---
 // Each descriptor: { index, cat?, occupant, kind, silhouette, name, sub, line, tip }
-function unitSlots(civ, era, hpBonus) {
+// A category slot may hold several unlocked tiers — expose ◄ N ► to cycle the active one.
+function slotCycle(game, group, index) {
+  const n = game.rosterSlotOptions(group, index).length
+  if (n <= 1) return null
+  return { count: n, onPrev: () => game.cycleRosterSlot(group, index, -1), onNext: () => game.cycleRosterSlot(group, index, 1) }
+}
+function unitSlots(civ, era, hpBonus, game) {
   return UNIT_CATEGORIES.map((cat, index) => ({ cat, index, occ: civ.units[index] }))
     .filter((s) => ERA_INDEX[s.cat.unlock] <= era) // only categories unlocked this era
     .map(({ cat, index, occ }) => {
@@ -109,13 +115,13 @@ function unitSlots(civ, era, hpBonus) {
       return {
         index, kind: 'item', silhouette: cat.silhouette,
         name: def.name, sub: cat.label, stats: unitStats(def, occ.level, hpBonus), statKeys: unitStatKeys(def),
-        tip: unitTip(def, occ.level, hpBonus),
+        tip: unitTip(def, occ.level, hpBonus), cycle: slotCycle(game, 'units', index),
       }
     })
 }
 // `which`: 'buildings' (economy categories) or 'military' (defense/trap/command/spawner). The
 // descriptors keep their REAL civ.buildings index, so pick/replace/slam route unchanged.
-function buildingSlots(civ, era, which = 'buildings') {
+function buildingSlots(civ, era, which = 'buildings', game) {
   return BUILDING_CATEGORIES
     .map((cat, index) => ({ cat, index }))
     .filter(({ index }) => (which === 'military' ? MILITARY_IDX.has(index) : !MILITARY_IDX.has(index)))
@@ -127,7 +133,7 @@ function buildingSlots(civ, era, which = 'buildings') {
       const eff = buildingEffect(def, occ.level, era) // current era/level value
       // Buildings show a Def stat; underlapping buildings (Road) have no HP, so no Def.
       const buildingDef = def.underlap ? null : buildingHp(def, occ.level, civ.modifiers.buildingHpBonus)
-      return { index, kind: 'item', silhouette: sil, name: def.name, sub: cat.label, line: eff, tip: eff, def: buildingDef }
+      return { index, kind: 'item', silhouette: sil, name: def.name, sub: cat.label, line: eff, tip: eff, def: buildingDef, cycle: slotCycle(game, 'buildings', index) }
     })
 }
 // The in-flight wonder as a single pickable slot (its own tab, shown only while a wonder is
@@ -243,9 +249,9 @@ export default function UIPanel() {
   const wonderPickable = buildPicking && !!civ.wonder && !civ.wonder.placed && !civ.wonder.inst?.damaged
 
   const groups = [
-    { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
-    { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era, 'buildings') },
-    { key: 'military', label: 'Military Infrastructure', slots: buildingSlots(civ, era, 'military') },
+    { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus, game) },
+    { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era, 'buildings', game) },
+    { key: 'military', label: 'Military Infrastructure', slots: buildingSlots(civ, era, 'military', game) },
     ...(civ.wonder ? [{ key: 'wonder', label: 'Wonder', slots: wonderSlots(civ) }] : []),
     { key: 'policies', label: 'Policies', slots: policySlots(civ) },
     { key: 'population', label: 'Population', slots: populationSlots(civ, game, canConvert) },
@@ -396,6 +402,15 @@ function SlotRow({ slot, mark, onActivate, slam = false }) {
         <div className="slot-card-head">
           {slot.silhouette && <img className="slot-card-type" src={slot.silhouette} alt="" />}
           <span className="slot-card-name">{slot.name}</span>
+          {slot.cycle && (
+            <span className="slot-cycler" onMouseDown={(e) => e.stopPropagation()}>
+              <button type="button" className="slot-cycle-btn" title="Previous tier"
+                onClick={(e) => { e.stopPropagation(); slot.cycle.onPrev() }}>‹</button>
+              <span className="slot-cycle-count" title="Unlocked tiers">{slot.cycle.count}</span>
+              <button type="button" className="slot-cycle-btn" title="Next tier"
+                onClick={(e) => { e.stopPropagation(); slot.cycle.onNext() }}>›</button>
+            </span>
+          )}
         </div>
         {slot.stats
           ? <StatIcons stats={slot.stats} keys={slot.statKeys} />
