@@ -877,12 +877,12 @@ console.log('TEST 39: Wonders — Skynet, Taj Mahal, Death Star, Panopticon, Gre
   g6.moveUnit(src.row, src.col, dst.row, dst.col)
   assert(dst.building?.key === 'totem' && !src.building, 'Stargate moved the building')
   g6.stop()
-  // Great Wall: +20 building defense on completion.
+  // Great Wall: places a physical structure on completion (detailed in TEST 47).
   const g5 = new GameManager(64); g5.setEra(3)
-  const bh0 = g5.data.civilization.modifiers.buildingHpBonus
   g5.data.civilization.wonder = { key: 'great_wall', buildsLeft: 1 }; g5._advanceWonder()
-  console.log(`  Great Wall: buildingHpBonus ${bh0} → ${g5.data.civilization.modifiers.buildingHpBonus}`)
-  assert(g5.data.civilization.modifiers.buildingHpBonus === bh0 + 20, `Great Wall +20 building def`)
+  const placed = g5.data.tableau.visibleTiles(3).some((t) => t.building?.key === 'great_wall_structure')
+  console.log(`  Great Wall: structure placed = ${placed}`)
+  assert(placed || g5.data.civilization.modifiers.buildingHpBonus === 20, `Great Wall places a wall (or +20 fallback)`)
   g5.stop()
 }
 
@@ -1025,6 +1025,33 @@ console.log('TEST 46: Multi-tile footprint building (Shinkansen 3×1) — placem
   assert(cells[0].building.hp === cells[0].building.maxHp - 2, 'HP is shared across all cells')
   // Links adjacency: the 3 rail tiles + their neighbours are one adjacency network.
   assert(g._reachableWithin(b.minRow, b.minCol, 1).has(`${b.minRow},${b.minCol + 2}`), 'Shinkansen links its span into one adjacency net')
+  g.stop()
+}
+
+console.log('TEST 47: Great Wall wonder places a real 4-lane shared-HP blocker structure')
+{
+  const g = new GameManager(91); g.setEra(3)
+  // Completing the wonder places the 4×1 structure on the board.
+  g.data.civilization.wonder = { key: 'great_wall', buildsLeft: 1 }
+  g._advanceWonder() // → _completeWonder → places the structure
+  const anchors = g.data.tableau.visibleTiles(3).filter((t) => t.building?.key === 'great_wall_structure' && g._isAnchor(t, t.building))
+  assert(anchors.length === 1, `one Great Wall structure placed (got ${anchors.length})`)
+  const wall = anchors[0].building
+  // It spans 4 tiles with the shared instance.
+  const span = g.data.tableau.visibleTiles(3).filter((t) => t.building === wall)
+  console.log(`  Great Wall spans ${span.length} tiles (footprint ${wall.footprint}), shared HP ${wall.maxHp}`)
+  assert(span.length === 4, `structure spans 4 tiles (got ${span.length})`)
+  assert(g._hasWonder('great_wall'), 'wonder marked complete')
+  // It blocks an enemy in one of its lanes (shared HP; combat-only, no economy).
+  const b = g.data.tableau.visibleBounds(3)
+  const wallTile = span.find((t) => t.row === b.minRow) || span[0]
+  const e = mkEnemy('warrior', 'X', wallTile.col, wallTile.row + 1, 100, 5)
+  g.data.enemies = [e]
+  g._startCombat(); g.dismissCombatIntro()
+  const l0 = g.data.civilization.legitimacy.value
+  for (let i = 0; i < 6; i++) g._runTurn()
+  console.log(`  enemy in a wall lane: breached=${e.breached}, legit lost=${l0 - g.data.civilization.legitimacy.value}`)
+  assert(!e.breached || l0 === g.data.civilization.legitimacy.value, 'the wall blocks its lane')
   g.stop()
 }
 

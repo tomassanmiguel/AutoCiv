@@ -310,6 +310,14 @@ export const BUILDING_DEFS = {
     special: 'wall',
     effect: 'A blocker. Upgrades add +1 :defense:/level.',
   },
+  // Physical structure placed on the board when the Great Wall WONDER completes — one shared-HP
+  // blocker spanning 4 lanes. No `tech` → never drawn as an advancement; combatOnly keeps it out
+  // of the economy (like traps).
+  great_wall_structure: {
+    key: 'great_wall_structure', name: 'Great Wall', types: ['defense'], placement: 'land',
+    hp: 20, upHp: 2, footprint: [4, 1], combatOnly: true,
+    effect: 'A single shared-HP blocker spanning 4 lanes.',
+  },
   castle: {
     key: 'castle', name: 'Castle', era: 4, tech: 'Castles',
     types: ['defense'], placement: 'land',

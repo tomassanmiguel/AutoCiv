@@ -274,7 +274,7 @@ export class GameManager {
   _deployedBuildingCount() {
     let n = 0
     // Traps are combat-only — they don't count as economic buildings (Ownership gold).
-    for (const { occ } of this._buildingInstances()) if (!occ.damaged && !BUILDING_DEFS[occ.key]?.trapTrigger) n++
+    for (const { occ } of this._buildingInstances()) if (!occ.damaged && !(BUILDING_DEFS[occ.key]?.trapTrigger || BUILDING_DEFS[occ.key]?.combatOnly)) n++
     return n
   }
 
@@ -321,7 +321,7 @@ export class GameManager {
       if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
       const def = BUILDING_DEFS[occ.key]
       // Traps are combat-only — they generate no per-tick output and no terrain/economy yield.
-      if (def.trapTrigger) { occ.tickOutput = null; occ.terrainYield = null; continue }
+      if (def.trapTrigger || def.combatOnly) { occ.tickOutput = null; occ.terrainYield = null; continue }
       // Region free-upgrade-levels scale a building's per-tick OUTPUT too (not just its HP).
       const effLevel = occ.level + this._regionLevelBonus(tile, 'building')
       // Neocolonialism: buildings on Exoplanet terrain produce +150% :gold: (×2.5).
@@ -436,7 +436,7 @@ export class GameManager {
   _adjacentBuildingCount(r, c) {
     let n = 0
     for (const tile of this._adjacentTiles(r, c)) {
-      for (const occ of this._buildingsOn(tile)) if (!occ.damaged && !BUILDING_DEFS[occ.key]?.trapTrigger) n++
+      for (const occ of this._buildingsOn(tile)) if (!occ.damaged && !(BUILDING_DEFS[occ.key]?.trapTrigger || BUILDING_DEFS[occ.key]?.combatOnly)) n++
     }
     return n
   }
@@ -1089,13 +1089,35 @@ export class GameManager {
     civ.wonder = null
     // Immediate (on-completion) effects; ongoing effects are read via _hasWonder().
     if (key === 'hagia_sophia') civ.legitimacy.value *= (1 + this._wonderYieldMult()) // +100% legit (×2), boosted by wonder-yield policies
-    // Great Wall: a permanent +20 :defense: to every building (a civ-wide fortification —
-    // the simplified single-model form of the 4-lane shared-HP wall).
-    if (key === 'great_wall') civ.modifiers.buildingHpBonus += 20
+    // Great Wall: place its real 4-lane, shared-HP blocker structure on the board. If the board
+    // is too crowded to fit the 4×1 footprint, fall back to a +20 civ-wide building :defense:.
+    if (key === 'great_wall' && !this._placeWonderStructure('great_wall_structure')) civ.modifiers.buildingHpBonus += 20
     // Statue of Liberty: production thresholds grow 20% slower (build more freely).
     if (key === 'statue_of_liberty') civ.modifiers.productionThresholdMult = (civ.modifiers.productionThresholdMult ?? 1) * 0.8
     this._recomputeOutputs()
     this._syncUnitStats()
+  }
+
+  /** Place a wonder's physical multi-tile structure (e.g. Great Wall's 4-lane blocker) on the
+   *  first valid empty footprint, preferring the front line (lowest visible row). Returns true
+   *  if placed, false if no spot fits. */
+  _placeWonderStructure(structureKey) {
+    const sdef = BUILDING_DEFS[structureKey]
+    if (!sdef) return false
+    const [w] = sdef.footprint ?? [1, 1]
+    const t = this.data.tableau
+    const bounds = t.visibleBounds(this.data.era)
+    if (!bounds) return false
+    for (let r = bounds.minRow; r <= bounds.maxRow; r++) {
+      for (let c = bounds.minCol; c + w - 1 <= bounds.maxCol; c++) {
+        const anchor = t.tileAt(r, c)
+        if (anchor && this._footprintValid({ kind: 'building', key: structureKey }, sdef, anchor)) {
+          this._createInstance({ kind: 'building', key: structureKey, level: 1 }, anchor)
+          return true
+        }
+      }
+    }
+    return false
   }
 
   /** True once a wonder is completed (its ongoing effect is active). */
