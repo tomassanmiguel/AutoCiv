@@ -1621,5 +1621,22 @@ console.log('TEST 70: attacks record a screen-space direction toward the target 
   g.stop()
 }
 
+console.log('TEST 71: enemyReachCells — down-column chip range + advance (speed), obstruction-stopped')
+{
+  const g = new GameManager(600); g.setEra(2) // Iron: rows 1-4
+  const b = g.data.tableau.visibleBounds(2)
+  for (const t of g.data.tableau.visibleTiles(2)) { t.terrain = 'plains'; t.unit = null; t.building = null }
+  const col = b.minCol
+  const e = { id: 1, kind: 'unit', key: 'dervish', types: ['cavalry'], row: b.maxRow, col, hp: 5, maxHp: 5, atk: 1, chip: 1, damaged: false, breached: false } // chip 1, triple speed
+  g.data.enemies = [e]
+  const r = g.enemyReachCells(e)
+  assert(r.attack.has(`${b.maxRow - 1},${col}`), 'threatens the tile directly below (chip 1)')
+  assert(r.move.has(`${b.maxRow - 2},${col}`) && r.move.has(`${b.maxRow - 3},${col}`), 'advances up to 3 tiles down (triple speed), beyond chip range')
+  for (const k of r.attack) assert(!r.move.has(k), 'move excludes the attack cell')
+  g.data.tableau.tileAt(b.maxRow - 1, col).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 2, maxHp: 2, damaged: false }
+  assert(g.enemyReachCells(e).move.size === 0, 'a blocker directly below stops the advance')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

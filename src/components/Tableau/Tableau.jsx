@@ -68,8 +68,9 @@ export default function Tableau() {
   // threshold and drives the ghost + valid-tile highlight; the ghost follows the
   // cursor imperatively (reposPendingRef) so ticking re-renders don't reset it.
   const [repos, setRepos] = useState(null)
-  // The deployed unit currently hovered — drives the range/pursuit tile preview (#7).
+  // The deployed unit / enemy currently hovered — drives the range/pursuit tile preview.
   const [hoverUnit, setHoverUnit] = useState(null)
+  const [hoverEnemy, setHoverEnemy] = useState(null)
   const reposPendingRef = useRef(null)
   const ghostRef = useRef(null)
   const snapTimerRef = useRef(null) // pending snap-back timeout (canceled on a new grab)
@@ -359,10 +360,15 @@ export default function Tableau() {
 
   // Track the hovered deployed unit for the range preview. The functional updater returns the
   // SAME reference when nothing changed, so mousemove over one tile doesn't churn re-renders.
-  const hoverTileUnit = (tile) => setHoverUnit((prev) => {
-    if (!tile.unit) return prev === null ? prev : null
-    return prev && prev.row === tile.row && prev.col === tile.col ? prev : { row: tile.row, col: tile.col }
-  })
+  const hoverTileUnit = (tile) => {
+    setHoverEnemy(null)
+    setHoverUnit((prev) => {
+      if (!tile.unit) return prev === null ? prev : null
+      return prev && prev.row === tile.row && prev.col === tile.col ? prev : { row: tile.row, col: tile.col }
+    })
+  }
+  // Hovering an enemy previews ITS reach (in enemy colours). Clears the player preview.
+  const hoverEnemyPiece = (enemy) => { setHoverUnit(null); setHoverEnemy((prev) => (prev && prev.id === enemy.id ? prev : enemy)) }
 
   // Battlefield backdrop columns: all visible columns, minus purely-water columns before Iron
   // (so the enemy spawn zone doesn't extend above the Coast column early on).
@@ -372,10 +378,18 @@ export default function Tableau() {
   // Production placement mode: valid tiles flash yellow, occupied ones red.
   const sel = game.data.selection
   const placing = !!(sel && sel.type === 'production' && sel.stage === 'place')
-  // Hover-a-unit range preview: red = tiles it can strike now, blue = tiles it could reach then
-  // strike after pursuing (obstruction-shortened). Hidden during placement / a reposition drag so
-  // it doesn't clash with those flashes.
-  const reach = hoverUnit && !placing && !repos ? game.unitReachCells(hoverUnit.row, hoverUnit.col) : null
+  // Range preview: hovering a player unit shows red (attack range) + blue (pursuit reach);
+  // hovering an enemy shows its own reach in enemy colours. Hidden during placement / a
+  // reposition drag so it doesn't clash with those flashes.
+  let reach = null
+  if (hoverEnemy) { const r = game.enemyReachCells(hoverEnemy); reach = { attack: r.attack, move: r.move, enemy: true } }
+  else if (hoverUnit && !placing && !repos) { const r = game.unitReachCells(hoverUnit.row, hoverUnit.col); reach = { attack: r.attack, move: r.pursuit, enemy: false } }
+  const reachClass = (k) => {
+    if (!reach) return ''
+    if (reach.attack.has(k)) return reach.enemy ? 'in-enemy-attack' : 'in-attack-range'
+    if (reach.move.has(k)) return reach.enemy ? 'in-enemy-move' : 'in-pursuit-range'
+    return ''
+  }
   // Advancing a placed-but-incomplete wonder: during a production PICK, clicking the on-map
   // structure spends the build on it (canAdvanceWonder gates: placed, on-board, not destroyed).
   const picking = !!(sel && sel.type === 'production' && sel.stage === 'pick')
@@ -435,10 +449,11 @@ export default function Tableau() {
           Array.from({ length: enemyRows }, (_, k) => {
             const erow = bounds.maxRow + enemyRows - k // battlefield row for this backdrop cell
             const evalid = repos?.enemy && game.canRepositionEnemy(repos.fromRow, repos.fromCol, erow, c)
+            const rc = reachClass(`${erow},${c}`)
             return (
               <div
                 key={`bf-${c}-${k}`}
-                className={`enemy-slot${evalid ? ' reposition-valid' : ''}`}
+                className={`enemy-slot${evalid ? ' reposition-valid' : ''}${rc ? ' ' + rc : ''}`}
                 data-erow={erow}
                 data-ecol={c}
                 style={{ left: (c - bounds.minCol) * CELL, top: k * CELL, width: CELL, height: CELL }}
@@ -473,8 +488,7 @@ export default function Tableau() {
             advanceHere ? 'wonder-advance' : '',
             reposValid ? 'reposition-valid' : '',
             reposSrc ? 'reposition-src' : '',
-            reach?.attack.has(rkey) ? 'in-attack-range' : '',
-            reach?.pursuit.has(rkey) ? 'in-pursuit-range' : '',
+            reachClass(rkey),
           ].filter(Boolean).join(' ')
           return (
             <div
@@ -610,6 +624,8 @@ export default function Tableau() {
               className={`enemy-piece${ew > 1 || eh > 1 ? ' enemy-boss' : ''}${enemyDraggable ? ' enemy-grabbable' : ''}${edim ? ' reposition-src' : ''}`}
               style={{ left: x, top: y, width: ew * CELL, height: eh * CELL }}
               onMouseDown={enemyDraggable ? (ev) => onEnemyGrab(ev, e) : undefined}
+              onMouseEnter={() => hoverEnemyPiece(e)}
+              onMouseLeave={() => setHoverEnemy(null)}
             >
               <TileCard occupant={e} era={era} combat={combat} combatSeq={combatSeq} side="enemy" slide={slideFor(e, x, y)} />
             </div>

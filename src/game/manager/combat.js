@@ -485,6 +485,36 @@ class CombatMixin {
     return { attack, pursuit: pursuitSet }
   }
 
+  /** Where an enemy threatens next round — for the hover preview (mirrors unitReachCells but
+   *  DOWN-column, since enemies march toward the player). `attack` = cells it could chip (down
+   *  its column within chip range); `move` = cells it would advance through this turn (up to its
+   *  per-turn acts, obstruction-stopped), excluding the attack cells. Cells are "row,col" keys. */
+  enemyReachCells(e) {
+    const empty = { attack: new Set(), move: new Set() }
+    if (!e || e.damaged || e.breached) return empty
+    const bounds = this.data.tableau.visibleBounds(this.data.era)
+    if (!bounds) return empty
+    const key = (r, c) => `${r},${c}`
+    const [w] = e.footprint ?? [1, 1]
+    const chip = this._enemyChipRange(e)
+    let acts = this._enemyActsThisTurn(e); if (acts <= 0) acts = 1 // preview the turn a skip-enemy DOES act
+    const attack = new Set(), move = new Set()
+    for (let c = e.col; c < e.col + w; c++) {
+      for (let d = 1; d <= chip; d++) { const r = e.row - d; if (r >= bounds.minRow) attack.add(key(r, c)) }
+      for (let d = 1; d <= acts; d++) {
+        const r = e.row - d
+        if (r < bounds.minRow) break // marches off the bottom (breach)
+        const t = this.data.tableau.tileAt(r, c)
+        const blocked = t && ((t.unit && !t.unit.damaged) || (t.building && !t.building.damaged))
+        const enemyThere = this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && o.row === r && o.col === c)
+        if (blocked || enemyThere) break
+        move.add(key(r, c))
+      }
+    }
+    for (const k of attack) move.delete(k) // attack cells take precedence in the display
+    return { attack, move }
+  }
+
   /** One tower's attack: strike the lowest-HP enemy within its range. Units with a
    *  cooldown (Siege = 2) must recharge for that many turns after firing. */
   _pieceAttack(p) {

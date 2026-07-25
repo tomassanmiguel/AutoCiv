@@ -126,6 +126,20 @@
 .tableau-tile.in-attack-range .tile-bg {
   box-shadow: inset 0 0 0 2px rgba(255, 82, 70, 0.92), inset 0 0 13px rgba(255, 82, 70, 0.45);
 }
+/* Enemy hover preview: a distinct palette (ORANGE = its chip/attack reach, PURPLE = where it
+   advances this turn) so it never reads as a player range. */
+.tableau-tile.in-enemy-attack .tile-bg {
+  box-shadow: inset 0 0 0 2px rgba(255, 150, 40, 0.92), inset 0 0 13px rgba(255, 150, 40, 0.45);
+}
+.tableau-tile.in-enemy-move .tile-bg {
+  box-shadow: inset 0 0 0 2px rgba(190, 120, 255, 0.85), inset 0 0 13px rgba(190, 120, 255, 0.4);
+}
+/* The same rings on battlefield backdrop cells — both the player's reach (#2) and an enemy's
+   reach can land up here in the spawn zone. */
+.enemy-slot.in-attack-range { box-shadow: inset 0 0 0 2px rgba(255, 82, 70, 0.92), inset 0 0 13px rgba(255, 82, 70, 0.45); }
+.enemy-slot.in-pursuit-range { box-shadow: inset 0 0 0 2px rgba(88, 150, 255, 0.85), inset 0 0 13px rgba(88, 150, 255, 0.4); }
+.enemy-slot.in-enemy-attack { box-shadow: inset 0 0 0 2px rgba(255, 150, 40, 0.92), inset 0 0 13px rgba(255, 150, 40, 0.45); }
+.enemy-slot.in-enemy-move { box-shadow: inset 0 0 0 2px rgba(190, 120, 255, 0.85), inset 0 0 13px rgba(190, 120, 255, 0.4); }
 /* Multi-tile buildings (Shinkansen, wonder structures) render as one card spanning the footprint. */
 .multitile-card { position: absolute; z-index: 4; display: flex; align-items: center; justify-content: center; }
 .multitile-card .tile-card-anchor { width: 92%; height: 92%; }
