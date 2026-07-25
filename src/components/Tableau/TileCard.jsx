@@ -239,7 +239,11 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         {/* Keyed by lastAttackSeq so the wrapper REMOUNTS on each attack, replaying
             the "thrust" lunge — but only ANIMATES when the unit actually attacked THIS
             step (`attacking`), so entering/leaving combat no longer jerks every card. */}
-        <div className={`tc-lunge ${side}${combat && occ.lastAttackSeq != null && occ.lastAttackSeq === combatSeq ? ' attacking' : ''}`} key={occ.lastAttackSeq ?? 0}>
+        <div
+          className={`tc-lunge ${side}${combat && occ.lastAttackSeq != null && occ.lastAttackSeq === combatSeq ? ' attacking' : ''}`}
+          key={occ.lastAttackSeq ?? 0}
+          style={(() => { const d = occ.lastAttackDir ?? (side === 'enemy' ? { dx: 0, dy: 1 } : { dx: 0, dy: -1 }); return { '--lunge-dx': d.dx, '--lunge-dy': d.dy } })()}
+        >
         {/* fx wrapper — remounts when fxSeq changes, replaying the upgrade/repair/
             hire "pop" (green flash + scale). Suppressed in combat so the per-attack
             lunge remount (which also remounts this wrapper) doesn't re-flash it. */}

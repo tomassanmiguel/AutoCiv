@@ -134,7 +134,7 @@ class CombatMixin {
         delete occ.spawnCd // spawner timers start fresh each battle
         delete occ.bathsCd // Public Baths timer
         delete occ.mercCd  // Embassy timer
-        delete occ.lastAttackSeq
+        delete occ.lastAttackSeq; delete occ.lastAttackDir
         // Units may reposition (pursuit) during combat — remember where they started so
         // they slide back home when the battle ends (_restoreUnitHomes).
         if (occ.kind === 'unit') { occ.homeRow = tile.row; occ.homeCol = tile.col }
@@ -502,6 +502,7 @@ class CombatMixin {
     }
     this._pushEvent({ kind: 'attack', side: 'player', col: p.col, row: p.row })
     occ.lastAttackSeq = this.data.combatSeq // drives the attack "thrust" animation
+    occ.lastAttackDir = this._attackDir(p.row, p.col, target.row, target.col) // lunge toward the target
     this._dealDamageToEnemy(target, atk)
     // Siege splash: deal splash× damage to every live enemy adjacent to the target.
     const splash = UNIT_DEFS[occ.key]?.splash
@@ -533,6 +534,14 @@ class CombatMixin {
       return range
     }
     return defOf(occ.key)?.range ?? 0
+  }
+
+  /** Screen-space unit vector from an attacker to its target, for the directional attack lunge.
+   *  Rows increase UPWARD on screen, so the screen-y component is the negated row delta. */
+  _attackDir(fr, fc, tr, tc) {
+    const dr = tr - fr, dc = tc - fc
+    const dist = Math.hypot(dr, dc) || 1
+    return { dx: dc / dist, dy: -dr / dist }
   }
 
   /** Lowest-HP live enemy within Manhattan-diamond `range` of (row,col). Ties break
@@ -923,6 +932,7 @@ class CombatMixin {
     if ((bdef?.trapTrigger === 'impassable' || bdef?.special === 'trap_impassable') && e.key !== 'azazoth') return false
     this._pushEvent({ kind: 'attack', side: 'enemy', col: e.col, row: e.row })
     e.lastAttackSeq = this.data.combatSeq // drives the enemy attack "thrust" (accelerate down, slide back)
+    e.lastAttackDir = this._attackDir(e.row, e.col, tile.row, tile.col)
     // Kamikaze detonates on its attack instead of chipping.
     if (ENEMY_DEFS[e.key]?.special === 'self_destruct') { this._enemyExplode(e, tile, 2); return true }
     this._enemyChip(e, blocker, tile) // handles Obliterator/Sapper/Beamer specials
@@ -976,6 +986,7 @@ class CombatMixin {
       blocked = true
       this._pushEvent({ kind: 'attack', side: 'enemy', col: c, row: e.row })
       e.lastAttackSeq = this.data.combatSeq
+      e.lastAttackDir = this._attackDir(e.row, e.col, belowRow, c)
       this._enemyChip(e, bl, t) // Titan chips (×4), Azazoth destroys outright
       if (bl.damaged) this._onTrapDestroyed(bl, t, e)
     }

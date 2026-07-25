@@ -1602,5 +1602,24 @@ console.log('TEST 69: pre-Iron battlefield skips purely-water (Coast) columns')
   g.stop()
 }
 
+console.log('TEST 70: attacks record a screen-space direction toward the target (for the lunge)')
+{
+  const g = new GameManager(500); g.setEra(0)
+  const b = g.data.tableau.visibleBounds(0)
+  for (const t of g.data.tableau.visibleTiles(0)) { t.terrain = 'plains'; t.unit = null; t.building = null }
+  const pr = b.minRow, pc = b.minCol
+  g.data.tableau.tileAt(pr, pc).unit = { kind: 'unit', key: 'slinger', level: 1, hp: 1, maxHp: 1, damaged: false } // range 2
+  g.data.enemies = [{ id: 1, kind: 'unit', key: 'raider', types: ['melee'], row: pr + 2, col: pc, hp: 100, maxHp: 100, atk: 1, chip: 1, damaged: false, breached: false }]
+  g._startCombat(); g.dismissCombatIntro()
+  g._playerPhase()
+  const d = g.data.tableau.tileAt(pr, pc).unit.lastAttackDir
+  assert(d && d.dy < -0.9 && Math.abs(d.dx) < 0.01, `enemy above → lunge points up (got ${JSON.stringify(d)})`)
+  g.data.enemies = [{ id: 2, kind: 'unit', key: 'raider', types: ['melee'], row: pr, col: pc + 2, hp: 100, maxHp: 100, atk: 1, chip: 1, damaged: false, breached: false }]
+  g._syncUnitStats(true); g._playerPhase()
+  const d2 = g.data.tableau.tileAt(pr, pc).unit.lastAttackDir
+  assert(d2 && d2.dx > 0.9 && Math.abs(d2.dy) < 0.01, `enemy to the right → lunge points right (got ${JSON.stringify(d2)})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
