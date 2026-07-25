@@ -300,7 +300,7 @@ export const POLICY_DEFS = {
 
   // --- Era 25: Utopian ---
   biological_immortality: { key: 'biological_immortality', name: 'Biological Immortality', era: 25, tech: 'Biological Immortality', slot: true, special: 'double_pop_gains', description: 'Population gains are doubled.' },
-  nanite_warfare: { key: 'nanite_warfare', name: 'Nanite Warfare', era: 25, tech: 'Nanite Warfare', slot: true, special: 'poison_on_start', description: 'At combat start, poison all enemies (5% max HP per turn).' },
+  nanite_warfare: { key: 'nanite_warfare', name: 'Nanite Warfare', era: 25, tech: 'Nanite Warfare', slot: true, special: 'poison_on_start', description: 'At combat start, poison all enemies (5% max HP per turn; bosses resist — 0.5% per turn).' },
   purpose_engineering: { key: 'purpose_engineering', name: 'Purpose Engineering', era: 25, tech: 'Purpose Engineering', slot: true, specialistOutput: 5, description: 'Every specialist produces +5 of its highest output.' },
 
   // --- Era 26: Time ---
