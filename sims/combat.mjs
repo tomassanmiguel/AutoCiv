@@ -1047,9 +1047,9 @@ console.log('TEST 47: Great Wall wonder — player places a real 4-lane shared-H
   let guard = 10
   while (g.data.civilization.wonder && guard-- > 0) g.advanceWonderProgress()
   assert(g._hasWonder('great_wall') && wall.complete, 'wonder marked complete after its builds')
-  // Wonders are pinned to a flat 2 :defense: (no level/region/Hereditary inflation).
+  // The Great Wall keeps its explicit 20 :defense: (still no level/region/Hereditary inflation).
   g._syncUnitStats(true)
-  assert(wall.maxHp === 2, `Great Wall has flat 2 def (got ${wall.maxHp})`)
+  assert(wall.maxHp === 20, `Great Wall has 20 def (got ${wall.maxHp})`)
   // Shared HP: damaging via any cell hits the one shared instance.
   span[2].building.hp -= 1
   assert(span[0].building.hp === span[0].building.maxHp - 1, 'HP is shared across all 4 lanes')
@@ -1059,7 +1059,7 @@ console.log('TEST 47: Great Wall wonder — player places a real 4-lane shared-H
   g.data.enemies = [e]
   g._startCombat(); g.dismissCombatIntro()
   const l0 = g.data.civilization.legitimacy.value
-  for (let i = 0; i < 2; i++) g._runTurn() // 2 HP wall absorbs 2 chips before it can be breached
+  for (let i = 0; i < 2; i++) g._runTurn() // the 20-HP wall easily absorbs 2 chips
   console.log(`  enemy in a wall lane: breached=${e.breached}, legit lost=${l0 - g.data.civilization.legitimacy.value}`)
   assert(!e.breached && l0 === g.data.civilization.legitimacy.value, 'the wall blocks its lane while it stands')
   g.stop()
@@ -1251,6 +1251,30 @@ console.log('TEST 53: land enemies route around water; naval enemies cross it')
   assert(navy.col === wc, 'naval enemy stays in its water column')
   assert(navy.breached, 'naval enemy crosses water and breaches')
   g2.stop()
+}
+
+console.log('TEST 54: a wall shields a unit sharing its tile — enemies chip the wall first')
+{
+  const g = new GameManager(100); g.setEra(2)
+  const b = g.data.tableau.visibleBounds(2)
+  const col = b.minCol
+  for (let r = b.minRow; r <= b.maxRow; r++) g.data.tableau.tileAt(r, col).terrain = 'plains'
+  const t = g.data.tableau.tileAt(b.minRow, col)
+  t.building = { kind: 'building', key: 'stone_wall', level: 1, hp: 4, maxHp: 4, damaged: false }
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 10, maxHp: 10, damaged: false }
+  g.data.enemies = [mkEnemy('sentinel', 'S', col, b.minRow + 1, 1000, 5)] // right above the wall+unit tile
+  g.data.phase = 'battle'; g.data.combatIntro = false
+  g._enemyPhase(b)
+  console.log(`  after 1 chip: wall ${t.building.hp}/${t.building.maxHp}, unit ${t.unit.hp}/${t.unit.maxHp}`)
+  assert(t.building.hp < t.building.maxHp && t.unit.hp === t.unit.maxHp, 'the wall is chipped, the unit is untouched')
+  // Bring the wall to the brink, destroy it, then the unit behind it becomes the blocker.
+  t.building.hp = 1
+  g._enemyPhase(b)
+  assert(t.building.damaged, 'wall destroyed once chipped out')
+  g._enemyPhase(b)
+  console.log(`  after the wall falls: unit ${t.unit.hp}/${t.unit.maxHp}`)
+  assert(t.unit.hp < t.unit.maxHp, 'once the wall falls the unit behind it is chipped')
+  g.stop()
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

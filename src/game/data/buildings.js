@@ -26,8 +26,8 @@ const brothelAtk = (level = 1) => 0.10 + 0.05 * Math.max(0, level - 1)
 export const BUILDING_DEFS = {
   mud_wall: {
     key: 'mud_wall', name: 'Mud Brick Wall', era: 0, tech: 'Mud Brick', types: ['defense'], placement: 'land',
-    hp: 25, upHp: 10,
-    effect: 'A sturdy wall that stalls the enemy advance.',
+    hp: 25, upHp: 10, special: 'wall',
+    effect: 'A sturdy wall that stalls the enemy advance. A unit sharing its tile is shielded until it falls.',
   },
   totem: {
     key: 'totem', name: 'Totem', types: ['legitimacy'], placement: 'land',

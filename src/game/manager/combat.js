@@ -264,9 +264,14 @@ class CombatMixin {
     // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it and trigger it.
     const belowB = below?.building
     const walkover = belowB && ['cross', 'first'].includes(defOf(belowB.key)?.trapTrigger)
-    // Impeded by a blocker in the path — chip the unit first, then the building.
-    const blocker = (below?.unit && !below.unit.damaged) ? below.unit
-      : (belowB && !belowB.damaged && !walkover) ? belowB : null
+    // A WALL shields any unit sharing its tile: the wall is chipped FIRST, and only once it
+    // falls does the unit behind it become the blocker — so a wall + a unit is a hard repellent.
+    // Otherwise the unit is the front blocker (chipped first), then the building.
+    const wall = belowB && !belowB.damaged && !walkover && this._isWall(belowB) ? belowB : null
+    const blocker = wall
+      ? wall
+      : (below?.unit && !below.unit.damaged) ? below.unit
+        : (belowB && !belowB.damaged && !walkover) ? belowB : null
     if (blocker) {
       // Impassable buildings (Moon Base / Singularity): normal enemies can't chip or pass them
       // and simply hold; only Azazoth can force through (and takes the Singularity's huge hit).
@@ -289,6 +294,13 @@ class CombatMixin {
     // Manhattan Project fallout tile: 100 damage to an enemy that enters it.
     if (landed?.terrain === 'fallout' && !e.damaged) this._dealDamageToEnemy(e, 100)
     this._triggerWalkoverTrap(landed, e) // Caltrops (every cross) / Sea Mine (first entry, consumed)
+  }
+
+  /** A "wall-style" building (Mud Brick / Stone Wall / Castle / Shield Matrix / Great Wall):
+   *  it shields a unit sharing its tile — enemies chip the wall before the unit behind it. */
+  _isWall(occ) {
+    const s = defOf(occ.key)?.special
+    return s === 'wall' || s === 'multi_lane_wall'
   }
 
   /** Whether an enemy can move onto a given terrain. Only WATER (coast/sea) is gated — land and
