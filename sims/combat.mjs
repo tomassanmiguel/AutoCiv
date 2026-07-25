@@ -1362,5 +1362,34 @@ console.log('TEST 56: enemy abilities — blockers, ranged chip, auras')
   g3.stop()
 }
 
+console.log('TEST 57: boss / special waves spawn at boss eras (incl. via the era slider)')
+{
+  const g = new GameManager(130); g.setEra(20)
+  assert(g.data.enemies.some((e) => e.key === 'titan'), 'Titan spawns at era 20')
+  g.setEra(24)
+  assert(g.data.enemies.some((e) => e.key === 'flagship'), 'Flagship spawns at era 24')
+  g.setEra(27)
+  assert(g.data.enemies.length > 0 && g.data.enemies.every((e) => e.key === 'azazoth'), 'Azazoth is the only enemy at era 27')
+  g.data.combatTurn = 1; assert(g._enemyActsThisTurn({ key: 'azazoth' }) === 1, 'Azazoth marches on an odd turn')
+  g.data.combatTurn = 2; assert(g._enemyActsThisTurn({ key: 'azazoth' }) === 0, 'Azazoth skips an even turn')
+  g.stop()
+}
+
+console.log('TEST 58: Jäger routes around player ranged coverage')
+{
+  const g = new GameManager(131); g.setEra(11)
+  const b = g.data.tableau.visibleBounds(11)
+  for (let c = b.minCol; c <= b.minCol + 4 && c <= b.maxCol; c++)
+    for (let r = b.minRow; r <= b.maxRow; r++) { const t = g.data.tableau.tileAt(r, c); t.terrain = 'plains'; t.unit = null; t.building = null }
+  g.data.tableau.tileAt(b.minRow, b.minCol).unit = { kind: 'unit', key: 'slinger', level: 1, hp: 5, maxHp: 5, damaged: false } // ranged, covers its column
+  const jg = mkEnemy('jager', 'J', b.minCol, b.maxRow + 1, 100, 20)
+  g.data.enemies = [jg]
+  g.data.phase = 'battle'; g.data.combatIntro = false
+  g._enemyPhase(b)
+  console.log(`  Jäger moved from col ${b.minCol} to ${jg.col}`)
+  assert(jg.col > b.minCol, 'Jäger sidesteps away from the ranged-covered column')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -43,6 +43,34 @@ class CombatMixin {
     const host = generateHost(era, bounds, t.enemyRowCount(era), t.columnPlaces(era), Math.random, mult)
     this.data.enemies = host.units
     this.data.enemyHostType = host.type
+    this._injectBossWave(era, bounds) // special (boss) waves at Titan/Flagship/Azazoth eras
+  }
+
+  /** Boss ("special") waves: generateHost excludes bosses, so add the era's boss here. Titan
+   *  (20)/Flagship (24) spearhead the normal horde; Azazoth (27) is the ONLY enemy that wave.
+   *  Runs on normal era advance AND the debug era slider (both route through _generateEnemies). */
+  _injectBossWave(era, bounds) {
+    if (!bounds) return
+    const boss = Object.values(ENEMY_DEFS).find((d) => d.boss && d.era === era)
+    if (!boss) return
+    const mid = Math.floor((bounds.minCol + bounds.maxCol) / 2)
+    const frontRow = bounds.maxRow + 1 // the spawn row just above the grid
+    if (boss.special === 'azazoth') this.data.enemies = [] // the only enemy that wave
+    else this.data.enemies = this.data.enemies.filter((e) => !(e.row === frontRow && e.col === mid))
+    this._registerBoss(boss, mid, frontRow)
+    this.data.enemyHostType = 'boss'
+  }
+
+  /** Push a scaled boss enemy onto the host at (col,row). */
+  _registerBoss(d, col, row) {
+    const era = this.data.era
+    const hp = Math.max(1, Math.round(d.def * Math.pow(1.25, era)))
+    this.data.enemySpawnSeq = (this.data.enemySpawnSeq ?? 1_000_000) + 1
+    this.data.enemies.push({
+      id: this.data.enemySpawnSeq, kind: 'unit', key: d.key, name: d.name, types: d.types ?? ['melee'], level: 1,
+      col, row, hp, maxHp: hp, atk: d.atk + era, chip: d.chip ?? 1, boss: true, footprint: d.footprint,
+      elite: false, damaged: false, breached: false,
+    })
   }
 
   _startCombat() {
@@ -220,7 +248,7 @@ class CombatMixin {
   _applyPoison() {
     if (!this._activeEffectDefs().some((d) => d.special === 'poison_on_start')) return
     for (const e of this.data.enemies) {
-      if (e.damaged || e.breached) continue
+      if (e.damaged || e.breached || e.key === 'azazoth') continue // Azazoth is immune to poison
       this._dealDamageToEnemy(e, Math.max(1, Math.round(e.maxHp * 0.05)))
     }
   }
@@ -311,6 +339,7 @@ class CombatMixin {
    *  Juggernaut's every-other-turn skip. Alien is only fast in space. */
   _enemyActsThisTurn(e) {
     const s = ENEMY_DEFS[e.key]?.special
+    if (e.key === 'azazoth') return this.data.combatTurn % 2 === 1 ? 1 : 0 // marches every other turn
     if (s === 'skip_alt_turn') return this.data.combatTurn % 2 === 1 ? 1 : 0
     if (s === 'triple_speed') {
       if (e.key === 'alien') { const t = this.data.tableau.tileAt(e.row, e.col); return t?.def?.place === 'space' ? 3 : 1 }
@@ -324,6 +353,7 @@ class CombatMixin {
   /** All enemies act, front-most (lowest row) first so a column flows downward. Fast enemies
    *  act multiple times; the Juggernaut skips alternate turns. */
   _enemyPhase(bounds) {
+    this._jagerCoverage = null // recompute player-range coverage once per turn (for Jäger)
     this._applyEnemyAuras() // Shaman heals, Leader buffs, Flagship spawns — before anyone acts
     const list = this.data.enemies.filter((e) => !e.damaged && !e.breached)
     list.sort((a, b) => a.row - b.row || a.col - b.col)
@@ -377,7 +407,7 @@ class CombatMixin {
   /** An enemy chips a blocker, applying its destroy/pierce specials. */
   _enemyChip(e, blocker, tile) {
     const s = ENEMY_DEFS[e.key]?.special
-    if (s === 'destroy_blockers') { this._chipBlocker(blocker, blocker.hp, tile); return } // Obliterator
+    if (s === 'destroy_blockers' || e.key === 'azazoth') { this._chipBlocker(blocker, blocker.hp, tile); return } // Obliterator / Azazoth
     if (s === 'destroy_buildings' && blocker.kind === 'building') { this._chipBlocker(blocker, blocker.hp, tile); return } // Sapper vs buildings
     const chip = e.chip ?? 1
     this._chipBlocker(blocker, chip, tile)
@@ -400,6 +430,55 @@ class CombatMixin {
     }
   }
 
+  /** Set of "r,c" tiles within attack range of any live player unit — the Jäger avoids these. */
+  _playerRangeCoverage() {
+    const covered = new Set()
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
+      const u = tile.unit
+      if (!u || u.damaged) continue
+      const range = this._pieceRange(u)
+      for (let dr = -range; dr <= range; dr++) {
+        for (let dc = -range; dc <= range; dc++) {
+          if (Math.abs(dr) + Math.abs(dc) <= range) covered.add(`${tile.row + dr},${tile.col + dc}`)
+        }
+      }
+    }
+    return covered
+  }
+
+  /** Jäger "least resistance": sidestep toward the column whose downward path has the FEWEST
+   *  tiles inside player ranged-range, before descending. Returns true if it moved laterally. */
+  _jagerMove(e, bounds) {
+    const covered = (this._jagerCoverage ??= this._playerRangeCoverage())
+    const belowRow = e.row - 1
+    const pathDanger = (c) => {
+      let n = 0
+      for (let r = bounds.minRow; r <= belowRow; r++) {
+        if (r > bounds.maxRow) continue // spawn zone: passable, never in range
+        const t = this.data.tableau.tileAt(r, c)
+        if (!t || !this._enemyCanTraverse(e, t.terrain)) return Infinity // impassable column
+        if (covered.has(`${r},${c}`)) n++
+      }
+      return n
+    }
+    let bestCol = e.col, best = pathDanger(e.col)
+    for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+      const d = pathDanger(c)
+      if (d < best) { best = d; bestCol = c }
+    }
+    if (bestCol === e.col) return false // already on the safest reachable column → descend
+    const nc = e.col + Math.sign(bestCol - e.col)
+    if (nc < bounds.minCol || nc > bounds.maxCol) return false
+    const inSpawn = e.row > bounds.maxRow
+    const lat = this.data.tableau.tileAt(e.row, nc)
+    if (!inSpawn && (!lat || !this._enemyCanTraverse(e, lat.terrain) ||
+      (lat.unit && !lat.unit.damaged) || (lat.building && !lat.building.damaged))) return false
+    if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && o.row === e.row && o.col === nc)) return false
+    e.col = nc
+    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
+    return true
+  }
+
   /** Kamikaze self-destruct: destroy every player piece within Manhattan `range` of `tile`. */
   _enemyExplode(e, tile, range) {
     for (const t of this.data.tableau.visibleTiles(this.data.era)) {
@@ -413,7 +492,7 @@ class CombatMixin {
   /** One enemy acts: breach off the bottom, chip a blocker below, or march down. */
   _enemyAct(e, bounds) {
     if (e.damaged || e.breached) return
-    if (e.skipTurns > 0) { e.skipTurns -= 1; return } // stunned by a Discombobulator this turn
+    if (e.skipTurns > 0 && e.key !== 'azazoth') { e.skipTurns -= 1; return } // stunned (Azazoth is immune to freeze)
     const belowRow = e.row - 1
     // Off the bottom → breach: subtract atk from legitimacy, then remove.
     if (belowRow < bounds.minRow) {
@@ -476,6 +555,9 @@ class CombatMixin {
       if (blocker.damaged) this._onTrapDestroyed(blocker, below, e) // Powder Magazine AoE / Singularity→Azazoth
       return
     }
+    // Jäger: with a clear path ahead, take the path of least resistance — sidestep toward the
+    // column least covered by player ranged units before descending.
+    if (e.key === 'jager' && this._jagerMove(e, bounds)) return
     // Blocked by another live enemy queued directly ahead → hold this turn.
     if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && o.row === belowRow && o.col === e.col)) return
     // Clear path → march down one tile.
