@@ -1782,6 +1782,7 @@ export class GameManager {
     const buildingOk = occ.kind === 'building' && this._hasWonder('stargate') && this.data.phase === 'prep'
     if (occ.kind !== 'unit' && !buildingOk) return false
     const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
+    if (this._isMultiTile(def)) return false // a multi-tile structure can't be dragged as a single tile
     const to = this.data.tableau.tileAt(toRow, toCol)
     if (!to || !this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
     if (!canPlaceOn(def.placement, to.terrain)) return false // the moving piece must fit dest

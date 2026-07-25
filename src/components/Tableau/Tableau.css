@@ -113,6 +113,9 @@
 .tableau-tile.reposition-valid { cursor: grabbing; z-index: 3; }
 .tableau-tile.reposition-valid .tile-bg { animation: tile-valid-flash 1.4s ease-in-out infinite; }
 .tableau-tile.reposition-src .tile-card-anchor { opacity: 0.4; }
+/* Multi-tile buildings (Shinkansen, wonder structures) render as one card spanning the footprint. */
+.multitile-card { position: absolute; z-index: 4; display: flex; align-items: center; justify-content: center; }
+.multitile-card .tile-card-anchor { width: 92%; height: 92%; }
 /* Panopticon: enemy pieces draggable during prep. */
 .enemy-piece.enemy-grabbable { cursor: grab; }
 .enemy-piece.reposition-src { opacity: 0.4; }

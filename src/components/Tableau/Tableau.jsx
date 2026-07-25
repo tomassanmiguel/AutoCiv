@@ -427,6 +427,8 @@ export default function Tableau() {
           const j = tile.col - bounds.minCol
           const i = enemyRows + (bounds.maxRow - tile.row)
           const occ = tile.occupant
+          // Multi-tile buildings render once as a spanning card in a separate pass below.
+          const isMT = occ?.kind === 'building' && occ.footprint && (occ.footprint[0] > 1 || occ.footprint[1] > 1)
           const pstate = placing ? game.placementState(tile.row, tile.col) : null
           const placeable = pstate === 'valid' || pstate === 'replace'
           const mercOK = !occ && prepping && game.mercEligible(tile.row, tile.col)
@@ -487,7 +489,7 @@ export default function Tableau() {
                   </div>
                 )
               ) : (
-                occ && (
+                occ && !isMT && (
                   <TileCard
                     occupant={occ}
                     era={era}
@@ -520,6 +522,40 @@ export default function Tableau() {
                   <span className="merc-btn-cost"><img src="/sprites/icons/gold.png" alt="" />{mercCost}</span>
                 </button>
               )}
+            </div>
+          )
+        })}
+
+        {/* Multi-tile buildings (Shinkansen, wonder structures) render as ONE spanning card at
+            the anchor cell, sized to the footprint. Covered cells render nothing (skipped above). */}
+        {tiles.filter((t) => {
+          const bd = t.building
+          return bd?.footprint && (bd.footprint[0] > 1 || bd.footprint[1] > 1) && bd.anchor?.row === t.row && bd.anchor?.col === t.col
+        }).map((t) => {
+          const bd = t.building
+          const [w, h] = bd.footprint
+          const left = (t.col - bounds.minCol) * CELL
+          const top = (enemyRows + (bounds.maxRow - (t.row + h - 1))) * CELL
+          return (
+            <div
+              key={`mt-${t.row},${t.col}`}
+              className="multitile-card"
+              style={{ left, top, width: w * CELL, height: h * CELL }}
+              onMouseEnter={(e) => tileTip(t, e)}
+              onMouseMove={(e) => tileTip(t, e)}
+              onMouseLeave={() => setTooltip(null)}
+            >
+              <TileCard
+                occupant={bd}
+                era={era}
+                hpBonus={hpBonus}
+                buildingHpBonus={buildingHpBonus}
+                combat={combat}
+                combatSeq={combatSeq}
+                side="player"
+                terrain={t.terrain}
+                action={tileAction(t, bd)}
+              />
             </div>
           )
         })}
