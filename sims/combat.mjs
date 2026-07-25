@@ -776,5 +776,29 @@ console.log('TEST 36: Command auras — Command Post atk%, Deflector def, Star F
   g.stop(); g2.stop()
 }
 
+console.log('TEST 37: Spawner — Stables creates a cavalry unit every 8 turns')
+{
+  const g = new GameManager(54); g.setEra(6)
+  const cavKey = Object.values(UNIT_DEFS).find((d) => d.types.includes('cavalry') && d.era <= 6)?.key
+  assert(!!cavKey, 'a cavalry unit exists by era 6')
+  g.data.civilization.units[2] = { key: cavKey, level: 1 } // cavalry = slot index 2
+  const b = g.data.tableau.visibleBounds(6)
+  const st = g.data.tableau.tileAt(b.minRow + 1, b.minCol); st.terrain = 'plains'
+  st.building = { kind: 'building', key: 'stables', level: 2, hp: 2, maxHp: 2, damaged: false }
+  for (const nb of g._adjacentTiles(st.row, st.col)) { nb.terrain = 'plains' } // ensure a land landing spot
+  g._startCombat(); g.dismissCombatIntro()
+  const before = g.data.tableau.visibleTiles(6).filter((t) => t.unit).length
+  for (let i = 0; i < 7; i++) g._applySpawners()
+  const mid = g.data.tableau.visibleTiles(6).filter((t) => t.unit).length
+  g._applySpawners() // 8th tick fires
+  const after = g.data.tableau.visibleTiles(6).filter((t) => t.unit).length
+  console.log(`  units ${before} → (7 ticks) ${mid} → (8th) ${after}`)
+  assert(mid === before, 'no spawn before the 8th turn')
+  assert(after === before + 1, `Stables spawns on the 8th turn (got +${after - before})`)
+  const spawned = g.data.tableau.visibleTiles(6).find((t) => t.unit?.mercenary && t.unit.key === cavKey)
+  assert(spawned && spawned.unit.level === 2, `spawned a level-2 (spawner level) mercenary cavalry`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

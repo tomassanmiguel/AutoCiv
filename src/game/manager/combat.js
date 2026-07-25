@@ -11,6 +11,7 @@
 // legitimacy and is removed. Combat ends when all enemies are slain or have breached.
 import { UNIT_DEFS, unitStats, unitRole } from '../data/units.js'
 import { BUILDING_DEFS } from '../data/buildings.js'
+import { canPlaceOn } from '../data/terrain.js'
 import { POP_TYPES } from '../data/pops.js'
 import { generateHost } from '../data/enemies.js'
 
@@ -52,6 +53,7 @@ class CombatMixin {
         occ.hp = occ.maxHp // damage doesn't persist between combats
         occ.cdTimer = 0    // ready to attack (Siege recharge starts fresh)
         delete occ.trapCd  // trap timers (Discombobulator) start fresh each battle
+        delete occ.spawnCd // spawner timers start fresh each battle
         delete occ.lastAttackSeq
       }
     }
@@ -102,6 +104,7 @@ class CombatMixin {
     this._applyPoison() // Nanite Warfare: 5% max-HP poison to all enemies each turn
     this._playerPhase()
     this._applyTrapTriggers() // Discombobulator: stun nearby enemies before they act
+    this._applySpawners()     // Drydock/Stables/Aircraft Carrier/Spaceport: periodic unit spawns
     this._enemyPhase(bounds)
 
     const civ = this.data.civilization
@@ -308,6 +311,43 @@ class CombatMixin {
         if (Math.abs(e.row - tile.row) + Math.abs(e.col - tile.col) <= range) e.skipTurns = (e.skipTurns ?? 0) + 1
       }
     }
+  }
+
+  /** Best (highest-era) unlocked roster unit whose types include `role`, or null. */
+  _bestRosterUnit(role) {
+    let best = null, bestEra = -1
+    for (const slot of this.data.civilization.units) {
+      if (!slot) continue
+      const def = UNIT_DEFS[slot.key]
+      if (def && def.types.includes(role) && def.era > bestEra) { best = slot.key; bestEra = def.era }
+    }
+    return best
+  }
+
+  /** Spawner buildings: every `spawnEvery` (default 8) turns, create the player's best unit of
+   *  the building's spawnRole on an adjacent empty valid tile, at the spawner's level. Spawns are
+   *  temporary (flagged mercenary → disband at battle end). */
+  _applySpawners() {
+    let spawned = false
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.building
+      if (!occ || occ.damaged) continue
+      const def = BUILDING_DEFS[occ.key]
+      if (def?.special !== 'spawner') continue
+      const every = def.spawnEvery ?? 8
+      occ.spawnCd = (occ.spawnCd ?? every) - 1
+      if (occ.spawnCd > 0) continue
+      occ.spawnCd = every
+      const key = this._bestRosterUnit(def.spawnRole)
+      if (!key) continue
+      const udef = UNIT_DEFS[key]
+      const spot = this._adjacentTiles(tile.row, tile.col).find((nb) => !nb.occupant && canPlaceOn(udef.placement, nb.terrain))
+      if (!spot) continue
+      const hp = unitStats(udef, occ.level, this.data.civilization.modifiers.unitHpBonus).def
+      spot.occupant = { kind: 'unit', key, level: occ.level, hp, maxHp: hp, damaged: false, mercenary: true }
+      spawned = true
+    }
+    if (spawned) this._syncUnitStats(true)
   }
 
   /** Manhattan Project wonder: at combat start, nuke a random live enemy for 2000 and lay
