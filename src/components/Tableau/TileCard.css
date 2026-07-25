@@ -183,6 +183,23 @@
   box-shadow: 0 0 12px rgba(255, 100, 80, 0.6);
 }
 
+/* Incomplete wonder: a compact "N to build" banner across the bottom of the card
+   (turns red when the structure is destroyed and must be repaired first). */
+.tc-wonder-progress {
+  margin-top: auto;
+  align-self: stretch;
+  text-align: center;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 1px 2px;
+  border-radius: 3px;
+  background: rgba(230, 200, 120, 0.85);
+  color: #2a1e08;
+  text-transform: uppercase;
+}
+.tc-wonder-progress.danger { background: rgba(224, 92, 74, 0.9); color: #1a0a08; }
+
 /* Damaged/slain: shake once, then fade to gray. The shake (transform) stays on the
    card; the grayscale is applied to the inner content only, so an on-card Repair
    button remains full-color and clearly clickable. */

@@ -46,3 +46,20 @@
   transition: transform 0.1s ease, filter 0.15s ease;
 }
 .prod-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+
+/* The in-flight wonder's build button — gold-accented, with the wonder icon. */
+.prod-btn.wonder {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #3a2a08;
+  box-shadow: 0 0 10px rgba(230, 200, 120, 0.5);
+}
+.prod-btn.wonder.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  box-shadow: none;
+}
+.prod-btn.wonder.disabled:hover { transform: none; filter: grayscale(0.5); }
+.prod-wonder-icon { width: 18px; height: 18px; object-fit: contain; }

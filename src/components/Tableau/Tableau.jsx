@@ -8,7 +8,7 @@ import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERA_INDEX } from '../../game/data/eras.js'
 import { upgradeCost } from '../../game/data/costs.js'
 import { UNIT_DEFS } from '../../game/data/units.js'
-import { BUILDING_DEFS } from '../../game/data/buildings.js'
+import { defOf } from '../../game/data/buildings.js'
 import TileCard from './TileCard.jsx'
 import CombatFx from './CombatFx.jsx'
 import IconText from '../common/IconText.jsx'
@@ -244,7 +244,7 @@ export default function Tableau() {
     // can't unmount this drag's ghost.
     if (snapTimerRef.current) { clearTimeout(snapTimerRef.current); snapTimerRef.current = null }
     const seq = ++reposSeqRef.current
-    const name = (occ.kind === 'unit' ? UNIT_DEFS[occ.key]?.name : BUILDING_DEFS[occ.key]?.name) ?? ''
+    const name = (occ.kind === 'unit' ? UNIT_DEFS[occ.key]?.name : defOf(occ.key)?.name) ?? ''
     reposPendingRef.current = { seq, fromRow: tile.row, fromCol: tile.col, name, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, active: false }
 
     const onMove = (ev) => {
@@ -389,7 +389,7 @@ export default function Tableau() {
       const cost = game.repairCostFor(occ) // Code of Laws discount applies
       return { kind: 'repair', cost, affordable: gold >= cost, onClick: () => game.repairOccupant(tile.row, tile.col) }
     }
-    if (occ.kind === 'building' && BUILDING_DEFS[occ.key]?.noUpgrade) return null // e.g. Cave Painting
+    if (occ.kind === 'building' && defOf(occ.key)?.noUpgrade) return null // e.g. Cave Painting
     const cost = upgradeCost(occ, era)
     return { kind: 'upgrade', cost, affordable: gold >= cost, onClick: () => game.upgradeOccupant(tile.row, tile.col) }
   }
@@ -555,6 +555,7 @@ export default function Tableau() {
                 side="player"
                 terrain={t.terrain}
                 action={tileAction(t, bd)}
+                onGrab={repositionable && grabbable(bd) ? (e) => onUnitGrab(e, t) : undefined}
               />
             </div>
           )

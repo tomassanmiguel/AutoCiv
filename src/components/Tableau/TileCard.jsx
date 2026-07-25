@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { ENEMY_DEFS } from '../../game/data/enemies.js'
-import { BUILDING_DEFS, buildingEffect, buildingOutputs, buildingHp } from '../../game/data/buildings.js'
+import { buildingEffect, buildingOutputs, buildingHp, defOf } from '../../game/data/buildings.js'
 import { TERRAIN, terrainDefBonus } from '../../game/data/terrain.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import InfoTip from '../common/InfoTip.jsx'
@@ -49,8 +49,12 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const [preview, setPreview] = useState(false) // upgrade-hover: show next level
   const damaged = occ.damaged
   const isUnit = occ.kind === 'unit'
-  // Enemies use their own ENEMY_DEFS roster (keys aren't in UNIT_DEFS).
-  const def = isUnit ? (UNIT_DEFS[occ.key] ?? ENEMY_DEFS[occ.key]) : BUILDING_DEFS[occ.key]
+  // Enemies use their own ENEMY_DEFS roster (keys aren't in UNIT_DEFS). Wonders resolve via
+  // defOf (WONDER_DEFS), so an in-flight wonder structure renders like any building.
+  const def = isUnit ? (UNIT_DEFS[occ.key] ?? ENEMY_DEFS[occ.key]) : defOf(occ.key)
+  const isWonder = !isUnit && !!occ.wonder
+  // Incomplete wonder: how many production-builds remain before it finishes.
+  const wonderBuildsLeft = isWonder && !occ.complete ? (occ.buildsLeft ?? 0) : null
 
   // Underlapping buildings (Road): a minimal name-only card in its own bottom strip, no
   // stats/combat/actions. Its own tooltip still explains the effect.
@@ -63,8 +67,8 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   }
 
   const cats = isUnit ? UNIT_CATEGORIES : BUILDING_CATEGORIES
-  const type = catLabel(cats, def.types[0])
-  const typeIcon = cats.find((c) => c.key === def.types[0])?.silhouette
+  const type = isWonder ? 'Wonder' : catLabel(cats, def.types[0])
+  const typeIcon = isWonder ? '/sprites/ui/wonder.png' : cats.find((c) => c.key === def.types[0])?.silhouette
   const wb = occ.warband ?? 0
   const showAtk = isUnit && unitRole(def) !== 'utility' // utility units don't attack
 
@@ -115,6 +119,13 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         <IconText>{`:${def.types[0]}:`}</IconText> {type}
         <br /><IconText>{isUnit ? (def.description ?? '') : buildingEffect(def, lvl, era)}</IconText>
         {isUnit && def.ability ? <><br /><br /><strong>Ability:</strong> <IconText>{def.ability}</IconText></> : null}
+        {isWonder && !isPrev && (
+          <><br /><br /><IconText>{occ.complete
+            ? 'Wonder complete — its effect is active.'
+            : damaged
+              ? 'Destroyed — repair it (:gold:) before construction can continue.'
+              : `Under construction — ${wonderBuildsLeft} more production build${wonderBuildsLeft === 1 ? '' : 's'} to finish.`}</IconText></>
+        )}
         <br /><br />
         <span className="tc-tip-stats">
           {isUnit && <IconVal src={STAT_ICON.speed}>{dispSpeed}</IconVal>}
@@ -216,6 +227,11 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
                 {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{Math.floor(tickOut.amount)}</IconVal>}
                 {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
               </div>
+              {wonderBuildsLeft != null && (
+                <div className={`tc-wonder-progress${damaged ? ' danger' : ''}`}>
+                  {damaged ? 'Repair!' : `${wonderBuildsLeft} to build`}
+                </div>
+              )}
             </div>
             {action && (
               <button
