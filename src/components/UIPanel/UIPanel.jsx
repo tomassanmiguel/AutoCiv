@@ -28,7 +28,7 @@ const ICON = {
 const TAB_ICON = {
   units: '/sprites/ui/unit.png',
   buildings: '/sprites/ui/building.png',
-  military: '/sprites/icons/defense.png',
+  military: '/sprites/ui/defense.png',
   policies: '/sprites/ui/policy.png',
   population: '/sprites/ui/pop.png',
   wonder: '/sprites/ui/wonder.png',
