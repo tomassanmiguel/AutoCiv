@@ -1,24 +1,35 @@
 # v2 Implementation Tracker
 
-> **STATUS (feature-complete):** every major v2 pillar is implemented + verified — turn-based TD
-> combat (splash/doctrines/cooldowns/abilities), split tile model, PROGRESSION-accurate unlockable
-> content (324/351 advancements), data-driven economy (terrain yields, legit-leverage, specialist
+> **STATUS (effect-wiring COMPLETE):** every major v2 pillar is implemented + verified — turn-based TD
+> combat (splash/doctrines/cooldowns/abilities/traps), split tile model, PROGRESSION-accurate unlockable
+> content (**330/351 advancements**), data-driven economy (terrain yields, legit-leverage, specialist
 > gold-upgrade chains), hand-authored scaled enemy roster, the wonder system (incl. Manhattan
-> Project/Fallout), and the pre-game civ/difficulty screen. `node sims/verify.mjs` = 0 problems.
-> Remaining = incremental polish: **20 stubbed** policy/enemy `special` abilities (effect-wiring
-> coverage now **146/166** reachable policies+bonuses WIRED, per `node sims/verify.mjs`), roster
-> no-replace versioning, multi-tile wonders/bosses, the trap/command/spawner slot tab-split, and
-> balance tuning. **All 20 remaining stubs are genuinely architectural** — each needs a new
-> subsystem, not a hook, so they are deferred as a group (every clean/engine-feasible effect is now
-> wired): region upgrade-levels (colonialism/martian_freedom/skyscrapers/empire_of_the_stars/hive_mind
-> — a per-region unit/building level-boost system), bridging (combustion/mass_drivers/ftl/
-> reuseable_rocketry — cross-terrain adjacency so units/roads span ocean/space gaps), policy-slot
-> expansion (socialism/technocracy/omnicracy — variable-length policy array + UI), free advancement
-> rerolls (state_alchemists/autonomous_governance/chronoscopy — a reroll control in ProgressOverlay),
-> wonderYieldMult (pilgrimage/tourism/star_hopping — a uniform multiplier threaded through every
-> bespoke wonder-effect site), traps (guerilla_warfare — a place-trap/trigger-on-enter mechanic), and
-> a prep-screen projection readout (p_np — UI-only projected :legitimacy: loss). Each is a deliberate
-> next-phase feature, not a missed hook.
+> Project/Fallout), and the pre-game civ/difficulty screen. `node sims/verify.mjs` = **166/166 reachable
+> policies/bonuses WIRED, 0 stubbed** (9 vestigial = unreachable v1 defs kept for reference).
+>
+> The previously-"architectural" cluster is now fully built as **7 real subsystems** (each its own
+> commit + headless sim tests):
+> 1. **Region upgrade-levels** — `_regionLevelBonus(tile, kind)` grants free upgrade levels folded into
+>    the effective level in `_syncUnitStats` (occ.level never mutated). Covers Colonialism (+2 New World),
+>    Martian Freedom (+3 Mars), Skyscrapers (+5 City), Empire of the Stars (+4 Space), Hive Mind
+>    (+1/adjacent building) AND three previously-inert wonders (Machu Picchu/Happy Valley/Great Mirror).
+> 2. **Adjacency bridging** — generalized the road port-net flood-fill into `_componentPortSets`;
+>    `_bridgePortSets` + memoized `_portNets` let Combustion/Mass Drivers/FTL bridge ocean/space/deep-space
+>    and Reuseable Rocketry unify Moon↔Earth (auras + ranges span the gap; v2 has no unit repositioning).
+> 3. **Policy-slot expansion** — `_applyModifier` grows `civ.policies` (Socialism→8, Technocracy→9,
+>    Omnicracy→10); `_unlockTarget` policy slots are dynamic; UIPanel already renders `civ.policies`.
+> 4. **Advancement rerolls** — `civ.freeRerolls` granted on policy unlock; `rerollAdvancement()` redraws
+>    the options; ProgressOverlay Reroll (N) button.
+> 5. **Wonder-yield multiplier** — `_wonderYieldMult()` (best of Pilgrimage ×1.5 / Tourism ×2 / Star
+>    Hopping ×3) threaded through Stonehenge/Hagia/Eiffel yields (bonus-portion scaling preserves defaults).
+> 6. **P=NP projection** — `projectedLegitLoss()` (read-only, mirrors the real breach math) shown in
+>    CombatPrep when active.
+> 7. **Trap subsystem** — new `trap` building category (the 6 trap buildings now register as advancements
+>    and are placeable); combat triggers for Caltrops/Sea Mine/Powder Magazine/Singularity/Discombobulator;
+>    Guerilla Warfare doubles trap damage.
+>
+> Remaining polish (non-blocking): roster no-replace versioning, multi-tile wonder footprints, boss
+> set-pieces, and balance tuning. A trap-category slot art asset (currently reuses Defense art).
 
 
 Strategy (per the user): **implement the new mechanics slice by slice → wipe v1 content → re-add v2
