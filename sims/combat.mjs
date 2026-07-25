@@ -1433,5 +1433,23 @@ console.log('TEST 60: Panopticon repositions large enemies by placement (no swap
   g.stop()
 }
 
+console.log('TEST 61: a unit and a building coexist on one tile (replace only within a category)')
+{
+  const g = new GameManager(160)
+  const b = g.data.tableau.visibleBounds(0)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol); t.terrain = 'plains'; t.unit = null; t.building = null
+  g._createInstance({ kind: 'building', key: 'totem', level: 1 }, t)
+  assert(t.building?.key === 'totem' && !t.unit, 'building placed, no unit yet')
+  // Placing a UNIT on the building's tile is a valid COEXIST, not a replace.
+  g.data.selection = { type: 'production', stage: 'place', chosen: { kind: 'unit', key: 'warrior', level: 1 } }
+  assert(g.placementState(b.minRow, b.minCol) === 'valid', 'unit on a building tile is valid (coexist)')
+  g._createInstance({ kind: 'unit', key: 'warrior', level: 1 }, t)
+  assert(t.unit?.key === 'warrior' && t.building?.key === 'totem', 'unit + building now coexist on the tile')
+  // Same-category is still a replace.
+  g.data.selection = { type: 'production', stage: 'place', chosen: { kind: 'building', key: 'totem', level: 1 } }
+  assert(g.placementState(b.minRow, b.minCol) === 'replace', 'building-on-building is a replace')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

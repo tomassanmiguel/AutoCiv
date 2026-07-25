@@ -1345,7 +1345,10 @@ export class GameManager {
     if (sel.chosen.kind === 'building' && (def?.underlap || def?.underlaidCity)) return 'valid'
     // On a city tile, buildings ADD (into extra slots) and never replace, so they read green.
     if (tile.city && sel.chosen.kind === 'building') return 'valid'
-    return tile.occupant ? 'replace' : 'valid'
+    // v2 split tiles: a unit and a building coexist, so a replace is only needed when the tile
+    // already holds a piece of the SAME category (unit-on-unit / building-on-building).
+    const sameKind = sel.chosen.kind === 'unit' ? tile.unit : tile.building
+    return sameKind ? 'replace' : 'valid'
   }
 
   /** Player clicked a tile to build on (creates/replaces the instance). */
@@ -1487,8 +1490,9 @@ export class GameManager {
     // On a city tile whose primary slot is taken, a building stacks into an EXTRA slot
     // (additive — city buildings never replace). Otherwise it fills the primary slot.
     const toExtra = chosen.kind === 'building' && tile.city && !!tile.occupant
-    // Overbuilding a Cave Painting (replacing the occupant) cashes in its stored progress.
-    const prev = toExtra ? null : tile.occupant
+    // The piece being REPLACED is the same-category slot only (v2 split tiles: a unit and a
+    // building coexist, so building a unit never touches the tile's building, and vice versa).
+    const prev = toExtra ? null : (chosen.kind === 'unit' ? tile.unit : tile.building)
     if (prev && prev.key === 'cave_painting') {
       civ.progress.value += prev.storedProgress ?? BUILDING_DEFS.cave_painting.storedBase
       this._processThresholds('progress', civ.progress) // may queue advancement choices
