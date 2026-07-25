@@ -9,7 +9,7 @@ import {
 } from '../../game/data/slots.js'
 import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingHp, defOf } from '../../game/data/buildings.js'
-import { POLICY_DEFS } from '../../game/data/policies.js'
+import { POLICY_DEFS, policyEffect } from '../../game/data/policies.js'
 import { POP_TYPES, popTooltipText, popTotalSummary } from '../../game/data/pops.js'
 import NineSlice from '../common/NineSlice.jsx'
 import InfoTip from '../common/InfoTip.jsx'
@@ -149,7 +149,8 @@ function policySlots(civ) {
   return civ.policies.map((occ, index) => {
     if (!occ) return { index, kind: 'empty', silhouette: POLICY_INFO.silhouette, name: POLICY_INFO.label, tip: POLICY_INFO.description }
     const def = POLICY_DEFS[occ.key]
-    return { index, kind: 'item', silhouette: POLICY_INFO.silhouette, name: def.name, sub: def.type, line: def.effect, tip: def.effect }
+    const eff = policyEffect(def) // effect ?? description (early policies use `effect`, later use `description`)
+    return { index, kind: 'item', silhouette: POLICY_INFO.silhouette, name: def.name, sub: def.type, line: eff, tip: eff }
   })
 }
 function populationSlots(civ, game, canConvert) {

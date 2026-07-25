@@ -3,7 +3,7 @@ import { useGame } from '../../game/react/GameProvider.jsx'
 import { ERAS } from '../../game/data/eras.js'
 import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingEffect, buildingHp } from '../../game/data/buildings.js'
-import { POLICY_DEFS } from '../../game/data/policies.js'
+import { POLICY_DEFS, policyEffect } from '../../game/data/policies.js'
 import { POP_TYPES } from '../../game/data/pops.js'
 import { WONDER_DEFS } from '../../game/data/wonders.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
@@ -79,7 +79,7 @@ function UnlockDetail({ opt, era }) {
       <>
         <div className="pc-unlocks">Unlocks {def.name}</div>
         <div className="pc-type"><IconText>:policy: Policy</IconText></div>
-        <div className="pc-rules"><IconText>{def.effect}</IconText></div>
+        <div className="pc-rules"><IconText>{policyEffect(def)}</IconText></div>
       </>
     )
   }
