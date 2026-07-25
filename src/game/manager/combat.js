@@ -53,7 +53,7 @@ class CombatMixin {
     let mult = this.difficultyMult ?? 1
     // Geneva Convention: reduce the enemy host budget by 5%.
     for (const def of this._activeEffectDefs()) if (def.special === 'enemy_budget_reduce') mult *= 0.95
-    const host = generateHost(era, bounds, t.enemyRowCount(era), t.columnPlaces(era), Math.random, mult)
+    const host = generateHost(era, bounds, t.enemyRowCount(era), t.battlefieldColumns(era), Math.random, mult)
     this.data.enemies = host.units
     this.data.enemyHostType = host.type
     this._injectBossWave(era, bounds) // special (boss) waves at Titan/Flagship/Azazoth eras

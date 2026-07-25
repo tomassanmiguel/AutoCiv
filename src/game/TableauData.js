@@ -91,6 +91,15 @@ export class TableauData {
     return eraIndex >= ERA_INDEX.revolution ? 4 : 3
   }
 
+  /** Columns that host battlefield (enemy spawn) tiles. Before the Iron age, purely-water
+   *  columns (e.g. the Coast column of the Stone start) are excluded — enemies can't fairly
+   *  threaten across water that early, so the spawn zone doesn't extend above them. */
+  battlefieldColumns(eraIndex) {
+    const cols = this.columnPlaces(eraIndex)
+    if (eraIndex >= ERA_INDEX.iron) return cols
+    return cols.filter((c) => [...c.places].some((p) => p !== 'coast' && p !== 'sea'))
+  }
+
   /** Per visible column, the set of terrain placement classes among its player tiles. */
   columnPlaces(eraIndex) {
     const b = this.visibleBounds(eraIndex)

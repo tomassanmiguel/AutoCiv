@@ -1,6 +1,6 @@
 // Headless test of the v2 turn-based combat engine.
 const { GameManager } = await import('../src/game/GameManager.js')
-const { ENEMY_DEFS } = await import('../src/game/data/enemies.js')
+const { ENEMY_DEFS, generateHost } = await import('../src/game/data/enemies.js')
 const { UNIT_DEFS, unitStats } = await import('../src/game/data/units.js')
 const { BUILDING_DEFS, buildingHp } = await import('../src/game/data/buildings.js')
 const { canPlaceOn } = await import('../src/game/data/terrain.js')
@@ -1584,6 +1584,21 @@ console.log('TEST 68: unitReachCells — attack diamond (red) + pursuit reach (b
   for (const [nr, nc] of [[r0 + 1, c0], [r0 - 1, c0], [r0, c0 + 1], [r0, c0 - 1]]) { const t = g.data.tableau.tileAt(nr, nc); if (t) t.unit = null }
   const melee = g.unitReachCells(r0, c0)
   assert(melee.pursuit.size === 0 && melee.attack.size > 0, 'a no-pursuit melee shows attack range only')
+  g.stop()
+}
+
+console.log('TEST 69: pre-Iron battlefield skips purely-water (Coast) columns')
+{
+  const g = new GameManager(400); g.setEra(0) // Stone: cols 9-12, col 9 = Coast
+  const all0 = g.data.tableau.columnPlaces(0).map((c) => c.col)
+  const bf0 = g.data.tableau.battlefieldColumns(0).map((c) => c.col)
+  console.log(`  stone all cols [${all0}] → battlefield [${bf0}]`)
+  assert(all0.includes(9) && !bf0.includes(9), 'Coast column (9) excluded from the Stone battlefield')
+  assert(bf0.includes(10) && bf0.includes(11) && bf0.includes(12), 'land columns still host battlefield tiles')
+  const host = generateHost(0, g.data.tableau.visibleBounds(0), g.data.tableau.enemyRowCount(0), g.data.tableau.battlefieldColumns(0), () => 0.5, 1)
+  assert(host.units.length > 0 && !host.units.some((u) => u.col === 9), 'no enemies spawn in the Coast column pre-Iron')
+  g.setEra(2) // from Iron the Coast column hosts battlefield tiles again
+  assert(g.data.tableau.battlefieldColumns(2).map((c) => c.col).includes(9), 'Iron+ battlefield includes the Coast column')
   g.stop()
 }
 

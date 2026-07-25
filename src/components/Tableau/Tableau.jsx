@@ -364,7 +364,9 @@ export default function Tableau() {
     return prev && prev.row === tile.row && prev.col === tile.col ? prev : { row: tile.row, col: tile.col }
   })
 
-  const cols = bounds ? range(bounds.minCol, bounds.maxCol) : []
+  // Battlefield backdrop columns: all visible columns, minus purely-water columns before Iron
+  // (so the enemy spawn zone doesn't extend above the Coast column early on).
+  const cols = bounds ? tableau.battlefieldColumns(era).map((c) => c.col) : []
   const tiles = bounds ? tableau.visibleTiles(era) : []
 
   // Production placement mode: valid tiles flash yellow, occupied ones red.
