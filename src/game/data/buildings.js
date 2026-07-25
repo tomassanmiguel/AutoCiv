@@ -40,20 +40,20 @@ export const BUILDING_DEFS = {
     eraFood: pierFood,
   },
   campfire: {
-    key: 'campfire', name: 'Campfire', era: 0, tech: 'Fire', types: ['utility'], placement: 'land',
+    key: 'campfire', name: 'Campfire', era: 0, tech: 'Fire', types: ['support'], placement: 'land',
     hp: 1, upHp: 0,
     special: 'era_end_adjacent_atk',
     effect: 'At the end of each era, permanently grant +1 :attack: to all adjacent units.',
   },
   brothel: {
-    key: 'brothel', name: 'Brothel', types: ['utility'], placement: 'land',
+    key: 'brothel', name: 'Brothel', types: ['support'], placement: 'land',
     hp: 6, upHp: 2,
     atkPct: brothelAtk, // adjacent-unit :attack: bonus by level
     cdReduce: 0.5,      // adjacent-unit cooldown reduction (seconds)
     effect: (level) => `Adjacent units attack 0.5s faster and gain +${Math.round(brothelAtk(level) * 100)}% :attack:.`,
   },
   embassy: {
-    key: 'embassy', name: 'Embassy', types: ['utility'], placement: 'land',
+    key: 'embassy', name: 'Embassy', types: ['support'], placement: 'land',
     hp: 20, upHp: 6,
     mercEvery: 8, // combat-seconds between free mercenaries
     effect: 'In combat, hires a random mercenary onto an empty adjacent tile every 8 seconds.',
@@ -135,7 +135,7 @@ export const BUILDING_DEFS = {
     effect: 'At the end of each combat, gain 5 :legitimacy: for each unit in your civilization.',
   },
   public_baths: {
-    key: 'public_baths', name: 'Public Baths', types: ['utility'], placement: 'land',
+    key: 'public_baths', name: 'Public Baths', types: ['support'], placement: 'land',
     hp: 8, upHp: 3,
     bathsEvery: 5, bathsHealPct: 50, // every 5 combat-seconds: heal adjacent 50% of max HP …
     bathsAtk: (level = 1) => level, // … and permanently grant adjacent units +level :attack:
@@ -146,7 +146,7 @@ export const BUILDING_DEFS = {
   // `extraCap` additional non-underlaid buildings in `tile.extras`. City buildings are
   // additive (they never replace) and can't be replaced or overbuilt themselves.
   city: {
-    key: 'city', name: 'City', era: 6, tech: 'Urbanization', types: ['utility'], placement: 'land',
+    key: 'city', name: 'City', era: 6, tech: 'Urbanization', types: ['support'], placement: 'land',
     underlaidCity: true, noUpgrade: true, hp: 0, upHp: 0,
     extraCap: 2, // additional buildings the tile can hold beyond its primary occupant
     effect: 'Underlaid. Lets this tile hold 2 additional buildings. City buildings can never be replaced.',
@@ -155,7 +155,7 @@ export const BUILDING_DEFS = {
   // tile's own `underlap` slot (never replaced, no HP/combat) rather than as the
   // occupant. Links every tile it touches into one adjacency group.
   road: {
-    key: 'road', name: 'Road', era: 3, tech: 'Surveying', types: ['utility'], placement: 'land',
+    key: 'road', name: 'Road', era: 3, tech: 'Surveying', types: ['support'], placement: 'land',
     underlap: true, noUpgrade: true, hp: 0, upHp: 0,
     effect: 'All tiles adjacent to the road are adjacent to each other. Underlaid.',
   },
@@ -320,14 +320,14 @@ export const BUILDING_DEFS = {
   // --- Military utility ---
   moon_base: {
     key: 'moon_base', name: 'Moon Base', era: 14, tech: 'Lunar Installment',
-    types: ['utility'], placement: 'moon',
+    types: ['support'], placement: 'moon',
     hp: 3, upHp: 0, upgradeTarget: 'def',
     special: 'trap_impassable',
     effect: 'Military, unique, Moon-only. Enemies path around the Moon (the Moon becomes impassable to enemy movement). Upgrades add +1 :defense:/level.',
   },
   machine_gun: {
     key: 'machine_gun', name: 'Machine Gun', era: 9, tech: 'Machine Guns',
-    types: ['utility'], placement: 'land',
+    types: ['support'], placement: 'land',
     hp: 2, upHp: 0, upgradeTarget: 'output',
     special: 'underlay',
     effect: 'Military underlay (under the tile\'s unit). The unit posted on this tile attacks 1/2/3/… extra times per turn (per upgrade level).',

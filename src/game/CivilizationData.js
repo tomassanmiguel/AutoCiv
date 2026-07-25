@@ -1,5 +1,6 @@
 import { RESOURCE_CONFIG } from './data/resources.js'
 import { POP_TYPES } from './data/pops.js'
+import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
 
 // Starting population (all Citizens). Tunable.
 const STARTING_CITIZENS = 1
@@ -38,13 +39,13 @@ export class CivilizationData {
     // Population counts by type (all Citizens to start).
     this.pops = { citizen: STARTING_CITIZENS }
 
-    // Roster: index-aligned to UNIT_CATEGORIES (9) / BUILDING_CATEGORIES (7) /
-    // 5 policy slots. Warrior is unlocked from the start (Melee = index 0).
-    this.units = new Array(9).fill(null)
+    // Roster: index-aligned to UNIT_CATEGORIES / BUILDING_CATEGORIES (lengths derived so the
+    // shape can't drift). Warrior is unlocked from the start (Melee = index 0).
+    this.units = new Array(UNIT_CATEGORIES.length).fill(null)
     this.units[0] = { key: 'warrior', level: 1 }
-    // Buildings index-aligned to BUILDING_CATEGORIES (12: 6 typed + two Utility + Trap +
-    // Command + Spawner + Support). No building is pre-unlocked.
-    this.buildings = new Array(12).fill(null)
+    // Buildings index-aligned to BUILDING_CATEGORIES (6 economy + Support + Trap + Command +
+    // Spawner). No building is pre-unlocked.
+    this.buildings = new Array(BUILDING_CATEGORIES.length).fill(null)
     this.policies = new Array(5).fill(null)
     // Population slot 0 holds the auto-unlocked Citizen; the rest are specialists.
     this.population = new Array(5).fill(null)

@@ -42,25 +42,21 @@ export const BUILDING_CATEGORIES = [
     description: ':legitimacy: Legitimacy buildings help eternalize your rule' },
   { key: 'defense', label: 'Defense', silhouette: '/sprites/ui/defense.png',
     description: ':defense: Defense buildings keep the unwanted out' },
-  // Two Utility building slots (index-aligned to civ.buildings 6 & 7). A utility
-  // building fills the first empty one; the Road (an underlapping utility) fits here too.
-  { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
-    description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
-  { key: 'utility', label: 'Utility', silhouette: '/sprites/ui/utility-building.png',
-    description: ':utility: Utility buildings offer helpful effects that boost other units or buildings' },
-  // Trap slot (index 8): traps trigger on enemy contact rather than blocking a lane —
-  // some deal damage, some disrupt.
+  // Support slot (one catch-all — formerly two Utility slots + a Support slot). Helpful effects
+  // that boost nearby pieces, reshape terrain, or enrich the economy. The City and the
+  // underlapping Road are Support buildings too (they take their own tile slots when placed).
+  // Every unlocked Support building stays available and cycles at build time.
+  { key: 'support', label: 'Support', silhouette: '/sprites/ui/utility-building.png',
+    description: ':utility: Support buildings boost nearby units or buildings, reshape terrain, or enrich your economy' },
+  // Trap slot: traps trigger on enemy contact rather than blocking a lane — some deal damage, some disrupt.
   { key: 'trap', label: 'Trap', silhouette: '/sprites/ui/trap.png',
     description: ':trap: Trap buildings punish enemies that reach them — dealing damage or disrupting their advance' },
-  // Command slot (index 9): auras that boost the units within range. (Placeholder art.)
+  // Command slot: auras that boost the units within range. (Placeholder art.)
   { key: 'command', label: 'Command', silhouette: '/sprites/ui/siege.png',
     description: ':defense: Command buildings project an aura that strengthens the units in range' },
-  // Spawner slot (index 10): periodically create fresh units mid-combat. (Placeholder art.)
+  // Spawner slot: periodically create fresh units mid-combat. (Placeholder art.)
   { key: 'spawner', label: 'Spawner', silhouette: '/sprites/ui/unit.png',
     description: 'Spawner buildings periodically create your best unit of a type onto an adjacent tile during combat' },
-  // Support slot (index 11): global economy / terraforming / power effects. (Placeholder art.)
-  { key: 'support', label: 'Support', silhouette: '/sprites/ui/utility-building.png',
-    description: ':utility: Support buildings power up nearby pieces, reshape terrain, or boost your economy' },
 ]
 
 // Policies and Population are generic slots (no per-slot category); every slot
