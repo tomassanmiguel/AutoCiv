@@ -569,9 +569,9 @@ export const BUILDING_DEFS = {
   shinkansen: {
     key: 'shinkansen', name: 'Shinkansen', era: 13, tech: 'Maglev',
     types: ['gold'], placement: 'land',
-    hp: 1, upHp: 0, upgradeTarget: 'none', noUpgrade: true,
+    hp: 3, upHp: 2, footprint: [3, 1], linksAdjacency: true,
     special: 'underlay',
-    effect: '3×1 road underlay (links the adjacency network). +3 :gold: per tick to each adjacent building.',
+    effect: 'A 3×1 rail line that links the adjacency network. +3 :gold: per tick to each adjacent building.',
   },
 
   // --- Legitimacy ---

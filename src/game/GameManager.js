@@ -484,8 +484,13 @@ export class GameManager {
     return nets
   }
 
-  /** Road networks as port sets (flood-fill over tiles carrying a Road underlay). */
-  _roadPortSets() { return this._componentPortSets((tile) => tile.underlap?.key === 'road') }
+  /** Road networks as port sets — tiles carrying a Road underlay OR a linksAdjacency building
+   *  (the Shinkansen rail line). */
+  _roadPortSets() {
+    return this._componentPortSets((tile) =>
+      tile.underlap?.key === 'road' ||
+      (tile.building && !tile.building.damaged && BUILDING_DEFS[tile.building.key]?.linksAdjacency))
+  }
 
   /** Bridge networks from active terrain-transparency policies: Combustion (ocean), Mass
    *  Drivers (space), FTL (deep space) each turn their terrain into one adjacency network;
@@ -756,6 +761,7 @@ export class GameManager {
         occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
       } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.underlap) {
+        if (!this._isAnchor(tile, occ)) continue // multi-tile building: computed once, at its anchor
         const effLevel = occ.level + this._regionLevelBonus(tile, 'building') // region free-upgrade-levels
         const newMax = buildingHp(BUILDING_DEFS[occ.key], effLevel, civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
@@ -1297,9 +1303,41 @@ export class GameManager {
     this._resolveProduction()
   }
 
+  /** Footprint cells for a building def anchored at (row, col): the anchor plus the tiles
+   *  extending right (columns) and up (rows). Single-tile buildings return just the anchor. */
+  _footprintCells(def, row, col) {
+    const [w, h] = def?.footprint ?? [1, 1]
+    const cells = []
+    for (let dr = 0; dr < h; dr++) for (let dc = 0; dc < w; dc++) cells.push({ r: row + dr, c: col + dc })
+    return cells
+  }
+
+  /** True if `occ` spans more than one tile. */
+  _isMultiTile(def) { const fp = def?.footprint; return !!fp && (fp[0] > 1 || fp[1] > 1) }
+
+  /** True if `tile` is `occ`'s anchor tile (or occ is single-tile). */
+  _isAnchor(tile, occ) {
+    if (!occ?.anchor) return true
+    return occ.anchor.row === tile.row && occ.anchor.col === tile.col
+  }
+
+  /** Every footprint cell exists, is unlocked, has valid terrain, and is fully empty. */
+  _footprintValid(chosen, def, anchor) {
+    for (const { r, c } of this._footprintCells(def, anchor.row, anchor.col)) {
+      const tile = this.data.tableau.tileAt(r, c)
+      if (!tile || !this.data.tableau.isUnlocked(r, c, this.data.era)) return false
+      if (!canPlaceOn(def.placement, tile.terrain) && !this._buildAllowedByPolicy(chosen, def, tile)) return false
+      if (tile.unit || tile.building || tile.city) return false // a multi-tile structure needs empty cells
+    }
+    return true
+  }
+
   _canPlaceHere(chosen, tile) {
+    const cdef = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
+    // Multi-tile buildings (Shinkansen, wonder structures): validate the whole footprint.
+    if (chosen.kind === 'building' && this._isMultiTile(cdef)) return this._footprintValid(chosen, cdef, tile)
     if (!this.data.tableau.isUnlocked(tile.row, tile.col, this.data.era)) return false
-    const def = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
+    const def = cdef
     if (!canPlaceOn(def.placement, tile.terrain) && !this._buildAllowedByPolicy(chosen, def, tile)) return false
     // Underlaid buildings coexist with the occupant but can't stack (one per slot).
     if (chosen.kind === 'building' && def.underlap) return !tile.underlap
@@ -1329,10 +1367,12 @@ export class GameManager {
     return BUILDING_DEFS.city.extraCap - (tile.extras?.length ?? 0)
   }
 
-  /** All building instances physically on a tile: the occupant (if a building) + city extras. */
+  /** All building instances physically on a tile: the occupant (if a building) + city extras.
+   *  A multi-tile building is counted ONLY at its anchor cell (covered cells share the instance). */
   _buildingsOn(tile) {
     const out = []
-    if (tile.occupant?.kind === 'building') out.push(tile.occupant)
+    const occ = tile.occupant
+    if (occ?.kind === 'building' && this._isAnchor(tile, occ)) out.push(occ)
     if (tile.extras) for (const e of tile.extras) out.push(e)
     return out
   }
@@ -1405,6 +1445,18 @@ export class GameManager {
     }
     if (toExtra) (tile.extras ??= []).push(inst)
     else tile.occupant = inst
+    // Multi-tile footprint: stamp the SAME instance onto every covered cell so occupancy,
+    // combat blocking and shared HP all work; _buildingsOn/_syncUnitStats process the anchor only.
+    if (bdef && this._isMultiTile(bdef)) {
+      inst.anchor = { row: tile.row, col: tile.col }
+      inst.footprint = bdef.footprint
+      for (const { r, c } of this._footprintCells(bdef, tile.row, tile.col)) {
+        if (r === tile.row && c === tile.col) continue
+        const t = this.data.tableau.tileAt(r, c)
+        if (t) t.building = inst
+      }
+      if (bdef.linksAdjacency) this._netsCache = null // Shinkansen rail links the adjacency network
+    }
     // Alphabet: building a :progress: building upgrades it once for free (on creation).
     if (chosen.kind === 'building' && bdef.types.includes('progress') && !bdef.noUpgrade &&
         this._activeEffectDefs().some((d) => d.special === 'free_progress_upgrade')) {

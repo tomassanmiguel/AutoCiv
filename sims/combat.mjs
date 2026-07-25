@@ -1001,5 +1001,32 @@ console.log('TEST 45: Naval placement domains — coast-bound vs open-water (exo
   console.log('  water = ocean/exosea/coast; coast = coast only; exosea treated as open ocean')
 }
 
+console.log('TEST 46: Multi-tile footprint building (Shinkansen 3×1) — placement, occupancy, shared HP, adjacency')
+{
+  const g = new GameManager(90); g.setEra(13)
+  const b = g.data.tableau.visibleBounds(13)
+  const anchor = g.data.tableau.tileAt(b.minRow, b.minCol)
+  for (let dc = 0; dc < 3; dc++) g.data.tableau.tileAt(b.minRow, b.minCol + dc).terrain = 'plains'
+  // Placement is blocked if any footprint cell is occupied.
+  const mid = g.data.tableau.tileAt(b.minRow, b.minCol + 1); mid.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  assert(!g._canPlaceHere({ kind: 'building', key: 'shinkansen', level: 1 }, anchor), '3×1 placement blocked by an occupied cell')
+  mid.unit = null
+  assert(g._canPlaceHere({ kind: 'building', key: 'shinkansen', level: 1 }, anchor), '3×1 placement valid when cells are clear')
+  // Place it — occupies 3 tiles with the SAME instance.
+  g._createInstance({ kind: 'building', key: 'shinkansen', level: 1 }, anchor)
+  const cells = [0, 1, 2].map((dc) => g.data.tableau.tileAt(b.minRow, b.minCol + dc))
+  assert(cells.every((t) => t.building && t.building === cells[0].building), 'all 3 cells share one instance')
+  assert(cells[0].building.anchor.col === b.minCol, 'anchor recorded')
+  // Counted ONCE (not 3×) as a deployed building.
+  const bcount = g.data.tableau.visibleTiles(13).filter((t) => t.building && g._isAnchor(t, t.building)).length
+  assert(bcount === 1, `multi-tile building counted once (got ${bcount} anchors)`)
+  // Shared HP: damaging via any cell hits the one shared instance.
+  cells[2].building.hp -= 2
+  assert(cells[0].building.hp === cells[0].building.maxHp - 2, 'HP is shared across all cells')
+  // Links adjacency: the 3 rail tiles + their neighbours are one adjacency network.
+  assert(g._reachableWithin(b.minRow, b.minCol, 1).has(`${b.minRow},${b.minCol + 2}`), 'Shinkansen links its span into one adjacency net')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
