@@ -1174,5 +1174,45 @@ console.log('TEST 49: Stargate — a multi-tile wonder repositions into free spa
   g.stop()
 }
 
+console.log('TEST 51: a DESTROYED wonder procs no end-of-era effect (until repaired)')
+{
+  const mk = (damaged) => {
+    const g = new GameManager(96); g.setEra(4)
+    g.data.civilization.pops = {} // isolate Stonehenge as the only legit source
+    const b = g.data.tableau.visibleBounds(4)
+    const t = g.data.tableau.tiles.get(`${b.minRow},${b.minCol}`); t.terrain = 'plains'; t.unit = null; t.building = null
+    g._createInstance({ kind: 'building', key: 'stonehenge', level: 1, wonder: true }, t) // registers wonderInsts
+    g.data.civilization.completedWonders.push('stonehenge')
+    t.building.damaged = damaged
+    const l0 = g.data.civilization.legitimacy.value
+    g._endCombat()
+    g.stop(); return g.data.civilization.legitimacy.value - l0
+  }
+  const alive = mk(false), destroyed = mk(true)
+  console.log(`  Stonehenge end-of-era legit: alive +${alive}, destroyed +${destroyed}`)
+  assert(alive === 25, `alive Stonehenge grants +25 (got +${alive})`)
+  assert(destroyed === 0, `DESTROYED Stonehenge grants nothing (got +${destroyed})`)
+}
+
+console.log('TEST 52: Colosseum end-of-combat legit counts only LIVE deployed units')
+{
+  const g = new GameManager(97); g.setEra(3)
+  g.data.civilization.pops = {}
+  const b = g.data.tableau.visibleBounds(3)
+  const t0 = g.data.tableau.tiles.get(`${b.minRow},${b.minCol}`); t0.terrain = 'plains'
+  t0.building = { kind: 'building', key: 'colosseum', level: 1, hp: 20, maxHp: 20, damaged: false }
+  // Two units: one live, one destroyed. Only the live one should count (5 legit each).
+  const a = g.data.tableau.tiles.get(`${b.minRow},${b.minCol + 1}`); a.terrain = 'plains'
+  a.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 10, maxHp: 10, damaged: false }
+  const d = g.data.tableau.tiles.get(`${b.minRow + 1},${b.minCol + 1}`); d.terrain = 'plains'
+  d.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 0, maxHp: 10, damaged: true }
+  const l0 = g.data.civilization.legitimacy.value
+  g._applyEraEndEffects()
+  const gained = g.data.civilization.legitimacy.value - l0
+  console.log(`  Colosseum legit with 1 live + 1 destroyed unit = +${gained}`)
+  assert(gained === 5, `only the live unit counts → +5 (got +${gained})`)
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

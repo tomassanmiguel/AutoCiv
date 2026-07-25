@@ -533,7 +533,7 @@ class CombatMixin {
     let legit = 0
     let deployedUnits = 0
     for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      if (tile.unit) deployedUnits++
+      if (tile.unit && !tile.unit.damaged) deployedUnits++ // destroyed units don't count for Colosseum legit
     }
     for (const { occ } of this._buildingInstances()) {
       if (occ.damaged) continue

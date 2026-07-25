@@ -55,6 +55,10 @@ export class CivilizationData {
     // until buildsLeft hits 0, then it moves to completedWonders and its effect turns on.
     this.wonder = null
     this.completedWonders = []
+    // Live on-board structure per completed/placed wonder key (the SAME object as its
+    // tile.building). _hasWonder consults its `.damaged` flag so a DESTROYED wonder's ongoing
+    // effect goes dormant until repaired.
+    this.wonderInsts = {}
 
     // Civilization-wide passives applied by advancements.
     //  unitHpBonus / buildingHpBonus — flat :defense: added to every unit / building

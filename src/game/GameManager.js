@@ -654,7 +654,10 @@ export class GameManager {
       }
     }
     for (const def of this._activeEffectDefs()) add(def.special, def.levelBonus ?? 0)
-    for (const key of this.data.civilization.completedWonders) { const w = WONDER_DEFS[key]; if (w?.levelBonus) add(w.special, w.levelBonus) }
+    for (const key of this.data.civilization.completedWonders) {
+      if (this.data.civilization.wonderInsts?.[key]?.damaged) continue // a destroyed wonder grants no free levels
+      const w = WONDER_DEFS[key]; if (w?.levelBonus) add(w.special, w.levelBonus)
+    }
     // Power buildings (Windmill/Coal/Nuclear/Fusion): +N free upgrade levels to units AND
     // buildings within range (range widens +1 per upgrade level).
     for (const { tile: pt, occ } of this._buildingInstances()) {
@@ -1128,8 +1131,16 @@ export class GameManager {
     this._syncUnitStats()
   }
 
-  /** True once a wonder is completed (its ongoing effect is active). */
-  _hasWonder(key) { return this.data.civilization.completedWonders.includes(key) }
+  /** True when a completed wonder's ongoing effect is ACTIVE — it must be finished AND its
+   *  on-board structure must not be destroyed (a damaged wonder produces nothing / procs
+   *  nothing until repaired). Falls back to active when no structure is tracked (headless
+   *  sims that complete a wonder without placing a physical instance). */
+  _hasWonder(key) {
+    const civ = this.data.civilization
+    if (!civ.completedWonders.includes(key)) return false
+    const inst = civ.wonderInsts?.[key]
+    return inst ? !inst.damaged : true
+  }
 
   /** Best (max) finished-wonder yield multiplier from active policies (Pilgrimage ×1.5,
    *  Tourism ×2, Star Hopping ×3); default 1 when none active. Scales wonder numeric yields. */
@@ -1504,6 +1515,7 @@ export class GameManager {
     if (chosen.wonder) {
       inst.wonder = true
       inst.complete = false
+      civ.wonderInsts[chosen.key] = inst // track the on-board structure for _hasWonder health checks
       const w = civ.wonder
       if (w) {
         w.placed = true
@@ -2017,7 +2029,7 @@ export class GameManager {
   _ageCavePaintings() {
     const { storedMax, storedBase } = BUILDING_DEFS.cave_painting
     for (const { occ } of this._buildingInstances()) {
-      if (occ.key === 'cave_painting') occ.storedProgress = Math.min(storedMax, (occ.storedProgress ?? storedBase) * 2)
+      if (occ.key === 'cave_painting' && !occ.damaged) occ.storedProgress = Math.min(storedMax, (occ.storedProgress ?? storedBase) * 2)
     }
   }
 
