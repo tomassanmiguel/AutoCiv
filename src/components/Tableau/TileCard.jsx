@@ -33,6 +33,15 @@ function defColor(ratio) {
   return `color-mix(in srgb, #ff5a5a ${Math.round((1 - ratio) * 100)}%, #f1e7d1)`
 }
 
+// Out-of-combat DEF tint: light GREEN when a unit's def is buffed above its base
+// (Forest/Mountain, Clothes, Baker, region levels…), soft RED when debuffed below it
+// (Brewery −10%). undefined = at base (ordinary light color).
+function buffTint(eff, base) {
+  if (eff > base) return { color: '#8fe388' }
+  if (eff < base) return { color: '#f2a199' }
+  return undefined
+}
+
 /**
  * A deployed unit/building rendered on its cell (~70%, centered; enlarges to fill
  * on hover). Level badge; rich tooltip. During combat (`combat`) the Def stat shows
@@ -84,10 +93,17 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
   const showAtk = isUnit && unitRole(def) !== 'utility' // utility units don't attack
 
   const maxHp = occ.maxHp ?? (isUnit ? unitStats(def, occ.level, hpBonus, wb).def : occ.hp)
-  const shownDef = combat ? occ.hp : maxHp
+  // Out of combat, preview the combat-only terrain :defense: (Forest/Mountain) so a buffed unit
+  // shows its true defensive strength; in combat maxHp already includes it.
+  const terrBonus = isUnit && side === 'player' && !combat ? terrainDefBonus(terrain) : 0
+  const baseDef = isUnit ? unitStats(def, occ.level, 0, 0).def : 0 // intrinsic def (no buffs)
+  const shownDef = combat ? occ.hp : maxHp + terrBonus
   const shownAtk = isUnit ? (occ.atk ?? unitStats(def, occ.level, hpBonus, wb).atk) : null
   const ratio = clamp01((occ.hp ?? maxHp) / maxHp)
-  const defStyle = combat && ratio < 1 ? { color: defColor(ratio) } : undefined
+  // In combat: redden DEF by remaining HP (damage). Out of combat for a player unit: tint by buff.
+  const defStyle = combat
+    ? (ratio < 1 ? { color: defColor(ratio) } : undefined)
+    : (isUnit && side === 'player' ? buffTint(shownDef, baseDef) : undefined)
 
   // A cooldown bar only appears for units that actually recharge after firing (Siege = 2 turns).
   // (Range is no longer shown on unit cards — only Atk + Def.)
@@ -120,7 +136,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
     const bOuts = isUnit ? [] : buildingOutputs(def, lvl, era)
     const dispAtk = isUnit ? (isPrev ? ps.atk : shownAtk) : null
     const dispDef = isUnit
-      ? (isPrev ? ps.def : (combat ? `${occ.hp}/${maxHp}` : maxHp))
+      ? (isPrev ? ps.def : (combat ? `${occ.hp}/${maxHp}` : shownDef))
       : (isPrev ? buildingHp(def, lvl, buildingHpBonus) : maxHp)
     return (
       <>
