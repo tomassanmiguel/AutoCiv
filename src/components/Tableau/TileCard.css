@@ -355,6 +355,13 @@
   align-items: center;
   max-width: 100%;
 }
+/* Unit cards: all four stats in a fixed 2×2 grid (Atk/Def on top, Speed/Range below). */
+.tc-stats-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  gap: 1px 6px;
+}
 .tc-stat {
   display: inline-flex;
   align-items: center;

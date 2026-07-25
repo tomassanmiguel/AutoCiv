@@ -261,17 +261,24 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
                 <span className="tc-name">{dispName}</span>
                 <span className="tc-level">{occ.level}</span>
               </div>
-              {/* Buildings keep a type icon; unit cards drop it in favour of Range + Pursuit. */}
+              {/* Buildings keep a type icon; unit cards show all four stats in a 2×2 grid instead. */}
               {!compact && !isUnit && typeIcon && <img className="tc-type-icon" src={typeIcon} alt={type} />}
-              <div className="tc-stats">
-                {isUnit && <IconVal src={STAT_ICON.range}>{occ.range ?? def.range}</IconVal>}
-                {isUnit && (def.pursuit ?? 0) > 0 && <IconVal src={STAT_ICON.pursuit}>{def.pursuit}</IconVal>}
-                {showAtk && <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>}
-                <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
-                {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
-                {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{Math.floor(tickOut.amount)}</IconVal>}
-                {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
-              </div>
+              {isUnit ? (
+                // 2×2: Atk / Def on top, Speed (pursuit for units, acts for enemies) / Range below.
+                <div className="tc-stats tc-stats-grid">
+                  <IconVal src={STAT_ICON.atk}>{shownAtk}</IconVal>
+                  <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
+                  <IconVal src={STAT_ICON.pursuit}>{side === 'enemy' ? (occ.acts ?? 1) : (def.pursuit ?? 0)}</IconVal>
+                  <IconVal src={STAT_ICON.range}>{occ.range ?? def.range ?? 0}</IconVal>
+                </div>
+              ) : (
+                <div className="tc-stats">
+                  <IconVal src={STAT_ICON.def} style={defStyle}>{shownDef}</IconVal>
+                  {outs.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}</IconVal>)}
+                  {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{Math.floor(tickOut.amount)}</IconVal>}
+                  {stored != null && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
+                </div>
+              )}
               {wonderBuildsLeft != null && (
                 <div className={`tc-wonder-progress${damaged ? ' danger' : ''}`}>
                   {damaged ? 'Repair!' : `${wonderBuildsLeft} to build`}
