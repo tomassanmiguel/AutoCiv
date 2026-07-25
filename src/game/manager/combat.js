@@ -54,6 +54,8 @@ class CombatMixin {
         occ.cdTimer = 0    // ready to attack (Siege recharge starts fresh)
         delete occ.trapCd  // trap timers (Discombobulator) start fresh each battle
         delete occ.spawnCd // spawner timers start fresh each battle
+        delete occ.bathsCd // Public Baths timer
+        delete occ.mercCd  // Embassy timer
         delete occ.lastAttackSeq
       }
     }
@@ -111,6 +113,7 @@ class CombatMixin {
     this._playerPhase()
     this._applyTrapTriggers() // Discombobulator: stun nearby enemies before they act
     this._applySpawners()     // Drydock/Stables/Aircraft Carrier/Spaceport: periodic unit spawns
+    this._applySupportBuildings() // Campfire/Public Baths heals + Embassy free mercenaries
     this._enemyPhase(bounds)
 
     const civ = this.data.civilization
@@ -340,6 +343,50 @@ class CombatMixin {
         if (Math.abs(e.row - tile.row) + Math.abs(e.col - tile.col) <= range) e.skipTurns = (e.skipTurns ?? 0) + 1
       }
     }
+  }
+
+  /** Campfire (per-turn heal), Public Baths (timed heal), Embassy (timed free mercenary). */
+  _applySupportBuildings() {
+    for (const tile of this.data.tableau.tiles.values()) {
+      const occ = tile.building
+      if (!occ || occ.damaged) continue
+      const def = BUILDING_DEFS[occ.key]
+      if (typeof def.heal === 'function') this._healAround(tile, def.heal(occ.level) / 100) // Campfire: every turn
+      if (def.bathsEvery) { // Public Baths: timed heal
+        occ.bathsCd = (occ.bathsCd ?? def.bathsEvery) - 1
+        if (occ.bathsCd <= 0) { occ.bathsCd = def.bathsEvery; this._healAround(tile, (def.bathsHealPct ?? 50) / 100) }
+      }
+      if (def.mercEvery) { // Embassy: timed free mercenary
+        occ.mercCd = (occ.mercCd ?? def.mercEvery) - 1
+        if (occ.mercCd <= 0) { occ.mercCd = def.mercEvery; this._spawnEmbassyMerc(tile) }
+      }
+    }
+  }
+
+  /** Heal every road-adjacent friendly (unit or building) below max by `pct` of its max HP. */
+  _healAround(tile, pct) {
+    if (pct <= 0) return
+    for (const nb of this._adjacentTiles(tile.row, tile.col)) {
+      for (const occ of [nb.unit, nb.building]) {
+        if (!occ || occ.damaged || occ.hp >= occ.maxHp) continue
+        const amt = Math.max(1, Math.round(occ.maxHp * pct))
+        occ.hp = Math.min(occ.maxHp, occ.hp + amt)
+        this._pushEvent({ kind: 'heal', amount: amt, col: nb.col, row: nb.row })
+      }
+    }
+  }
+
+  /** Embassy: spawn a random unlocked roster unit as a mercenary on an adjacent empty valid tile. */
+  _spawnEmbassyMerc(tile) {
+    const units = this.data.civilization.units.filter(Boolean)
+    if (!units.length) return
+    const pick = units[Math.floor(Math.random() * units.length)]
+    const udef = UNIT_DEFS[pick.key]
+    const spot = this._adjacentTiles(tile.row, tile.col).find((nb) => !nb.occupant && canPlaceOn(udef.placement, nb.terrain))
+    if (!spot) return
+    const hp = unitStats(udef, pick.level, this.data.civilization.modifiers.unitHpBonus).def
+    spot.occupant = { kind: 'unit', key: pick.key, level: pick.level, hp, maxHp: hp, damaged: false, mercenary: true }
+    this._syncUnitStats(true)
   }
 
   /** Best (highest-era) unlocked roster unit whose types include `role`, or null. */

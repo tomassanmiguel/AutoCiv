@@ -16,7 +16,6 @@ const mineGold = (level = 1) => 8 * level         // :gold: per tick (×2 on a m
 const mintLegitPct = (level = 1) => 0.05 + 0.02 * Math.max(0, level - 1) // 5% / 7% / 9% … of legitimacy
 const forgingProd = (level = 1) => 3 * (level + 1)      // :production: per tick (6 / 9 / 12 …)
 const libraryProgress = (level = 1) => 200 * (level + 1) // end-of-combat :progress: (400 / 600 / 800 …)
-const lighthouseBonus = (level = 1) => 2 + 0.5 * Math.max(0, level - 1) // +200% then +50%/level (additive)
 const aqueductBase = (level = 1) => 5 * (level + 1)     // base :food:/tick (10 / 15 / 20 …), ×2 per adjacent Aqueduct
 const glassworksLegit = (level = 1) => 30 + 5 * Math.max(0, level - 1) // :legitimacy: on each building completed (30 / 35 / 40 …)
 // Brothel combat aura: adjacent units' :attack: multiplier by level (+10/15/20%).
@@ -112,9 +111,8 @@ export const BUILDING_DEFS = {
   },
   lighthouse: {
     key: 'lighthouse', name: 'Lighthouse', era: 3, tech: 'Celestial Navigation', types: ['gold'], placement: 'coast',
-    hp: 12, upHp: 4,
-    unblockedBonus: lighthouseBonus, // +200%/+250%/+300%… (ADDITIVE) to a :naval: unit's unblocked-damage resources in its waters
-    effect: (level) => `When a :naval: unit deals unblocked damage in the Lighthouse's waters, resources gained are increased by ${Math.round(lighthouseBonus(level) * 100)}%.`,
+    hp: 12, upHp: 4, upgradeTarget: 'output',
+    effect: (level) => `A coastal beacon: produces ${8 * level} :gold: per tick.`,
   },
   temple: {
     key: 'temple', name: 'Temple', era: 3, tech: 'Organized Religion', types: ['legitimacy'], placement: 'land',

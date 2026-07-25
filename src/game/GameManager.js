@@ -348,6 +348,7 @@ export class GameManager {
       else if (occ.key === 'aqueduct') out = { res: 'food', amount: def.base(effLevel) * Math.pow(2, this._adjacentAqueductCount(tile)) }
       else if (occ.key === 'glassworks') out = { res: 'production', amount: 10 }
       else if (occ.key === 'shinkansen') out = { res: 'gold', amount: 3 * this._adjacentBuildingCount(tile.row, tile.col) } // +3 gold per adjacent building
+      else if (occ.key === 'lighthouse') out = { res: 'gold', amount: 8 * effLevel } // coastal gold beacon (v2)
       else if (occ.key === 'lumber_mill') out = { res: 'production', amount: Math.round(4 * (terrainEconYield(tile.terrain)?.amount ?? 0) * effLevel) }
       else if (occ.key === 'harbor') out = { res: 'production', amount: 6 * this._unitsInRange(tile.row, tile.col, (def.range ?? 1) + (occ.level - 1)) }
       else if (occ.key === 'museum') out = { res: 'progress', amount: 16 * this._lineTypeCount(tile) * occ.level }

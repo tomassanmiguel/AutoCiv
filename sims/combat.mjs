@@ -898,5 +898,35 @@ console.log('TEST 41: Impassable building (Moon Base) — enemies cannot pass or
   g.stop()
 }
 
+console.log('TEST 42: Support combat buildings — Campfire heal + Embassy free mercenary')
+{
+  const g = new GameManager(75); g.setEra(3)
+  const b = g.data.tableau.visibleBounds(3)
+  // Campfire heals an adjacent damaged unit.
+  const ct = g.data.tableau.tileAt(b.minRow, b.minCol); ct.terrain = 'plains'
+  ct.building = { kind: 'building', key: 'campfire', level: 1, hp: 1, maxHp: 1, damaged: false }
+  const nb = g._adjacentTiles(ct.row, ct.col).find((t) => t.def?.place === 'land' && !t.unit && !t.building)
+  nb.terrain = 'plains'; nb.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 1, maxHp: 20, damaged: false }
+  const hp0 = nb.unit.hp
+  g._applySupportBuildings()
+  console.log(`  Campfire: adjacent unit hp ${hp0} → ${nb.unit.hp}`)
+  assert(nb.unit.hp > hp0, `Campfire heals adjacent unit (got ${hp0}→${nb.unit.hp})`)
+  g.stop()
+  // Embassy hires a free mercenary every 8 turns onto an adjacent tile.
+  const g2 = new GameManager(76); g2.setEra(4)
+  const b2 = g2.data.tableau.visibleBounds(4)
+  const et = g2.data.tableau.tileAt(b2.minRow, b2.minCol); et.terrain = 'plains'
+  et.building = { kind: 'building', key: 'embassy', level: 1, hp: 20, maxHp: 20, damaged: false }
+  for (const t of g2._adjacentTiles(et.row, et.col)) t.terrain = 'plains'
+  const before = g2.data.tableau.visibleTiles(4).filter((t) => t.unit).length
+  for (let i = 0; i < 7; i++) g2._applySupportBuildings()
+  const mid = g2.data.tableau.visibleTiles(4).filter((t) => t.unit).length
+  g2._applySupportBuildings() // 8th → spawn
+  const after = g2.data.tableau.visibleTiles(4).filter((t) => t.unit).length
+  console.log(`  Embassy: units ${before} → (7) ${mid} → (8th) ${after}`)
+  assert(mid === before && after === before + 1, `Embassy spawns a merc on the 8th turn`)
+  g2.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
