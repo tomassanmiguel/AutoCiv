@@ -816,5 +816,51 @@ console.log('TEST 38: Power building (Windmill) grants +1 free upgrade level to 
   g.stop()
 }
 
+console.log('TEST 39: Wonders — Skynet, Taj Mahal, Death Star, Panopticon, Great Wall')
+{
+  // Skynet: military unit +75% attack.
+  const g = new GameManager(60); g.setEra(15)
+  const b = g.data.tableau.visibleBounds(15)
+  const t = g.data.tableau.tileAt(b.minRow, b.minCol); t.terrain = 'plains'
+  t.unit = { kind: 'unit', key: 'warrior', level: 1, hp: 3, maxHp: 3, damaged: false }
+  g._syncUnitStats(true); const a0 = t.unit.atk
+  g.data.civilization.completedWonders.push('skynet'); g._syncUnitStats(true)
+  console.log(`  Skynet: warrior atk ${a0} → ${t.unit.atk} (expect ×1.75)`)
+  assert(t.unit.atk === Math.round(a0 * 1.75), `Skynet +75% military atk (got ${t.unit.atk})`)
+  g.stop()
+  // Taj Mahal: bank dead-unit attack → progress at era end.
+  const g2 = new GameManager(61); g2.setEra(7)
+  g2.data.civilization.completedWonders.push('taj_mahal')
+  const dead = { kind: 'unit', key: 'warrior', level: 1, atk: 5, hp: 0, maxHp: 3, damaged: true }
+  g2._onUnitDeath(dead, { row: 1, col: 1 })
+  assert(g2.data.civilization.tajBank === 5, `Taj Mahal banks atk 5 (got ${g2.data.civilization.tajBank})`)
+  const p0 = g2.data.civilization.progress.value; g2._applyEraEndEffects()
+  assert(g2.data.civilization.progress.value - p0 === 5, `Taj Mahal era-end progress = bank`)
+  g2.stop()
+  // Death Star: vaporize a random enemy + 5000 to Azazoth.
+  const g3 = new GameManager(62); g3.setEra(24)
+  g3.data.enemies = [mkEnemy('warrior', 'A', 1, 5, 100, 5), { key: 'azazoth', row: 6, col: 2, hp: 20000, maxHp: 20000, damaged: false, breached: false }]
+  g3._applyDeathStar()
+  const vaporized = g3.data.enemies.filter((e) => e.damaged).length
+  console.log(`  Death Star: vaporized ${vaporized} enemy; Azazoth hp ${g3.data.enemies[1].hp}`)
+  assert(vaporized >= 1, 'Death Star vaporizes an enemy')
+  assert(g3.data.enemies[1].hp <= 15000, `Death Star hits Azazoth for 5000 (got ${20000 - g3.data.enemies[1].hp})`)
+  g3.stop()
+  // Panopticon: enemies stall (skip) their first turn.
+  const g4 = new GameManager(63); g4.setEra(21)
+  g4.data.civilization.completedWonders.push('panopticon')
+  g4.data.enemies = [mkEnemy('warrior', 'A', 1, 5, 100, 5)]
+  g4._startCombat()
+  assert(g4.data.enemies[0].skipTurns === 1, `Panopticon stalls enemies turn 1 (got ${g4.data.enemies[0].skipTurns})`)
+  g4.stop()
+  // Great Wall: +20 building defense on completion.
+  const g5 = new GameManager(64); g5.setEra(3)
+  const bh0 = g5.data.civilization.modifiers.buildingHpBonus
+  g5.data.civilization.wonder = { key: 'great_wall', buildsLeft: 1 }; g5._advanceWonder()
+  console.log(`  Great Wall: buildingHpBonus ${bh0} → ${g5.data.civilization.modifiers.buildingHpBonus}`)
+  assert(g5.data.civilization.modifiers.buildingHpBonus === bh0 + 20, `Great Wall +20 building def`)
+  g5.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

@@ -363,9 +363,11 @@ export class GameManager {
         for (const def of this._activeEffectDefs()) {
           if (def.terrainDouble && (def.terrainDouble === 'all' || def.terrainDouble === tile.terrain)) tmult *= (def.terrainDouble === 'asteroid' ? 3 : 2)
         }
-        // Carbon Sink (naturalGrowth, land tiles only) + National Park (parkMult) fold into the yield.
+        // Carbon Sink (naturalGrowth, land tiles) + National Park (parkMult) + Ecumenopolis
+        // (planet tiles ×10) fold into the yield.
         const natural = tile.def?.place === 'land' ? civ.naturalGrowth : 0
-        const scaled = (ty.amount + natural) * tmult * parkMult
+        const planetMult = (tile.terrain === 'planet' && this._hasWonder('ecumenopolis')) ? 10 : 1
+        const scaled = (ty.amount + natural) * tmult * parkMult * planetMult
         const amt = ty.res === 'gold' ? Math.round(scaled * exoGold * waterGold) : scaled
         totals[ty.res] += amt
         occ.terrainYield = { res: ty.res, amount: amt }
@@ -705,6 +707,8 @@ export class GameManager {
         // Command-building auras: +atk% (into dmgBonus), flat +def, extra ranged range / act-twice.
         const cmd = this._commandAuras(tile.row, tile.col)
         dmgBonus += cmd.atkPct
+        // Skynet wonder: military (non-utility) units +75% :attack:; the Terminator line +150%.
+        if (this._hasWonder('skynet') && role !== 'utility') dmgBonus += occ.key.includes('terminator') ? 1.5 : 0.75
         occ.cmdRange = cmd.rangedRange // read by _pieceRange (ranged units only)
         occ.cmdActTwice = cmd.actTwice // read by _playerPhase
         // Region free-upgrade-levels (Colonialism/Martian Freedom/… + wonders): inflate the
@@ -772,6 +776,7 @@ export class GameManager {
       else if (def.special === 'double_pop_gains') mult *= 2
       else if (def.special === 'extra_citizen_gains') extraCitizens += 3
     }
+    if (this._hasWonder('hanging_gardens')) add += 1 // Hanging Gardens: +1 more pop per gain
     n = (n + add) * mult
     for (let k = 0; k < n; k++) {
       civ.growthParity += 1
@@ -1051,6 +1056,11 @@ export class GameManager {
     civ.wonder = null
     // Immediate (on-completion) effects; ongoing effects are read via _hasWonder().
     if (key === 'hagia_sophia') civ.legitimacy.value *= (1 + this._wonderYieldMult()) // +100% legit (×2), boosted by wonder-yield policies
+    // Great Wall: a permanent +20 :defense: to every building (a civ-wide fortification —
+    // the simplified single-model form of the 4-lane shared-HP wall).
+    if (key === 'great_wall') civ.modifiers.buildingHpBonus += 20
+    // Statue of Liberty: production thresholds grow 20% slower (build more freely).
+    if (key === 'statue_of_liberty') civ.modifiers.productionThresholdMult = (civ.modifiers.productionThresholdMult ?? 1) * 0.8
     this._recomputeOutputs()
     this._syncUnitStats()
   }
@@ -1403,9 +1413,12 @@ export class GameManager {
       civ.production.value += inst.maxHp ?? 0
       this._processThresholds('production', civ.production)
     }
-    // Galactic Legion: producing a unit copies it onto a random adjacent empty valid tile.
-    // Place the copy directly (NOT via _createInstance) so it doesn't recurse endlessly.
-    if (chosen.kind === 'unit' && this._activeEffectDefs().some((d) => d.special === 'copy_unit_on_build')) {
+    // Galactic Legion (any tile) / Space Station wonder (space tiles only): producing a unit
+    // copies it onto a random adjacent empty valid tile. Place the copy directly (NOT via
+    // _createInstance) so it doesn't recurse endlessly.
+    const legion = this._activeEffectDefs().some((d) => d.special === 'copy_unit_on_build')
+    const spaceCopy = this._hasWonder('space_station') && tile.def?.place === 'space'
+    if (chosen.kind === 'unit' && (legion || spaceCopy)) {
       const udef = UNIT_DEFS[chosen.key]
       const spots = this._adjacentTiles(tile.row, tile.col).filter((t) => !t.occupant && canPlaceOn(udef.placement, t.terrain))
       if (spots.length) {
@@ -1655,13 +1668,18 @@ export class GameManager {
     if (fromRow === toRow && fromCol === toCol) return false
     const from = this.data.tableau.tileAt(fromRow, fromCol)
     const occ = from?.occupant
-    if (!occ || occ.kind !== 'unit') return false
+    if (!occ) return false
+    // Units always reposition; buildings only with the Stargate wonder (during prep).
+    const buildingOk = occ.kind === 'building' && this._hasWonder('stargate') && this.data.phase === 'prep'
+    if (occ.kind !== 'unit' && !buildingOk) return false
+    const def = occ.kind === 'unit' ? UNIT_DEFS[occ.key] : BUILDING_DEFS[occ.key]
     const to = this.data.tableau.tileAt(toRow, toCol)
     if (!to || !this.data.tableau.isUnlocked(toRow, toCol, this.data.era)) return false
-    if (!canPlaceOn(UNIT_DEFS[occ.key].placement, to.terrain)) return false // moving unit must fit dest
+    if (!canPlaceOn(def.placement, to.terrain)) return false // the moving piece must fit dest
     if (!to.occupant) return true // move onto an empty tile
-    // Swap: the destination must hold a UNIT that can also stand on the source terrain.
-    return to.occupant.kind === 'unit' && canPlaceOn(UNIT_DEFS[to.occupant.key].placement, from.terrain)
+    // Swap: the destination must hold a piece of the SAME kind that also fits the source terrain.
+    const toDef = to.occupant.kind === 'unit' ? UNIT_DEFS[to.occupant.key] : BUILDING_DEFS[to.occupant.key]
+    return to.occupant.kind === occ.kind && canPlaceOn(toDef.placement, from.terrain)
   }
 
   moveUnit(fromRow, fromCol, toRow, toCol) {
@@ -1768,9 +1786,17 @@ export class GameManager {
     this.data.combatEvents = []
     this.data.combatIntro = false
     this.data.defeated = false
+    // Era-start wonder effects: Sistine Chapel grants a free advancement pick; Hadron Collider
+    // grants a large era-scaled :progress: lump.
+    if (this._hasWonder('sistine_chapel')) this.data.pendingProgress += 1
+    if (this._hasWonder('hadron_collider')) {
+      this.data.civilization.progress.value += Math.round(1500 * Math.pow(1.15, this.data.era))
+      this._processThresholds('progress', this.data.civilization.progress)
+    }
     this._syncUnitStats() // board persists across eras; refresh Warband/maxHp
     this._generateEnemies() // fresh host, visible during development
     this._restartTimer()
+    this._maybeOpenSelection() // open the Sistine free pick (if any) now that the era is set up
   }
 
   // ---------------------------------------------------------------------------

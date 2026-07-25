@@ -61,7 +61,11 @@ class CombatMixin {
       e.hp = e.maxHp
       e.damaged = false
       e.breached = false
+      delete e.skipTurns
     }
+    // Panopticon wonder: surveillance stalls the enemy — every enemy skips its first turn.
+    // (A functional stand-in for the prep-phase enemy-reposition until that UI exists.)
+    if (this._hasWonder('panopticon')) for (const e of this.data.enemies) e.skipTurns = 1
     this._applyManhattanProject() // nuke a random enemy + lay a fallout tile
     this.data.combatTurn = 0
     this.data.combatAccum = 0
@@ -102,6 +106,8 @@ class CombatMixin {
     if (!bounds) { this._endCombat(); return }
 
     this._applyPoison() // Nanite Warfare: 5% max-HP poison to all enemies each turn
+    // Death Star wonder: every 5 turns, vaporize a random enemy (+5000 to Azazoth).
+    if (this._hasWonder('death_star') && this.data.combatTurn % 5 === 0) this._applyDeathStar()
     this._playerPhase()
     this._applyTrapTriggers() // Discombobulator: stun nearby enemies before they act
     this._applySpawners()     // Drydock/Stables/Aircraft Carrier/Spaceport: periodic unit spawns
@@ -190,6 +196,17 @@ class CombatMixin {
         (e.hp === best.hp && (e.row < best.row || (e.row === best.row && e.col < best.col)))) best = e
     }
     return best
+  }
+
+  /** Death Star wonder: vaporize a random live enemy (instant kill) and deal 5000 to Azazoth. */
+  _applyDeathStar() {
+    const live = this.data.enemies.filter((e) => !e.damaged && !e.breached)
+    if (!live.length) return
+    const target = live[Math.floor(Math.random() * live.length)]
+    target.hp = 0; target.damaged = true
+    this._pushEvent({ kind: 'damage', side: 'enemy', amount: 9999, killed: true, col: target.col, row: target.row })
+    const aza = this.data.enemies.find((e) => e.key === 'azazoth' && !e.damaged && !e.breached)
+    if (aza) this._dealDamageToEnemy(aza, 5000)
   }
 
   /** Nanite Warfare: each turn, poison every live enemy for 5% of its max HP. */
@@ -380,6 +397,7 @@ class CombatMixin {
   _onUnitDeath(occ, tile) {
     const civ = this.data.civilization
     const atk = this._effectiveAtk(occ)
+    if (this._hasWonder('taj_mahal')) civ.tajBank += atk // Taj Mahal: bank each dead unit's attack
     for (const def of this._activeEffectDefs()) {
       if (!def.unitDeath) continue
       const amount = def.unitDeath.flat ?? atk
@@ -530,6 +548,8 @@ class CombatMixin {
       if (d?.special === 'growth') civ.naturalGrowth += occ.level
       if (d?.output?.res === 'population' && d.output.when === 'eraEnd') this.addPops(d.output.amount)
     }
+    // Taj Mahal: grant :progress: equal to the (never-clearing) banked dead-unit attack total.
+    if (this._hasWonder('taj_mahal') && civ.tajBank > 0) civ.progress.value += civ.tajBank
     // Surveying: lay a Road on a random valid tile.
     if (this._hasPolicy('surveying')) this._layRandomRoad()
   }

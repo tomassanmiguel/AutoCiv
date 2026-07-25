@@ -76,6 +76,10 @@ export class CivilizationData {
     // yield (grows by each Carbon Sink's level at the end of each combat).
     this.naturalGrowth = 0
 
+    // Taj Mahal wonder: running total of dead units' :attack: (never clears); granted as
+    // :progress: at each era end.
+    this.tajBank = 0
+
     // Advancement bookkeeping.
     this.chosenAdvancements = new Set() // ids chosen (removed from the pool)
     this.askBeforeReplace = true        // "are you sure" before overwriting a full slot

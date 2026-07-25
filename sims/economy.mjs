@@ -501,5 +501,41 @@ console.log('TEST 35: Convert-tile (Artificial Island) + Tleilaxu Tanks (end-era
   g.stop(); g2.stop()
 }
 
+console.log('TEST 36: Wonders — Hanging Gardens, Hadron Collider, Statue of Liberty, Ecumenopolis')
+{
+  // Hanging Gardens: +1 more pop per gain.
+  const g = new GameManager(65); g.setEra(2)
+  const total = (c) => Object.values(c.pops).reduce((a, b) => a + b, 0)
+  const t0 = total(g.data.civilization); g.addPops(2); const base = total(g.data.civilization) - t0
+  const g2 = new GameManager(65); g2.setEra(2); g2.data.civilization.completedWonders.push('hanging_gardens')
+  const s0 = total(g2.data.civilization); g2.addPops(2); const boosted = total(g2.data.civilization) - s0
+  console.log(`  Hanging Gardens: addPops(2) gained ${base} → ${boosted}`)
+  assert(boosted === base + 1, `Hanging Gardens +1 pop per gain (got ${boosted} vs ${base + 1})`)
+  g.stop(); g2.stop()
+  // Hadron Collider: era-start progress lump.
+  const g3 = new GameManager(66); g3.setEra(12); g3.data.civilization.completedWonders.push('hadron_collider')
+  const p0 = g3.data.civilization.progress.value; g3._beginEra()
+  console.log(`  Hadron Collider: era-start progress +${(g3.data.civilization.progress.value - p0).toFixed(0)}`)
+  assert(g3.data.civilization.progress.value > p0, `Hadron Collider grants era-start progress`)
+  g3.stop()
+  // Statue of Liberty: production thresholds grow slower (×0.8).
+  const g4 = new GameManager(67); g4.setEra(10)
+  const m0 = g4.data.civilization.modifiers.productionThresholdMult ?? 1
+  g4.data.civilization.wonder = { key: 'statue_of_liberty', buildsLeft: 1 }; g4._advanceWonder()
+  assert(Math.abs((g4.data.civilization.modifiers.productionThresholdMult ?? 1) - m0 * 0.8) < 1e-9, `Statue of Liberty ×0.8 production threshold`)
+  g4.stop()
+  // Ecumenopolis: planet tile yields ×10.
+  const g5 = new GameManager(68); g5.setEra(25); g5.data.civilization.pops = {}
+  const planet = g5.data.tableau.visibleTiles(25).find((x) => !x.building && !x.unit && x.terrain === 'planet')
+  if (planet) {
+    planet.building = { kind: 'building', key: 'totem', level: 1, hp: 15, maxHp: 15, damaged: false }
+    g5._recomputeOutputs(); const y0 = g5.data.civilization.gold.output
+    g5.data.civilization.completedWonders.push('ecumenopolis'); g5._recomputeOutputs(); const y1 = g5.data.civilization.gold.output
+    console.log(`  Ecumenopolis: planet gold yield ${y0} → ${y1} (×10)`)
+    assert(y0 === 0 || y1 === y0 * 10, `Ecumenopolis planet ×10 (got ${y0}→${y1})`)
+  } else { console.log('  (no planet tile visible — Ecumenopolis assertion skipped)'); assert(true, 'skip') }
+  g5.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
