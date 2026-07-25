@@ -12,7 +12,7 @@ export const WONDER_DEFS = {
   stonehenge:       { key: 'stonehenge', name: 'Stonehenge', era: 0, tech: 'Mysticism', footprint: [1, 1], placement: 'land', special: 'legit_per_era', effect: 'At the end of each era, gain +25 :legitimacy:.' },
   the_pyramids:     { key: 'the_pyramids', name: 'The Pyramids', era: 1, tech: 'Masonry', footprint: [1, 1], placement: 'land', special: 'upgrade_cost_reduce', effect: 'All unit & building upgrade costs −25%.' },
   hanging_gardens:  { key: 'hanging_gardens', name: 'Hanging Gardens', era: 2, tech: 'Hospitality Rites', footprint: [1, 1], placement: 'land', special: 'extra_pop_per_gain', effect: 'Every population gain yields +1 more pop.' },
-  great_wall:       { key: 'great_wall', name: 'Great Wall', era: 3, tech: 'Great Wall', footprint: [4, 1], placement: 'land', special: 'multi_lane_wall', structure: 'great_wall_structure', effect: 'One shared-HP blocker across 4 lanes (:defense: 20, +2/level).' },
+  great_wall:       { key: 'great_wall', name: 'Great Wall', era: 3, tech: 'Great Wall', footprint: [4, 1], placement: 'land', special: 'multi_lane_wall', hp: 20, upHp: 2, effect: 'One shared-HP blocker across 4 lanes (:defense: 20, +2/level).' },
   machu_picchu:     { key: 'machu_picchu', name: 'Machu Picchu', era: 4, tech: 'Civil Service', footprint: [1, 1], placement: 'mountain', special: 'mountain_levels', levelBonus: 2, effect: 'Units & buildings on mountains gain +2 free upgrade levels.' },
   hagia_sophia:     { key: 'hagia_sophia', name: 'Hagia Sophia', era: 5, tech: 'Inquisition', footprint: [1, 1], placement: 'land', special: 'legit_double_prod', effect: 'On completion, double current :legitimacy:. Each era start: :production: = 2× :legitimacy:.' },
   sistine_chapel:   { key: 'sistine_chapel', name: 'Sistine Chapel', era: 6, tech: 'Domes', footprint: [1, 1], placement: 'land', special: 'free_advancement', effect: 'Free advancement pick at the start of each era, with no threshold increase.' },
@@ -29,6 +29,21 @@ export const WONDER_DEFS = {
   panopticon:       { key: 'panopticon', name: 'Panopticon', era: 21, tech: 'Omnisurveillance', footprint: [1, 1], placement: 'land', special: 'reposition_enemies', effect: 'You may reposition ENEMY units freely during prep.' },
   death_star:       { key: 'death_star', name: 'Death Star', era: 24, tech: 'Planet Busting', footprint: [2, 2], placement: 'deepspace', special: 'vaporize_enemy', effect: 'Every 5 turns, instantly vaporize a random enemy; deals 5000 damage to Azazoth.' },
   ecumenopolis:     { key: 'ecumenopolis', name: 'Ecumenopolis', era: 25, tech: 'Mega Colonization', footprint: [1, 1], placement: 'planet', special: 'planet_yield_10x', effect: 'The planet tile yields 10× its terrain bonus.' },
+}
+
+// A wonder is PLACED on the board as a real (combat) building instance while it is being built
+// (the player picks it in the production selection to place it, then again to progress it). Give
+// each def the fields a deployed building needs so BUILDING-context code (via defOf) treats it
+// uniformly: hp/upHp for combat HP (default scales with era), types (matches no economic
+// category), combatOnly (kept out of the economy like traps), noUpgrade (wonders complete via
+// production picks, never gold upgrades), and a default 1×1 footprint.
+for (const d of Object.values(WONDER_DEFS)) {
+  if (d.hp == null) d.hp = 30 + 10 * d.era
+  if (d.upHp == null) d.upHp = 5
+  if (!d.types) d.types = ['wonder']
+  if (!d.footprint) d.footprint = [1, 1]
+  d.combatOnly = true
+  d.noUpgrade = true
 }
 
 /** Wonder def unlocked by a given advancement tech name, or null. */

@@ -7,9 +7,9 @@ import { WONDER_BUILDS, WONDER_DEFS } from './data/wonders.js'
 import { CIVILIZATIONS, difficultyMult } from './data/civilizations.js'
 import { ADVANCEMENTS, IMPLEMENTED, isImplemented } from './data/advancements.js'
 import { UNIT_DEFS, unitStats, unitRole } from './data/units.js'
-import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount } from './data/buildings.js'
+import { BUILDING_DEFS, buildingHp, buildingOutputs, buildingTickAmount, defOf } from './data/buildings.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from './data/slots.js'
-import { canPlaceOn, terrainDefBonus, terrainEconYield, EARTH_TERRAINS } from './data/terrain.js'
+import { canPlaceOn, canPlaceWonder, terrainDefBonus, terrainEconYield, EARTH_TERRAINS } from './data/terrain.js'
 import { upgradeCost, repairCost, specialistCost, specialistConvertCount, mercenaryCost } from './data/costs.js'
 import { installCombat, SPEED_TPS, COMBAT_INTERVAL_MS } from './manager/combat.js'
 
@@ -319,8 +319,8 @@ export class GameManager {
     const parkMult = 1 + this._nationalParkBonus() // National Parks: global terrain-yield %
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) { occ.tickOutput = null; continue } // destroyed buildings produce nothing
-      const def = BUILDING_DEFS[occ.key]
-      // Traps are combat-only — they generate no per-tick output and no terrain/economy yield.
+      const def = defOf(occ.key)
+      // Traps + wonders are combat-only — no per-tick output and no terrain/economy yield.
       if (def.trapTrigger || def.combatOnly) { occ.tickOutput = null; occ.terrainYield = null; continue }
       // Region free-upgrade-levels scale a building's per-tick OUTPUT too (not just its HP).
       const effLevel = occ.level + this._regionLevelBonus(tile, 'building')
@@ -697,7 +697,7 @@ export class GameManager {
       // City extras are economic-only (never fight, never take terrain/combat bonuses), but
       // refresh their maxHp so buildingHpBonus growth (Concrete/Hereditary) shows on the strip.
       if (tile.extras) for (const ex of tile.extras) {
-        const nm = Math.max(1, buildingHp(BUILDING_DEFS[ex.key], ex.level, civ.modifiers.buildingHpBonus))
+        const nm = Math.max(1, buildingHp(defOf(ex.key), ex.level, civ.modifiers.buildingHpBonus))
         const wasFull = ex.hp == null || ex.maxHp == null || ex.hp >= ex.maxHp
         ex.maxHp = nm
         if (!ex.damaged) ex.hp = wasFull ? nm : Math.min(nm, ex.hp)
@@ -760,10 +760,10 @@ export class GameManager {
         occ.atk = Math.round(s.atk * posMult * caste)
         occ.maxHp = Math.max(1, Math.round(s.def * (brew ? 0.9 : 1)))
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
-      } else if (occ.kind === 'building' && !BUILDING_DEFS[occ.key]?.underlap) {
+      } else if (occ.kind === 'building' && !defOf(occ.key)?.underlap) {
         if (!this._isAnchor(tile, occ)) continue // multi-tile building: computed once, at its anchor
         const effLevel = occ.level + this._regionLevelBonus(tile, 'building') // region free-upgrade-levels
-        const newMax = buildingHp(BUILDING_DEFS[occ.key], effLevel, civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
+        const newMax = buildingHp(defOf(occ.key), effLevel, civ.modifiers.buildingHpBonus) + terrainDef + policyBuildingDef
         const wasFull = occ.hp == null || occ.maxHp == null || occ.hp >= occ.maxHp
         occ.maxHp = Math.max(1, newMax)
         if (!occ.damaged) occ.hp = wasFull ? occ.maxHp : Math.min(occ.maxHp, occ.hp)
@@ -1307,7 +1307,7 @@ export class GameManager {
     if (!sel || sel.type !== 'production' || sel.stage !== 'place' || !sel.chosen) return null
     const tile = this.data.tableau.tileAt(row, col)
     if (!tile || !this._canPlaceHere(sel.chosen, tile)) return 'invalid'
-    const def = BUILDING_DEFS[sel.chosen.key]
+    const def = defOf(sel.chosen.key)
     // Underlaid buildings (Road / City) coexist with the occupant → always a plain placement.
     if (sel.chosen.kind === 'building' && (def?.underlap || def?.underlaidCity)) return 'valid'
     // On a city tile, buildings ADD (into extra slots) and never replace, so they read green.
@@ -1343,24 +1343,34 @@ export class GameManager {
     return occ.anchor.row === tile.row && occ.anchor.col === tile.col
   }
 
+  /** Whether `chosen`'s terrain rule permits this tile. Wonders use the richer wonder
+   *  placement vocabulary (specific-terrain requirements); plain pieces use canPlaceOn
+   *  plus the Marine-Construction/Gravboots land-on-water policy exception. */
+  _terrainAllows(chosen, def, tile) {
+    if (chosen.wonder) return canPlaceWonder(def.placement, tile.terrain)
+    return canPlaceOn(def.placement, tile.terrain) || this._buildAllowedByPolicy(chosen, def, tile)
+  }
+
   /** Every footprint cell exists, is unlocked, has valid terrain, and is fully empty. */
   _footprintValid(chosen, def, anchor) {
     for (const { r, c } of this._footprintCells(def, anchor.row, anchor.col)) {
       const tile = this.data.tableau.tileAt(r, c)
       if (!tile || !this.data.tableau.isUnlocked(r, c, this.data.era)) return false
-      if (!canPlaceOn(def.placement, tile.terrain) && !this._buildAllowedByPolicy(chosen, def, tile)) return false
+      if (!this._terrainAllows(chosen, def, tile)) return false
       if (tile.unit || tile.building || tile.city) return false // a multi-tile structure needs empty cells
     }
     return true
   }
 
   _canPlaceHere(chosen, tile) {
-    const cdef = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : BUILDING_DEFS[chosen.key]
-    // Multi-tile buildings (Shinkansen, wonder structures): validate the whole footprint.
+    const cdef = chosen.kind === 'unit' ? UNIT_DEFS[chosen.key] : defOf(chosen.key)
+    // Multi-tile buildings (Shinkansen) and multi-tile wonders: validate the whole footprint.
     if (chosen.kind === 'building' && this._isMultiTile(cdef)) return this._footprintValid(chosen, cdef, tile)
     if (!this.data.tableau.isUnlocked(tile.row, tile.col, this.data.era)) return false
     const def = cdef
-    if (!canPlaceOn(def.placement, tile.terrain) && !this._buildAllowedByPolicy(chosen, def, tile)) return false
+    if (!this._terrainAllows(chosen, def, tile)) return false
+    // Wonders (single-tile) need an empty building slot — they never replace, never stack in a city.
+    if (chosen.wonder) return !tile.building && !tile.city
     // Underlaid buildings coexist with the occupant but can't stack (one per slot).
     if (chosen.kind === 'building' && def.underlap) return !tile.underlap
     if (chosen.kind === 'building' && def.underlaidCity) return !tile.city
@@ -1415,7 +1425,7 @@ export class GameManager {
       const hp = unitStats(UNIT_DEFS[chosen.key], chosen.level, civ.modifiers.unitHpBonus).def
       return { kind: 'unit', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false }
     }
-    const hp = buildingHp(BUILDING_DEFS[chosen.key], chosen.level, civ.modifiers.buildingHpBonus)
+    const hp = buildingHp(defOf(chosen.key), chosen.level, civ.modifiers.buildingHpBonus)
     const inst = { kind: 'building', key: chosen.key, level: chosen.level, hp, maxHp: hp, damaged: false, lifetimeOutput: 0 }
     if (chosen.key === 'cave_painting') inst.storedProgress = BUILDING_DEFS.cave_painting.storedBase
     if (chosen.key === 'ranch') { inst.ranchBonus = 0; inst.ranchStep = 2 }
@@ -1461,7 +1471,7 @@ export class GameManager {
         inst.level = prev.level
         const nm = chosen.kind === 'unit'
           ? unitStats(UNIT_DEFS[chosen.key], inst.level, civ.modifiers.unitHpBonus).def
-          : Math.max(1, buildingHp(BUILDING_DEFS[chosen.key], inst.level, civ.modifiers.buildingHpBonus))
+          : Math.max(1, buildingHp(defOf(chosen.key), inst.level, civ.modifiers.buildingHpBonus))
         inst.hp = nm; inst.maxHp = nm
       }
     }
@@ -1551,7 +1561,7 @@ export class GameManager {
     let addedFood = 0
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) continue
-      for (const o of buildingOutputs(BUILDING_DEFS[occ.key], occ.level, this.data.era)) {
+      for (const o of buildingOutputs(defOf(occ.key), occ.level, this.data.era)) {
         if (!civ[o.res]) continue
         civ[o.res].value += o.amount // Pier food, Library progress, …
         occ.lifetimeOutput = (occ.lifetimeOutput ?? 0) + o.amount
@@ -1635,7 +1645,7 @@ export class GameManager {
     const oldMax = occ.maxHp
     const newMax = occ.kind === 'unit'
       ? unitStats(UNIT_DEFS[occ.key], occ.level, civ.modifiers.unitHpBonus).def
-      : buildingHp(BUILDING_DEFS[occ.key], occ.level, civ.modifiers.buildingHpBonus)
+      : buildingHp(defOf(occ.key), occ.level, civ.modifiers.buildingHpBonus)
     occ.maxHp = newMax
     occ.hp = Math.min(newMax, (occ.hp ?? oldMax) + (newMax - oldMax))
     if (occ.kind === 'unit') this._syncUnitStats() // re-fold in any Warband bonus

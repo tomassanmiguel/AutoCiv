@@ -10,7 +10,7 @@
 // building). An enemy that marches off the bottom BREACHES: it subtracts its `atk` from
 // legitimacy and is removed. Combat ends when all enemies are slain or have breached.
 import { UNIT_DEFS, unitStats, unitRole } from '../data/units.js'
-import { BUILDING_DEFS } from '../data/buildings.js'
+import { defOf } from '../data/buildings.js'
 import { canPlaceOn } from '../data/terrain.js'
 import { POP_TYPES } from '../data/pops.js'
 import { generateHost } from '../data/enemies.js'
@@ -170,7 +170,7 @@ class CombatMixin {
         if (Math.abs(e.row - target.row) + Math.abs(e.col - target.col) === 1) this._dealDamageToEnemy(e, sdmg)
       }
     }
-    const cd = UNIT_DEFS[occ.key]?.cooldown ?? BUILDING_DEFS[occ.key]?.cooldown ?? 0
+    const cd = UNIT_DEFS[occ.key]?.cooldown ?? defOf(occ.key)?.cooldown ?? 0
     if (cd > 0) occ.cdTimer = cd
   }
 
@@ -189,7 +189,7 @@ class CombatMixin {
       if (unitRole(def) === 'ranged') range += occ.cmdRange ?? 0
       return range
     }
-    return BUILDING_DEFS[occ.key]?.range ?? 0
+    return defOf(occ.key)?.range ?? 0
   }
 
   /** Lowest-HP live enemy within Manhattan-diamond `range` of (row,col). Ties break
@@ -257,14 +257,14 @@ class CombatMixin {
     const below = this.data.tableau.tileAt(belowRow, e.col)
     // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it and trigger it.
     const belowB = below?.building
-    const walkover = belowB && ['cross', 'first'].includes(BUILDING_DEFS[belowB.key]?.trapTrigger)
+    const walkover = belowB && ['cross', 'first'].includes(defOf(belowB.key)?.trapTrigger)
     // Impeded by a blocker in the path — chip the unit first, then the building.
     const blocker = (below?.unit && !below.unit.damaged) ? below.unit
       : (belowB && !belowB.damaged && !walkover) ? belowB : null
     if (blocker) {
       // Impassable buildings (Moon Base / Singularity): normal enemies can't chip or pass them
       // and simply hold; only Azazoth can force through (and takes the Singularity's huge hit).
-      const bdef = blocker.kind === 'building' ? BUILDING_DEFS[blocker.key] : null
+      const bdef = blocker.kind === 'building' ? defOf(blocker.key) : null
       const impassable = bdef?.trapTrigger === 'impassable' || bdef?.special === 'trap_impassable'
       if (impassable && e.key !== 'azazoth') return
       const chip = e.chip ?? 1 // per-enemy blocker chip (Barbarian 2, …); baked at generation
@@ -297,7 +297,7 @@ class CombatMixin {
   _triggerWalkoverTrap(tile, e) {
     const b = tile?.building
     if (!b || e.damaged) return
-    const def = BUILDING_DEFS[b.key]
+    const def = defOf(b.key)
     if (def?.trapTrigger === 'cross' && def.trapDamage) this._dealDamageToEnemy(e, this._trapDamage(b, def.trapDamage))
     else if (def?.trapTrigger === 'first' && def.trapDamage) {
       this._dealDamageToEnemy(e, this._trapDamage(b, def.trapDamage))
@@ -309,7 +309,7 @@ class CombatMixin {
   /** Traps that fire on destruction: a Powder Magazine explodes for AoE damage to nearby
    *  enemies; a Singularity, when the enemy that broke it is Azazoth, deals its huge hit. */
   _onTrapDestroyed(blocker, tile, killer) {
-    const def = BUILDING_DEFS[blocker.key]
+    const def = defOf(blocker.key)
     if (!def) return
     if (def.trapTrigger === 'death' && def.trapDamage) {
       const range = def.range ?? 2
@@ -329,7 +329,7 @@ class CombatMixin {
     for (const tile of this.data.tableau.tiles.values()) {
       const occ = tile.building // traps live in the building slot; read it directly (not the occupant shim)
       if (!occ || occ.damaged) continue
-      const def = BUILDING_DEFS[occ.key]
+      const def = defOf(occ.key)
       if (def?.trapTrigger !== 'skip') continue
       occ.trapCd = (occ.trapCd ?? 0) - 1
       if (occ.trapCd > 0) continue
@@ -347,7 +347,7 @@ class CombatMixin {
     for (const tile of this.data.tableau.tiles.values()) {
       const occ = tile.building
       if (!occ || occ.damaged) continue
-      const def = BUILDING_DEFS[occ.key]
+      const def = defOf(occ.key)
       if (typeof def.heal === 'function') this._healAround(tile, def.heal(occ.level) / 100) // Campfire: every turn
       if (def.bathsEvery) { // Public Baths: timed heal
         occ.bathsCd = (occ.bathsCd ?? def.bathsEvery) - 1
@@ -405,7 +405,7 @@ class CombatMixin {
     for (const tile of this.data.tableau.tiles.values()) {
       const occ = tile.building
       if (!occ || occ.damaged) continue
-      const def = BUILDING_DEFS[occ.key]
+      const def = defOf(occ.key)
       if (def?.special !== 'spawner') continue
       const every = def.spawnEvery ?? 8
       occ.spawnCd = (occ.spawnCd ?? every) - 1
@@ -469,12 +469,12 @@ class CombatMixin {
   // attack(level) if they're towers; enemies fall back to base stats.
   _effectiveAtk(occ) {
     if (occ.atk != null) return occ.atk
-    if (occ.kind === 'building') return BUILDING_DEFS[occ.key]?.attack?.(occ.level) ?? 0
+    if (occ.kind === 'building') return defOf(occ.key)?.attack?.(occ.level) ?? 0
     return unitStats(UNIT_DEFS[occ.key], occ.level, 0, occ.warband ?? 0).atk
   }
 
   _effectiveCooldown(unit) {
-    const def = UNIT_DEFS[unit.key] ?? BUILDING_DEFS[unit.key]
+    const def = UNIT_DEFS[unit.key] ?? defOf(unit.key)
     return Math.max(MIN_COOLDOWN, (def?.cooldown ?? MIN_COOLDOWN) - (unit.cdReduce ?? 0))
   }
 
@@ -537,7 +537,7 @@ class CombatMixin {
     }
     for (const { occ } of this._buildingInstances()) {
       if (occ.damaged) continue
-      if (occ.key === 'totem') legit += BUILDING_DEFS.totem.combatLegit(occ.level)
+      if (occ.key === 'totem') legit += defOf('totem').combatLegit(occ.level)
       else if (occ.key === 'colosseum') legit += 5 * deployedUnits
     }
     legit += (POP_TYPES.shaman?.combatLegit ?? 10) * (civ.pops.shaman ?? 0)
@@ -562,7 +562,7 @@ class CombatMixin {
     // v2 legitimacy buildings' end-of-era gold (Temple = 3× legitimacy).
     for (const { occ } of this._buildingInstances()) {
       if (occ.damaged) continue
-      const g = BUILDING_DEFS[occ.key]?.endEraGoldFromLegit
+      const g = defOf(occ.key)?.endEraGoldFromLegit
       if (g) civ.gold.value += Math.floor(legitNow * g)
     }
     // Eugenics: permanently +2 :attack: to all units each era (folded into _syncUnitStats).
@@ -591,7 +591,7 @@ class CombatMixin {
     this._accrueBuildingOutputs()
     // Forging / Armory: upgrade a random adjacent (road-augmented) unit +1 level for free.
     for (const { tile, occ } of this._buildingInstances()) {
-      const upgrader = occ.key === 'forging' || BUILDING_DEFS[occ.key]?.special === 'command_free_upgrade'
+      const upgrader = occ.key === 'forging' || defOf(occ.key)?.special === 'command_free_upgrade'
       if (!upgrader || occ.damaged) continue
       const adj = this._adjacentTiles(tile.row, tile.col).filter((t) => t.unit && !t.unit.damaged)
       if (adj.length === 0) continue
@@ -600,7 +600,7 @@ class CombatMixin {
     // Support end-of-era: Carbon Sink grows the permanent natural yield; Tleilaxu Tanks add pops.
     for (const { occ } of this._buildingInstances()) {
       if (occ.damaged) continue
-      const d = BUILDING_DEFS[occ.key]
+      const d = defOf(occ.key)
       if (d?.special === 'growth') civ.naturalGrowth += occ.level
       if (d?.output?.res === 'population' && d.output.when === 'eraEnd') this.addPops(d.output.amount)
     }

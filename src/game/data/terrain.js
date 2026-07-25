@@ -48,6 +48,31 @@ export function canPlaceOn(placement, terrainKey) {
   return placement === cls
 }
 
+// Wonder placement classes are richer than the four unit placement classes: some wonders
+// require a SPECIFIC terrain (Machu Picchu → mountain, Happy Valley → mars, Death Star →
+// deep space, Ecumenopolis → planet, Stargate → the exoplanet's land). Each entry tests a
+// concrete terrain key against the wonder's `placement` string.
+const WONDER_PLACE = {
+  land: (t) => TERRAIN[t]?.place === 'land',
+  coast: (t) => TERRAIN[t]?.place === 'coast',
+  sea: (t) => TERRAIN[t]?.place === 'sea',
+  space: (t) => TERRAIN[t]?.place === 'space',
+  mountain: (t) => t === 'mountain',
+  mars: (t) => t === 'mars',
+  exoplanet: (t) => t === 'exoplains' || t === 'exohills',
+  deepspace: (t) => t === 'deep_space',
+  planet: (t) => t === 'planet',
+  any: () => true,
+}
+
+/** Whether a wonder with the given placement rule may be built on a terrain. Wonders use a
+ *  richer placement vocabulary than units/buildings (specific-terrain requirements); falls
+ *  back to canPlaceOn for the plain classes. */
+export function canPlaceWonder(placement, terrainKey) {
+  const fn = WONDER_PLACE[placement]
+  return fn ? fn(terrainKey) : canPlaceOn(placement, terrainKey)
+}
+
 /** The original Earth land/coast terrains (excludes Mars and Moon, which are separate
  *  bodies). Used by Reuseable Rocketry to bridge all Moon tiles to all Earth tiles. */
 export const EARTH_TERRAINS = new Set(['plains', 'forest', 'mountain', 'coast', 'island'])

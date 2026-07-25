@@ -3,6 +3,8 @@
 // a Def (HP) stat on the tile; their value is their economic output/effect.
 // HP grows linearly with upgrade level (unless `noUpgrade`).
 
+import { WONDER_DEFS } from './wonders.js'
+
 // Pier food is a FLAT amount by upgrade level (no era scaling): 200, +100/upgrade.
 const pierFood = (level = 1) => 200 + 100 * Math.max(0, level - 1)
 
@@ -309,14 +311,6 @@ export const BUILDING_DEFS = {
     hp: 4, upHp: 1, upgradeTarget: 'def',
     special: 'wall',
     effect: 'A blocker. Upgrades add +1 :defense:/level.',
-  },
-  // Physical structure placed on the board when the Great Wall WONDER completes — one shared-HP
-  // blocker spanning 4 lanes. No `tech` → never drawn as an advancement; combatOnly keeps it out
-  // of the economy (like traps).
-  great_wall_structure: {
-    key: 'great_wall_structure', name: 'Great Wall', types: ['defense'], placement: 'land',
-    hp: 20, upHp: 2, footprint: [4, 1], combatOnly: true,
-    effect: 'A single shared-HP blocker spanning 4 lanes.',
   },
   castle: {
     key: 'castle', name: 'Castle', era: 4, tech: 'Castles',
@@ -689,6 +683,11 @@ export const BUILDING_DEFS = {
     effect: 'At the end of each era, gain +225 population (flat).',
   },
 }
+
+/** Resolve a DEPLOYED building's def by key — buildings first, then wonders (which are placed
+ *  on the board as combat buildings while under construction). Single source of truth for every
+ *  building-context def lookup so a placed wonder never resolves to undefined. */
+export const defOf = (key) => BUILDING_DEFS[key] ?? WONDER_DEFS[key]
 
 /** Effective building HP at a given upgrade level, plus a flat civ-wide bonus
  *  (Hereditary Rule / Masonry). Underlapping buildings (Road) have no HP. Walls grow
