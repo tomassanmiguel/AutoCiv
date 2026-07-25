@@ -47,8 +47,9 @@ export class CivilizationData {
     // Spawner). No building is pre-unlocked.
     this.buildings = new Array(BUILDING_CATEGORIES.length).fill(null)
     this.policies = new Array(5).fill(null)
-    // Population slot 0 holds the auto-unlocked Citizen; the rest are specialists.
-    this.population = new Array(5).fill(null)
+    // Population slot 0 holds the auto-unlocked Citizen; slots 1-7 are specialists (enough
+    // for every specialist chain + special pop to be unlocked at once).
+    this.population = new Array(8).fill(null)
     this.population[0] = POP_TYPES.citizen.key
 
     // Wonders: at most one in flight ({ key, buildsLeft }); production-builds advance it

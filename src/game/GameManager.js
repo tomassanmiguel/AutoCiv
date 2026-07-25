@@ -1240,7 +1240,8 @@ export class GameManager {
         // Slot count is dynamic — grown by Socialism/Technocracy/Omnicracy (base 5).
         return { group: 'policies', multiFill: false, slotIndices: this.data.civilization.policies.map((_, i) => i) }
       case 'pop':
-        return { group: 'population', multiFill: false, slotIndices: [1, 2, 3, 4] } // slot 0 = Citizen, never replaced
+        // Specialist slots = every population slot except 0 (the Citizen, never replaced).
+        return { group: 'population', multiFill: false, slotIndices: this.data.civilization.population.map((_, i) => i).filter((i) => i > 0) }
       default:
         return { group: null, multiFill: false, slotIndices: [] }
     }
