@@ -13,7 +13,7 @@ import { UNIT_DEFS, unitStats, unitRole } from '../data/units.js'
 import { defOf } from '../data/buildings.js'
 import { canPlaceOn } from '../data/terrain.js'
 import { POP_TYPES } from '../data/pops.js'
-import { generateHost } from '../data/enemies.js'
+import { generateHost, ENEMY_DEFS } from '../data/enemies.js'
 
 // Turns-per-second per speed setting (0 = paused). The battle timer fires every
 // COMBAT_INTERVAL_MS of real time and advances the turn accumulator by tps·interval;
@@ -255,6 +255,12 @@ class CombatMixin {
       return
     }
     const below = this.data.tableau.tileAt(belowRow, e.col)
+    // Terrain gate: a LAND enemy can't march onto water — it routes laterally around it toward a
+    // column with a land path down. Bosses (Titan/Flagship/Azazoth) plow straight through.
+    if (below && !ENEMY_DEFS[e.key]?.boss && !this._enemyCanTraverse(e, below.terrain)) {
+      this._enemyReroute(e, bounds)
+      return
+    }
     // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it and trigger it.
     const belowB = below?.building
     const walkover = belowB && ['cross', 'first'].includes(defOf(belowB.key)?.trapTrigger)
@@ -282,6 +288,51 @@ class CombatMixin {
     // Manhattan Project fallout tile: 100 damage to an enemy that enters it.
     if (landed?.terrain === 'fallout' && !e.damaged) this._dealDamageToEnemy(e, 100)
     this._triggerWalkoverTrap(landed, e) // Caltrops (every cross) / Sea Mine (first entry, consumed)
+  }
+
+  /** Whether an enemy can move onto a given terrain. Only WATER (coast/sea) is gated — land and
+   *  space stay passable (space routing is a separate concern). Naval, aerial, astral, and
+   *  aquatic/unimpeded enemies can traverse water; ordinary land enemies cannot. */
+  _enemyCanTraverse(e, terrainKey) {
+    if (!canPlaceOn('water', terrainKey)) return true // not water → passable to everyone
+    const def = ENEMY_DEFS[e.key]
+    const types = e.types ?? def?.types ?? []
+    return types.includes('naval') || types.includes('aerial') || types.includes('astral') ||
+      def?.special === 'aquatic_path' || def?.special === 'not_impeded' || !!def?.waterMove
+  }
+
+  /** A land enemy blocked by water below steps ONE column toward the nearest column it can
+   *  descend (a clear land path from its descent row to the bottom). Never steps onto water or
+   *  an occupied tile; holds if no route exists (a stuck battle ends as a win via MAX_TURNS). */
+  _enemyReroute(e, bounds) {
+    const t = this.data.tableau
+    const belowRow = e.row - 1
+    // A column is "descendable" if the enemy can walk it straight from its descent row to the floor.
+    const descendable = (c) => {
+      for (let r = bounds.minRow; r <= belowRow; r++) {
+        const tile = t.tileAt(r, c)
+        if (!tile || !this._enemyCanTraverse(e, tile.terrain)) return false
+      }
+      return true
+    }
+    let target = null, best = Infinity
+    for (let c = bounds.minCol; c <= bounds.maxCol; c++) {
+      if (c === e.col || !descendable(c)) continue
+      const d = Math.abs(c - e.col)
+      if (d < best) { best = d; target = c }
+    }
+    if (target == null) return // no reachable land path — hold (never step onto water)
+    const nc = e.col + Math.sign(target - e.col)
+    if (nc < bounds.minCol || nc > bounds.maxCol) return
+    const inSpawn = e.row > bounds.maxRow // above the visible grid → no terrain, free lateral shift
+    if (!inSpawn) {
+      const lateral = t.tileAt(e.row, nc)
+      if (!lateral || !this._enemyCanTraverse(e, lateral.terrain)) return // can't sidestep onto water either
+      if ((lateral.unit && !lateral.unit.damaged) || (lateral.building && !lateral.building.damaged)) return // blocked
+    }
+    if (this.data.enemies.some((o) => o !== e && !o.damaged && !o.breached && o.row === e.row && o.col === nc)) return
+    e.col = nc
+    this._pushEvent({ kind: 'march', col: e.col, row: e.row })
   }
 
   /** Damage a trap deals, scaled by its upgrade level (+25%/level) and DOUBLED by

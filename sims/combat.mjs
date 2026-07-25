@@ -47,6 +47,7 @@ console.log('TEST 2: an undefended enemy breaches and costs legitimacy = its atk
   const g = new GameManager(1)
   const b = g.data.tableau.visibleBounds(0)
   const col = b.minCol
+  for (let r = b.minRow; r <= b.maxRow; r++) g.data.tableau.tileAt(r, col).terrain = 'plains' // land column → straight march
   const enemy = mkEnemy('warrior', 'Raider', col, b.maxRow + 1, 8, 7)
   g.data.enemies = [enemy]
   const legit0 = g.data.civilization.legitimacy.value
@@ -185,6 +186,7 @@ console.log('TEST 8: unit-death trigger — Nationalism grants :gold: = the dead
   const g = new GameManager(5); g.setEra(2)
   const b = g.data.tableau.visibleBounds(2)
   const col = b.minCol
+  for (let r = b.minRow; r <= b.maxRow; r++) g.data.tableau.tileAt(r, col).terrain = 'plains' // land column → enemy reaches the blocker
   g.data.tableau.tileAt(b.minRow, col).unit = { kind: 'unit', key: 'warrior', level: 1, hp: 2, maxHp: 2, damaged: false }
   g.data.enemies = [mkEnemy('warrior', 'Tank', col, b.maxRow + 1, 1000, 4)] // tanky so it kills the warrior
   g.data.civilization.policies[0] = { key: 'nationalism' }
@@ -1212,6 +1214,43 @@ console.log('TEST 52: Colosseum end-of-combat legit counts only LIVE deployed un
   console.log(`  Colosseum legit with 1 live + 1 destroyed unit = +${gained}`)
   assert(gained === 5, `only the live unit counts → +5 (got +${gained})`)
   g.stop()
+}
+
+console.log('TEST 53: land enemies route around water; naval enemies cross it')
+{
+  const g = new GameManager(98); g.setEra(7)
+  const b = g.data.tableau.visibleBounds(7)
+  const cW = b.minCol, cL = b.minCol + 1
+  for (let r = b.minRow; r <= b.maxRow; r++) {
+    const tw = g.data.tableau.tileAt(r, cW); tw.terrain = 'ocean'; tw.unit = null; tw.building = null
+    const tl = g.data.tableau.tileAt(r, cL); tl.terrain = 'plains'; tl.unit = null; tl.building = null
+  }
+  g.data.phase = 'battle'; g.data.combatIntro = false
+  const land = mkEnemy('raider', 'L', cW, b.maxRow + 1, 500, 5) // melee land enemy over a water column
+  g.data.enemies = [land]
+  let steppedOnWater = false
+  for (let i = 0; i < 40 && !land.breached; i++) {
+    g._enemyPhase(b)
+    if (land.row >= b.minRow && land.row <= b.maxRow && g.data.tableau.tileAt(land.row, land.col)?.terrain === 'ocean') steppedOnWater = true
+  }
+  console.log(`  land raider: final col=${land.col} (land col ${cL}), breached=${land.breached}, everOnWater=${steppedOnWater}`)
+  assert(!steppedOnWater, 'land enemy never stands on water')
+  assert(land.col === cL, `land enemy rerouted to the land column (got ${land.col}, want ${cL})`)
+  assert(land.breached, 'land enemy eventually breaches down the land column')
+  g.stop()
+
+  const g2 = new GameManager(99); g2.setEra(7)
+  const b2 = g2.data.tableau.visibleBounds(7)
+  const wc = b2.minCol
+  for (let r = b2.minRow; r <= b2.maxRow; r++) { const tw = g2.data.tableau.tileAt(r, wc); tw.terrain = 'ocean'; tw.unit = null; tw.building = null }
+  g2.data.phase = 'battle'; g2.data.combatIntro = false
+  const navy = mkEnemy('corsair', 'N', wc, b2.maxRow + 1, 500, 5) // naval enemy — crosses water
+  g2.data.enemies = [navy]
+  for (let i = 0; i < 40 && !navy.breached; i++) g2._enemyPhase(b2)
+  console.log(`  naval corsair: final col=${navy.col} (start ${wc}), breached=${navy.breached}`)
+  assert(navy.col === wc, 'naval enemy stays in its water column')
+  assert(navy.breached, 'naval enemy crosses water and breaches')
+  g2.stop()
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)
