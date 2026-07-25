@@ -34,13 +34,17 @@
 }
 .tile-card-anchor.compact:hover { transform: scale(1.18); z-index: 6; }
 /* Compact card: no type icon, tighter spacing, smaller name/stats so it reads at half height. */
-.tile-card.compact { padding: 1px 3px; gap: 1px; }
+.tile-card.compact { padding: 1px 3px; gap: 0; }
+.tile-card.compact .tc-body { overflow: hidden; }
 .tile-card.compact .tc-header { gap: 2px; }
 .tile-card.compact .tc-name { font-size: 8px; -webkit-line-clamp: 1; line-clamp: 1; line-height: 1; }
 .tile-card.compact .tc-level { font-size: 7px; padding: 0 2px; }
-.tile-card.compact .tc-stats { gap: 3px; }
-.tile-card.compact .tc-stat { font-size: 8px; }
-.tile-card.compact .tc-stat img { width: 9px; height: 9px; }
+/* Half-height card: flatten the 2×2 stat grid into one tight wrapping row of tiny icon+value
+   pairs so all four stats still fit without spilling. */
+.tile-card.compact .tc-stats,
+.tile-card.compact .tc-stats-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 3px; }
+.tile-card.compact .tc-stat { font-size: 7px; gap: 1px; }
+.tile-card.compact .tc-stat img { width: 7px; height: 7px; }
 .tile-card.compact .tc-action { margin-top: 1px; padding: 0 3px; font-size: 7.5px; }
 .tile-card.compact .tc-action img { width: 8px; height: 8px; }
 

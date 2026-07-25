@@ -91,11 +91,16 @@
 }
 .progress-card-name {
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   line-height: 1.1;
   color: #3a2c10;
   padding-right: 1.9rem; /* clear the (smaller) corner icon */
   min-height: 2.4em;
+  /* Long advancement names (e.g. "Superintelligence") must wrap/break so the title never
+     spills past the 9-slice frame. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 /* Structured unlock body: "Unlocks X" + type + stats + rules. */
 .progress-card-body {
