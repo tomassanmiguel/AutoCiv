@@ -405,16 +405,13 @@ class CombatMixin {
     return moved
   }
 
-  /** Best orthogonally-adjacent cell that steps `unit` closer to `target` (empty of a live unit,
-   *  on the player grid, terrain in the unit's move domains). Null if none improves. */
+  /** Best orthogonally-adjacent cell that steps `unit` closer to `target` — an empty standable
+   *  cell on the player grid OR up in the battlefield spawn zone (#2). Null if none improves. */
   _pursueStepCell(unit, def, r, c, target) {
     const bounds = this.data.tableau.visibleBounds(this.data.era)
     let best = null, bestD = this._enemyDistance(target, r, c)
     for (const [nr, nc] of [[r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1]]) {
-      if (nr < bounds.minRow || nr > bounds.maxRow || nc < bounds.minCol || nc > bounds.maxCol) continue
-      if (!this.data.tableau.isUnlocked(nr, nc, this.data.era)) continue
-      const t = this.data.tableau.tileAt(nr, nc)
-      if (!t || !this._unitCanMoveOnto(unit, def, t)) continue
+      if (!this._playerCombatCell(unit, def, nr, nc, bounds)) continue
       const d = this._enemyDistance(target, nr, nc)
       if (d < bestD) { bestD = d; best = { r: nr, c: nc } }
     }
@@ -427,6 +424,43 @@ class CombatMixin {
     if (tile.unit && !tile.unit.damaged && tile.unit !== unit) return false
     const domains = def.move ?? ['land']
     return domains.some((d) => canPlaceOn(d, tile.terrain))
+  }
+
+  /** True if a live enemy (including a multi-tile boss footprint) covers cell (r,c). */
+  _cellHasLiveEnemy(r, c) {
+    return this.data.enemies.some((e) => {
+      if (e.damaged || e.breached) return false
+      const [w, h] = e.footprint ?? [1, 1]
+      return c >= e.col && c < e.col + w && r >= e.row && r < e.row + h
+    })
+  }
+
+  /** Columns of the battlefield spawn zone this era (cached; excludes pre-Iron water columns). */
+  _battlefieldColSet() {
+    if (this._bfColSetEra !== this.data.era) {
+      this._bfColSet = new Set(this.data.tableau.battlefieldColumns(this.data.era).map((c) => c.col))
+      this._bfColSetEra = this.data.era
+    }
+    return this._bfColSet
+  }
+
+  /** A cell that can hold an enemy / be attacked into: the unlocked player grid OR the
+   *  battlefield spawn zone above it (so ranges & pursuit reach up into the enemy zone). */
+  _inCombatZone(r, c, bounds) {
+    if (c < bounds.minCol || c > bounds.maxCol) return false
+    if (r >= bounds.minRow && r <= bounds.maxRow) return this.data.tableau.isUnlocked(r, c, this.data.era)
+    return r > bounds.maxRow && r <= bounds.maxRow + this.data.tableau.enemyRowCount(this.data.era) && this._battlefieldColSet().has(c)
+  }
+
+  /** True if a player unit may STAND on (r,c) during combat: an in-zone cell not held by a live
+   *  enemy or another live unit. Grid cells are terrain-gated; battlefield cells are terrain-free
+   *  (a unit may always advance up to meet the enemy — #2). */
+  _playerCombatCell(unit, def, r, c, bounds) {
+    if (!this._inCombatZone(r, c, bounds) || this._cellHasLiveEnemy(r, c)) return false
+    const t = this.data.tableau.tileAt(r, c)
+    if (t && t.unit && !t.unit.damaged && t.unit !== unit) return false
+    if (r > bounds.maxRow) return true // battlefield: no terrain gate
+    return !!t && (def.move ?? ['land']).some((d) => canPlaceOn(d, t.terrain))
   }
 
   /** Tiles a player unit at (row,col) could strike THIS coming combat round — for the hover
@@ -447,17 +481,20 @@ class CombatMixin {
     const bounds = this.data.tableau.visibleBounds(era)
     if (!bounds) return empty
     const key = (r, c) => `${r},${c}`
-    const inGrid = (r, c) => r >= bounds.minRow && r <= bounds.maxRow && c >= bounds.minCol && c <= bounds.maxCol && this.data.tableau.isUnlocked(r, c, era)
+    // The combat zone spans the player grid AND the battlefield spawn zone above it — a unit can
+    // attack, and (with pursuit) advance, up into the enemy rows (#2).
+    const inZone = (r, c) => this._inCombatZone(r, c, bounds)
     const addDiamond = (r0, c0, set) => {
       for (let dr = -range; dr <= range; dr++) {
         const w = range - Math.abs(dr)
-        for (let dc = -w; dc <= w; dc++) if (inGrid(r0 + dr, c0 + dc)) set.add(key(r0 + dr, c0 + dc))
+        for (let dc = -w; dc <= w; dc++) if (inZone(r0 + dr, c0 + dc)) set.add(key(r0 + dr, c0 + dc))
       }
     }
     // Red: attack diamond from the current tile.
     const attack = new Set()
     addDiamond(row, col, attack)
-    // Reachable standing tiles via pursuit BFS (obstruction-aware) through move domains.
+    // Reachable standing tiles via pursuit BFS (obstruction-aware) through move domains + the
+    // terrain-free battlefield.
     const reach = [[row, col]]
     const pursuit = def.pursuit ?? 0
     if (pursuit > 0) {
@@ -467,9 +504,7 @@ class CombatMixin {
         const next = []
         for (const [r, c] of frontier) {
           for (const [nr, nc] of [[r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1]]) {
-            if (!inGrid(nr, nc) || seen.has(key(nr, nc))) continue
-            const t = this.data.tableau.tileAt(nr, nc)
-            if (!t || !this._unitCanMoveOnto(unit, def, t)) continue // blocked → shortens pursuit
+            if (seen.has(key(nr, nc)) || !this._playerCombatCell(unit, def, nr, nc, bounds)) continue // blocked → shortens pursuit
             seen.add(key(nr, nc)); next.push([nr, nc]); reach.push([nr, nc])
           }
         }
@@ -1308,10 +1343,14 @@ class CombatMixin {
    *  the player placed it on (recorded in _startCombat). Homes are unique, so lift all movers then
    *  drop each at its home; the coexisting building slot is never touched. */
   _restoreUnitHomes() {
+    const bounds = this.data.tableau.visibleBounds(this.data.era)
     const movers = []
-    for (const tile of this.data.tableau.visibleTiles(this.data.era)) {
-      const u = tile.unit
-      if (u && u.homeRow != null) { movers.push(u); tile.unit = null }
+    const scan = (tile) => { const u = tile?.unit; if (u && u.homeRow != null) { movers.push(u); tile.unit = null } }
+    for (const tile of this.data.tableau.visibleTiles(this.data.era)) scan(tile)
+    // Units that advanced into the battlefield spawn zone (#2) sit on tiles above the grid.
+    if (bounds) {
+      const rows = this.data.tableau.enemyRowCount(this.data.era)
+      for (const c of this._battlefieldColSet()) for (let r = bounds.maxRow + 1; r <= bounds.maxRow + rows; r++) scan(this.data.tableau.tileAt(r, c))
     }
     for (const u of movers) {
       const t = this.data.tableau.tileAt(u.homeRow, u.homeCol)

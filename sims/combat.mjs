@@ -1638,5 +1638,23 @@ console.log('TEST 71: enemyReachCells — down-column chip range + advance (spee
   g.stop()
 }
 
+console.log('TEST 72: pursuit units advance UP into the battlefield to reach an enemy (#2)')
+{
+  const g = new GameManager(700); g.setEra(2) // Iron: rows 1-4, cols 9-12
+  const b = g.data.tableau.visibleBounds(2)
+  for (const t of g.data.tableau.visibleTiles(2)) { t.terrain = 'plains'; t.unit = null; t.building = null }
+  const col = b.minCol + 1 // a land column
+  g.data.tableau.tileAt(b.maxRow, col).unit = { kind: 'unit', key: 'wolf', level: 1, hp: 2, maxHp: 2, damaged: false } // range 1, pursuit 2
+  g.data.enemies = [{ id: 1, kind: 'unit', key: 'raider', types: ['melee'], row: b.maxRow + 2, col, hp: 1e6, maxHp: 1e6, atk: 1, chip: 1, damaged: false, breached: false }]
+  g._startCombat(); g.dismissCombatIntro()
+  const reach = g.unitReachCells(b.maxRow, col)
+  assert(reach.attack.has(`${b.maxRow + 1},${col}`), 'a battlefield cell above is inside the unit’s attack reach')
+  g._playerMovePhase() // pursuit step
+  assert(g.data.tableau.tileAt(b.maxRow + 1, col).unit?.key === 'wolf', 'wolf advanced up into the battlefield toward the enemy')
+  g._endCombat()
+  assert(g.data.tableau.tileAt(b.maxRow, col).unit?.key === 'wolf' && !g.data.tableau.tileAt(b.maxRow + 1, col).unit, 'wolf returned home after combat')
+  g.stop()
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
