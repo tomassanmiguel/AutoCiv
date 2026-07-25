@@ -75,16 +75,8 @@
   50% { box-shadow: inset 0 0 0 5px #ffcf33, 0 0 18px 3px rgba(255, 207, 51, 0.9); }
 }
 
-/* Preparation: empty tiles where a mercenary can be hired get a soft gold ring
-   and a centered Hire button. */
-.tableau-tile.merc-open .tile-bg {
-  box-shadow: inset 0 0 0 2px rgba(230, 200, 120, 0.55);
-  animation: merc-open-pulse 1.8s ease-in-out infinite;
-}
-@keyframes merc-open-pulse {
-  0%, 100% { box-shadow: inset 0 0 0 2px rgba(230, 200, 120, 0.4); }
-  50% { box-shadow: inset 0 0 0 3px rgba(230, 200, 120, 0.85); }
-}
+/* Preparation: empty tiles where a mercenary can be hired show a centered Hire button
+   (no tile glow — the button alone signals the option). */
 .merc-btn {
   position: absolute;
   left: 50%;

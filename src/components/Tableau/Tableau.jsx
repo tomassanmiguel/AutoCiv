@@ -458,7 +458,6 @@ export default function Tableau() {
           const pstate = placing ? game.placementState(tile.row, tile.col) : null
           const placeable = pstate === 'valid' || pstate === 'replace'
           const mercOK = !occ && prepping && game.mercEligible(tile.row, tile.col)
-          const mercAfford = mercOK && gold >= mercCost
           const reposSrc = repos && repos.fromRow === tile.row && repos.fromCol === tile.col
           const reposValid = repos && !reposSrc && game.canReposition(repos.fromRow, repos.fromCol, tile.row, tile.col)
           // Single-tile wonder awaiting a build → clickable to advance (multi-tile handled below).
@@ -470,7 +469,6 @@ export default function Tableau() {
             pstate === 'valid' ? 'place-valid' : '',
             pstate === 'replace' ? 'place-replace' : '',
             advanceHere ? 'wonder-advance' : '',
-            mercAfford ? 'merc-open' : '', // only ring the tile when a hire is actually affordable
             reposValid ? 'reposition-valid' : '',
             reposSrc ? 'reposition-src' : '',
             reach?.attack.has(rkey) ? 'in-attack-range' : '',
