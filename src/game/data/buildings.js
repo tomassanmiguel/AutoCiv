@@ -201,7 +201,7 @@ export const BUILDING_DEFS = {
   },
   sea_mine: {
     key: 'sea_mine', name: 'Sea Mine', era: 8, tech: 'Sea Mine',
-    types: ['trap'], placement: 'coast',
+    types: ['trap'], placement: 'water', // a floating mine — any open water or coast
     hp: 1, upHp: 0, upgradeTarget: 'output',
     special: 'trap_first_dmg', trapTrigger: 'first', trapDamage: 89,
     effect: 'First enemy to enter takes 89 :attack: damage, then it is consumed.',
@@ -289,7 +289,7 @@ export const BUILDING_DEFS = {
   },
   aircraft_carrier: {
     key: 'aircraft_carrier', name: 'Aircraft Carrier', era: 11, tech: 'Aircraft Carriers',
-    types: ['spawner'], placement: 'coast',
+    types: ['spawner'], placement: 'water', // a capital ship — deploys in open water or coast
     hp: 3, upHp: 0, upgradeTarget: 'output',
     special: 'spawner', spawnRole: 'aerial',
     effect: 'Every 8 combat-turns, creates your best :aerial: unit on an adjacent tile. Upgrades raise the spawned unit\'s level.',

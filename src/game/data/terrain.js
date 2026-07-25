@@ -41,7 +41,11 @@ export function terrainEconYield(terrainKey) {
 export function canPlaceOn(placement, terrainKey) {
   const cls = TERRAIN[terrainKey]?.place
   if (!cls) return false
-  return placement === 'any' || placement === cls
+  if (placement === 'any') return true
+  // 'water' = blue-water: any open sea (ocean / exoplanet's exosea) OR the coast. 'coast' = the
+  // shoreline only. 'sea' = open sea only. Exoplanet water (exosea) is class 'sea', i.e. open ocean.
+  if (placement === 'water') return cls === 'sea' || cls === 'coast'
+  return placement === cls
 }
 
 /** The original Earth land/coast terrains (excludes Mars and Moon, which are separate

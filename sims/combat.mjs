@@ -3,6 +3,7 @@ const { GameManager } = await import('../src/game/GameManager.js')
 const { ENEMY_DEFS } = await import('../src/game/data/enemies.js')
 const { UNIT_DEFS, unitStats } = await import('../src/game/data/units.js')
 const { BUILDING_DEFS, buildingHp } = await import('../src/game/data/buildings.js')
+const { canPlaceOn } = await import('../src/game/data/terrain.js')
 
 function mkEnemy(key, name, col, row, hp, atk) {
   return { key, name, col, row, hp, maxHp: hp, atk, damaged: false, breached: false }
@@ -985,6 +986,19 @@ console.log('TEST 44: Reposition region — naval along a connected shoreline, n
   assert(g.canReposition(W1.row, W1.col, W2.row, W2.col), 'naval reposition along a connected shoreline allowed')
   assert(!g.canReposition(W1.row, W1.col, EX.row, EX.col), 'naval cannot reach a disconnected (space-isolated) coast')
   g.stop()
+}
+
+console.log('TEST 45: Naval placement domains — coast-bound vs open-water (exosea = open ocean)')
+{
+  assert(canPlaceOn('water', 'ocean') && canPlaceOn('water', 'exosea') && canPlaceOn('water', 'coast'), 'open-water: ocean + exosea + coast')
+  assert(!canPlaceOn('water', 'plains') && !canPlaceOn('water', 'space'), 'open-water: not land or space')
+  assert(canPlaceOn('coast', 'coast') && !canPlaceOn('coast', 'ocean') && !canPlaceOn('coast', 'exosea'), 'coast-bound: coast only')
+  // Blue-water ships/buildings are 'water'; coastal ones stay 'coast'.
+  assert(UNIT_DEFS.longship.placement === 'water' && UNIT_DEFS.leviathan.placement === 'water', 'longship/leviathan open-water')
+  assert(UNIT_DEFS.galley.placement === 'coast' && UNIT_DEFS.trireme.placement === 'coast', 'galley/trireme coast-bound')
+  assert(BUILDING_DEFS.sea_mine.placement === 'water' && BUILDING_DEFS.aircraft_carrier.placement === 'water', 'sea mine / carrier open-water')
+  assert(BUILDING_DEFS.pier.placement === 'coast' && BUILDING_DEFS.drydock.placement === 'coast', 'pier/drydock coast-bound')
+  console.log('  water = ocean/exosea/coast; coast = coast only; exosea treated as open ocean')
 }
 
 console.log(`\n${pass} passed, ${fail} failed`)

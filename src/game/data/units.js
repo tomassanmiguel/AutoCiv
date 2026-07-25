@@ -64,10 +64,10 @@ export const UNIT_DEFS = {
   // ---------------- Naval (deploy Water · water only) ----------------
   galley:     { key: 'galley', name: 'Galley', era: 1, types: ['naval'], placement: 'coast', move: ['water'], combatRole: 'melee', tech: 'Sailing', atk: 5, def: 2, range: 1, ability: 'Rams enemies (:melee: range).', description: 'A :naval: galley that rams as :melee:.' },
   trireme:    { key: 'trireme', name: 'Trireme', era: 3, types: ['naval'], placement: 'coast', move: ['water'], combatRole: 'ranged', tech: 'Warships', atk: 6, def: 2, range: 2, description: 'A :naval: trireme.' },
-  longship:   { key: 'longship', name: 'Longship', era: 5, types: ['naval'], placement: 'coast', move: ['water'], combatRole: 'ranged', tech: 'Clinker Construction', atk: 8, def: 3, range: 2, description: 'A raiding :naval: longship.' },
-  frigate:    { key: 'frigate', name: 'Frigate', era: 7, types: ['naval'], placement: 'coast', move: ['water'], combatRole: 'ranged', tech: 'Circumnavigation', atk: 11, def: 2, range: 3, description: 'A :naval: frigate.' },
-  battleship: { key: 'battleship', name: 'Battleship', era: 11, types: ['naval'], placement: 'coast', move: ['water'], combatRole: 'ranged', tech: 'Steel Hulls', atk: 19, def: 4, range: 3, description: 'A steel :naval: battleship.' },
-  leviathan:  { key: 'leviathan', name: 'Leviathan', era: 17, types: ['naval'], placement: 'coast', move: ['water'], combatRole: 'ranged', tech: 'Gundam', atk: 43, def: 4, range: 4, description: 'A colossal :naval: war machine.' },
+  longship:   { key: 'longship', name: 'Longship', era: 5, types: ['naval'], placement: 'water', move: ['water'], combatRole: 'ranged', tech: 'Clinker Construction', atk: 8, def: 3, range: 2, description: 'A raiding :naval: longship.' },
+  frigate:    { key: 'frigate', name: 'Frigate', era: 7, types: ['naval'], placement: 'water', move: ['water'], combatRole: 'ranged', tech: 'Circumnavigation', atk: 11, def: 2, range: 3, description: 'A :naval: frigate.' },
+  battleship: { key: 'battleship', name: 'Battleship', era: 11, types: ['naval'], placement: 'water', move: ['water'], combatRole: 'ranged', tech: 'Steel Hulls', atk: 19, def: 4, range: 3, description: 'A steel :naval: battleship.' },
+  leviathan:  { key: 'leviathan', name: 'Leviathan', era: 17, types: ['naval'], placement: 'water', move: ['water'], combatRole: 'ranged', tech: 'Gundam', atk: 43, def: 4, range: 4, description: 'A colossal :naval: war machine.' },
 
   // ---------------- Aerial (deploy Land · fast · flanks) ----------------
   biplane:    { key: 'biplane', name: 'Biplane', era: 10, types: ['aerial'], placement: 'land', move: ['land'], combatRole: 'cavalry', tech: 'Flight', atk: 20, def: 1, range: 1, pursuit: 3, description: 'An :aerial: biplane.' },
