@@ -13,12 +13,16 @@
 
 import { terrainDomain } from './terrain.js'
 
-// Era-0 anchors per type (tunable — first pass, revisit in playtest).
+// Era-0 anchors per type (tunable — first pass, revisit in playtest). Lower initial HP than the
+// first cut, with a slightly steeper per-era growth (see HP_GROWTH).
 export const ENEMY_TYPES = {
-  melee:   { type: 'melee',   name: 'Raider', def: 16, atk: 6, acts: 1, range: () => 1 },
-  cavalry: { type: 'cavalry', name: 'Cavalry', def: 10, atk: 4, acts: 2, range: () => 1 },
-  ranged:  { type: 'ranged',  name: 'Ranger', def: 6,  atk: 6, acts: 1, range: (era) => 2 + Math.floor(era / 6) },
+  melee:   { type: 'melee',   name: 'Raider', def: 11, atk: 6, acts: 1, range: () => 1 },
+  cavalry: { type: 'cavalry', name: 'Cavalry', def: 7,  atk: 4, acts: 2, range: () => 1 },
+  ranged:  { type: 'ranged',  name: 'Ranger', def: 4,  atk: 6, acts: 1, range: (era) => 2 + Math.floor(era / 6) },
 }
+
+// Per-era HP multiplier (enemy hp = baseDef · HP_GROWTH^era). Bumped a touch above the old 1.25.
+export const HP_GROWTH = 1.27
 
 // Domains: the terrain-domain buckets each can path through, a spawn weight(era) (ramps toward
 // permissive later), and a display prefix. 'basic' = all; 'water' = amphibious+; 'exotic' = astral.
@@ -75,7 +79,7 @@ export function waveBudget(era, difficulty = 1) {
  */
 export function generateHost(era, bounds, spawnRows, columns, rng = Math.random, difficulty = 1) {
   if (!bounds || columns.length === 0 || spawnRows <= 0) return { type: 'mixed', units: [] }
-  const scale = Math.pow(1.25, era)
+  const scale = Math.pow(HP_GROWTH, era)
   const budget = waveBudget(era, difficulty)
 
   // Weighted (type × domain) combos for this era.

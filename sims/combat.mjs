@@ -1,6 +1,6 @@
 // Headless test of the v2 turn-based combat engine.
 const { GameManager } = await import('../src/game/GameManager.js')
-const { ENEMY_DEFS, ENEMY_TYPES, BOSSES, bossHP, generateHost } = await import('../src/game/data/enemies.js')
+const { ENEMY_DEFS, ENEMY_TYPES, BOSSES, bossHP, HP_GROWTH, generateHost } = await import('../src/game/data/enemies.js')
 const { UNIT_DEFS, unitStats } = await import('../src/game/data/units.js')
 const { BUILDING_DEFS, buildingHp } = await import('../src/game/data/buildings.js')
 const { canPlaceOn } = await import('../src/game/data/terrain.js')
@@ -208,7 +208,7 @@ console.log('TEST 9: generated host = 3 types × 3 domains × 3 tiers; HP ×1.25
 {
   const era = 4
   const g = new GameManager(9); g.setEra(era)
-  const scale = Math.pow(1.25, era)
+  const scale = Math.pow(HP_GROWTH, era)
   const TIER_MULT = { grunt: 0.5, normal: 1, elite: 2 }
   let ok = g.data.enemies.length > 0
   for (const e of g.data.enemies) {
