@@ -274,7 +274,7 @@ export class GameManager {
   _deployedBuildingCount() {
     let n = 0
     // Traps are combat-only — they don't count as economic buildings (Ownership gold).
-    for (const { occ } of this._buildingInstances()) if (!occ.damaged && !(BUILDING_DEFS[occ.key]?.trapTrigger || BUILDING_DEFS[occ.key]?.combatOnly)) n++
+    for (const { occ } of this._buildingInstances()) if (!occ.damaged && !(defOf(occ.key)?.trapTrigger || defOf(occ.key)?.combatOnly)) n++
     return n
   }
 
@@ -391,7 +391,7 @@ export class GameManager {
     let b = 0
     for (const { occ } of this._buildingInstances()) {
       if (occ.damaged) continue
-      const d = BUILDING_DEFS[occ.key]
+      const d = defOf(occ.key)
       if (d?.special === 'stacks' && d.parkYieldPct) b += d.parkYieldPct * occ.level
     }
     return b
@@ -436,7 +436,7 @@ export class GameManager {
   _adjacentBuildingCount(r, c) {
     let n = 0
     for (const tile of this._adjacentTiles(r, c)) {
-      for (const occ of this._buildingsOn(tile)) if (!occ.damaged && !(BUILDING_DEFS[occ.key]?.trapTrigger || BUILDING_DEFS[occ.key]?.combatOnly)) n++
+      for (const occ of this._buildingsOn(tile)) if (!occ.damaged && !(defOf(occ.key)?.trapTrigger || defOf(occ.key)?.combatOnly)) n++
     }
     return n
   }
@@ -489,7 +489,7 @@ export class GameManager {
   _roadPortSets() {
     return this._componentPortSets((tile) =>
       tile.underlap?.key === 'road' ||
-      (tile.building && !tile.building.damaged && BUILDING_DEFS[tile.building.key]?.linksAdjacency))
+      (tile.building && !tile.building.damaged && defOf(tile.building.key)?.linksAdjacency))
   }
 
   /** Bridge networks from active terrain-transparency policies: Combustion (ocean), Mass
@@ -602,7 +602,7 @@ export class GameManager {
     let atkPct = 0, def = 0, rangedRange = 0, actTwice = false
     for (const { tile, occ } of this._buildingInstances()) {
       if (occ.damaged) continue
-      const d = BUILDING_DEFS[occ.key]
+      const d = defOf(occ.key)
       if (!d.special?.startsWith('command_')) continue
       const range = (d.range ?? 1) + (occ.level - 1) // upgrades widen the aura +1 range/level
       if (!this._reachableWithin(tile.row, tile.col, range).has(`${row},${col}`)) continue
@@ -658,7 +658,7 @@ export class GameManager {
     // Power buildings (Windmill/Coal/Nuclear/Fusion): +N free upgrade levels to units AND
     // buildings within range (range widens +1 per upgrade level).
     for (const { tile: pt, occ } of this._buildingInstances()) {
-      const d = BUILDING_DEFS[occ.key]
+      const d = defOf(occ.key)
       if (occ.damaged || d?.special !== 'power' || !d.powerLevels) continue
       const range = (d.range ?? 1) + (occ.level - 1)
       if (this._reachableWithin(pt.row, pt.col, range).has(`${tile.row},${tile.col}`)) bonus += d.powerLevels
@@ -1151,7 +1151,7 @@ export class GameManager {
       const u = tile.unit, b = tile.building
       // A walkover trap (Caltrops/Sea Mine) never blocks — enemies march over it (mirror _enemyAct).
       const blocks = (u && !u.damaged) ||
-        (b && !b.damaged && !['cross', 'first'].includes(BUILDING_DEFS[b.key]?.trapTrigger))
+        (b && !b.damaged && !['cross', 'first'].includes(defOf(b.key)?.trapTrigger))
       if (blocks) blocked.add(tile.col)
     }
     const fw = this._hasPolicy('firewall') ? 0.75 : 1

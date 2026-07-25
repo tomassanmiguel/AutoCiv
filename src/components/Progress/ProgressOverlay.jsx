@@ -102,9 +102,9 @@ function UnlockDetail({ opt, era }) {
     return (
       <>
         <div className="pc-unlocks">Unlocks {def.name}</div>
-        <div className="pc-type">⭐ Wonder</div>
+        <div className="pc-type"><IconText>:wonder: Wonder</IconText></div>
         <div className="pc-rules"><IconText>{def.effect}</IconText></div>
-        <div className="pc-rules"><IconText>Costs 3 :production: builds to complete.</IconText></div>
+        <div className="pc-rules"><IconText>Build it like any structure: place it, then finish it over several :production: builds.</IconText></div>
       </>
     )
   }
