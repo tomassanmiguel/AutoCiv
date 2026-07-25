@@ -110,12 +110,20 @@ export function unitRole(def) {
   return def?.combatRole ?? def?.types?.[0]
 }
 
-/** Effective stats at an upgrade level. v2: attack scales +25% per level (additive);
- *  DEF (HP) and range are flat. Optional flat bonuses: hpBonus (def), atkBonus (flat atk). */
+/** Effective stats at an upgrade level. v2 upgrade scaling per level (additive):
+ *  - :melee: role      → +10% :attack: AND +1 :defense: (durable front line)
+ *  - naval :ranged:    → +10% :attack: (a smaller boost, like melee)
+ *  - everything else   → +25% :attack: (cavalry / land ranged / siege / aerial / astral)
+ *  DEF (HP) is flat except melee (+1 per level). Optional flat bonuses: hpBonus (def),
+ *  atkBonus (flat atk). Also returns range + pursuit for the stat block. */
 export function unitStats(def, level = 1, hpBonus = 0, atkBonus = 0) {
   const steps = Math.max(0, level - 1)
-  const atk = Math.round(def.atk * (1 + 0.25 * steps)) + atkBonus
-  return { atk, def: def.def + hpBonus, range: def.range, speed: def.range }
+  const role = unitRole(def)
+  const naval = def.types?.includes('naval')
+  const atkPct = role === 'melee' || (role === 'ranged' && naval) ? 0.10 : 0.25
+  const defGrow = role === 'melee' ? steps : 0 // +1 :defense: per level for melee only
+  const atk = Math.round(def.atk * (1 + atkPct * steps)) + atkBonus
+  return { atk, def: def.def + defGrow + hpBonus, range: def.range, pursuit: def.pursuit ?? 0 }
 }
 
 /** One-line stat summary, e.g. "Range 1 · Atk 5 · Def 2". */
