@@ -28,9 +28,20 @@ const ICON = {
 const TAB_ICON = {
   units: '/sprites/ui/unit.png',
   buildings: '/sprites/ui/building.png',
+  military: '/sprites/ui/unit.png', // placeholder — reuses the unit icon for now
   policies: '/sprites/ui/policy.png',
   population: '/sprites/ui/pop.png',
+  wonder: '/sprites/ui/wonder.png',
 }
+
+// The Buildings roster is split across TWO tabs in the UI (one tab was too crowded): "Buildings"
+// (economy) and "Military" (defense/trap/command/spawner). Both map to the SINGLE model group
+// 'buildings' (civ.buildings stays one index-aligned array) — the split is purely presentational.
+const MILITARY_BUILDING_KEYS = new Set(['defense', 'trap', 'command', 'spawner'])
+const MILITARY_IDX = new Set(BUILDING_CATEGORIES.flatMap((c, i) => (MILITARY_BUILDING_KEYS.has(c.key) ? [i] : [])))
+const buildingSubTab = (index) => (MILITARY_IDX.has(index) ? 'military' : 'buildings')
+// Render-tab key → the model group it talks to (both building tabs and the wonder tab translate back).
+const TAB_GROUP = { units: 'units', buildings: 'buildings', military: 'buildings', policies: 'policies', population: 'population', wonder: 'wonder' }
 
 // Unit/building stat icons. v2: the first slot shows RANGE (Manhattan diamond); the
 // speed icon is reused for it until a dedicated range icon exists. Atk = damage, Def = health.
@@ -102,16 +113,22 @@ function unitSlots(civ, era, hpBonus) {
       }
     })
 }
-function buildingSlots(civ, era) {
-  return BUILDING_CATEGORIES.map((cat, index) => {
-    const occ = civ.buildings[index]
-    if (!occ) return { index, kind: 'empty', silhouette: cat.silhouette, name: cat.label, tip: cat.description }
-    const def = BUILDING_DEFS[occ.key]
-    const eff = buildingEffect(def, occ.level, era) // current era/level value
-    // Buildings show a Def stat; underlapping buildings (Road) have no HP, so no Def.
-    const buildingDef = def.underlap ? null : buildingHp(def, occ.level, civ.modifiers.buildingHpBonus)
-    return { index, kind: 'item', silhouette: cat.silhouette, name: def.name, sub: cat.label, line: eff, tip: eff, def: buildingDef }
-  })
+// `which`: 'buildings' (economy categories) or 'military' (defense/trap/command/spawner). The
+// descriptors keep their REAL civ.buildings index, so pick/replace/slam route unchanged.
+function buildingSlots(civ, era, which = 'buildings') {
+  return BUILDING_CATEGORIES
+    .map((cat, index) => ({ cat, index }))
+    .filter(({ index }) => (which === 'military' ? MILITARY_IDX.has(index) : !MILITARY_IDX.has(index)))
+    .map(({ cat, index }) => {
+      const sil = which === 'military' ? '/sprites/ui/unit.png' : cat.silhouette // Military reuses the unit icon for now
+      const occ = civ.buildings[index]
+      if (!occ) return { index, kind: 'empty', silhouette: sil, name: cat.label, tip: cat.description }
+      const def = BUILDING_DEFS[occ.key]
+      const eff = buildingEffect(def, occ.level, era) // current era/level value
+      // Buildings show a Def stat; underlapping buildings (Road) have no HP, so no Def.
+      const buildingDef = def.underlap ? null : buildingHp(def, occ.level, civ.modifiers.buildingHpBonus)
+      return { index, kind: 'item', silhouette: sil, name: def.name, sub: cat.label, line: eff, tip: eff, def: buildingDef }
+    })
 }
 function policySlots(civ) {
   return civ.policies.map((occ, index) => {
@@ -179,23 +196,28 @@ export default function UIPanel() {
   // Side tabs: all four always visible; the active one's content fills the body.
   // A replace forces the relevant tab active; otherwise it's the player's choice.
   const [activeTab, setActiveTab] = useState('units')
-  const effectiveTab = replacing ? replacing.group : activeTab
+  // A building replace forces the correct sub-tab (military vs economy) active.
+  const effectiveTab = replacing
+    ? (replacing.group === 'buildings'
+        ? (replacing.candidates.every((i) => MILITARY_IDX.has(i)) ? 'military' : 'buildings')
+        : replacing.group)
+    : activeTab
 
   // When a roster slot is filled (advancement unlock), switch to its tab so the
-  // fill "slam" animation is visible.
+  // fill "slam" animation is visible. A building routes to its sub-tab (economy vs military).
   const jf = game.data.justFilled
   const lastFillSeq = useRef(-1)
   useEffect(() => {
     if (jf && jf.seq !== lastFillSeq.current) {
       lastFillSeq.current = jf.seq
-      setActiveTab(jf.group)
+      setActiveTab(jf.group === 'buildings' ? buildingSubTab(jf.index) : jf.group)
     }
   }, [jf])
 
-  // When a build PICK begins, jump to a pickable tab (Units) if not already on one.
+  // When a build PICK begins, jump to a pickable tab (Units) unless already on one.
   const wasPicking = useRef(false)
   useEffect(() => {
-    if (buildPicking && !wasPicking.current && activeTab !== 'units' && activeTab !== 'buildings') {
+    if (buildPicking && !wasPicking.current && !['units', 'buildings', 'military'].includes(activeTab)) {
       setActiveTab('units')
     }
     wasPicking.current = buildPicking
@@ -203,11 +225,28 @@ export default function UIPanel() {
 
   const groups = [
     { key: 'units', label: 'Units', slots: unitSlots(civ, era, civ.modifiers.unitHpBonus) },
-    { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era) },
+    { key: 'buildings', label: 'Buildings', slots: buildingSlots(civ, era, 'buildings') },
+    { key: 'military', label: 'Military', slots: buildingSlots(civ, era, 'military') },
     { key: 'policies', label: 'Policies', slots: policySlots(civ) },
     { key: 'population', label: 'Population', slots: populationSlots(civ, game, canConvert) },
   ]
   const active = groups.find((g) => g.key === effectiveTab) ?? groups[0]
+  const isBuildTab = active.key === 'buildings' || active.key === 'military'
+  // Replace candidates that belong to THIS building sub-tab (or the plain group for non-buildings).
+  const activeCandidates = (() => {
+    if (!replacing || TAB_GROUP[active.key] !== replacing.group) return null
+    if (isBuildTab) {
+      const filtered = replacing.candidates.filter((i) => buildingSubTab(i) === active.key)
+      return filtered.length ? filtered : null
+    }
+    return replacing.candidates
+  })()
+  // The just-filled slot's slam plays only on the tab that actually owns that slot.
+  const slamIdx = (() => {
+    if (!jf || TAB_GROUP[active.key] !== jf.group) return -1
+    if (isBuildTab && buildingSubTab(jf.index) !== active.key) return -1
+    return jf.index
+  })()
 
   return (
     <NineSlice className="ui-panel" src={FRAME.light} slice={FRAME_SLICE} width={PANEL_BORDER}>
@@ -230,8 +269,8 @@ export default function UIPanel() {
         <div className="panel-tabs">
           {groups.map((g) => {
             const isActive = effectiveTab === g.key
-            // During a build pick, highlight the pickable (Units/Buildings) tabs.
-            const pickHl = buildPicking && (g.key === 'units' || g.key === 'buildings')
+            // During a build pick, highlight the pickable (Units/Buildings/Military) tabs.
+            const pickHl = buildPicking && ['units', 'buildings', 'military'].includes(g.key)
             return (
               <button
                 key={g.key}
@@ -248,11 +287,11 @@ export default function UIPanel() {
         <NineSlice className="tab-body" src={FRAME.dark} slice={FRAME_SLICE} width={DROP_BORDER}>
           <SlotList
             slots={active.slots}
-            candidates={replacing && replacing.group === active.key ? replacing.candidates : null}
+            candidates={activeCandidates}
             onReplace={(i) => game.resolveReplace(i)}
-            pickable={buildPicking && (active.key === 'units' || active.key === 'buildings')}
-            onPick={(i) => game.pickBuild(active.key, i)}
-            slamIndex={jf && jf.group === active.key ? jf.index : -1}
+            pickable={buildPicking && ['units', 'buildings', 'military'].includes(active.key)}
+            onPick={(i) => game.pickBuild(TAB_GROUP[active.key], i)}
+            slamIndex={slamIdx}
           />
         </NineSlice>
       </div>
