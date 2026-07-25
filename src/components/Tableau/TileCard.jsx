@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { UNIT_DEFS, unitStats, unitRole } from '../../game/data/units.js'
 import { ENEMY_DEFS } from '../../game/data/enemies.js'
-import { buildingEffect, buildingOutputs, buildingHp, defOf } from '../../game/data/buildings.js'
+import { buildingEffect, buildingOutputs, buildingHp, buildingTickAmount, defOf } from '../../game/data/buildings.js'
 import { TERRAIN, terrainDefBonus } from '../../game/data/terrain.js'
 import { UNIT_CATEGORIES, BUILDING_CATEGORIES } from '../../game/data/slots.js'
 import InfoTip from '../common/InfoTip.jsx'
@@ -9,7 +9,8 @@ import IconText from '../common/IconText.jsx'
 import './TileCard.css'
 
 const STAT_ICON = {
-  speed: '/sprites/icons/speed.png',
+  range: '/sprites/icons/range.png',
+  pursuit: '/sprites/icons/speed.png',
   atk: '/sprites/icons/attack.png',
   def: '/sprites/icons/defense.png',
 }
@@ -106,7 +107,7 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
     : (isUnit && side === 'player' ? buffTint(shownDef, baseDef) : undefined)
 
   // A cooldown bar only appears for units that actually recharge after firing (Siege = 2 turns).
-  // (Range is no longer shown on unit cards — only Atk + Def.)
+  // (The compact on-tile card shows only Atk + Def; Range/Pursuit live in the hover tooltip.)
   const cdMax = isUnit ? (def.cooldown ?? 0) : 0
   const cdFrac = combat && isUnit && cdMax > 0 && occ.cdTimer != null ? clamp01(occ.cdTimer / cdMax) : null
 
@@ -130,14 +131,23 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
     }
   }
 
+  // Upgrade preview shows each scaling stat as "current → upgraded" so the gain is explicit.
+  const arrow = (cur, next) => (cur === next ? `${next}` : `${cur} → ${next}`)
+
   const renderTip = (isPrev) => {
     const lvl = isPrev ? occ.level + 1 : occ.level
     const ps = isUnit && isPrev ? statsAt(lvl) : null
     const bOuts = isUnit ? [] : buildingOutputs(def, lvl, era)
-    const dispAtk = isUnit ? (isPrev ? ps.atk : shownAtk) : null
+    const curOuts = isPrev && !isUnit ? buildingOutputs(def, occ.level, era) : bOuts
+    const dispAtk = isUnit ? (isPrev ? arrow(shownAtk, ps.atk) : shownAtk) : null
     const dispDef = isUnit
-      ? (isPrev ? ps.def : (combat ? `${occ.hp}/${maxHp}` : shownDef))
-      : (isPrev ? buildingHp(def, lvl, buildingHpBonus) : maxHp)
+      ? (isPrev ? arrow(maxHp + terrBonus, ps.def) : (combat ? `${occ.hp}/${maxHp}` : shownDef))
+      : (isPrev ? arrow(maxHp, buildingHp(def, lvl, buildingHpBonus)) : maxHp)
+    // Previewed per-tick output: scale the live amount by the building's per-level tick factor
+    // (Ranch/Kiln/Mine adjacency isn't recomputed here, so leave those at their current amount).
+    const tCur = tickOut ? buildingTickAmount(def, occ.level) : 0
+    const tNext = tickOut ? buildingTickAmount(def, lvl) : 0
+    const tickPrev = tickOut ? Math.floor(tCur > 0 ? tickOut.amount * tNext / tCur : tickOut.amount) : null
     return (
       <>
         {isPrev && <div className="tc-tip-upg">Upgrade → Lv {lvl}</div>}
@@ -153,10 +163,12 @@ export default function TileCard({ occupant, era, hpBonus = 0, buildingHpBonus =
         )}
         <br /><br />
         <span className="tc-tip-stats">
+          {isUnit && <IconVal src={STAT_ICON.range}>{def.range}</IconVal>}
+          {isUnit && (def.pursuit ?? 0) > 0 && <IconVal src={STAT_ICON.pursuit}>{def.pursuit}</IconVal>}
           {showAtk && <IconVal src={STAT_ICON.atk}>{dispAtk}</IconVal>}
           <IconVal src={STAT_ICON.def} style={isPrev ? undefined : defStyle}>{dispDef}</IconVal>
-          {bOuts.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{o.amount}/{o.per}</IconVal>)}
-          {tickOut && !isPrev && <IconVal src={RES_ICON[tickOut.res]}>{Math.floor(tickOut.amount)}/t</IconVal>}
+          {bOuts.map((o, i) => <IconVal key={i} src={RES_ICON[o.res]}>{isPrev && curOuts[i] ? arrow(curOuts[i].amount, o.amount) : o.amount}/{o.per}</IconVal>)}
+          {tickOut && <IconVal src={RES_ICON[tickOut.res]}>{isPrev ? arrow(Math.floor(tickOut.amount), tickPrev) : Math.floor(tickOut.amount)}/t</IconVal>}
           {stored != null && !isPrev && <IconVal src={RES_ICON.progress}>{stored}</IconVal>}
         </span>
         <span className="tc-tip-lv"> · Lv {lvl}</span>
