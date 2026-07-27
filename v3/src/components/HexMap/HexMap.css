@@ -126,60 +126,77 @@
 }
 
 /* --- territory ------------------------------------------------------------ */
-/* Controlled ground reads as a subtle warm lift rather than an overlay, so the
-   terrain art still carries the tile. */
-.hex.controlled { filter: brightness(1.12) saturate(1.08); }
-
-/* Only the EDGE of your territory is ringed. Ringing every controlled tile made
-   the interior read as a grid of boxes rather than as one country. */
-.hex.controlled::after {
+/* Controlled ground gets a faint warm WASH, not a brightness filter — filtering
+   the sprite washed the terrain out and fought the expandable animation. */
+.hex::before {
   content: '';
   position: absolute;
   inset: 0;
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  box-shadow: inset 0 0 0 1px rgba(255, 226, 150, 0.16);
   pointer-events: none;
+  transition: background 0.25s ease;
 }
-.hex.controlled.frontier::after {
-  box-shadow: inset 0 0 0 3px rgba(255, 213, 110, 0.85), inset 0 0 12px rgba(255, 200, 90, 0.35);
+.hex.controlled::before { background: rgba(255, 206, 110, 0.16); }
+
+/* One continuous outline around the whole territory, drawn as hex edges. */
+.territory-outline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 4;
+}
+.territory-outline line {
+  stroke: #ffd76a;
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgba(255, 190, 70, 0.65));
 }
 
 /* An improvement is a small dot; a city replaces it with a population pip. */
 .hex-improved {
-  width: 16%;
+  width: 15%;
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff2c4, #c9a22e);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 0 1.5px rgba(60, 44, 10, 0.7);
   pointer-events: none;
 }
 .hex-city {
   display: grid;
   place-items: center;
-  width: 40%;
+  width: 38%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: linear-gradient(160deg, #f0d987, #9a7418);
-  border: 2px solid #4a3608;
+  background: linear-gradient(160deg, #f6e2a2, #9a7418);
+  border: 2px solid #3a2c10;
   color: #2b2007;
   font-weight: 800;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
   pointer-events: none;
 }
 .hex-city.palace {
-  background: radial-gradient(circle at 35% 30%, #fff0bb, #d8ad4e 55%, #7a5410);
-  border-color: #3a2c10;
-  box-shadow: 0 0 18px rgba(216, 173, 78, 0.8);
+  width: 46%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff6d5, #e8c05c 55%, #7a5410);
+  box-shadow: 0 0 20px rgba(216, 173, 78, 0.9), 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
-/* Legal targets while an expansion is being aimed. */
-.hex.expandable {
-  cursor: pointer;
-  animation: hex-expandable 1.4s ease-in-out infinite;
+/* Legal targets while an expansion is being aimed: a pulsing ring that follows
+   the hex, so it reads as an affordance rather than as changed terrain. */
+.hex.expandable { cursor: pointer; }
+.hex.expandable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  pointer-events: none;
+  animation: hex-expandable 1.3s ease-in-out infinite;
 }
 @keyframes hex-expandable {
-  0%, 100% { filter: brightness(1.25) saturate(1.2); }
-  50% { filter: brightness(1.7) saturate(1.35); }
+  0%, 100% { box-shadow: inset 0 0 0 3px rgba(150, 240, 140, 0.75); background: rgba(120, 230, 120, 0.1); }
+  50%      { box-shadow: inset 0 0 0 4px rgba(200, 255, 190, 1); background: rgba(150, 245, 145, 0.26); }
 }

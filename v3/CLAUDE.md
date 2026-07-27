@@ -431,8 +431,9 @@ One verb, two depths:
 - **Found city** — upgrade an improvement: no new ground, but the city's population compounds
   and adds to production/gold/progress on top of the tile's natural yield.
 
-Rules: cities never adjacent to another city, never on mountains, and only where there is food
-in reach (the tile's own food counts). **Bringing an encampment inside your borders clears it**
+Rules: cities never adjacent to another city, never on mountains, **never on water** (a city
+may sit beside water and take the growth bonus, but is founded on land), and only where there
+is food in reach (the tile's own food counts). **Bringing an encampment inside your borders clears it**
 — that is the whole reason to push toward one.
 
 Reachability has three shapes:
@@ -442,6 +443,11 @@ Reachability has three shapes:
 - **always reachable** — isolated specks (islands, asteroids, planets, stars, singularities,
   the exomoon) are settleable directly the moment their gate opens. The border-first rule
   would strand them forever, since nothing is ever adjacent to them.
+
+Territory is drawn as a **continuous outline** — one SVG segment per hex edge where controlled
+meets uncontrolled — rather than a ring per tile, which read as a grid of boxes. Controlled
+ground takes a faint warm wash; a brightness filter washed the terrain art out and fought the
+expansion-target animation.
 
 **Territory keeps incremental index sets** (`world.terr`), and `foodAround`/`waterAround` are
 memoised against a `version` counter. Rescanning 5,400 tiles per tick made a 28-era simulation

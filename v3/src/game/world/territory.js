@@ -61,7 +61,9 @@ const ALWAYS_REACHABLE = new Set([
 // Never expandable — empty void and the muster ring.
 const NEVER = new Set(['space', 'deep_space', 'battlefield'])
 
-/** Cities cannot sit on these even once the terrain is expandable. */
+/** Cities cannot sit on these even once the terrain is expandable. Water is
+ *  excluded wholesale — a city is founded on land, though it may sit BESIDE
+ *  water and take the growth bonus for it. */
 const NO_CITY = new Set(['mountain', 'exomountain', 'mars_mountain'])
 
 /**
@@ -204,7 +206,7 @@ export function expansionTargets(world, unlocks) {
  */
 export function canFoundCity(world, t) {
   if (!t.improved || t.city) return false
-  if (NO_CITY.has(t.terrain)) return false
+  if (NO_CITY.has(t.terrain) || isWater(t.terrain)) return false
   if (neighbors(t.q, t.r).some((n) => world.at(n.q, n.r)?.city)) return false
   return foodAround(world, t) > 0
 }
@@ -327,13 +329,5 @@ export function territoryStats(world) {
   }
 }
 
-/** Is this a controlled tile on the EDGE of your territory? Drives the border ring. */
-export function isBorderTile(world, t) {
-  if (!t.controlled) return false
-  return neighbors(t.q, t.r).some((n) => {
-    const o = world.at(n.q, n.r)
-    return !o || !o.controlled
-  })
-}
 
 export { NO_CITY, GATED_REGIONS }

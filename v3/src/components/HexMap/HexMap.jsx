@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
-import { SQRT3 } from '../../game/hex/coords.js'
+import { SQRT3, DIRS } from '../../game/hex/coords.js'
 import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
-import { isBorderTile } from '../../game/world/territory.js'
+
 import PieceCard from './PieceCard.jsx'
 import './HexMap.css'
 
@@ -275,6 +275,28 @@ export default function HexMap() {
     return out
   }, [known, layout, view])
 
+  // The territory border, drawn as real hex EDGES where controlled meets
+  // uncontrolled — one clean outline around the whole country. Ringing each
+  // tile individually read as a grid of boxes instead of a border.
+  const borderEdges = []
+  for (const t of shown) {
+    if (!t.controlled || known.bfSet.has(`${t.q},${t.r}`)) continue
+    const c = centerOf(t.q, t.r)
+    for (let i = 0; i < 6; i++) {
+      const o = game.world.at(t.q + DIRS[i][0], t.r + DIRS[i][1])
+      if (o && o.controlled) continue
+      // DIRS[i] faces the edge spanning the corners at -60i and -60i+60 degrees.
+      const a0 = (-60 * i) * (Math.PI / 180)
+      const a1 = (-60 * i + 60) * (Math.PI / 180)
+      const R = HEX_SIZE - SEAM
+      borderEdges.push({
+        id: `${t.q},${t.r}:${i}`,
+        x1: c.x + R * Math.cos(a0), y1: c.y + R * Math.sin(a0),
+        x2: c.x + R * Math.cos(a1), y2: c.y + R * Math.sin(a1),
+      })
+    }
+  }
+
   return (
     <div className="hexmap-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
       <div
@@ -290,9 +312,7 @@ export default function HexMap() {
             <div
               key={k}
               className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}` +
-                `${t.controlled && !isBf ? ' controlled' : ''}` +
-                `${t.controlled && !isBf && isBorderTile(game.world, t) ? ' frontier' : ''}` +
-                `${expSet?.has(k) ? ' expandable' : ''}`}
+                `${t.controlled && !isBf ? ' controlled' : ''}${expSet?.has(k) ? ' expandable' : ''}`}
               style={{
                 left,
                 top,
@@ -313,6 +333,14 @@ export default function HexMap() {
             </div>
           )
         })}
+
+        {borderEdges.length > 0 && (
+          <svg className="territory-outline" width={layout.w} height={layout.h}>
+            {borderEdges.map((e) => (
+              <line key={e.id} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} />
+            ))}
+          </svg>
+        )}
 
         {/* --- combat layer ------------------------------------------------ */}
         {combat.active && (
