@@ -1,0 +1,150 @@
+/* The panel is deliberately NARROW in v3 — the map is the main view. The 9-slice
+   frames carry a parchment fill, so the palette here is dark ink on parchment. */
+.ui-panel {
+  --ink: #2f2512;
+  --ink-soft: #5b4626;
+  --brass: #7a5410;
+
+  flex: 0 0 320px;
+  width: 320px;
+  height: 100vh;
+  color: var(--ink);
+  overflow: hidden;
+}
+
+.panel-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.15rem;
+}
+.panel-head h2 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: #3a2c10;
+  line-height: 1.3;
+}
+.panel-sub {
+  font-size: 0.63rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--brass);
+  opacity: 0.85;
+}
+
+.panel-box {
+  --fw: 16px;
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.panel-box.grow { flex: 1 1 auto; }
+
+/* --- Resources ------------------------------------------------------------ */
+.res-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.2rem 0.1rem;
+}
+.res-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.22rem 0.4rem;
+  border-radius: 5px;
+  background: rgba(233, 220, 189, 0.55);
+}
+.res-row:hover { background: rgba(233, 220, 189, 0.85); }
+.res-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.res-name {
+  flex: 1 1 auto;
+  text-transform: capitalize;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.res-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+/* --- Terrain census ------------------------------------------------------- */
+.legend-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 1px;
+  padding: 0.2rem 0.1rem;
+  height: 100%;
+  overflow: hidden;
+}
+/* 20+ terrains at full reveal: two tighter columns so nothing is clipped. */
+.legend-list.two-col {
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 4px;
+}
+.legend-list.two-col .legend-row { gap: 0.28rem; padding: 0.05rem 0.2rem; font-size: 0.7rem; }
+.legend-list.two-col .legend-swatch { width: 14px; height: 14px; }
+.legend-list.two-col .legend-yield img { display: none; }
+.legend-list.two-col .legend-count { min-width: 2.1em; }
+
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  background: rgba(233, 220, 189, 0.4);
+  min-width: 0;
+}
+.legend-swatch {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0 0 1px rgba(58, 44, 16, 0.45);
+}
+.legend-name {
+  flex: 1 1 auto;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.legend-yield {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-variant-numeric: tabular-nums;
+  color: #3f6b2c;
+  font-weight: 600;
+}
+.legend-yield img { width: 13px; height: 13px; object-fit: contain; }
+.legend-yield.none { color: #8a7a58; font-weight: 400; }
+.legend-count {
+  min-width: 2.6em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 700;
+}

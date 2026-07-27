@@ -1,0 +1,126 @@
+.hexmap-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+.hexmap-viewport.dragging { cursor: grabbing; }
+
+.hexmap-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Flat-top hexagon. The square sprite is clipped to the hex — the terrain art is
+   full-bleed isotropic texture, so losing the corners costs nothing. */
+.hex {
+  position: absolute;
+  background-size: cover;
+  background-position: center;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.1s ease;
+}
+.hex.hovered { filter: brightness(1.35) saturate(1.1); }
+
+/* Markers sit on top of the tile art. */
+.hex-marker {
+  display: grid;
+  place-items: center;
+  width: 42%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.hex-marker.palace {
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, #c99a2e 60%, #7a5410);
+  color: #3a2c10;
+  border: 2px solid #4a3608;
+}
+.hex-marker.camp {
+  background: radial-gradient(circle at 35% 30%, #ff8a7a, #a32020 60%, #5c0f0f);
+  color: #ffe4e0;
+  border: 2px solid #3d0a0a;
+  font-size: 0.95rem;
+}
+
+/* --- Hover info card ------------------------------------------------------
+   Anchored bottom-left of the map rather than following the cursor, so it can
+   never cover the tile you are inspecting. */
+.hex-tip {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 15;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(10, 12, 22, 0.92);
+  border: 1px solid rgba(201, 154, 46, 0.45);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  backdrop-filter: blur(3px);
+}
+.hex-tip-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--accent, #d8ad4e);
+}
+.hex-tip-sub {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #8b93a8;
+  margin-top: 0.1rem;
+}
+.hex-tip-body {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.45rem;
+  font-size: 0.9rem;
+}
+.hex-tip-yield { color: #9fd88a; font-weight: 600; }
+.hex-tip-none { color: #6f7789; }
+.hex-tip-warn {
+  color: #e39191;
+  border: 1px solid rgba(227, 145, 145, 0.4);
+  border-radius: 999px;
+  padding: 0.02rem 0.45rem;
+  font-size: 0.72rem;
+}
+.hex-tip-note {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #a8b0c2;
+}
+.hex-tip-note.palace { color: #e6c877; }
+.hex-tip-note.camp { color: #e39191; }
+
+/* --- Corner readout ------------------------------------------------------- */
+.hexmap-readout {
+  position: absolute;
+  right: 0.9rem;
+  top: 0.8rem;
+  z-index: 12;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: #7f879b;
+  background: rgba(10, 12, 22, 0.6);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  pointer-events: none;
+}

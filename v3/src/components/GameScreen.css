@@ -1,0 +1,31 @@
+.game-screen {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* The map window takes everything left of the panel. Column layout: the map
+   grows to fill, the HUD strip sits below it (same arrangement as v2, where
+   `.top-hud` also renders along the bottom despite the name). */
+.map-window {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(1400px 900px at 50% 40%, #101426, var(--bg)),
+    var(--bg);
+}
+
+.top-hud {
+  flex: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+}

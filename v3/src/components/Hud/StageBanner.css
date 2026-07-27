@@ -1,0 +1,18 @@
+.stage-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0.1rem 0.2rem;
+}
+.stage-banner-name {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: var(--accent, #d8ad4e);
+}
+.stage-banner-index {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  color: #7f879b;
+}
