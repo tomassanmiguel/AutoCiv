@@ -16,7 +16,9 @@ import { yieldOf } from './world/invariants.js'
 import { terrainOf } from './world/terrain.js'
 import { key, neighbors } from './hex/coords.js'
 import { PROGRESS_NODES, RING_UNLOCK, MAX_RING } from './data/progress.js'
+import { MAX_WAVES } from './manager/combat.js'
 import { initialResources, accrue } from './data/resources.js'
+import { installCombat } from './manager/combat.js'
 
 // TEMPORARY: v3 has no era/phase structure yet, so the readout is driven by a
 // plain 1/s tick. It exists purely so the threshold bars actually move; there
@@ -40,6 +42,13 @@ export class GameManager {
     this._knownCache = null
     this.progress = new Set() // chosen advancement ids
     this.resources = initialResources()
+    this.stopCombatTimer?.()
+    this.combat = {
+      active: false, speed: 'paused', wave: 1, strength: 1,
+      turn: 0, beat: 0, actionSeq: 0, result: null,
+      queue: [], phase: null, acting: null,
+      enemies: [], units: [], palace: null, events: [], breaches: 0,
+    }
   }
 
   // --- Tick (temporary) -----------------------------------------------------
@@ -119,6 +128,17 @@ export class GameManager {
 
   stop() {
     if (this._timer) { clearInterval(this._timer); this._timer = null }
+    this.stopCombatTimer()
+  }
+
+  setWave(n) {
+    this.combat.wave = Math.max(1, Math.min(MAX_WAVES, n | 0))
+    this._emit()
+  }
+
+  setStrength(v) {
+    this.combat.strength = Math.max(0.25, Math.min(3, v))
+    this._emit()
   }
 
   // --- Known world ----------------------------------------------------------
@@ -208,3 +228,5 @@ export class GameManager {
     this._emit()
   }
 }
+
+installCombat(GameManager)

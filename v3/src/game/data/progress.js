@@ -39,11 +39,15 @@
 /** Nodes that must be chosen from a ring before the next ring appears. */
 export const RING_UNLOCK = 6
 
+// `nudge` pushes the quadrant LABEL clear of the outermost node column. The
+// side labels sit at 0°/180°, where the text runs straight into that column, so
+// they need shifting by roughly their own half-width; the top/bottom ones are
+// clear already because text is wide, not tall.
 export const QUADRANTS = {
-  society: { key: 'society', name: 'Society', from: -135, to: -45 },
-  technology: { key: 'technology', name: 'Technology', from: -45, to: 45 },
-  economy: { key: 'economy', name: 'Economy', from: 45, to: 135 },
-  military: { key: 'military', name: 'Military', from: 135, to: 225 },
+  society: { key: 'society', name: 'Society', from: -135, to: -45, nudge: { x: 0, y: -14 } },
+  technology: { key: 'technology', name: 'Technology', from: -45, to: 45, nudge: { x: 78, y: 0 } },
+  economy: { key: 'economy', name: 'Economy', from: 45, to: 135, nudge: { x: 0, y: 14 } },
+  military: { key: 'military', name: 'Military', from: 135, to: 225, nudge: { x: -64, y: 0 } },
 }
 export const QUADRANT_LIST = Object.values(QUADRANTS)
 

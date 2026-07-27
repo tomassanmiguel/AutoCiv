@@ -72,3 +72,6 @@ export const spriteUrl = (k) => `/sprites/tiles/${terrainOf(k).sprite}.png`
 export const isPassable = (k) => terrainOf(k).passable
 export const isLand = (k) => terrainOf(k).domain === 'land'
 export const isWater = (k) => terrainOf(k).domain === 'water'
+
+/** Terrain domain bucket — what an enemy DOMAIN checks when pathing. */
+export const terrainDomain = (k) => terrainOf(k).domain

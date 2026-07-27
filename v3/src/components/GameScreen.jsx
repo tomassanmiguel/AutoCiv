@@ -6,6 +6,7 @@ import MenuOverlay from './Menu/MenuOverlay.jsx'
 import StageBanner from './Hud/StageBanner.jsx'
 import OutputReadout from './Hud/OutputReadout.jsx'
 import ProgressTree from './Progress/ProgressTree.jsx'
+import CombatPanel from './Combat/CombatPanel.jsx'
 import './GameScreen.css'
 
 /**
@@ -39,6 +40,7 @@ export default function GameScreen({ seed, civ, difficulty, onExit }) {
               Progress
             </button>
           </div>
+          <CombatPanel />
           {treeOpen && <ProgressTree onClose={() => setTreeOpen(false)} />}
         </div>
       </div>

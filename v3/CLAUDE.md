@@ -1,10 +1,10 @@
 # AutoCiv v3 — Project Guide (WIP)
 
-> **Status: EARLY.** The **map** (hex grid, world generation, pan/zoom viewer) and a
-> **progress-web UI prototype** exist, wrapped in the ported screen shell. There is **no
-> economy, combat or roster yet** — the only tick is temporary scaffolding that fills the
-> readout's threshold bars, and the progress web is a UI sample over v2 content rather than
-> v3's real tech tree.
+> **Status: EARLY.** The **map** (hex grid, world generation, pan/zoom viewer), a
+> **progress-web UI prototype**, and a **combat scaffold** exist, wrapped in the ported screen
+> shell. There is **no economy or roster yet** — the resource tick is temporary scaffolding
+> that fills the readout's bars, the progress web is a UI sample over v2 content, and combat
+> is a "simulate this wave" debug harness rather than a campaign.
 >
 > This file is the source of truth for v3. The root `../CLAUDE.md` describes **v2** (square
 > grid, legitimacy, specialists, policies) — most of it does **not** apply here. Keep this
@@ -80,6 +80,9 @@ v3/
     │   ├── data/civilizations.js  # placeholder civ + difficulty for the pre-game screen
     │   ├── data/progress.js    # SAMPLE progress web (v2 content, invented shape)
     │   ├── data/resources.js   # threshold model (food/production/progress) + accrual
+    │   ├── data/enemies.js     # v2's type x domain x tier host composition
+    │   ├── data/units.js       # generic player archetypes + the palace
+    │   └── manager/combat.js   # turn/beat engine (mixin onto GameManager)
     │   ├── audio/              # AudioManager (ported) + tracks.js
     │   └── react/GameProvider.jsx # <GameProvider> + useGame()
     └── components/
@@ -87,6 +90,7 @@ v3/
         ├── GameScreen.jsx      # map + HUD strip + progress overlay
         ├── HexMap/             # camera, culling, hex rendering, hover card
         ├── Progress/           # radial progress web overlay
+        ├── Combat/             # wave/strength/speed debug bar
         ├── Hud/                # StageBanner + OutputReadout (corner yields)
         └── Menu/MenuOverlay.jsx# known-world slider + reroll + exit
 ```
@@ -362,3 +366,31 @@ gating.
   from hanging on a looping media stream).
 - Tile `x`/`y` are pre-computed by worldgen at **hex size 1** — multiply by `HEX_SIZE` when
   rendering, and note the noise fields sample the same coordinates.
+
+### Combat (`game/manager/combat.js`, `game/data/enemies.js`, `game/data/units.js`)
+A scaffold, driven by the **Simulate Combat** bar: pick a wave (1–30) and a host strength,
+generate, then watch it play out at 2/6/12/30 beats per second (or Step / Resolve).
+
+- **Enemies are v2's composition system**, kept as-is: a TYPE (melee / cavalry / ranged) × a
+  DOMAIN (default / amphibious / astral) × a spawn TIER (grunt ½ / normal / elite ×2), bought
+  against a per-wave HP budget. Their stat curves are v2's and should stay that way.
+- **Pathing is a FLOW FIELD, not columns.** One inward BFS from the palace per domain,
+  computed once at combat start. The muster ring itself is crossable by everything, so a host
+  can walk it to find an entry its domain can use; a domain with no viable entry is dropped
+  from the roll and its weight redistributed (otherwise an all-space frontier produced empty
+  waves).
+- **Phase order per turn**: enemies move → defenders move → defenders attack (the palace
+  strikes here too) → enemies attack.
+- **ONE PIECE ACTS PER BEAT.** A turn is expanded into a queue of single-piece actions and
+  `combatStep()` advances to the next one that actually SHOWS something. Beats that produce
+  nothing — nowhere to move, nothing in range — are skipped instantly, since only animation
+  needs the clock. Roughly two thirds of queued beats cost no time at all.
+- **The acting piece is ringed** and the current phase is named in the status bar.
+- `lastAttackSeq` keys off a dedicated `actionSeq` bumped inside `_strike`, **not** `beat` —
+  the beat counter only advances after the action resolves, which left cards comparing against
+  a stale value and the lunge never played.
+- The **palace** (atk 10, range 2) fights in the defenders' attack phase and animates like any
+  other piece. If it falls, the wave is lost.
+- The scratch **garrison** is bought against the same budget curve at `DEFENCE_RATIO`, always
+  at strength 1 — so the strength slider genuinely raises difficulty instead of scaling both
+  sides. Balance is **not** tuned; it is placeholder until the full game is assembled.

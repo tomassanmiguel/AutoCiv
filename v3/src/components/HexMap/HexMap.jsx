@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { SQRT3 } from '../../game/hex/coords.js'
 import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
+import PieceCard from './PieceCard.jsx'
 import './HexMap.css'
 
 // Flat-top hexes. `HEX_SIZE` is the circumradius, so a hex is 2*size wide and
@@ -33,6 +34,7 @@ export default function HexMap() {
   const game = useGame()
   const stage = game.stage
   const known = game.known
+  const combat = game.combat
 
   const viewportRef = useRef(null)
   const contentRef = useRef(null)
@@ -64,6 +66,12 @@ export default function HexMap() {
   const posOf = (t) => ({
     left: t.x * HEX_SIZE - layout.minX - HEX_W / 2 + SEAM / 2,
     top: t.y * HEX_SIZE - layout.minY - HEX_H / 2 + SEAM / 2,
+  })
+
+  // Centre of a hex in content space — pieces and damage floats anchor here.
+  const centerOf = (q, r) => ({
+    x: 1.5 * q * HEX_SIZE - layout.minX,
+    y: SQRT3 * (r + q / 2) * HEX_SIZE - layout.minY,
   })
 
   // --- Camera ---------------------------------------------------------------
@@ -289,6 +297,31 @@ export default function HexMap() {
             </div>
           )
         })}
+
+        {/* --- combat layer ------------------------------------------------ */}
+        {combat.active && (
+          <>
+            {combat.palace && (() => { const c = centerOf(0, 0); return (
+              <PieceCard key="palace" piece={combat.palace} turn={combat.actionSeq}
+                x={c.x} y={c.y} size={HEX_W * 0.82}
+                acting={combat.acting?.side === 'palace'} />
+            ) })()}
+            {combat.units.map((u) => { const c = centerOf(u.q, u.r); return (
+              <PieceCard key={`u${u.id}`} piece={u} turn={combat.actionSeq}
+                x={c.x} y={c.y} size={HEX_W * 0.74}
+                acting={combat.acting?.side === 'player' && combat.acting.id === u.id} />
+            ) })}
+            {combat.enemies.map((e) => { const c = centerOf(e.q, e.r); return (
+              <PieceCard key={`e${e.id}`} piece={e} turn={combat.actionSeq}
+                x={c.x} y={c.y} size={HEX_W * 0.74}
+                acting={combat.acting?.side === 'enemy' && combat.acting.id === e.id} />
+            ) })}
+            {combat.events.map((ev) => { const c = centerOf(ev.q, ev.r); return (
+              <div key={ev.id} className={`combat-float ${ev.kind}`}
+                style={{ left: c.x, top: c.y, fontSize: HEX_W * 0.26 }}>−{ev.amount}</div>
+            ) })}
+          </>
+        )}
       </div>
 
       {hover && <TileTip tile={hover} battlefield={known.bfSet.has(`${hover.q},${hover.r}`)} />}

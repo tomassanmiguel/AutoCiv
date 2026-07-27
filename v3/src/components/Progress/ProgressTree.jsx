@@ -249,13 +249,17 @@ export default function ProgressTree({ onClose }) {
             const R = ringRadius(visibleRing) + NODE_SIZE * 1.25
             return (
               <div key={q.key} className={`tree-quadrant-label q-${q.key}`}
-                style={{ left: extent + Math.cos(mid) * R, top: extent + Math.sin(mid) * R }}>
+                style={{
+                  left: extent + Math.cos(mid) * R + (q.nudge?.x ?? 0),
+                  top: extent + Math.sin(mid) * R + (q.nudge?.y ?? 0),
+                }}>
                 {q.name}
               </div>
             )
           })}
 
-          <div className="tree-hub" style={{ left: extent, top: extent }}><span>Palace</span></div>
+          {/* Fire: where civilization starts, so the web grows out of it. */}
+          <div className="tree-hub" style={{ left: extent, top: extent }}><span>Fire</span></div>
 
           {shown.map((n) => {
             const state = game.progressState(n)

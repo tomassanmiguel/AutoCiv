@@ -84,19 +84,23 @@
 .tree-edge.dead { stroke: rgba(120, 128, 150, 0.14); stroke-dasharray: 4 5; }
 
 /* --- hub + labels --------------------------------------------------------- */
+/* The hub is Fire — a green hexagon matching the node shape, since every branch
+   of the web grows out of it. */
 .tree-hub {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 92px;
-  height: 92px;
+  width: 116px;
+  height: 100px;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  border: 1px solid rgba(201, 154, 46, 0.45);
-  background: radial-gradient(circle at 40% 35%, rgba(216, 173, 78, 0.28), rgba(10, 12, 22, 0.9));
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: linear-gradient(160deg, #7fd06f, #2f7a3c);
   font-family: var(--font-display);
-  font-size: 0.9rem;
-  color: #e6c877;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  color: #0f2413;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 26px rgba(120, 210, 120, 0.45);
   pointer-events: none;
 }
 
