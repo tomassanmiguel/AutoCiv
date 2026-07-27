@@ -352,8 +352,11 @@ function longestRun(world, tiles) {
 export function yieldOf(tiles) {
   const out = { food: 0, production: 0, gold: 0, progress: 0 }
   for (const t of tiles) {
-    const y = terrainOf(t.terrain).yield
-    if (y) out[y.res] += y.amount
+    const y = terrainOf(t.terrain).yields
+    out.food += y.food
+    out.production += y.production
+    out.gold += y.gold
+    out.progress += y.progress
   }
   return out
 }

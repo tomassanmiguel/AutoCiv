@@ -4,14 +4,6 @@ import { waveBudget } from '../../game/data/enemies.js'
 import InfoTip from '../common/InfoTip.jsx'
 import './CombatPanel.css'
 
-const SPEEDS = [
-  { key: 'paused', glyph: '❚❚', name: 'Pause', desc: 'Halt the simulation.' },
-  { key: 'standard', glyph: '▶', name: 'Standard', desc: '1 turn per second.' },
-  { key: 'fast', glyph: '▶▶', name: 'Fast', desc: '3 turns per second.' },
-  { key: 'super', glyph: '▶▶▶', name: 'Super', desc: '5 turns per second.' },
-  { key: 'ultra', glyph: '⚡', name: 'Ultra', desc: '10 turns per second.' },
-]
-
 const RESULT_TEXT = {
   won: 'Wave repelled',
   lost: 'The palace has fallen',
@@ -62,15 +54,7 @@ export default function CombatPanel() {
       {c.active && (
         <>
           <div className="cp-speeds">
-            {SPEEDS.map((s) => (
-              <InfoTip key={s.key} title={s.name} text={s.desc}>
-                <button
-                  className={`cp-speed${c.speed === s.key ? ' active' : ''}`}
-                  onClick={() => game.setSpeed(s.key)}
-                  aria-label={s.name}
-                >{s.glyph}</button>
-              </InfoTip>
-            ))}
+            <span className="cp-note">runs on the main clock →</span>
             <button
               className="cp-speed step"
               onClick={() => { game.setSpeed('paused'); game.combatStep() }}

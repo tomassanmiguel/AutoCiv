@@ -3,10 +3,12 @@ import { GameManager } from '../game/GameManager.js'
 import { GameProvider } from '../game/react/GameProvider.jsx'
 import HexMap from './HexMap/HexMap.jsx'
 import MenuOverlay from './Menu/MenuOverlay.jsx'
-import StageBanner from './Hud/StageBanner.jsx'
+import SpeedControl from './Hud/SpeedControl.jsx'
 import OutputReadout from './Hud/OutputReadout.jsx'
 import ProgressTree from './Progress/ProgressTree.jsx'
 import CombatPanel from './Combat/CombatPanel.jsx'
+import ProgressOffer from './Progress/ProgressOffer.jsx'
+import ExpansionPrompt from './Expansion/ExpansionPrompt.jsx'
 import './GameScreen.css'
 
 /**
@@ -33,14 +35,16 @@ export default function GameScreen({ seed, civ, difficulty, onExit }) {
           <HexMap />
           <OutputReadout />
           <div className="top-hud">
-            <StageBanner />
+            <SpeedControl />
             <MenuOverlay onExit={onExit} />
             <button className="hud-btn" onClick={() => setTreeOpen(true)}>
               <img src="/sprites/icons/progress.png" alt="" />
               Progress
             </button>
           </div>
+          <ExpansionPrompt />
           <CombatPanel />
+          <ProgressOffer />
           {treeOpen && <ProgressTree onClose={() => setTreeOpen(false)} />}
         </div>
       </div>

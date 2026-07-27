@@ -4,8 +4,8 @@ import { THRESHOLD_RESOURCES } from '../../game/data/resources.js'
 import InfoTip from '../common/InfoTip.jsx'
 import './OutputReadout.css'
 
-// Output is currently the total base yield of every revealed tile — the map's
-// potential, since there is no economy driving it yet.
+// Output is the per-tick yield of everything you CONTROL — improvements double
+// a tile, cities add their population on top.
 const TIP = {
   food: 'Expands your civilization. Spend :food: to claim new tiles and to grow cities.',
   production: 'Builds wonders and fortifications.',
@@ -27,7 +27,7 @@ const fmtRate = (n) => {
  */
 export default function OutputReadout() {
   const game = useGame()
-  const output = game.known.yields
+  const output = game.output
   const res = game.resources
 
   return (

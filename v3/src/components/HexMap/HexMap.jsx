@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { SQRT3 } from '../../game/hex/coords.js'
 import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
+import { isBorderTile } from '../../game/world/territory.js'
 import PieceCard from './PieceCard.jsx'
 import './HexMap.css'
 
@@ -35,6 +36,14 @@ export default function HexMap() {
   const stage = game.stage
   const known = game.known
   const combat = game.combat
+  const sel = game.selection
+  // While an expansion is being aimed, the legal tiles glow and become clickable.
+  const expMode = sel?.type === 'expansion' ? sel.mode : null
+  const expSet = (() => {
+    if (!expMode) return null
+    const t = game.expansionTargets
+    return new Set((expMode === 'city' ? t.city : t.improve).map((x) => `${x.q},${x.r}`))
+  })()
 
   const viewportRef = useRef(null)
   const contentRef = useRef(null)
@@ -276,12 +285,14 @@ export default function HexMap() {
         {shown.map((t) => {
           const k = `${t.q},${t.r}`
           const { left, top } = posOf(t)
-          const isPalace = t.q === 0 && t.r === 0
           const isBf = known.bfSet.has(k)
           return (
             <div
               key={k}
-              className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}`}
+              className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}` +
+                `${t.controlled && !isBf ? ' controlled' : ''}` +
+                `${t.controlled && !isBf && isBorderTile(game.world, t) ? ' frontier' : ''}` +
+                `${expSet?.has(k) ? ' expandable' : ''}`}
               style={{
                 left,
                 top,
@@ -291,8 +302,13 @@ export default function HexMap() {
               }}
               onMouseEnter={() => setHover(t)}
               onMouseLeave={() => setHover((h) => (h === t ? null : h))}
+              onClick={() => { if (expSet?.has(k)) game.expandOnto(t, expMode) }}
             >
-              {isPalace && <span className="hex-marker palace" title="Palace">★</span>}
+              {!isBf && t.controlled && <span className="hex-control" />}
+              {!isBf && t.improved && !t.city && <span className="hex-improved" />}
+              {!isBf && t.city && (
+                <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>
+              )}
               {!isBf && t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
             </div>
           )
@@ -352,8 +368,10 @@ function TileTip({ tile, battlefield }) {
         {tile.region.replace(/_/g, ' ')} · ring {tile.d} · wedge {tile.wedge}
       </div>
       <div className="hex-tip-body">
-        {def.yield
-          ? <span className="hex-tip-yield">+{def.yield.amount} {def.yield.res}</span>
+        {Object.entries(def.yields).some(([, v]) => v > 0)
+          ? Object.entries(def.yields).filter(([, v]) => v > 0).map(([res, v]) => (
+            <span key={res} className="hex-tip-yield">+{v} {res}</span>
+          ))
           : <span className="hex-tip-none">no yield</span>}
         {!def.passable && <span className="hex-tip-warn">impassable</span>}
       </div>

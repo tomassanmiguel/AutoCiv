@@ -124,3 +124,62 @@
   padding: 0.2rem 0.7rem;
   pointer-events: none;
 }
+
+/* --- territory ------------------------------------------------------------ */
+/* Controlled ground reads as a subtle warm lift rather than an overlay, so the
+   terrain art still carries the tile. */
+.hex.controlled { filter: brightness(1.12) saturate(1.08); }
+
+/* Only the EDGE of your territory is ringed. Ringing every controlled tile made
+   the interior read as a grid of boxes rather than as one country. */
+.hex.controlled::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 150, 0.16);
+  pointer-events: none;
+}
+.hex.controlled.frontier::after {
+  box-shadow: inset 0 0 0 3px rgba(255, 213, 110, 0.85), inset 0 0 12px rgba(255, 200, 90, 0.35);
+}
+
+/* An improvement is a small dot; a city replaces it with a population pip. */
+.hex-improved {
+  width: 16%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff2c4, #c9a22e);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.hex-city {
+  display: grid;
+  place-items: center;
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: linear-gradient(160deg, #f0d987, #9a7418);
+  border: 2px solid #4a3608;
+  color: #2b2007;
+  font-weight: 800;
+  font-size: 0.9rem;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+}
+.hex-city.palace {
+  background: radial-gradient(circle at 35% 30%, #fff0bb, #d8ad4e 55%, #7a5410);
+  border-color: #3a2c10;
+  box-shadow: 0 0 18px rgba(216, 173, 78, 0.8);
+}
+
+/* Legal targets while an expansion is being aimed. */
+.hex.expandable {
+  cursor: pointer;
+  animation: hex-expandable 1.4s ease-in-out infinite;
+}
+@keyframes hex-expandable {
+  0%, 100% { filter: brightness(1.25) saturate(1.2); }
+  50% { filter: brightness(1.7) saturate(1.35); }
+}

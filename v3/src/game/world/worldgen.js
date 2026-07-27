@@ -259,10 +259,13 @@ function generateSpace(tiles, rng) {
     t.region = 'space'
   }
 
-  stampBody(tiles, pickOnRing(rng, BODIES.moon.dist), BODIES.moon.radius, 'moon', 'moon')
+  const lc = pickOnRing(rng, BODIES.moon.dist)
+  stampBody(tiles, lc, BODIES.moon.radius, 'moon', 'moon')
   const mc = pickOnRing(rng, BODIES.mars.dist)
   stampBody(tiles, mc, BODIES.mars.radius, 'mars', 'mars')
   const marsCenter = tiles.get(key(mc.q, mc.r))
+  featureMoon(tiles, lc, rng)
+  featureMars(tiles, marsCenter, rng)
 
   // Asteroids stay BEYOND the Moon, so the first two space stages are clean sky.
   const minAsteroid = BODIES.moon.dist + BODIES.moon.radius + 1
@@ -286,6 +289,31 @@ function clearOfBodies(tiles, t) {
     const o = tiles.get(key(n.q, n.r))
     return !o || !BODY_REGIONS.has(o.region)
   })
+}
+
+/** Exactly one crater somewhere on the Moon. */
+function featureMoon(tiles, center, rng) {
+  const cells = disc(center.q, center.r, BODIES.moon.radius)
+    .map((h) => tiles.get(key(h.q, h.r))).filter(Boolean)
+  if (!cells.length) return
+  shuffle(cells, rng)[0].terrain = 'lunar_crater'
+}
+
+/**
+ * Mars gets ice caps at its POLES and a few mountain ranges inland. "Pole" is
+ * the extreme of the body's own local vertical, so the caps read as caps rather
+ * than as scattered white tiles.
+ */
+function featureMars(tiles, center, rng) {
+  const cells = disc(center.q, center.r, BODIES.mars.radius)
+    .map((h) => tiles.get(key(h.q, h.r))).filter(Boolean)
+  if (cells.length < 8) return
+  const byLat = [...cells].sort((a, b) => (a.y - center.y) - (b.y - center.y))
+  const caps = [...byLat.slice(0, 2), ...byLat.slice(-2)]
+  for (const t of caps) t.terrain = 'mars_ice'
+
+  const inland = shuffle(cells.filter((t) => t.terrain === 'mars'), rng)
+  for (const t of inland.slice(0, 3)) t.terrain = 'mars_mountain'
 }
 
 const pickOnRing = (rng, dist) => {

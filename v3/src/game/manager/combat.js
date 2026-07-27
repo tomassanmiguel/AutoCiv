@@ -12,7 +12,7 @@
 //   4. enemies attack
 //
 // ONE PIECE ACTS PER BEAT. A turn is expanded into a queue of single-piece
-// actions and the speed timer advances to the next VISIBLE one, so you can
+// actions and the main clock advances to the next VISIBLE one, so you can
 // follow who moved and who hit whom. Beats that produce nothing — a unit with
 // nowhere to go, an attack with no target in range — are skipped instantly
 // rather than burning a tick, since only animation needs the time.
@@ -26,9 +26,6 @@ import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
 import { isPassable, isLand } from '../world/terrain.js'
 import { makeRng, shuffle } from '../world/noise.js'
 
-export const COMBAT_SPEEDS = {
-  paused: 0, standard: 2, fast: 6, super: 12, ultra: 30,
-}
 export const MAX_WAVES = 30
 
 export const PHASE_LABEL = {
@@ -414,20 +411,9 @@ class CombatMixin {
     return this._fields[e.domain].get(key(e.q, e.r)) ?? Infinity
   }
 
-  // --- speed ---------------------------------------------------------------
-
-  setSpeed(sp) {
-    if (!(sp in COMBAT_SPEEDS)) return
-    this.combat.speed = sp
-    if (this._combatTimer) { clearInterval(this._combatTimer); this._combatTimer = null }
-    const rate = COMBAT_SPEEDS[sp]
-    if (rate > 0) this._combatTimer = setInterval(() => this.combatStep(), 1000 / rate)
-    this._emit()
-  }
-
-  stopCombatTimer() {
-    if (this._combatTimer) { clearInterval(this._combatTimer); this._combatTimer = null }
-  }
+  // Combat no longer owns a clock: the main pacing control drives it, one beat
+  // per tick, so there is a single speed UI for the whole game.
+  stopCombatTimer() {}
 }
 
 export function installCombat(GameManager) {

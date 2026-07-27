@@ -1,10 +1,9 @@
 # AutoCiv v3 — Project Guide (WIP)
 
-> **Status: EARLY.** The **map** (hex grid, world generation, pan/zoom viewer), a
-> **progress-web UI prototype**, and a **combat scaffold** exist, wrapped in the ported screen
-> shell. There is **no economy or roster yet** — the resource tick is temporary scaffolding
-> that fills the readout's bars, the progress web is a UI sample over v2 content, and combat
-> is a "simulate this wave" debug harness rather than a campaign.
+> **Status: PLAYABLE LOOP.** The map, the **era cycle**, the **territory/expansion economy**,
+> **city growth**, and a **progress-offer flow** are wired together and run end to end. Combat
+> remains a "simulate this wave" toy on the side. The progress web is still a UI sample over
+> v2 content — **taking a node has no effect yet** beyond opening more of the web.
 >
 > This file is the source of truth for v3. The root `../CLAUDE.md` describes **v2** (square
 > grid, legitimacy, specialists, policies) — most of it does **not** apply here. Keep this
@@ -408,3 +407,51 @@ generate, then watch it play out at 2/6/12/30 beats per second (or Step / Resolv
 - The scratch **garrison** is bought against the same budget curve at `DEFENCE_RATIO`, always
   at strength 1 — so the strength slider genuinely raises difficulty instead of scaling both
   sides. Balance is **not** tuned; it is placeholder until the full game is assembled.
+
+
+---
+
+## The main cycle (`GameManager`, `data/eras.js`)
+
+**28 eras × 65 ticks**, driven by ONE clock and ONE pacing control in the HUD. Each tick either
+advances a running combat by a beat, or advances the game: accrue output, grow cities, count
+down the era. The era drives the map reveal (`stageForEra`) and hands out expansion
+permissions (`EXPANSION_UNLOCKS`).
+
+Crossing a **progress** threshold offers three advancements; crossing a **food** threshold
+offers one expansion. Either **pauses the clock** until resolved, exactly as v2's selections
+did (`_restartTimer` is gated on `!selection`).
+
+## Territory & expansion (`world/territory.js`)
+
+One verb, two depths:
+
+- **Settle** — improve a controlled tile: its yield **doubles** and all six neighbours become
+  controlled. This is what makes the *next* expansion possible.
+- **Found city** — upgrade an improvement: no new ground, but the city's population compounds
+  and adds to production/gold/progress on top of the tile's natural yield.
+
+Rules: cities never adjacent to another city, never on mountains, and only where there is food
+in reach (the tile's own food counts). **Bringing an encampment inside your borders clears it**
+— that is the whole reason to push toward one.
+
+Reachability has three shapes:
+- **adjacency** — anything you already control
+- **border-first** — big contiguous regions (New World, Moon, Mars, exoplanet) must be entered
+  on a border tile; you cannot appear in the middle of Mars
+- **always reachable** — isolated specks (islands, asteroids, planets, stars, singularities,
+  the exomoon) are settleable directly the moment their gate opens. The border-first rule
+  would strand them forever, since nothing is ever adjacent to them.
+
+**Territory keeps incremental index sets** (`world.terr`), and `foodAround`/`waterAround` are
+memoised against a `version` counter. Rescanning 5,400 tiles per tick made a 28-era simulation
+take 18 seconds; it now takes 3.
+
+City growth is separate from the expansion meter: each city banks its adjacent food (×1.5 with
+water in reach) and buys population against an exponential cost.
+
+## Economy analysis (`sims/economy.mjs`)
+
+`node sims/economy.mjs [--trace]` runs eleven expansion strategies across three seeds and
+reports cumulative output at short / medium / long horizons. It is the tuning instrument for
+the wide-vs-tall trade-off — see the numbers in the commit that introduced it.
