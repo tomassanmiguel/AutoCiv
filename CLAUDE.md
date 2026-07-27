@@ -1,5 +1,23 @@
 # AutoCiv — Project Guide (CLAUDE.md)
 
+> ## ⚠️ ACTIVE WORK IS IN `v3/` — THIS FILE DESCRIBES THE OLD VERSION
+>
+> **We are building a new version of AutoCiv in [`v3/`](v3/).** It is a **fork, not a
+> refactor**: its own Vite app, its own `package.json`/`node_modules`, its own `src/` and
+> `sims/`. The root project is kept intact as a reference and parts bin.
+>
+> **v3 is WIP and only the map exists so far** — hex grid, procedural world generation, a
+> pan/zoom map viewer, and the ported screen shell (loading → title → civ select → game).
+> There is no economy, combat, roster, or tech tree yet. See [`v3/CLAUDE.md`](v3/CLAUDE.md)
+> for what is actually built and how it is laid out.
+>
+> **Everything below this box describes the v2 game in `src/`** — different map (9×26 square
+> grid), different combat, legitimacy, specialists, policies, 28-era progression. Much of it
+> does **not** apply to v3. **Do not treat it as the spec for new work.**
+>
+> **This file will be rewritten as v3's facts land.** Until then it stays as the v2 record;
+> new v3 rules go in `v3/CLAUDE.md` and get consolidated here once v3 is the main line.
+
 > **This is a living reference — keep it ACCURATE, TIGHT, and MINIMAL.** We are building
 > AutoCiv **fast and iteratively**, so this file is optimized for *onboarding speed*, not
 > completeness: it holds the **critical information needed to understand the project** —
