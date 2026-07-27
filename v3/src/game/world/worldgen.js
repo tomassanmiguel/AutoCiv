@@ -22,6 +22,7 @@ import { key, disc, ring, neighbors, lengthOf, toPixel, wedgeOf, SQRT3 } from '.
 import { makeRng, makeNoise2D, shuffle } from './noise.js'
 import {
   BANDS, BODIES, MAX_RADIUS, MAX_REVEAL_RADIUS, REVEAL_RADIUS, EXO_REACH, EXO_CORRIDOR,
+  GALAXY_SHAPE, FEATURELESS_OUTER_RINGS,
   bandAt, STAGE, STAGE_COUNT, LOCAL_RADIUS, NEARBY_RADIUS, DISTANT_RADIUS,
 } from './regions.js'
 import { isPassable, isLand, isWater } from './terrain.js'
@@ -161,30 +162,24 @@ function generateEarth(tiles, seed, rng) {
  */
 function scatterIslands(tiles, earth, rng) {
   const open = earth.filter(
-    (t) => t.seaKind === 'channel' && neighbors(t.q, t.r).every((n) => {
-      const o = tiles.get(key(n.q, n.r))
-      return !o || !isLand(o.terrain)
-    }),
+    (t) => t.seaKind === 'channel' &&
+      t.d > LOCAL_RADIUS && // never visible from the opening view
+      neighbors(t.q, t.r).every((n) => {
+        const o = tiles.get(key(n.q, n.r))
+        return !o || !isLand(o.terrain)
+      }),
   )
   shuffle(open, rng)
   const want = 3 + Math.floor(rng() * 3)
   const placed = []
   for (const t of open) {
     if (placed.length >= want) break
+    // Spacing 3 also guarantees no two islands end up adjacent — they read as
+    // separate specks in open water, never as a clump.
     if (placed.some((p) => lengthOf(p.q - t.q, p.r - t.r) < 3)) continue
     t.region = 'island'
     t.terrain = 'island'
     placed.push(t)
-    if (rng() < 0.4) {
-      for (const n of shuffle(neighbors(t.q, t.r), rng)) {
-        const o = tiles.get(key(n.q, n.r))
-        if (o && o.seaKind === 'channel' && o.region === 'sea') {
-          o.region = 'island'
-          o.terrain = 'island'
-          break
-        }
-      }
-    }
   }
 }
 
@@ -273,12 +268,24 @@ function generateSpace(tiles, rng) {
   const minAsteroid = BODIES.moon.dist + BODIES.moon.radius + 1
   const open = []
   for (const t of tiles.values()) {
-    if (t.band === 'space' && t.region === 'space' && t.d >= minAsteroid) open.push(t)
+    if (t.band !== 'space' || t.region !== 'space' || t.d < minAsteroid) continue
+    if (!clearOfBodies(tiles, t)) continue // never hugging the Moon or Mars
+    open.push(t)
   }
   shuffle(open, rng)
   scatterInto(open, [...Array(14).fill('asteroid')], 3, (t) => { t.region = 'asteroid' })
 
   return marsCenter
+}
+
+const BODY_REGIONS = new Set(['moon', 'mars', 'exoplanet', 'exomoon'])
+
+/** True when no neighbour of this tile belongs to a celestial body. */
+function clearOfBodies(tiles, t) {
+  return neighbors(t.q, t.r).every((n) => {
+    const o = tiles.get(key(n.q, n.r))
+    return !o || !BODY_REGIONS.has(o.region)
+  })
 }
 
 const pickOnRing = (rng, dist) => {
@@ -460,9 +467,11 @@ function generateOuterSpecials(tiles, rng, inCorridor) {
   for (const t of tiles.values()) {
     if (t.band === 'galactic') { t.region = 'galactic'; t.terrain = 'deep_space' }
     if (t.band !== 'deep' && t.band !== 'galactic') continue
-    if (t.d > MAX_REVEAL_RADIUS) continue
+    // Leave the outermost revealable ring featureless so the map edge reads clean.
+    if (t.d > MAX_REVEAL_RADIUS - FEATURELESS_OUTER_RINGS) continue
     if (t.region === 'exoplanet') continue
     if (inCorridor(t)) continue
+    if (!clearOfBodies(tiles, t)) continue
     open.push(t)
   }
   shuffle(open, rng)
@@ -589,7 +598,7 @@ function placeEncampments(tiles, rng, marsCenter) {
  *  - the two exoplanet stages are a CORRIDOR: a cone reaching out through deep
  *    space towards the exoplanet, leaving the rest of the far map dark
  */
-function assignReveal(tiles, inCorridorAt) {
+function assignReveal(tiles, inCorridorAt, galaxyReach) {
   const at = (q, r) => tiles.get(key(q, r))
   const touches = (t, pred) => neighbors(t.q, t.r).some((n) => {
     const o = at(n.q, n.r)
@@ -621,23 +630,29 @@ function assignReveal(tiles, inCorridorAt) {
       continue
     }
 
-    // The exoplanet's moon arrives with the full planet reveal.
-    if (t.region === 'exomoon') { t.revealStage = STAGE.full_exo; continue }
+    // Whatever the concentric ladder already covers is settled first.
+    const near = concentric.find((st) => t.d <= REVEAL_RADIUS[st])
+    if (near !== undefined) { t.revealStage = near; continue }
 
-    // The exoplanet corridor beats the concentric radii where they overlap.
-    if (t.region === 'exoplanet' || inCorridorAt(t, EXO_CORRIDOR.approach, EXO_REACH[STAGE.exo_coast])) {
-      t.revealStage = t.region === 'exoplanet' && t.d > EXO_REACH[STAGE.exo_coast]
-        ? STAGE.full_exo
-        : Math.min(STAGE.exo_coast, concentric.find((s) => t.d <= REVEAL_RADIUS[s]) ?? STAGE.exo_coast)
+    // Then the exoplanet, its moon, and the corridor out to them.
+    if (t.region === 'exomoon') { t.revealStage = STAGE.full_exo; continue }
+    if (t.region === 'exoplanet') {
+      t.revealStage = t.d <= EXO_REACH[STAGE.exo_coast] ? STAGE.exo_coast : STAGE.full_exo
+      continue
+    }
+    if (inCorridorAt(t, EXO_CORRIDOR.approach, EXO_REACH[STAGE.exo_coast])) {
+      t.revealStage = STAGE.exo_coast
       continue
     }
     if (inCorridorAt(t, EXO_CORRIDOR.arrival, EXO_REACH[STAGE.full_exo])) {
-      t.revealStage = Math.min(STAGE.full_exo, concentric.find((s) => t.d <= REVEAL_RADIUS[s]) ?? STAGE.full_exo)
+      t.revealStage = STAGE.full_exo
       continue
     }
 
-    const s = concentric.find((st) => t.d <= REVEAL_RADIUS[st])
-    t.revealStage = s === undefined ? Infinity : s
+    if (t.d > MAX_REVEAL_RADIUS) { t.revealStage = Infinity; continue }
+    // Outer Galaxy I is a smooth TEARDROP that swallows the corridor rather than
+    // a disc it would poke out of; Full Map then rounds the world back out.
+    t.revealStage = t.d <= galaxyReach(t) ? STAGE.galaxy1 : STAGE.full_map
   }
 }
 
@@ -699,10 +714,22 @@ export function buildWorld(seed) {
   const inWidestCorridor = (t) =>
     inCorridorAt(t, EXO_CORRIDOR.arrival, EXO_REACH[STAGE.full_exo])
 
+  // Smooth teardrop for "Outer Galaxy I": eases from `base` on the far side up
+  // to `max` towards the exoplanet. The floor at the corridor's half-angle is a
+  // safety net so a tuning change can never re-expose the spike.
+  const smoothstep = (x) => x * x * (3 - 2 * x)
+  const galaxyReach = (t) => {
+    let da = Math.abs(Math.atan2(t.y, t.x) - exoAngle)
+    if (da > Math.PI) da = 2 * Math.PI - da
+    const w = smoothstep(Math.max(0, 1 - da / GALAXY_SHAPE.spread))
+    const r = GALAXY_SHAPE.base + (GALAXY_SHAPE.max - GALAXY_SHAPE.base) * w
+    return da <= EXO_CORRIDOR.arrival ? Math.max(r, EXO_REACH[STAGE.full_exo]) : r
+  }
+
   generateOuterSpecials(tiles, rng, inWidestCorridor)
   repairStart(tiles, rng)
   const encampments = placeEncampments(tiles, rng, marsCenter)
-  assignReveal(tiles, inCorridorAt)
+  assignReveal(tiles, inCorridorAt, galaxyReach)
 
   const list = [...tiles.values()]
   sealReveal(tiles, list)

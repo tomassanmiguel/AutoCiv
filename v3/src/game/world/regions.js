@@ -9,10 +9,10 @@
 // map feels too small or too sprawling.
 
 export const BANDS = {
-  earth: { min: 0, max: 11 },       //  397 tiles — two continents + a wide ocean + islands
-  space: { min: 12, max: 22 },      //  Moon (r1) and Mars (r2) discs live here
-  deep: { min: 23, max: 41 },       //  the deep-space "ocean"; exoplanet (r6) + its moon
-  galactic: { min: 42, max: 44 },   //  outer deep space
+  earth: { min: 0, max: 10 },       //  331 tiles — two continents + a wide ocean + islands
+  space: { min: 11, max: 21 },      //  Moon (r1) and Mars (r2) discs live here
+  deep: { min: 22, max: 38 },       //  the deep-space "ocean"; exoplanet (r5) + its moon
+  galactic: { min: 39, max: 41 },   //  outer deep space
 }
 
 // The world is generated 2 rings PAST the last revealable ring, so the derived
@@ -31,10 +31,10 @@ export const MAX_RADIUS = MAX_REVEAL_RADIUS + BATTLEFIELD_DEPTH
 //   - the exoplanet's moon is always on its BACKSIDE — further out along the
 //     same bearing, so you meet the planet before its moon
 export const BODIES = {
-  moon: { radius: 1, dist: 14 },      // spans 13..15 — ring 12 is the lone gap from Earth
-  mars: { radius: 2, dist: 19 },      // spans 17..21 — ring 22 is open space before deep
-  exoplanet: { radius: 6, dist: 31 }, // spans 25..37
-  exomoon: { radius: 1, dist: 40 },   // spans 39..41, past the planet's far edge
+  moon: { radius: 1, dist: 13 },      // spans 12..14 — ring 11 is the lone gap from Earth
+  mars: { radius: 2, dist: 18 },      // spans 16..20 — ring 21 is open space before deep
+  exoplanet: { radius: 5, dist: 29 }, // spans 24..34
+  exomoon: { radius: 1, dist: 37 },   // spans 36..38 — ring 35 is its lone buffer
 }
 
 // The exoplanet is reached along a CORRIDOR rather than by revealing the whole
@@ -94,12 +94,10 @@ export const STAGE = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
  * handled by the generator.
  */
 export const REVEAL_RADIUS = {
-  [STAGE.space]: 12,   // the lone ring of open space around Earth
-  [STAGE.moon]: 15,    // reaches the Moon (13..15)
-  [STAGE.mars]: 22,    // reaches Mars (17..21) plus the open ring beyond it
-  [STAGE.deep]: 24,    // first rings of the deep-space ocean, short of the exoplanet
-  [STAGE.galaxy1]: 36, // everything the exo corridor left dark, out to mid-deep
-  [STAGE.full_map]: MAX_REVEAL_RADIUS,
+  [STAGE.space]: 11, // the lone ring of open space around Earth
+  [STAGE.moon]: 15,  // the Moon (12..14) plus the ring of space beyond it
+  [STAGE.mars]: 21,  // Mars (16..20) plus the open ring beyond it
+  [STAGE.deep]: 23,  // first rings of the deep-space ocean, short of the exoplanet
 }
 
 /** How far out each exoplanet stage pushes its corridor. */
@@ -107,6 +105,21 @@ export const EXO_REACH = {
   [STAGE.exo_coast]: BODIES.exoplanet.dist,
   [STAGE.full_exo]: BODIES.exomoon.dist + BODIES.exomoon.radius,
 }
+
+/**
+ * "Outer Galaxy I" does NOT reveal a disc — that would leave the exo corridor
+ * poking out of it as a jagged spike. Instead it reveals a smooth TEARDROP whose
+ * radius eases from `base` (away from the exoplanet) up to `max` (towards it),
+ * enveloping the corridor. The map is deliberately lopsided at that stage, and
+ * "Full Map" rounds it back out.
+ *
+ * `max` must stay large enough to swallow the corridor at its half-angle, or the
+ * spike reappears.
+ */
+export const GALAXY_SHAPE = { base: 30, max: 40, spread: 2.2 }
+
+/** Features never appear on the outermost revealable ring, so the map edge reads clean. */
+export const FEATURELESS_OUTER_RINGS = 1
 
 // Earth's opening stages walk outward from the palace before the whole Old
 // World is charted.

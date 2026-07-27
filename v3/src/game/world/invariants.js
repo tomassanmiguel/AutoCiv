@@ -13,13 +13,21 @@
 //                 no encampments).
 
 import { key, disc, neighbors, bfs } from '../hex/coords.js'
-import { BANDS, STAGES, STAGE_COUNT, MAX_RADIUS, LOCAL_RADIUS } from './regions.js'
+import {
+  BANDS, STAGES, STAGE_COUNT, MAX_RADIUS, MAX_REVEAL_RADIUS,
+  LOCAL_RADIUS, FEATURELESS_OUTER_RINGS,
+} from './regions.js'
 import { isPassable, isLand, isWater, terrainOf } from './terrain.js'
+
+// Celestial bodies asteroids must not touch, and the terrains that count as a
+// "feature" for the clean-edge rule.
+const BODY_REGIONS = new Set(['moon', 'mars', 'exoplanet', 'exomoon'])
+const FEATURE_TERRAIN = new Set(['planet', 'star', 'singularity', 'asteroid'])
 
 const START_RADIUS = 5
 // The main ocean is wide, so the New World is the smaller share by design.
-const MIN_OLD_WORLD = 80
-const MIN_NEW_WORLD = 35
+const MIN_OLD_WORLD = 65
+const MIN_NEW_WORLD = 28
 const MIN_ISLANDS = 2
 const MAX_TUNDRA_FRACTION = 0.22
 // Earth is only ~400 tiles, so its region-shaped stages are naturally small;
@@ -34,7 +42,7 @@ const MARS_OUTER_GAP = 1 // at least one layer of space beyond Mars before deep 
 
 // Earth must sustain all four economies, not merely have one tile of each near
 // the palace — progress especially, since it drives the tech tree.
-const MIN_EARTH_YIELD = { food: 70, production: 45, gold: 160, progress: 45 }
+const MIN_EARTH_YIELD = { food: 55, production: 35, gold: 130, progress: 35 }
 
 // Mountains are gameplay obstacles, so they must exist but stay sparse.
 const MOUNTAIN_FRACTION = { min: 0.015, max: 0.15 }
@@ -105,11 +113,23 @@ export function validate(world) {
   if (!exomoon) v.push('no exomoon')
   else if (exo && exomoon.min <= exo.max) v.push('exomoon is not beyond the exoplanet')
 
-  // No asteroid may appear before the Moon does.
+  // No asteroid may appear before the Moon does, or hug a celestial body.
   if (moon) {
     const early = world.list.filter((t) => t.region === 'asteroid' && t.d <= moon.max).length
     if (early) v.push(`${early} asteroid(s) sit at or inside the Moon's ring`)
   }
+  const hugging = world.list.filter(
+    (t) => t.region === 'asteroid' &&
+      neighbors(t.q, t.r).some((n) => BODY_REGIONS.has(at(n.q, n.r)?.region)),
+  ).length
+  if (hugging) v.push(`${hugging} asteroid(s) adjacent to the Moon/Mars/exoplanet`)
+
+  // The outermost revealable ring stays featureless so the map edge reads clean.
+  const edgeFeatures = world.list.filter(
+    (t) => t.d > MAX_REVEAL_RADIUS - FEATURELESS_OUTER_RINGS && t.d <= MAX_REVEAL_RADIUS &&
+      FEATURE_TERRAIN.has(t.terrain),
+  ).length
+  if (edgeFeatures) v.push(`${edgeFeatures} feature(s) on the map's final ring`)
 
   // The palace must not be walled in: most of the Old World has to be reachable
   // on foot. Only mountains block (rivers will be bridgeable).
@@ -205,11 +225,18 @@ export function validate(world) {
   if (localDry > MAX_LOCAL_DRY) v.push(`${localDry} desert/tundra tiles in the local view (max ${MAX_LOCAL_DRY})`)
   if (!localTiles.some((t) => t.terrain === 'mountain')) v.push('no mountain in the local view')
 
-  // Islands belong in the channel between the continents, not the rim sea.
+  // Islands belong in the channel between the continents, not the rim sea —
+  // and they read as separate specks, never a clump or a local-view landmark.
   const islands = world.list.filter((t) => t.region === 'island')
   if (islands.length < MIN_ISLANDS) v.push(`too few islands (${islands.length})`)
   const strayIslands = islands.filter((t) => t.seaKind === 'rim').length
   if (strayIslands) v.push(`${strayIslands} island(s) outside the ocean channel`)
+  const clumped = islands.filter(
+    (t) => neighbors(t.q, t.r).some((n) => at(n.q, n.r)?.region === 'island'),
+  ).length
+  if (clumped) v.push(`${clumped} island(s) adjacent to another island`)
+  const localIslands = islands.filter((t) => t.d <= LOCAL_RADIUS).length
+  if (localIslands) v.push(`${localIslands} island(s) visible in the local view`)
 
   // Mountains: present, but sparse enough to leave the map open.
   const earthLand = earth.filter((t) => isLand(t.terrain)).length

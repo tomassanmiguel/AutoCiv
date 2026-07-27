@@ -104,22 +104,25 @@ Concentric bands by distance from the palace at `(0,0)`, all radii in one place:
 
 | Band | Rings | Contents |
 |---|---|---|
-| `earth` | 0–11 | Old World (holds the palace), a wide ocean, New World, islands, rivers |
-| `space` | 12–22 | Moon (r1, @14) + Mars (r2, @19) + asteroids |
-| `deep` | 23–41 | the deep-space "ocean"; the exoplanet (r6, @31) and its moon (r1, @40) |
-| `galactic` | 42–44 | outer deep space |
+| `earth` | 0–10 | Old World (holds the palace), a wide ocean, New World, islands, rivers |
+| `space` | 11–21 | Moon (r1, @13) + Mars (r2, @18) + asteroids |
+| `deep` | 22–38 | the deep-space "ocean"; the exoplanet (r5, @29) and its moon (r1, @37) |
+| `galactic` | 39–41 | outer deep space |
 
 Planets / stars / singularities / asteroids are scattered across the **whole** deep +
 galactic region, not ringed at its edge, so the far map doesn't read as empties with treasure
 round the rim.
 
-**Body spacing is invariant-enforced**, not incidental: the Moon hangs exactly ONE ring of
-open space beyond Earth's rim; Mars keeps open space on *both* sides (it must not touch deep
-space); no asteroid may sit at or inside the Moon's ring, so the first two space stages are
-clean sky; and the exoplanet's moon is always on its **backside** — same bearing, further out
-— so you meet the planet before its moon.
+**Spacing rules, all invariant-enforced** rather than incidental:
+- the Moon hangs exactly ONE ring of open space beyond Earth's rim, and its stage reveals one
+  further ring so you see space *past* it
+- Mars keeps open space on **both** sides — it must never touch deep space
+- the exoplanet's moon is always on its **backside** (same bearing, further out, one ring of
+  buffer), so you meet the planet before its moon
+- no asteroid sits at or inside the Moon's ring, nor **adjacent to any celestial body**
+- the outermost revealable ring is **featureless**, so the map edge reads clean
 
-≈**6,500 tiles** total; **5,941** are revealable and the outer 2 rings exist purely as
+≈**5,700 tiles** total; **5,167** are revealable and the outer 2 rings exist purely as
 battlefield headroom. A band must be ≥ `2·radius+1` rings wide to contain its body.
 
 **The battlefield ring is derived, not generated.** `GameManager._battlefieldRing` dilates the
@@ -142,7 +145,8 @@ state. A run persists only its seed.
   polar axis is the world's vertical (north/south read as up/down on the map). Tundra also
   needs a **cluster field** to pass, so it forms polar patches rather than a solid cap.
 - **Islands live in the CHANNEL**, not the rim sea — tiles carry `seaKind: 'channel' | 'rim'`
-  so the crossing between continents has stepping stones.
+  so the crossing between continents has stepping stones. They are single tiles, never
+  adjacent to each other (a spacing of 3 guarantees it), and never inside the Local radius.
 - **Mountains use RIDGED noise** (`1 - |2n-1|` on its own higher-frequency field, cut high).
   A plain elevation threshold produced dense blobs; ridged noise peaks along the field's
   mid-contour, so ranges come out as sparse lines and the occasional small cluster. An
@@ -188,7 +192,7 @@ The hole check floods per stage but is **radius-bounded** — a hole can only si
 known frontier, so there is no point sweeping 5,400 tiles when the frontier is at ring 11.
 Unbounded it cost ~25ms per world; bounded it is ~4ms.
 
-`node sims/worldgen.mjs 200` is the source of truth: currently **200/200 clean, ~61ms per
+`node sims/worldgen.mjs 200` is the source of truth: currently **200/200 clean, ~59ms per
 world**, and it prints the reveal ladder, Earth yield spread, and an ASCII map.
 
 ### Known world (`GameManager`, `regions.js` `STAGES`)
@@ -207,6 +211,13 @@ Reveal has **three shapes**:
 - **The two exoplanet stages** — a **corridor** (`EXO_CORRIDOR`): a cone reaching out through
   deep space towards the exoplanet, leaving the rest of the far map dark. That is what keeps
   the scattered planets/stars a surprise until "Outer Galaxy I" fills the region in.
+- **"Outer Galaxy I"** — a smooth **teardrop** (`GALAXY_SHAPE`), not a disc. A disc would
+  leave the corridor poking out of it as a spike; the teardrop's radius eases from `base`
+  away from the exoplanet up to `max` towards it, swallowing the corridor whole. The world is
+  deliberately lopsided at that notch and **"Full Map" rounds it back to a circle**. Measured
+  by max step in reveal radius across 24 angular sectors: corridor **15** → teardrop **2** →
+  full map **0**. `galaxyReach` also floors itself at the corridor reach inside the corridor
+  angle, so a tuning change can never re-expose the spike.
 
 **The known world must never contain an unrevealed hole.** Region- and corridor-shaped stages
 can enclose a pocket, so `sealReveal` floods the unknown region inward from the map rim after
