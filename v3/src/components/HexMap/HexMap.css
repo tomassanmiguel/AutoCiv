@@ -271,3 +271,13 @@
 }
 .gear-name { color: #e2e7f2; }
 .gear-bonus { color: #9fd88a; margin-left: auto; white-space: nowrap; }
+
+/* Ground you own that already holds one of what you are placing. A dashed grey
+   outline, deliberately quiet — it says "taken", not "forbidden". Without it a
+   full tile looked exactly like sea, mountain, or land you do not own. */
+.hex-overlay polygon.blocked {
+  fill: rgba(10, 12, 20, 0.4);
+  stroke: rgba(180, 190, 210, 0.55);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}

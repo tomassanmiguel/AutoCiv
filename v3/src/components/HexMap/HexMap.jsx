@@ -58,6 +58,11 @@ export default function HexMap() {
     const t = game.expansionTargets
     return new Set((expMode === 'city' ? t.city : t.improve).map((x) => `${x.q},${x.r}`))
   })()
+  // Ground you own that is full — marked so "one per tile" is a visible rule
+  // rather than a tile that mysteriously fails to light up.
+  const blockedSet = placing
+    ? new Set(game.placementBlocked.map((x) => `${x.q},${x.r}`))
+    : null
   const aimAt = (t) => {
     if (placing) game.placeGrant(t)
     else if (expMode) game.expandOnto(t, expMode)
@@ -407,6 +412,7 @@ export default function HexMap() {
               const k = `${t.q},${t.r}`
               const cls = [
                 expSet?.has(k) && 'target',
+                blockedSet?.has(k) && 'blocked',
                 reach?.move.has(k) && 'can-move',
                 reach?.attack.has(k) && 'can-hit',
                 reach?.threat.has(k) && 'threat',

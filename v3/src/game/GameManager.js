@@ -27,7 +27,7 @@ import {
   initTerritory, expansionTargets, improveTile, foundCity,
   territoryYield, territoryStats, growCities, setTerritoryStage,
   layRoads, canPlaceBuilding, canPlaceUnit, placeBuilding, placeUnit,
-  repairUnit, restoreTile, repairTargets,
+  repairUnit, restoreTile, repairTargets, visible,
 } from './world/territory.js'
 import {
   unitRepairCost, tileRepairCost, unitUpgradeCost, buildingUpgradeCost, rerollCost,
@@ -567,6 +567,25 @@ export class GameManager {
   }
 
   get placementTargets() { return this._placementTargets(this.selection?.item) }
+
+  /**
+   * Tiles that would be legal for the queued grant but already hold one of its
+   * kind — ONE building and ONE unit per tile, always.
+   *
+   * Surfaced separately from the legal targets because "not glowing" is not an
+   * explanation: a full tile looked identical to sea, mountain, and ground you
+   * do not own. These get their own marker so the rule is visible.
+   */
+  get placementBlocked() {
+    const item = this.selection?.type === 'placement' ? this.selection.item : null
+    if (!item) return []
+    const out = []
+    for (const t of this.world.terr.controlled) {
+      if (!visible(this.world, t) || !isPassable(t.terrain)) continue
+      if (item.kind === 'building' ? t.building : t.unit) out.push(t)
+    }
+    return out
+  }
 
   /** What a queued grant actually puts down — class grants resolve here. */
   grantDef(item) {

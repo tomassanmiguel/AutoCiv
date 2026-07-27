@@ -1,6 +1,6 @@
 import { useGame } from '../../game/react/GameProvider.jsx'
-import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
-import { BUILDING_DEFS, buildingEffectText } from '../../game/data/buildings.js'
+import { unitStats } from '../../game/data/units.js'
+import { buildingEffectText } from '../../game/data/buildings.js'
 import IconText from '../common/IconText.jsx'
 import './PlacementPrompt.css'
 
@@ -16,12 +16,15 @@ export default function PlacementPrompt() {
   const sel = game.selection
   if (sel?.type !== 'placement') return null
 
-  const { kind, key } = sel.item
-  const def = kind === 'building' ? BUILDING_DEFS[key] : UNIT_DEFS[key]
+  const { kind } = sel.item
+  // Resolve through the manager: a CLASS grant carries no key, only a type, and
+  // which unit it becomes is decided here at placement time.
+  const def = game.grantDef(sel.item)
   if (!def) return null
 
   const stats = kind === 'unit' ? unitStats(def, game.era, game.mods) : null
   const queued = game.grants.length - 1
+  const blocked = game.placementBlocked.length
 
   return (
     <div className="place-prompt">
@@ -50,6 +53,9 @@ export default function PlacementPrompt() {
 
         <div className="place-hint">
           Click a highlighted tile · {game.placementTargets.length} available
+          {blocked > 0 && (
+            <> · <b>{blocked}</b> already hold {kind === 'building' ? 'a building' : 'a unit'} (one per tile)</>
+          )}
         </div>
       </div>
       <button className="place-skip" onClick={() => game.skipSelection()}>Discard</button>
