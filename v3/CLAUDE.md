@@ -2,8 +2,9 @@
 
 > **Status: EARLY.** The **map** (hex grid, world generation, pan/zoom viewer) and a
 > **progress-web UI prototype** exist, wrapped in the ported screen shell. There is **no
-> economy, combat, roster, or tick loop yet**, and the progress web is a UI sample over v2
-> content rather than v3's real tech tree.
+> economy, combat or roster yet** — the only tick is temporary scaffolding that fills the
+> readout's threshold bars, and the progress web is a UI sample over v2 content rather than
+> v3's real tech tree.
 >
 > This file is the source of truth for v3. The root `../CLAUDE.md` describes **v2** (square
 > grid, legitimacy, specialists, policies) — most of it does **not** apply here. Keep this
@@ -44,6 +45,7 @@ npm run dev                  # Vite dev server (5174 via .claude/launch.json)
 npm run build
 npm run lint
 node sims/worldgen.mjs 200   # headless worldgen regression + map dump
+node sims/progress.mjs       # progress-web structure check (no crossed edges, forks, reach)
 ```
 
 The v3 preview config is `autociv-v3-dev` in the repo-root `.claude/launch.json` (port
@@ -62,6 +64,7 @@ v3/
 │   ├── music/title.ogg         # title track only — in-game music is cut for now
 │   └── logo/
 ├── sims/worldgen.mjs           # headless generation sweep + invariant report + ASCII map
+├── sims/progress.mjs           # progress-web structure assertions + greedy playthrough
 └── src/
     ├── App.jsx                 # screen router: loading → title → pregame → game
     ├── screens/                # LoadingScreen · TitleScreen · PreGameScreen (civ select)
@@ -76,6 +79,7 @@ v3/
     │   │   └── invariants.js   # validate(world) -> violations[]
     │   ├── data/civilizations.js  # placeholder civ + difficulty for the pre-game screen
     │   ├── data/progress.js    # SAMPLE progress web (v2 content, invented shape)
+    │   ├── data/resources.js   # threshold model (food/production/progress) + accrual
     │   ├── audio/              # AudioManager (ported) + tracks.js
     │   └── react/GameProvider.jsx # <GameProvider> + useGame()
     └── components/
@@ -266,37 +270,71 @@ tech; for now the menu slider drives it directly.
 - The hover card is anchored **bottom-left of the map**, never to the cursor, so it can't
   cover the tile being inspected.
 
-### Output readout (`components/Hud/OutputReadout`)
-A compact corner box (top-right of the map) with the four output types. The map is the whole
-window now — v2's full-height civilization panel is gone. Until the economy exists, the number
-shown is the **total base yield of every revealed tile**, i.e. the map's potential rather than
-a live per-tick rate.
+### Output readout (`components/Hud/OutputReadout`, `game/data/resources.js`)
+A compact corner box (top-right of the map) with the four outputs. The map is the whole window
+now — v2's full-height civilization panel is gone.
+
+Food / production / progress are **threshold resources** (v2's model, ported): they accumulate
+toward the current level's threshold, and on crossing it the level increments, the overflow
+carries, and the threshold grows by `X · level` — so each level costs strictly more than the
+last. The readout shows level + a bar toward the next + the per-tick rate. **Gold has no
+threshold**, so it just shows its stock.
+
+v2's formula also carried a `1.25^era` term and a rubber band pacing the player against the
+era clock; v3 has no eras yet, so both are **dropped rather than faked**.
+
+> ⚠️ **The 1/s tick in `GameManager` is temporary scaffolding.** It exists so the threshold
+> bars actually move — output is still just the revealed map's total yield, and **nothing is
+> wired to crossing a level**. Rip it out when the real era/phase loop lands.
 
 ### Progress web (`game/data/progress.js`, `components/Progress/ProgressTree`)
 A radial tree that **grows outward**, opened from the HUD's Progress button.
 
-- **Four quadrants** — Society / Technology / Economy / Military — each own a 90° sector;
-  nodes are spread evenly within their quadrant+ring, so the layout is pure polar maths
-  (`LAID_OUT` is computed once at module load).
-- **Rings unlock by count**: take `RING_UNLOCK` (6) nodes from a ring and the next appears. A
-  ring that has not opened is **not rendered at all**, and the content extent + scale ease to
-  match, so the web visibly expands.
-- **States**: green = taken, blue = available (pulsing), grey = locked. Each node is a
-  `clip-path` hexagon holding its category silhouette; hover gives an `InfoTip` with what it
-  unlocks and its effect (routed through `IconText`, so `:token:`s render as icons).
-- **`prereqs` is ANY-of**, which is what lets a forked branch **re-unify** later.
-  **`excludes` is mutual**: taking one side of a fork locks the other out permanently, and
-  with it anything downstream that had no other route in. Both behaviours are live in the
-  sample data — Philosophy/Organized Religion stay split to the end (the loser's descendant
-  locks too), while University/Machinery and Alloying/The Wheel re-converge at Printing Press
-  and Professional Soldiers.
-- Edges light up green once their prerequisite is taken, and go dashed when the route is dead.
+**72 nodes, 4 rings (12 / 16 / 20 / 24), four quadrants** — Society / Technology / Economy /
+Military — each owning a 90° sector.
 
-**The data is a sample, not the design.** All 52 node names, what they unlock, and their
-effect text are taken **verbatim from v2's content registries**; the *shape* (quadrant, ring,
-prereqs, forks) is invented to exercise the UI. A few effects still mention `:legitimacy:`,
-which v3 dropped — left as-is so the file stays a faithful v2 sample. **Clicking simply takes
-a node** — there is no cost, no progress spend, and no gating on the economy yet.
+**The shape is generated from one parent template**, not hand-placed. Every quadrant is the
+same 3 → 4 → 5 → 6 tree:
+
+```
+ring 1 parents: [0] [0] [1] [2]           → parent 0 FORKS
+ring 2 parents: [0] [1] [2] [2] [3]       → parent 2 FORKS
+ring 3 parents: [0,1] [2] [2] [3] [4] [4] → DIAMOND, then two FORKS
+```
+
+Two properties fall out of that, and **`validateStructure()` asserts both** (run
+`node sims/progress.mjs`):
+
+1. **No crossed edges.** Each ring is laid out in index order and every ring's parent-index
+   sequence is non-decreasing; two straight edges between concentric arcs cannot cross when
+   both endpoint orders agree. So the drawing is planar **by construction, not by eye** — and
+   the check is a real segment-intersection test over all 64 edges, not a proxy.
+2. **Forks are always siblings.** A parent has either exactly one child, or a set of children
+   that are mutually exclusive. Nothing else is ever exclusive, so `excludes` is **derived**
+   from the parent template rather than hand-listed (no fork list to drift).
+
+**`prereqs` is ANY-of**, which is what lets a split **re-unify**: the ring-3 diamond lists both
+descendants of the ring-1 fork as parents, so either branch reaches it (Theocracy, Printing
+Press, Canning, Military Tradition). **`excludes` is mutual**, so taking one side kills the
+other permanently, and with it anything downstream with no other route in. A greedy
+playthrough takes **48 of 72** — a third of the web is closed off by the choices made.
+
+- **Rings unlock by count**: take `RING_UNLOCK` (6) from a ring and the next appears. An
+  unopened ring is **not rendered at all**, and the camera animates out to the new fit, so the
+  web visibly expands.
+- **Camera is the HexMap pattern** — ref-based, applied imperatively, so pan/zoom never
+  re-render the 72 nodes. Wheel zooms at the cursor; left **or middle** drag pans; a drag that
+  moved suppresses the click so panning never takes a node by accident. "Recentre" re-fits.
+- **States**: green = taken, blue = available (pulsing), grey = locked. Each node is a
+  `clip-path` hexagon with its category silhouette; hover gives an `InfoTip` with what it
+  unlocks and its effect (through `IconText`, so `:token:`s render as icons). Edges light
+  green once their prerequisite is taken and go dashed when the route is dead.
+
+**The data is a sample, not the design.** All 72 names, what they unlock, and their effect
+text are **verbatim from v2's registries**; the *shape* is invented to exercise the UI. A few
+effects still mention `:legitimacy:`, which v3 dropped — left as-is so the file stays a
+faithful v2 sample. **Clicking simply takes a node**: no cost, no progress spend, no economy
+gating.
 
 ---
 

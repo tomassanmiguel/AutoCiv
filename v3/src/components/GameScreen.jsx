@@ -13,13 +13,17 @@ import './GameScreen.css'
  * HUD strip along the bottom and a compact output readout in the corner. The
  * progress web opens as a full overlay.
  *
- * No tick loop, combat, or roster yet — v3 is being rebuilt from the map outward.
+ * No combat or roster yet — v3 is being rebuilt from the map outward. The tick
+ * that drives the threshold bars is temporary scaffolding (see GameManager).
  */
 export default function GameScreen({ seed, civ, difficulty, onExit }) {
   const manager = useMemo(() => new GameManager(seed, { civ, difficulty }), [seed, civ, difficulty])
   const [treeOpen, setTreeOpen] = useState(false)
 
-  useEffect(() => () => manager.stop(), [manager])
+  useEffect(() => {
+    manager.start()
+    return () => manager.stop()
+  }, [manager])
 
   return (
     <GameProvider manager={manager}>

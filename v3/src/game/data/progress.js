@@ -1,24 +1,40 @@
 // Sample progress web (v3 prototype).
 //
-// Every node here is a REAL advancement from the v2 content registries — names,
-// what they unlock, and their effect text are taken verbatim from v2's
-// units / buildings / policies / pops / wonders defs. What is invented is the
-// SHAPE: which quadrant a tech belongs to, its ring, its prerequisites and its
-// exclusions. This exists to exercise the radial-tree UI, not to be v3's real
-// tech tree.
+// Every node is a REAL advancement from the v2 content registries — name, what
+// it unlocks, and its effect text are taken verbatim from v2's units /
+// buildings / policies / pops / wonders defs. What is invented is the SHAPE.
+// This exists to exercise the radial-tree UI, not to be v3's real tech tree.
 //
 // NOTE: a few effects still reference :legitimacy:, which v3 has dropped. Left
-// as-is so this file stays a faithful sample of v2 content; it all gets
-// re-authored when v3's real tree is designed.
+// as-is so this file stays a faithful sample of v2 content.
 //
-// Structure:
-//   - four QUADRANTS (Society / Technology / Economy / Military), 90° each
-//   - RINGS growing outward; a ring becomes visible once RING_UNLOCK nodes from
-//     the previous ring have been chosen
-//   - `prereqs` is ANY-of (one satisfied prereq is enough), which is what lets a
-//     forked branch RE-UNIFY at a later node
-//   - `excludes` is mutual: choosing one side of a fork locks the other out
-//     forever, and anything downstream of it with no other route in
+// ---------------------------------------------------------------------------
+// STRUCTURE — the rules that make the drawing legible
+// ---------------------------------------------------------------------------
+// Each quadrant is an identical 3 → 4 → 5 → 6 tree, so all four rings hold
+// 12 / 16 / 20 / 24 nodes. Every quadrant uses this same parent template:
+//
+//   ring 1 parents: [0] [0] [1] [2]        → parent 0 FORKS
+//   ring 2 parents: [0] [1] [2] [2] [3]    → parent 2 FORKS
+//   ring 3 parents: [0,1] [2] [2] [3] [4] [4]
+//                    ^ DIAMOND            ^ fork      ^ fork
+//
+// Two properties fall out of that, and both are asserted by
+// `validateStructure()` (run by sims/progress.mjs):
+//
+//  1. NO CROSSED EDGES. Within a quadrant every ring is laid out in index
+//     order, and each ring's parent-index sequence is non-decreasing. Two
+//     straight edges between concentric arcs cannot cross when both endpoint
+//     orders agree, so the drawing is planar by construction rather than by eye.
+//
+//  2. FORKS ARE ALWAYS SIBLINGS. A parent has either exactly one child, or a
+//     set of children that are mutually exclusive — choosing one kills the rest
+//     permanently. Nothing else is ever exclusive, so `excludes` is derived
+//     rather than hand-listed.
+//
+// The DIAMOND is the "A → B or C → D" case: D lists both fork descendants as
+// parents, and `prereqs` is ANY-of, so either branch reaches it. That is what
+// lets a split RE-UNIFY.
 
 /** Nodes that must be chosen from a ring before the next ring appears. */
 export const RING_UNLOCK = 6
@@ -29,12 +45,9 @@ export const QUADRANTS = {
   economy: { key: 'economy', name: 'Economy', from: 45, to: 135 },
   military: { key: 'military', name: 'Military', from: 135, to: 225 },
 }
-
 export const QUADRANT_LIST = Object.values(QUADRANTS)
 
-// Silhouettes already shipped in public/sprites/ui/.
 const ICON = {
-  unit: '/sprites/ui/unit.png',
   building: '/sprites/ui/building.png',
   policy: '/sprites/ui/policy.png',
   pop: '/sprites/ui/pop.png',
@@ -45,163 +58,174 @@ const ICON = {
   siege: '/sprites/ui/siege.png',
 }
 
-const N = (id, name, kind, quadrant, ring, unlocks, effect, prereqs = [], icon = null) => ({
-  id, name, kind, quadrant, ring, unlocks, effect, prereqs,
-  icon: icon ? ICON[icon] : ICON[kind],
-  excludes: [],
-})
-
-export const PROGRESS_NODES = [
-  // ---------------------------------------------------------------- SOCIETY
-  N('burial-rites', 'Burial Rites', 'policy', 'society', 0, 'Burial Rites',
-    'Whenever a unit dies, gain :progress: equal to its :attack:.'),
-  N('language', 'Language', 'policy', 'society', 0, 'Language',
-    'Each Citizen also produces +1 :progress: per tick.'),
-
-  N('mysticism', 'Mysticism', 'wonder', 'society', 1, 'Stonehenge',
-    'At the end of each era, gain +25 :legitimacy:.', ['burial-rites']),
-  N('monotheism', 'Monotheism', 'pop', 'society', 1, 'Priest',
-    'At the end of each era, gain +1 :legitimacy: per Priest.', ['burial-rites']),
-  N('code-of-laws', 'Code of Laws', 'policy', 'society', 1, 'Code of Laws',
-    'Unit and building repair costs are reduced by 75%.', ['language']),
-
-  N('organized-religion', 'Organized Religion', 'building', 'society', 2, 'Temple',
-    'On completion, gain +20 :legitimacy:. At the end of each era, gain :gold: equal to 3× your :legitimacy:.',
-    ['mysticism', 'monotheism']),
-  N('philosophy', 'Philosophy', 'policy', 'society', 2, 'Philosophy',
-    'Reduce :progress: threshold by 6%.', ['code-of-laws', 'language']),
-  N('writing', 'Writing', 'policy', 'society', 2, 'Writing',
-    'Reduce :progress: threshold by 5%.', ['code-of-laws']),
-
-  N('theocracy', 'Theocracy', 'policy', 'society', 3, 'Theocracy',
-    'At the end of each era, gain +25 :legitimacy:.', ['organized-religion']),
-  N('civil-rights', 'Civil Rights', 'policy', 'society', 3, 'Civil Rights',
-    'All :progress: outputs +30%, but all :food: outputs −20%.', ['philosophy']),
-  N('nationalism', 'Nationalism', 'policy', 'society', 3, 'Nationalism',
-    'Whenever a unit dies, gain :gold: equal to its :attack:.', ['writing']),
-
-  N('united-nations', 'United Nations', 'policy', 'society', 4, 'United Nations',
-    'Hiring mercenaries costs 60% less :gold:.', ['civil-rights', 'nationalism']),
-  N('propaganda', 'Propaganda', 'policy', 'society', 4, 'Propaganda',
-    'At the end of each era, gain +25 :legitimacy:.', ['theocracy', 'nationalism']),
-
-  // ------------------------------------------------------------- TECHNOLOGY
-  N('tools', 'Tools', 'pop', 'technology', 0, 'Builder',
-    'A specialist who produces +5 :production: per tick.'),
-  N('astrology', 'Astrology', 'pop', 'technology', 0, 'Astrologer',
-    'A specialist who produces +3 :progress: per tick.'),
-
-  N('alphabet', 'Alphabet', 'policy', 'technology', 1, 'Alphabet',
-    'When you build a :progress: building, upgrade it once for free.', ['astrology']),
-  N('mathematics', 'Mathematics', 'policy', 'technology', 1, 'Mathematics',
-    'On unlock, gain +2 free :production: builds.', ['tools']),
-  N('pottery', 'Pottery', 'building', 'technology', 1, 'Kiln',
-    'Produces 2 :production: per tick, plus 1 for each adjacent building.', ['tools']),
-
-  N('university', 'University', 'pop', 'technology', 2, 'Scholar',
-    'A specialist who produces +6 :progress: per tick.', ['alphabet']),
-  N('machinery', 'Machinery', 'building', 'technology', 2, 'Workshop',
-    'Produces 7 :production: per tick.', ['mathematics', 'pottery']),
-  N('optics', 'Optics', 'policy', 'technology', 2, 'Optics',
-    ':naval: units deal +50% :attack:.', ['alphabet', 'mathematics']),
-
-  N('scientific-method', 'Scientific Method', 'pop', 'technology', 3, 'Scientist',
-    'A specialist who produces a large amount of :progress: per tick.', ['university']),
-  N('physics', 'Physics', 'building', 'technology', 3, 'Windmill',
-    'Units & buildings in range gain +1 free upgrade level.', ['machinery']),
-  N('printing-press', 'Printing Press', 'policy', 'technology', 3, 'Printing Press',
-    'Reduce :progress: threshold by 7%.', ['university', 'machinery']),
-
-  N('computers', 'Computers', 'pop', 'technology', 4, 'Software Engineer',
-    'A specialist who produces a very large amount of :progress: per tick.',
-    ['scientific-method', 'physics']),
-  N('internet', 'Internet', 'policy', 'technology', 4, 'Internet',
-    'Each Citizen also produces +2 :gold: per tick.', ['printing-press']),
-
-  // ---------------------------------------------------------------- ECONOMY
-  N('agriculture', 'Agriculture', 'pop', 'economy', 0, 'Farmer',
-    'A specialist who produces +5 :food: per tick.'),
-  N('bartering', 'Bartering', 'pop', 'economy', 0, 'Trader',
-    'A specialist who produces +5 :gold: per tick.'),
-
-  N('the-plough', 'The Plough', 'building', 'economy', 1, 'Farm',
-    'Produces +5 :food: per tick for each adjacent Plains tile (including its own).',
-    ['agriculture']),
-  N('mining', 'Mining', 'policy', 'economy', 1, 'Mining',
-    'Reduce :production: threshold by 5%.', ['bartering']),
-  N('granaries', 'Granaries', 'policy', 'economy', 1, 'Granaries',
-    'Double the plains terrain economy bonus.', ['agriculture']),
-
-  N('irrigation', 'Irrigation', 'policy', 'economy', 2, 'Irrigation',
-    'Reduce :food: threshold by 6%.', ['granaries', 'the-plough']),
-  N('coinage', 'Coinage', 'building', 'economy', 2, 'Mint',
-    'Produces :gold: each tick equal to 5% of your current :legitimacy:.', ['mining', 'bartering']),
-  N('trade-networks', 'Trade Networks', 'building', 'economy', 2, 'Market',
-    'Produces 7 :gold: per tick.', ['bartering']),
-
-  N('banking', 'Banking', 'building', 'economy', 3, 'Bank',
-    'At the end of each era, gain :gold: equal to 5% of unspent :gold:.',
-    ['coinage', 'trade-networks']),
-  N('guilds', 'Guilds', 'policy', 'economy', 3, 'Guilds',
-    'Every specialist produces +2 of its highest output.', ['trade-networks']),
-  N('crop-rotation', 'Crop Rotation', 'policy', 'economy', 3, 'Crop Rotation',
-    'Reduce :food: threshold by 7%.', ['irrigation']),
-
-  N('joint-stock-company', 'Joint Stock Company', 'building', 'economy', 4, 'Stock Exchange',
-    'Produces 23 :gold: per tick.', ['banking']),
-  N('mercantilism', 'Mercantilism', 'policy', 'economy', 4, 'Mercantilism',
-    'Total :gold: output +25%.', ['guilds', 'banking']),
-
-  // --------------------------------------------------------------- MILITARY
-  N('hunting', 'Hunting', 'unit', 'military', 0, 'Hunter',
-    'Gains :food: on a kill.', [], 'ranged'),
-  N('the-sling', 'The Sling', 'unit', 'military', 0, 'Slinger',
-    'The earliest :ranged: skirmisher.', [], 'ranged'),
-
-  N('pack-bonding', 'Pack Bonding', 'unit', 'military', 1, 'Wolf',
-    'After attacking, shifts to an adjacent empty valid tile.', ['hunting'], 'melee'),
-  N('archery', 'Archery', 'unit', 'military', 1, 'Archer',
-    'A :ranged: bowman.', ['the-sling'], 'ranged'),
-  N('tribalism', 'Tribalism', 'policy', 'military', 1, 'Tribalism',
-    'Each unit gains +2 :attack: for every other friendly unit of the same type on the board.',
-    ['hunting']),
-
-  N('alloying', 'Alloying', 'unit', 'military', 2, 'Spearman',
-    '+50% :attack: versus :cavalry:-type enemies.', ['tribalism', 'pack-bonding'], 'melee'),
-  N('the-wheel', 'The Wheel', 'unit', 'military', 2, 'Chariot',
-    'A bronze :cavalry: war chariot.', ['pack-bonding'], 'cavalry'),
-  N('armor', 'Armor', 'policy', 'military', 2, 'Armor',
-    'All units gain +1 :defense:.', ['tribalism']),
-
-  N('siege', 'Siege', 'unit', 'military', 3, 'Ballista',
-    'Single-target; pushes the target back 1 tile.', ['alloying', 'archery'], 'siege'),
-  N('professional-soldiers', 'Professional Soldiers', 'pop', 'military', 3, 'Soldier',
-    'Every friendly unit gains +1 :attack: per Soldier.', ['alloying', 'the-wheel']),
-  N('military-tradition', 'Military Tradition', 'policy', 'military', 3, 'Military Tradition',
-    'Overbuilding a unit keeps its upgrade levels.', ['the-wheel', 'armor']),
-
-  N('crusades', 'Crusades', 'unit', 'military', 4, 'Knight',
-    'An armoured :melee: knight.', ['professional-soldiers', 'siege'], 'melee'),
-  N('bushido', 'Bushido', 'policy', 'military', 4, 'Bushido',
-    ':melee: units deal +50% :attack:.', ['military-tradition', 'professional-soldiers']),
+// The parent template every quadrant follows (see the header).
+const PARENTS = [
+  null,
+  [[0], [0], [1], [2]],
+  [[0], [1], [2], [2], [3]],
+  [[0, 1], [2], [2], [3], [4], [4]],
 ]
 
-// Mutually exclusive forks. Picking one side locks the other out permanently —
-// and with it anything downstream that has no other route in.
-const FORKS = [
-  ['organized-religion', 'philosophy'],   // faith or reason — stays split to the end
-  ['university', 'machinery'],            // scholarship or engineering — re-unites at Printing Press
-  ['mining', 'granaries'],                // industry or plenty
-  ['alloying', 'the-wheel'],              // spear or chariot — re-unites at Professional Soldiers
-  ['joint-stock-company', 'mercantilism'],
-  ['united-nations', 'propaganda'],
-  ['crusades', 'bushido'],
-]
+// [name, kind, iconKey, unlocks, effect] — all five fields lifted from v2.
+const TREE = {
+  society: [
+    [
+      ['Burial Rites', 'policy', 'policy', 'Burial Rites', 'Whenever a unit dies, gain :progress: equal to its :attack:.'],
+      ['Language', 'policy', 'policy', 'Language', 'Each Citizen also produces +1 :progress: per tick.'],
+      ['Code of Laws', 'policy', 'policy', 'Code of Laws', 'Unit and building repair costs are reduced by 75%.'],
+    ],
+    [
+      ['Mysticism', 'wonder', 'wonder', 'Stonehenge', 'At the end of each era, gain +25 :legitimacy:.'],
+      ['Monotheism', 'pop', 'pop', 'Priest', 'At the end of each era, gain +1 :legitimacy: per Priest.'],
+      ['Writing', 'policy', 'policy', 'Writing', 'Reduce :progress: threshold by 5%.'],
+      ['Diplomatic Marriage', 'policy', 'policy', 'Diplomatic Marriage', 'Mercenaries are hired 3 upgrade levels higher.'],
+    ],
+    [
+      ['Organized Religion', 'building', 'building', 'Temple', 'On completion, gain +20 :legitimacy:. At the end of each era, gain :gold: equal to 3× your :legitimacy:.'],
+      ['Scriptoria', 'policy', 'policy', 'Scriptoria', 'Each Citizen also produces +1 :progress: per tick.'],
+      ['Poetry', 'policy', 'policy', 'Poetry', 'At the end of each era, gain :progress: equal to the total :attack: of surviving units.'],
+      ['Philosophy', 'policy', 'policy', 'Philosophy', 'Reduce :progress: threshold by 6%.'],
+      ['Feudalism', 'policy', 'policy', 'Feudalism', 'All :food: outputs +30%, but all :progress: outputs −20%.'],
+    ],
+    [
+      ['Theocracy', 'policy', 'policy', 'Theocracy', 'At the end of each era, gain +25 :legitimacy:.'],
+      ['Civil Rights', 'policy', 'policy', 'Civil Rights', 'All :progress: outputs +30%, but all :food: outputs −20%.'],
+      ['Freedom of Religion', 'policy', 'policy', 'Freedom of Religion', 'All :progress: outputs +30%, but :legitimacy: losses are doubled.'],
+      ['Nationalism', 'policy', 'policy', 'Nationalism', 'Whenever a unit dies, gain :gold: equal to its :attack:.'],
+      ['Manorial Levy', 'policy', 'policy', 'Manorial Levy', 'Each Citizen also produces +1 :production: per tick.'],
+      ['Inquisition', 'wonder', 'wonder', 'Hagia Sophia', 'On completion, double current :legitimacy:. Each era start: :production: = 2× :legitimacy:.'],
+    ],
+  ],
+  technology: [
+    [
+      ['Tools', 'pop', 'pop', 'Builder', 'A specialist who works raw material into :production:.'],
+      ['Astrology', 'pop', 'pop', 'Astrologer', 'A specialist who reads the sky for :progress:.'],
+      ['Pottery', 'building', 'building', 'Kiln', 'Produces 2 :production: per tick, plus 1 for each adjacent building.'],
+    ],
+    [
+      ['Mathematics', 'policy', 'policy', 'Mathematics', 'On unlock, gain +2 free :production: builds.'],
+      ['Machinery', 'building', 'building', 'Workshop', 'Produces 7 :production: per tick.'],
+      ['Alphabet', 'policy', 'policy', 'Alphabet', 'When you build a :progress: building, upgrade it once for free.'],
+      ['Metallurgy', 'building', 'building', 'Forge', 'Produces 7 :production: per tick.'],
+    ],
+    [
+      ['Engineering', 'policy', 'policy', 'Engineering', 'On unlock, gain +2 free :production: builds.'],
+      ['Mass Production', 'building', 'building', 'Factory', 'Produces 16 :production: per tick.'],
+      ['University', 'pop', 'pop', 'Scholar', 'A specialist who produces a great deal of :progress:.'],
+      ['Optics', 'policy', 'policy', 'Optics', ':naval: units deal +50% :attack:.'],
+      ['Steel', 'policy', 'policy', 'Steel', 'All units deal +15% :attack:.'],
+    ],
+    [
+      ['Printing Press', 'policy', 'policy', 'Printing Press', 'Reduce :progress: threshold by 7%.'],
+      ['Scientific Method', 'pop', 'pop', 'Scientist', 'A specialist who produces a great deal of :progress:.'],
+      ['Physics', 'building', 'building', 'Windmill', 'Units & buildings in range gain +1 free upgrade level.'],
+      ['Clocks', 'policy', 'policy', 'Clocks', "Each era's development lasts 6 more ticks."],
+      ['Blueprints', 'policy', 'policy', 'Blueprints', 'Building repair costs 50% less :gold:.'],
+      ['Replaceable Parts', 'policy', 'policy', 'Mass Production', 'On unlock, gain +2 free :production: builds.'],
+    ],
+  ],
+  economy: [
+    [
+      ['Agriculture', 'pop', 'pop', 'Farmer', 'A specialist who works the land for :food:.'],
+      ['Bartering', 'pop', 'pop', 'Trader', 'A specialist who deals for :gold:.'],
+      ['Fishing', 'building', 'building', 'Pier', 'Produces 200 :food: at the end of combat.'],
+    ],
+    [
+      ['The Plough', 'building', 'building', 'Farm', 'Produces +5 :food: per tick for each adjacent Plains tile (including its own).'],
+      ['Granaries', 'policy', 'policy', 'Granaries', 'Double the plains terrain economy bonus.'],
+      ['Coinage', 'building', 'building', 'Mint', 'Produces :gold: each tick equal to 5% of your current :legitimacy:.'],
+      ['Shipbuilding', 'building', 'building', 'Harbor', 'Produces :production: per tick equal to 6 × (units in range).'],
+    ],
+    [
+      ['Irrigation', 'policy', 'policy', 'Irrigation', 'Reduce :food: threshold by 6%.'],
+      ['Crop Rotation', 'policy', 'policy', 'Crop Rotation', 'Reduce :food: threshold by 7%.'],
+      ['Banking', 'building', 'building', 'Bank', 'At the end of each era, gain :gold: equal to 5% of unspent :gold:.'],
+      ['Trade Networks', 'building', 'building', 'Market', 'Produces 7 :gold: per tick.'],
+      ['Compass', 'building', 'building', 'Caravansary', 'Produces :gold: per tick equal to 10 + 5 × (other Caravansaries).'],
+    ],
+    [
+      ['Canning', 'policy', 'policy', 'Canning', 'Each Citizen also produces +1 :food: per tick.'],
+      ['Usury', 'policy', 'policy', 'Usury', 'At the end of each era, gain :gold: equal to 10% of your unspent :gold:.'],
+      ['Guilds', 'policy', 'policy', 'Guilds', 'Every specialist produces +2 of its highest output.'],
+      ['Milling', 'building', 'building', 'Lumber Mill', "Placed on a forest tile. Produces :production: per tick equal to 4 × the forest tile's economy-bonus value."],
+      ['Merchant Navy', 'policy', 'policy', 'Merchant Navy', ':naval: units also produce +2 :gold: per tick.'],
+      ['Mercantilism', 'policy', 'policy', 'Mercantilism', 'Total :gold: output +25%.'],
+    ],
+  ],
+  military: [
+    [
+      ['Hunting', 'unit', 'melee', 'Hunter', 'Gains :food: on a kill.'],
+      ['The Sling', 'unit', 'ranged', 'Slinger', 'The earliest :ranged: skirmisher.'],
+      ['Pack Bonding', 'unit', 'cavalry', 'Wolf', 'After attacking, shifts to an adjacent empty valid tile.'],
+    ],
+    [
+      ['Tribalism', 'policy', 'policy', 'Tribalism', 'Each unit gains +2 :attack: for every other friendly unit of the same type on the board.'],
+      ['Alloying', 'unit', 'melee', 'Spearman', '+50% :attack: versus :cavalry:-type enemies.'],
+      ['Archery', 'unit', 'ranged', 'Archer', 'A :ranged: bowman.'],
+      ['The Wheel', 'unit', 'cavalry', 'Chariot', 'A bronze :cavalry: war chariot.'],
+    ],
+    [
+      ['Professional Soldiers', 'pop', 'pop', 'Soldier', 'Every friendly unit gains +1 :attack: per Soldier.'],
+      ['Armor', 'policy', 'policy', 'Armor', 'All units gain +1 :defense:.'],
+      ['Siege', 'unit', 'siege', 'Ballista', 'Single-target; pushes the target back 1 tile.'],
+      ['Compound Bow', 'policy', 'policy', 'Compound Bow', ':ranged: units deal +50% :attack:.'],
+      ['Stirrups', 'unit', 'cavalry', 'Heavy Cavalry', 'A shock :cavalry: charger.'],
+    ],
+    [
+      ['Military Tradition', 'policy', 'policy', 'Military Tradition', 'Overbuilding a unit keeps its upgrade levels.'],
+      ['Counterweights', 'unit', 'siege', 'Trebuchet', 'Splash, range 4.'],
+      ['Fortification', 'building', 'building', 'Stone Wall', 'A blocker. Upgrades add +1 :defense:/level.'],
+      ['Crossbows', 'unit', 'ranged', 'Crossbowman', 'A :ranged: crossbowman.'],
+      ['Dressage', 'policy', 'policy', 'Dressage', ':cavalry: units deal +50% :attack:.'],
+      ['Crusades', 'unit', 'melee', 'Knight', 'An armoured :melee: knight.'],
+    ],
+  ],
+}
+
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+// --- Build the flat node list ----------------------------------------------
+export const PROGRESS_NODES = []
+const idAt = {} // quadrant -> ring -> index -> id
+
+for (const [quadrant, rings] of Object.entries(TREE)) {
+  idAt[quadrant] = rings.map((ring) => ring.map(([name]) => `${quadrant}-${slug(name)}`))
+  rings.forEach((ring, r) => {
+    ring.forEach(([name, kind, iconKey, unlocks, effect], i) => {
+      const parents = r === 0 ? [] : PARENTS[r][i].map((pi) => idAt[quadrant][r - 1][pi])
+      PROGRESS_NODES.push({
+        id: idAt[quadrant][r][i],
+        name, kind, unlocks, effect,
+        quadrant, ring: r, index: i,
+        icon: ICON[iconKey],
+        prereqs: parents,
+        excludes: [],
+      })
+    })
+  })
+}
 
 const BY_ID = new Map(PROGRESS_NODES.map((n) => [n.id, n]))
-for (const [a, b] of FORKS) {
-  BY_ID.get(a).excludes.push(b)
-  BY_ID.get(b).excludes.push(a)
+
+// --- Derive exclusivity: any parent with >1 child forks -------------------
+// Nothing else is ever exclusive, so there is no hand-maintained fork list to
+// drift out of sync with the parent template.
+export const FORK_GROUPS = []
+{
+  const childrenOf = new Map()
+  for (const n of PROGRESS_NODES) {
+    for (const p of n.prereqs) {
+      if (!childrenOf.has(p)) childrenOf.set(p, [])
+      childrenOf.get(p).push(n.id)
+    }
+  }
+  for (const kids of childrenOf.values()) {
+    if (kids.length < 2) continue
+    FORK_GROUPS.push(kids)
+    for (const a of kids) {
+      for (const b of kids) if (a !== b && !BY_ID.get(a).excludes.includes(b)) BY_ID.get(a).excludes.push(b)
+    }
+  }
 }
 
 export const progressById = (id) => BY_ID.get(id) ?? null
@@ -211,41 +235,98 @@ export const MAX_RING = Math.max(...PROGRESS_NODES.map((n) => n.ring))
 // Layout — polar, computed once. Ring 0 sits at RING0 so the hub stays clear.
 // ---------------------------------------------------------------------------
 
-export const RING0 = 150
-export const RING_STEP = 140
-export const NODE_SIZE = 66 // hexagon width in content px
+export const RING0 = 250
+export const RING_STEP = 175
+export const NODE_SIZE = 72 // hexagon width in content px
 
 export const ringRadius = (ring) => RING0 + ring * RING_STEP
-
 const rad = (deg) => (deg * Math.PI) / 180
 
-/**
- * Nodes with polar positions filled in. Within a quadrant+ring, nodes are spread
- * evenly across the 90° span with a margin at each end so neighbouring quadrants
- * stay visually distinct.
- */
-export const LAID_OUT = (() => {
-  const groups = new Map()
-  for (const n of PROGRESS_NODES) {
-    const k = `${n.quadrant}:${n.ring}`
-    if (!groups.has(k)) groups.set(k, [])
-    groups.get(k).push(n)
-  }
-  const out = []
-  for (const [k, list] of groups) {
-    const [quadrant] = k.split(':')
-    const { from, to } = QUADRANTS[quadrant]
-    list.forEach((n, i) => {
-      const t = (i + 1) / (list.length + 1)
-      const angle = rad(from + (to - from) * t)
-      const R = ringRadius(n.ring)
-      out.push({ ...n, angle, x: Math.cos(angle) * R, y: Math.sin(angle) * R })
-    })
-  }
-  return out
-})()
+export const LAID_OUT = PROGRESS_NODES.map((n) => {
+  const { from, to } = QUADRANTS[n.quadrant]
+  const count = TREE[n.quadrant][n.ring].length
+  // Even spread in INDEX order — combined with the non-decreasing parent
+  // template, this is what guarantees no edge ever crosses another.
+  const angle = rad(from + (to - from) * ((n.index + 1) / (count + 1)))
+  const R = ringRadius(n.ring)
+  return { ...n, angle, x: Math.cos(angle) * R, y: Math.sin(angle) * R }
+})
 
 export const LAID_OUT_BY_ID = new Map(LAID_OUT.map((n) => [n.id, n]))
 
 /** Content half-extent needed to show every ring up to `maxRing`. */
-export const extentFor = (maxRing) => ringRadius(maxRing) + NODE_SIZE
+export const extentFor = (maxRing) => ringRadius(maxRing) + NODE_SIZE * 1.6
+
+// ---------------------------------------------------------------------------
+// Structure check — run by sims/progress.mjs
+// ---------------------------------------------------------------------------
+
+/** Do segments AB and CD properly cross (shared endpoints don't count)? */
+function segmentsCross(a, b, c, d) {
+  const same = (p, q) => Math.abs(p.x - q.x) < 1e-6 && Math.abs(p.y - q.y) < 1e-6
+  if (same(a, c) || same(a, d) || same(b, c) || same(b, d)) return false
+  const cross = (o, p, q) => (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x)
+  const d1 = cross(a, b, c)
+  const d2 = cross(a, b, d)
+  const d3 = cross(c, d, a)
+  const d4 = cross(c, d, b)
+  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0))
+}
+
+/** Returns a list of structural violations (empty = good). */
+export function validateStructure() {
+  const v = []
+
+  // 1. every non-root node has a parent, and every parent is in the ring inside it
+  for (const n of PROGRESS_NODES) {
+    if (n.ring === 0) {
+      if (n.prereqs.length) v.push(`${n.id}: ring-0 node has prereqs`)
+      continue
+    }
+    if (!n.prereqs.length) v.push(`${n.id}: no prereq`)
+    for (const p of n.prereqs) {
+      const pn = BY_ID.get(p)
+      if (!pn) v.push(`${n.id}: unknown prereq ${p}`)
+      else if (pn.ring !== n.ring - 1) v.push(`${n.id}: prereq ${p} is not in the ring inside it`)
+    }
+  }
+
+  // 2. exclusivity only ever arises between siblings of one parent
+  for (const n of PROGRESS_NODES) {
+    for (const e of n.excludes) {
+      const other = BY_ID.get(e)
+      const shared = n.prereqs.some((p) => other.prereqs.includes(p))
+      if (!shared) v.push(`${n.id} excludes ${e} without sharing a parent`)
+    }
+  }
+
+  // 3. NO CROSSED EDGES
+  const edges = []
+  for (const n of LAID_OUT) {
+    for (const p of n.prereqs) {
+      const pn = LAID_OUT_BY_ID.get(p)
+      edges.push({ a: { x: pn.x, y: pn.y }, b: { x: n.x, y: n.y }, label: `${p}->${n.id}` })
+    }
+  }
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      if (segmentsCross(edges[i].a, edges[i].b, edges[j].a, edges[j].b)) {
+        v.push(`edges cross: ${edges[i].label} × ${edges[j].label}`)
+      }
+    }
+  }
+
+  // 4. every ring must offer at least RING_UNLOCK attainable nodes
+  for (let r = 0; r <= MAX_RING; r++) {
+    const inRing = PROGRESS_NODES.filter((n) => n.ring === r)
+    const lostToForks = FORK_GROUPS
+      .filter((g) => BY_ID.get(g[0]).ring === r)
+      .reduce((sum, g) => sum + g.length - 1, 0)
+    const attainable = inRing.length - lostToForks
+    if (attainable < RING_UNLOCK) {
+      v.push(`ring ${r} offers only ${attainable} attainable nodes (< ${RING_UNLOCK})`)
+    }
+  }
+
+  return v
+}

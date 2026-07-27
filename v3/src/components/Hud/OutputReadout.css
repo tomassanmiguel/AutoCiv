@@ -5,34 +5,82 @@
   top: 0.9rem;
   right: 0.9rem;
   z-index: 15;
+  width: 232px;
   display: flex;
-  gap: 0.15rem;
-  padding: 0.3rem 0.4rem;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0.35rem;
   border-radius: 10px;
-  background: rgba(10, 12, 22, 0.82);
+  background: rgba(10, 12, 22, 0.85);
   border: 1px solid rgba(201, 154, 46, 0.35);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(3px);
 }
 
-.output-cell {
+.output-row {
   display: flex;
   align-items: center;
-  gap: 0.28rem;
-  padding: 0.15rem 0.5rem;
+  gap: 0.4rem;
+  padding: 0.2rem 0.35rem;
   border-radius: 6px;
   cursor: default;
 }
-.output-cell:hover { background: rgba(255, 255, 255, 0.06); }
+.output-row:hover { background: rgba(255, 255, 255, 0.06); }
 
-.output-cell img {
+.output-row img {
   width: 20px;
   height: 20px;
+  flex: 0 0 auto;
   object-fit: contain;
 }
-.output-value {
+
+/* Level reached — the count of thresholds crossed. */
+.output-level {
+  flex: 0 0 auto;
+  min-width: 1.4em;
+  text-align: center;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #e8dcc0;
+}
+
+/* Progress toward the next threshold. */
+.output-bar {
+  flex: 1 1 auto;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.output-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c9a22e, #f0d987);
+  transition: width 0.35s linear;
+}
+
+/* Gold has no threshold — it is a plain stock. */
+.output-row.gold .output-total {
+  flex: 1 1 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #e8dcc0;
+}
+
+.output-rate {
+  flex: 0 0 auto;
+  min-width: 3.1em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: #9fd88a;
+}
+
+.output-tip-nums {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #a8b0c2;
 }

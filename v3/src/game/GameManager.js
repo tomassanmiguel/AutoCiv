@@ -16,6 +16,12 @@ import { yieldOf } from './world/invariants.js'
 import { terrainOf } from './world/terrain.js'
 import { key, neighbors } from './hex/coords.js'
 import { PROGRESS_NODES, RING_UNLOCK, MAX_RING } from './data/progress.js'
+import { initialResources, accrue } from './data/resources.js'
+
+// TEMPORARY: v3 has no era/phase structure yet, so the readout is driven by a
+// plain 1/s tick. It exists purely so the threshold bars actually move; there
+// are no consequences wired to crossing a level yet.
+const TICK_MS = 1000
 
 export class GameManager {
   constructor(seed, { civ, difficulty } = {}) {
@@ -33,6 +39,19 @@ export class GameManager {
     this.stage = 0
     this._knownCache = null
     this.progress = new Set() // chosen advancement ids
+    this.resources = initialResources()
+  }
+
+  // --- Tick (temporary) -----------------------------------------------------
+
+  start() {
+    if (this._timer) return
+    this._timer = setInterval(() => this._tick(), TICK_MS)
+  }
+
+  _tick() {
+    accrue(this.resources, this.known.yields)
+    this._emit()
   }
 
   // --- Progress web ---------------------------------------------------------
@@ -98,8 +117,9 @@ export class GameManager {
     for (const fn of this._subs) fn()
   }
 
-  /** No timers yet — kept so GameScreen's unmount cleanup stays stable. */
-  stop() {}
+  stop() {
+    if (this._timer) { clearInterval(this._timer); this._timer = null }
+  }
 
   // --- Known world ----------------------------------------------------------
 
@@ -179,7 +199,11 @@ export class GameManager {
   /** Debug: throw away this world and generate another. Keeps the current stage. */
   regenerate(seed = (Math.random() * 0x100000000) >>> 0) {
     const keep = this.stage
+    const keepProgress = this.progress
+    const keepResources = this.resources
     this._load(seed)
+    this.progress = keepProgress
+    this.resources = keepResources
     this.stage = Math.min(keep, STAGE_COUNT - 1)
     this._emit()
   }

@@ -47,16 +47,21 @@
 .tree-viewport {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.tree-content {
   position: relative;
-  transform-origin: center center;
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-              height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+.tree-viewport.dragging { cursor: grabbing; }
+
+/* Camera is applied imperatively (see ProgressTree.jsx) — no CSS transition
+   here, or every pan frame would fight the easing. */
+.tree-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 .tree-edges {
   position: absolute;
@@ -98,6 +103,7 @@
 .tree-quadrant-label {
   position: absolute;
   transform: translate(-50%, -50%);
+  z-index: 2;
   font-family: var(--font-display);
   font-size: 1.05rem;
   letter-spacing: 0.16em;
@@ -165,11 +171,16 @@
   50%      { box-shadow: 0 0 0 2px rgba(180, 226, 255, 0.7), 0 0 24px rgba(120, 195, 245, 0.5); }
 }
 
+/* Wrapped and width-capped: ring 0 packs its three nodes per quadrant at the
+   smallest radius, so a long name like "Professional Soldiers" would otherwise
+   run into its neighbour. */
 .tree-node-name {
-  font-size: 0.62rem;
-  letter-spacing: 0.03em;
+  font-size: 0.6rem;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
   color: #aeb6c8;
-  white-space: nowrap;
+  max-width: 94px;
+  text-align: center;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   pointer-events: none;
 }
