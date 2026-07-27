@@ -14,12 +14,25 @@
 export const THRESHOLD_RESOURCES = ['food', 'production', 'progress']
 
 export const RESOURCE_CONFIG = {
-  progress: { T0: 10, X: 5.6 },
-  food: { T0: 15, X: 13.3 },
-  production: { T0: 20, X: 7.4 },
+  progress: { T0: 90, X: 50 },
+  food: { T0: 100, X: 75 },
+  production: { T0: 150, X: 65 },
 }
 
-export const nextThreshold = (prev, X, level) => prev + X * level
+/**
+ * Each level's requirement GROWS GEOMETRICALLY on top of the linear term.
+ *
+ * The linear rule alone (`prev + X·n`) grows quadratically in the level, while
+ * output grows *exponentially* — more tiles, each worth more, multiplied by the
+ * web. The gap showed up as an offer every couple of ticks: five or six
+ * advancement choices an era plus a stream of expansions, which is far too many
+ * decisions to make meaningfully. The geometric term keeps the ladder ahead of
+ * compounding income instead of falling behind it.
+ */
+export const THRESHOLD_GROWTH = 1.09
+
+export const nextThreshold = (prev, X, level) =>
+  prev + X * level * Math.pow(THRESHOLD_GROWTH, level)
 
 /** A fresh set of resource stocks. */
 export function initialResources() {

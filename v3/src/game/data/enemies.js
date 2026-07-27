@@ -88,12 +88,15 @@ export function waveBudget(wave, strength = 1) {
   return BUDGET_BASE * Math.pow(BUDGET_GROWTH, wave) * strength
 }
 
-// Tuned against `sims/campaign.mjs`: the player's army compounds on three axes
-// at once (more units, era scaling, weapons/armour), so a budget that only grew
-// as fast as per-enemy HP left every wave from era 4 on a formality. These are
-// the count knobs, deliberately — per-enemy stat curves are v2's and stay.
-const BUDGET_BASE = 85
-const BUDGET_GROWTH = 1.4
+// Tuned against `sims/campaign.mjs`. These are the COUNT knobs, deliberately —
+// per-enemy stat curves are v2's and stay.
+//
+// They are coupled to the threshold ladder: raising thresholds means fewer
+// progress offers, which means fewer unit grants, which means a smaller army.
+// Retune this whenever `RESOURCE_CONFIG` moves, or a slower ladder reads as
+// brutal difficulty rather than as calmer pacing.
+const BUDGET_BASE = 45
+const BUDGET_GROWTH = 1.32
 
 /**
  * Compose a host for a wave.

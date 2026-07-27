@@ -5,7 +5,7 @@ import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
 
 import PieceCard from './PieceCard.jsx'
 import TileCard from './TileCard.jsx'
-import { UNIT_DEFS } from '../../game/data/units.js'
+import { UNIT_DEFS, equipmentOf } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingYield, buildingEffectText } from '../../game/data/buildings.js'
 import { tileYield } from '../../game/world/territory.js'
 import IconText from '../common/IconText.jsx'
@@ -466,6 +466,18 @@ export default function HexMap() {
           )
         })}
 
+        {/* The wave that will attack at the end of this era, mustered on the
+            battlefield ring and shown all through development. Knowing what is
+            coming is the whole point of having a preparation phase. */}
+        {!combat.active && game.pendingWave && game.pendingWave.enemies.map((e) => {
+          const c = centerOf(e.q, e.r)
+          return (
+            <div key={`p${e.id}`} className="muster">
+              <PieceCard piece={e} turn={0} x={c.x} y={c.y} size={HEX_W * 0.7} acting={false} />
+            </div>
+          )
+        })}
+
         {/* --- combat layer ------------------------------------------------ */}
         {combat.active && (
           <>
@@ -558,6 +570,17 @@ function TileTip({ game, tile, battlefield }) {
       {uDef && (
         <div className="hex-tip-note unit">
           <b>{uDef.name}</b> — {uDef.blurb}
+          {/* What it actually carries. Weapon and armour are civilization-wide
+              tiers, so this is where you see a re-arming land on a unit. */}
+          <div className="hex-tip-gear">
+            {equipmentOf(uDef, game.mods).map((g) => (
+              <div key={g.slot} className="gear-row">
+                <span className="gear-slot">{g.slot}</span>
+                <span className="gear-name">{g.name}</span>
+                {g.bonus && <span className="gear-bonus"><IconText>{g.bonus}</IconText></span>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
       {tile.encampment && (

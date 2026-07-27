@@ -141,6 +141,7 @@ export class GameManager {
     this.palaceHp = PALACE.def
 
     this._garrisonStart()
+    this.pendingWave = null
 
     this.stopCombatTimer?.()
     this.combat = {
@@ -184,7 +185,11 @@ export class GameManager {
     }
   }
 
-  start() { this._restartTimer() }
+  start() {
+    // The very first wave has no era transition to muster it.
+    if (!this.pendingWave && !this.combat.active) this.prepareWave()
+    this._restartTimer()
+  }
 
   stop() {
     if (this._timer) { clearInterval(this._timer); this._timer = null }
@@ -275,6 +280,8 @@ export class GameManager {
       if (this.mods.roads) layRoads(this.world)
     }
     this.log.push({ era: this.era, text: `Entered the ${this.eraName} era.` })
+    // Muster the coming wave NOW, so it is visible all through development.
+    this.prepareWave()
   }
 
   get palaceMaxHp() { return PALACE.def + this.mods.palaceDef }
@@ -791,6 +798,7 @@ export class GameManager {
     this.combat = { ...this.combat, active: false, result: null }
     setTerritoryStage(this.world, this.stage)
     if (this.mods.roads) layRoads(this.world)
+    this.prepareWave()
     this._emit()
   }
 

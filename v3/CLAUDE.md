@@ -565,11 +565,31 @@ lifts its `z-index` so a neighbour's card cannot cover its buttons.
 so a fixed `rem` size shrinks to illegibility when zoomed out. The anchor sets
 `fontSize: HEX_W * 0.17` inline and everything inside the card uses `em`.
 
+## Pacing — how often the clock stops
+
+Every threshold crossing stops the clock and asks the player something, so `RESOURCE_CONFIG`
+*is* the pacing dial. The per-level requirement grows **geometrically** on top of the linear
+term (`prev + X·n·G^n`, `THRESHOLD_GROWTH = 1.09`): the linear rule alone grows quadratically
+in the level while output grows *exponentially* — more tiles, each worth more, multiplied by
+the web — so it fell behind and the game turned into an offer every couple of ticks.
+
+⚠️ **The threshold ladder and the wave budget are COUPLED.** Raising thresholds means fewer
+progress offers → fewer unit grants → a smaller army. Retune `BUDGET_BASE`/`BUDGET_GROWTH` in
+`data/enemies.js` whenever `RESOURCE_CONFIG` moves, or a slower ladder reads as brutal
+difficulty rather than as calmer pacing. `sims/campaign.mjs` reports **prompts per era**, which
+is the number to watch: currently **~4–7**, down from ~25.
+
 ## The era's battle & razing
 
 Each era **ends in a wave**, sized by the era you have reached — dawdling does not make it
 easier. Every **revealed, uncleared encampment fields an extra garrison standing on the camp**,
 already inside your frontier: that is the pressure to expand toward them.
+
+**The wave is mustered at the START of the era and drawn on the battlefield ring throughout**
+(`prepareWave` / `buildHost`, faded via `.muster`), so you can see what is coming while there
+is still time to prepare. `startCombat` reuses that exact host — what you spent the era looking
+at is what turns up. The flow fields depend only on terrain and the known set, neither of which
+moves within an era, so a host built at era start is still valid when it attacks.
 
 A camp garrison's **travel domain** is: **island camps are always amphibious or astral**
 (nothing else can leave an island); everything else takes the cheapest domain that can

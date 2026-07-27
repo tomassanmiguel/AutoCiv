@@ -46,6 +46,60 @@ export const UNIT_DEFS = {
     icon: '/sprites/ui/defense.png', blurb: 'Masonry. Very little gets through it quickly.' },
 }
 
+// What each unit carries of its own, on top of the civilization-wide tiers.
+// Named rather than derived: a Slinger's weapon IS a sling, and inventing a
+// "bow tier" out of the ranged attack modifier would be fiction.
+const OWN_GEAR = {
+  slinger: { weapon: 'Sling' },
+  archer: { weapon: 'Bow' },
+  crossbowman: { weapon: 'Crossbow' },
+  rider: { steed: 'Pony' },
+  chariot: { steed: 'Chariot Team' },
+  horseman: { steed: 'Warhorse' },
+  mudbrick: { weapon: null },
+  palisade: { weapon: null },
+  stonewall: { weapon: null },
+  watchtower: { weapon: 'Mounted Bow' },
+}
+
+/**
+ * A unit's kit, for the hover card: what it fights with, what it wears, and
+ * what it rides. Weapon and armour tiers are civilization-wide (the progress
+ * web re-arms everyone at once); the rest is the unit's own.
+ */
+export function equipmentOf(def, mods) {
+  const own = OWN_GEAR[def.key] ?? {}
+  const rows = []
+
+  if (WEAPON_TYPES.has(def.type)) {
+    const w = weaponTier(mods?.weapon)
+    rows.push({ slot: 'Weapon', name: w.name, bonus: w.atk ? `+${w.atk} :attack:` : null })
+  } else if (own.weapon !== undefined && own.weapon !== null) {
+    rows.push({ slot: 'Weapon', name: own.weapon, bonus: null })
+  } else if (own.weapon === null) {
+    rows.push({ slot: 'Weapon', name: 'None — it does not strike', bonus: null })
+  }
+
+  const a = armorTier(mods?.armor)
+  rows.push({ slot: 'Armour', name: a.name, bonus: a.hp ? `+${a.hp} :defense:` : null })
+
+  if (def.type === 'cavalry' && own.steed) {
+    const extra = mods?.unitMod?.cavalry?.acts ?? 0
+    rows.push({ slot: 'Steed', name: own.steed, bonus: extra ? `+${extra} :speed:` : null })
+  }
+
+  // Anything the web trained into this class specifically.
+  const m = mods?.unitMod?.[def.type] ?? {}
+  const drills = Object.entries(m)
+    .filter(([k, v]) => v && !(def.type === 'cavalry' && k === 'acts'))
+    .map(([k, v]) => `+${v} ${DRILL_LABEL[k] ?? k}`)
+  if (drills.length) rows.push({ slot: 'Training', name: drills.join(', '), bonus: null })
+
+  return rows
+}
+
+const DRILL_LABEL = { atk: ':attack:', hp: ':defense:', range: 'range', acts: ':speed:' }
+
 export const UNIT_LIST = Object.values(UNIT_DEFS)
 
 /** The unit a class opens with, when a bare troop grant finds it empty. */

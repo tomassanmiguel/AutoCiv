@@ -25,7 +25,7 @@ import {
   generateHost, domainCanTraverse, ENEMY_DOMAINS, ENEMY_TYPES,
   waveBudget, makeEnemy, rollTier,
 } from '../data/enemies.js'
-import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
+import { UNIT_DEFS, PALACE, unitStats, weaponTier } from '../data/units.js'
 import { isPassable, isLand } from '../world/terrain.js'
 import { razeTile } from '../world/territory.js'
 import { makeRng, shuffle } from '../world/noise.js'
@@ -57,13 +57,21 @@ class CombatMixin {
    * Build a fresh combat: flow fields, an enemy host on the battlefield ring,
    * and a scratch garrison scattered over nearby land.
    */
-  startCombat(wave = this.combat.wave, strength = this.combat.strength, { scratch = false } = {}) {
+  /**
+   * Build the host for a wave, and the flow fields it will march along.
+   *
+   * Split out of `startCombat` so the coming wave can be MUSTERED EARLY and
+   * shown on the battlefield ring all through development — you should be able
+   * to see what is about to hit you while there is still time to prepare for it.
+   * The fields depend only on terrain and the known set, neither of which moves
+   * within an era, so a host built at era start is still valid when it attacks.
+   */
+  buildHost(wave, strength = 1) {
     const rng = makeRng((this.seed ^ (wave * 2654435761)) >>> 0)
     const known = this.known
 
     // Cells combat may use: the revealed world plus the muster ring.
-    const cells = new Set(known.all.map((t) => key(t.q, t.r)))
-    this._combatCells = cells
+    this._combatCells = new Set(known.all.map((t) => key(t.q, t.r)))
 
     // One inward flow field per domain, computed once — terrain does not change.
     this._fields = {}
@@ -76,6 +84,22 @@ class CombatMixin {
     // camp. They are already inside your frontier, so they do not have to march
     // in — which is exactly why clearing a camp by expanding onto it matters.
     enemies.push(...this._encampmentEnemies(wave, rng, enemies.length))
+    return enemies
+  }
+
+  /** Muster the era's wave so it can be seen during development. */
+  prepareWave() {
+    const wave = this.era + 1
+    this.pendingWave = { wave, enemies: this.buildHost(wave, 1) }
+    this._emit()
+  }
+
+  startCombat(wave = this.combat.wave, strength = this.combat.strength, { scratch = false } = {}) {
+    // Reuse the mustered host, so what you spent the era looking at is exactly
+    // what turns up. Anything else (the debug bar, a changed wave) re-rolls.
+    const pending = !scratch && this.pendingWave?.wave === wave ? this.pendingWave.enemies : null
+    const enemies = pending ?? this.buildHost(wave, strength)
+    this.pendingWave = null
 
     const maxHp = PALACE.def + (this.mods?.palaceDef ?? 0)
     this.palaceHp = Math.min(this.palaceHp ?? maxHp, maxHp)
@@ -88,10 +112,12 @@ class CombatMixin {
       result: null,
       queue: [], phase: null, acting: null,
       enemies,
-      units: scratch ? this._scratchGarrison(wave, rng) : this._playerArmy(),
+      units: scratch
+        ? this._scratchGarrison(wave, makeRng((this.seed ^ (wave * 40503)) >>> 0))
+        : this._playerArmy(),
       palace: {
         ...PALACE, hp: this.palaceHp, maxHp, q: 0, r: 0,
-        atk: PALACE.atk + Math.round((this.mods?.unitAtk ?? 0) / 2),
+        atk: PALACE.atk + weaponTier(this.mods?.weapon).atk,
         lastAttackSeq: null, lastAttackDir: null,
       },
       events: [],

@@ -125,6 +125,10 @@ function run(seed, eras) {
   while (g.era < eras && !g.defeated && guard++ < 400000) {
     if (g.selection) {
       const sel = g.selection
+      // Count every time the clock stops for the player — the real measure of
+      // whether the game is asking too much.
+      st.prompts = (st.prompts ?? 0) + 1
+      st[`prompt_${sel.type}`] = (st[`prompt_${sel.type}`] ?? 0) + 1
       if (sel.type === 'progress') {
         const p = pickOffer(g, sel.offers)
         if (p) g.chooseOffer(p); else g.skipSelection()
@@ -167,6 +171,10 @@ function run(seed, eras) {
     nodes: g.progress.size,
     units: [...g.world.terr.controlled].filter((t) => t.unit && !t.unit.destroyed).length,
     gold: Math.floor(g.resources.gold.value),
+    prompts: st.prompts ?? 0,
+    pProgress: st.prompt_progress ?? 0,
+    pExpansion: st.prompt_expansion ?? 0,
+    pPlacement: st.prompt_placement ?? 0,
     repairs: st.repairs ?? 0, rebuilds: st.rebuilds ?? 0, upgrades: st.upgrades ?? 0,
     grantsQueued: g.grants.length,
     mods: g.mods,
@@ -190,6 +198,16 @@ for (const r of runs) {
     ` ${String(r.nodes).padStart(6)} ${String(Math.round(r.rate)).padStart(7)} ${Math.round(r.cumulative).toLocaleString().padStart(11)} |` +
     ` ${String(r.repairs).padStart(7)} ${String(r.rebuilds).padStart(8)} ${String(r.upgrades).padStart(8)}` +
     ` ${r.gold.toLocaleString().padStart(6)}`)
+}
+
+// How often the clock stops for the player — the pacing measure that matters.
+console.log('\n=== prompts (times the clock stopped) ===')
+console.log('  seed   total  per era |  progress  expansion  placement')
+for (const r of runs) {
+  console.log(
+    `  ${String(r.seed).padStart(4)} ${String(r.prompts).padStart(7)}` +
+    ` ${(r.prompts / Math.max(1, r.era)).toFixed(1).padStart(8)} |` +
+    ` ${String(r.pProgress).padStart(9)} ${String(r.pExpansion).padStart(10)} ${String(r.pPlacement).padStart(10)}`)
 }
 
 console.log('\n=== waves ===')

@@ -166,3 +166,12 @@
   25% { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }
   100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
 }
+
+/* A mustered enemy: the same card, faded back, so the coming wave reads as a
+   threat that has not landed yet rather than as a live combatant. */
+.muster { opacity: 0.62; filter: saturate(0.75); }
+.muster .piece-card { animation: muster-breathe 2.6s ease-in-out infinite; }
+@keyframes muster-breathe {
+  0%, 100% { transform: scale(0.94); }
+  50% { transform: scale(1); }
+}

@@ -248,3 +248,26 @@
 /* The pulsing target ring itself is drawn in `.hex-overlay` as a polygon; the
    hex only needs to say it is clickable. */
 .hex.expandable { cursor: pointer; }
+
+/* --- unit equipment, in the hover card ------------------------------------ */
+.hex-tip-gear {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+.gear-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+.gear-slot {
+  flex: 0 0 3.6rem;
+  color: #7f879b;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.66rem;
+}
+.gear-name { color: #e2e7f2; }
+.gear-bonus { color: #9fd88a; margin-left: auto; white-space: nowrap; }
