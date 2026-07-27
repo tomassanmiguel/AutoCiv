@@ -9,7 +9,7 @@
 
 import { generateWorld } from '../src/game/world/worldgen.js'
 import { validate, yieldOf } from '../src/game/world/invariants.js'
-import { BANDS, STAGES } from '../src/game/world/regions.js'
+import { BANDS, STAGES, MAX_RADIUS } from '../src/game/world/regions.js'
 import { terrainOf } from '../src/game/world/terrain.js'
 import { key } from '../src/game/hex/coords.js'
 
@@ -19,9 +19,10 @@ const mapArg = args.find((a) => a.startsWith('--map='))
 
 const GLYPH = {
   plains: '"', forest: '^', hills: 'n', mountain: 'A', desert: '.', tundra: '-',
-  island: 'o', coast: '~', ocean: '≈',
-  space: ' ', deep_space: '·', asteroid: '*', moon: 'M', mars: 'R',
+  island: 'o', coast: '~', ocean: '=', river: 'r',
+  space: ' ', deep_space: '.', asteroid: '*', moon: 'M', mars: 'R',
   exoplains: 'e', exohills: 'E', exomountain: 'X', exosea: 's',
+  exodesert: 'd', exotundra: 'u',
   planet: 'P', star: 'S', singularity: '@', battlefield: '#', fallout: '%',
 }
 

@@ -104,14 +104,19 @@ Concentric bands by distance from the palace at `(0,0)`, all radii in one place:
 
 | Band | Rings | Contents |
 |---|---|---|
-| `earth` | 0–12 | Old World (holds the palace), ocean channel, New World, islands |
-| `space` | 13–20 | Moon disc (r2) + Mars disc (r3) + scattered asteroids |
-| `deep` | 21–31 | the deep-space "ocean"; the exoplanet (r5) is embedded here |
-| `galactic` | 32–34 | deep space scattered with planets, stars, singularities |
-| `battlefield` | 35–36 | outermost 2 rings — where enemies will muster |
+| `earth` | 0–9 | Old World (holds the palace), ocean channel, New World, islands, rivers |
+| `space` | 10–20 | Moon disc (r1, @13) + Mars disc (r2, @18) + scattered asteroids |
+| `deep` | 21–31 | the deep-space "ocean"; the exoplanet (r4, @27) is embedded here |
+| `galactic` | 32–38 | deep space **littered throughout** with planets, stars, singularities |
 
-≈**4000 tiles** total. A band must be ≥ `2·radius+1` rings wide to contain its body — an
-invariant checks bodies don't spill out.
+≈**4,900 tiles** total; **4,447** are revealable and the outer 2 rings exist purely as
+battlefield headroom. A band must be ≥ `2·radius+1` rings wide to contain its body, and the
+Moon/Mars sit ≥2 rings clear of Earth's rim — both are invariants.
+
+**The battlefield ring is derived, not generated.** `GameManager._battlefieldRing` dilates the
+current known set by `BATTLEFIELD_DEPTH` (2), so the muster zone always hugs the frontier and
+the threat stays visible at every map scale. That is why the world extends 2 rings past the
+last revealable one.
 
 ### Generation (`game/world/worldgen.js`)
 `generateWorld(seed)` is **pure and deterministic** — no `Math.random`, no React, no game
@@ -120,35 +125,70 @@ state. A run persists only its seed.
   above it is New World, the gap between is the ocean channel, and a noisy radial falloff
   turns the rim to sea. The continent-boundary wobble is **damped to zero at the centre**,
   so the palace is always solidly inland in the Old World.
-- **Land terrain** comes from two noise fields plus a latitude term: elevation →
-  mountain/hills, high latitude → tundra, then moisture → desert/plains/forest.
-- **Coast** is derived, not authored: any water tile touching land becomes shallow `coast`.
-  There is **no directional coast tile and no `flipX`** — v2's west-coast mirroring is gone
-  (the `full-coast` sprite is isotropic). Shorelines as edge decals are a later job.
-- Moon/Mars/exoplanet are **discs stamped into their band**; the exoplanet is a small world
-  of its own (exosea rim, exoplains/exohills/exomountain inland).
-- **Encampments** are placed round-robin over the six wedges so the angular spread is
-  guaranteed rather than hoped for, kept out of the start radius, and spaced apart.
+- **Climate is CONCENTRIC**, which is the right model for a radial map: an arid belt through
+  Earth's middle and tundra out towards the rim, both noise-wobbled. Land reaching the rim is
+  fine — there is no forced ring of ocean.
+- **Mountains use RIDGED noise** (`1 - |2n-1|` on its own higher-frequency field, cut high).
+  A plain elevation threshold produced dense blobs; ridged noise peaks along the field's
+  mid-contour, so ranges come out as sparse lines and the occasional small cluster. An
+  invariant holds them to 1.5–15% of Earth's land.
+- **Rivers** start on high ground and walk downhill, stamping water. They keep their
+  continent `region` (they are part of the landmass, not the sea) so the coast pass ignores
+  them, and they read as a ground-movement barrier. Tile-based for now; edge-decal rivers are
+  a later job.
+- **Coast** is derived, not authored: water touching **continent** land becomes shallow
+  `coast`. Islands deliberately get none — a one-tile speck ringed by shallows reads wrong.
+  There is **no directional coast tile and no `flipX`** (the `full-coast` sprite is isotropic).
+- Moon/Mars/exoplanet are **discs stamped into their band**. The exoplanet is a small world of
+  its own with **irregular inland seas rather than a water rim**, plus its own desert/tundra;
+  it may touch open space freely. Its **landmass must be one component**, and
+  `connectExoLand` bridges stragglers by converting the water in between rather than
+  re-rolling.
+- Outer-galaxy specials are **littered throughout the band**, not ringed at the extreme edge,
+  and only become visible after the exoplanet stages.
+- **Encampments are LAND ONLY** — Earth's continents/islands and the exoplanet. The Moon,
+  Mars, asteroids and open space stay clear. Earth's are placed round-robin over the six
+  wedges so the angular spread is guaranteed rather than hoped for.
 
 ### Invariants (`game/world/invariants.js`)
 `validate(world)` returns violations; `generateWorld` **re-rolls deterministically**
 (`seed + n·φ`) until clean, up to 16 attempts. This is what makes generation "varied but
 predictable". Two classes:
-- **Correctness** — palace on passable land, palace ring open, bodies inside their band,
-  ≥80% of the Old World walkable from the palace (no mountain wall sealing you in), every
-  reveal stage adds ≥15 tiles.
-- **Viability** — plains/forest/hills/water all within the start radius, minimum total
-  Earth yield per resource (progress especially — it drives the tech tree), continent size
-  floors, New World genuinely separated by water, encampments in all six wedges with one in
-  early reach.
+- **Correctness** — palace on passable land, palace ring open, bodies inside their band and
+  ≥2 rings clear of Earth, ≥80% of the Old World walkable from the palace (only mountains
+  block; rivers will be bridgeable), exoplanet landmass connected, **no holes in the known
+  world**, every reveal stage adds ≥8 tiles.
+- **Viability** — plains/forest/hills/water all within the start radius, minimum total Earth
+  yield per resource, continent size floors, New World genuinely separated by water, a desert
+  belt and a tundra rim, mountains sparse but present, at least one real river, and
+  encampments on land across all six wedges with one in early reach.
 
-`node sims/worldgen.mjs 200` is the source of truth: currently **200/200 clean, ~4ms per
-world**, and it prints the reveal ladder, Earth yield spread, and an ASCII map.
+**The hole check is asymmetric on purpose.** Earth's stages are region-shaped and genuinely
+can enclose a pocket, so they get a real (radius-bounded) flood. Beyond Earth the reveal is
+concentric and hole-free by construction, verified far more cheaply by asserting each ring
+flips in one go. Doing the full flood for all 13 stages cost ~25ms per world; this is ~1.5ms.
+
+`node sims/worldgen.mjs 200` is the source of truth: currently **200/200 clean, ~45ms per
+world** (~28ms to build, ×1.6 attempts), and it prints the reveal ladder, Earth yield spread,
+and an ASCII map.
 
 ### Known world (`GameManager`, `regions.js` `STAGES`)
 Every tile is stamped a `revealStage` at generation time; a tile is known when
-`revealStage <= game.stage`. Encoding it per-tile keeps the geometric nuance (e.g. "New
-World Coastline" is land touching water) in the generator, where it belongs.
+`revealStage <= game.stage`. Encoding it per-tile keeps the geometric nuance in the
+generator, where it belongs.
+
+**The known world must never contain an unrevealed hole.** Two mechanisms uphold that:
+Earth's stages are region-shaped and get a `sealReveal` pass that pulls any enclosed pocket
+into the stage that enclosed it; beyond Earth the reveal is purely **concentric**
+(`REVEAL_RADIUS`), which makes holes impossible. That concentricity is *why* the Moon and
+Mars sit at different distances rather than side by side — each has to fall entirely within
+one reveal step. The map is free to grow as a non-circle; it just cannot grow around
+something.
+
+Earth's ladder: Old World (+ its seas) → islands and open ocean → the **waters** off the New
+World → the New World itself. Giving the coastal stage only the sea is what keeps "Full
+Earth" substantial: a small New World is nearly all coastline, so splitting its land across
+both stages starved the last one.
 
 The 13-notch ladder: Local · Old World · Islands · New World Coastline · Full Earth · Earth
 and Space · Moon · Mars · Deeper Space · Exo Coastline · Full Exo · Outer Galaxy I · Full
@@ -157,7 +197,10 @@ slider drives it directly.
 
 ### Map viewer (`components/HexMap`)
 - **Camera lives in a ref** and is applied imperatively (`transform` on the content div), so
-  pan/zoom **never re-render React** — ported from v2's Tableau.
+  pan/zoom **never re-render React** — ported from v2's Tableau. **Left or middle mouse
+  drags** (middle calls `preventDefault` so the browser's autoscroll widget can't hijack it).
+- Renders `known.all` — the revealed tiles **plus the derived battlefield ring**, which is
+  drawn with the battlefield sprite regardless of the terrain underneath it.
 - **Culling** is what makes ~4000 tiles cheap: only tiles inside the visible rect render,
   and the cull rect only updates once it has moved by more than a hex. Zoomed in, DOM drops
   to ~180 nodes; zoomed out to fit, everything renders but each hex is tiny.

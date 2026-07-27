@@ -39,6 +39,7 @@ export const TERRAIN = Object.fromEntries([
   // --- Earth: water ---
   T('coast', 'Coast', 'full-coast', 'water', true, 'gold', 2),
   T('ocean', 'Ocean', 'ocean', 'water', true, 'gold', 3),
+  T('river', 'River', 'full-coast', 'water', true, 'gold', 2, 'Blocks ground movement until bridged.'),
 
   // --- Space ---
   T('space', 'Space', 'space', 'space', true, null, 0),
@@ -52,6 +53,8 @@ export const TERRAIN = Object.fromEntries([
   T('exohills', 'Exohills', 'exohills', 'land', true, 'production', 12),
   T('exomountain', 'Exomountain', 'exomountain', 'land', false, null, 0, 'Impassable to ground units.'),
   T('exosea', 'Exosea', 'exosea', 'water', true, 'gold', 12),
+  T('exodesert', 'Exodesert', 'desert', 'land', true, null, 0, 'Produces nothing on its own.'),
+  T('exotundra', 'Exotundra', 'tundra', 'land', true, null, 0, 'Produces nothing on its own.'),
 
   // --- Outer galaxy ---
   T('planet', 'Planet', 'planet', 'space', true, 'food', 30),

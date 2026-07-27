@@ -11,9 +11,10 @@
 //     receives them unbound.
 
 import { generateWorld } from './world/worldgen.js'
-import { STAGE_COUNT } from './world/regions.js'
+import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { yieldOf } from './world/invariants.js'
 import { terrainOf } from './world/terrain.js'
+import { key, neighbors } from './hex/coords.js'
 
 export class GameManager {
   constructor(seed, { civ, difficulty } = {}) {
@@ -52,8 +53,9 @@ export class GameManager {
   // --- Known world ----------------------------------------------------------
 
   /**
-   * The revealed slice of the world for the current stage, plus derived
-   * readouts. Cached per (world, stage) so panning never recomputes it.
+   * The revealed slice of the world for the current stage, plus the battlefield
+   * ring and derived readouts. Cached per (world, stage) so panning never
+   * recomputes it.
    */
   get known() {
     if (this._knownCache?.stage === this.stage && this._knownCache.world === this.world) {
@@ -66,15 +68,49 @@ export class GameManager {
       .map(([k, count]) => ({ key: k, count, def: terrainOf(k) }))
       .sort((a, b) => b.count - a.count)
 
+    const { battlefield, bfSet } = this._battlefieldRing(tiles)
+
     this._knownCache = {
       world: this.world,
       stage: this.stage,
       tiles,
+      battlefield,
+      bfSet,
+      all: [...tiles, ...battlefield],
       legend,
       yields: yieldOf(tiles),
       encampments: tiles.filter((t) => t.encampment),
     }
     return this._knownCache
+  }
+
+  /**
+   * The muster zone, derived rather than generated: dilate the known set by
+   * BATTLEFIELD_DEPTH rings. Because it is recomputed per stage it always hugs
+   * the current frontier, so the threat stays visible at every map scale — and
+   * the world is generated that many rings past the last revealable one so
+   * there is always something to occupy.
+   */
+  _battlefieldRing(tiles) {
+    const seen = new Set(tiles.map((t) => key(t.q, t.r)))
+    const battlefield = []
+    let frontier = tiles
+    for (let step = 0; step < BATTLEFIELD_DEPTH; step++) {
+      const next = []
+      for (const t of frontier) {
+        for (const n of neighbors(t.q, t.r)) {
+          const k = key(n.q, n.r)
+          if (seen.has(k)) continue
+          const tile = this.world.tiles.get(k)
+          if (!tile) continue
+          seen.add(k)
+          next.push(tile)
+          battlefield.push(tile)
+        }
+      }
+      frontier = next
+    }
+    return { battlefield, bfSet: new Set(battlefield.map((t) => key(t.q, t.r))) }
   }
 
   // --- Mutators -------------------------------------------------------------

@@ -49,7 +49,7 @@ export default function HexMap() {
   // --- Content layout (origin + size of the known world in content px) -------
   const layout = useMemo(() => {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-    for (const t of known.tiles) {
+    for (const t of known.all) {
       const x = t.x * HEX_SIZE
       const y = t.y * HEX_SIZE
       if (x - HEX_W / 2 < minX) minX = x - HEX_W / 2
@@ -57,7 +57,7 @@ export default function HexMap() {
       if (y - HEX_H / 2 < minY) minY = y - HEX_H / 2
       if (y + HEX_H / 2 > maxY) maxY = y + HEX_H / 2
     }
-    if (!known.tiles.length) return { minX: 0, minY: 0, w: 1, h: 1 }
+    if (!known.all.length) return { minX: 0, minY: 0, w: 1, h: 1 }
     return { minX, minY, w: maxX - minX, h: maxY - minY }
   }, [known])
 
@@ -218,7 +218,10 @@ export default function HexMap() {
 
   // --- Drag to pan ----------------------------------------------------------
   const onMouseDown = (e) => {
-    if (e.button !== 0) return
+    // Left OR middle button pans. preventDefault on middle stops the browser's
+    // autoscroll widget from hijacking the drag.
+    if (e.button !== 0 && e.button !== 1) return
+    if (e.button === 1) e.preventDefault()
     setHover(null)
     dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...cameraRef.current } }
     const onMove = (ev) => {
@@ -246,7 +249,7 @@ export default function HexMap() {
   const shown = useMemo(() => {
     if (!view) return []
     const out = []
-    for (const t of known.tiles) {
+    for (const t of known.all) {
       const x = t.x * HEX_SIZE - layout.minX
       const y = t.y * HEX_SIZE - layout.minY
       if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue
@@ -263,30 +266,32 @@ export default function HexMap() {
         style={{ width: layout.w, height: layout.h }}
       >
         {shown.map((t) => {
+          const k = `${t.q},${t.r}`
           const { left, top } = posOf(t)
           const isPalace = t.q === 0 && t.r === 0
+          const isBf = known.bfSet.has(k)
           return (
             <div
-              key={`${t.q},${t.r}`}
-              className={`hex${hover === t ? ' hovered' : ''}`}
+              key={k}
+              className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}`}
               style={{
                 left,
                 top,
                 width: HEX_W - SEAM,
                 height: HEX_H - SEAM,
-                backgroundImage: `url(${spriteUrl(t.terrain)})`,
+                backgroundImage: `url(${spriteUrl(isBf ? 'battlefield' : t.terrain)})`,
               }}
               onMouseEnter={() => setHover(t)}
               onMouseLeave={() => setHover((h) => (h === t ? null : h))}
             >
               {isPalace && <span className="hex-marker palace" title="Palace">★</span>}
-              {t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
+              {!isBf && t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
             </div>
           )
         })}
       </div>
 
-      {hover && <TileTip tile={hover} />}
+      {hover && <TileTip tile={hover} battlefield={known.bfSet.has(`${hover.q},${hover.r}`)} />}
 
       <div className="hexmap-readout">
         {known.tiles.length} tiles known · {known.encampments.length} encampments
@@ -296,7 +301,16 @@ export default function HexMap() {
 }
 
 /** Hover card: terrain, what the tile yields, and what sits on it. */
-function TileTip({ tile }) {
+function TileTip({ tile, battlefield }) {
+  if (battlefield) {
+    return (
+      <div className="hex-tip">
+        <div className="hex-tip-title">Battlefield</div>
+        <div className="hex-tip-sub">ring {tile.d} · wedge {tile.wedge}</div>
+        <div className="hex-tip-note camp">Enemy forces muster here, beyond the known world.</div>
+      </div>
+    )
+  }
   const def = terrainOf(tile.terrain)
   return (
     <div className="hex-tip">
