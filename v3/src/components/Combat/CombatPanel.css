@@ -119,3 +119,13 @@
   font-size: 0.72rem;
 }
 .cp-close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+/* The era's own wave: the debug setup row is hidden, so the bar reads as a
+   battle status line rather than a simulator. */
+.combat-panel.era-wave { border-color: rgba(220, 110, 90, 0.6); }
+.cp-razed {
+  color: #ff7a4a;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}

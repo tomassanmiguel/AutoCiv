@@ -22,10 +22,12 @@ export default function CombatPanel() {
   const c = game.combat
   const live = c.enemies.filter((e) => !e.dead).length
   const palacePct = c.palace ? Math.round((c.palace.hp / c.palace.maxHp) * 100) : 100
+  // The era's own wave owns the board; the debug controls would clobber it.
+  const eraWave = c.active && !c.scratch
 
   return (
-    <div className="combat-panel">
-      <div className="cp-setup">
+    <div className={`combat-panel${eraWave ? ' era-wave' : ''}`}>
+      <div className="cp-setup" hidden={eraWave}>
         <label className="cp-field">
           <span className="cp-label">Wave <b>{c.wave}</b> / {MAX_WAVES}</span>
           <input
@@ -46,7 +48,7 @@ export default function CombatPanel() {
           />
         </InfoTip>
 
-        <button className="cp-go" onClick={() => game.startCombat()}>
+        <button className="cp-go" onClick={() => game.simulateCombat()}>
           {c.active ? 'Regenerate' : 'Simulate Combat'}
         </button>
       </div>
@@ -68,17 +70,18 @@ export default function CombatPanel() {
           </div>
 
           <div className="cp-status">
-            <span>Turn <b>{c.turn}</b></span>
+            <span>{eraWave ? <b>Wave {c.wave}</b> : <>Turn <b>{c.turn}</b></>}</span>
             {c.phase && !c.result && <span className={`cp-phase ${c.phase}`}>{PHASE_LABEL[c.phase]}</span>}
             <span className="cp-sep" />
             <span className="cp-enemies">{live} enemy</span>
             <span className="cp-units">{c.units.filter((u) => !u.dead).length} defender</span>
+            {c.razed > 0 && <span className="cp-razed">{c.razed} razed</span>}
             <span className="cp-sep" />
             <span className={`cp-palace${palacePct < 40 ? ' danger' : ''}`}>
               Palace {palacePct}%
             </span>
             {c.result && <span className={`cp-result ${c.result}`}>{RESULT_TEXT[c.result]}</span>}
-            <button className="cp-close" onClick={() => game.endCombat()}>Clear</button>
+            {!eraWave && <button className="cp-close" onClick={() => game.endCombat()}>Clear</button>}
           </div>
         </>
       )}

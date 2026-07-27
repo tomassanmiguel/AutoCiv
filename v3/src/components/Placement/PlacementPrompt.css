@@ -1,0 +1,87 @@
+/* Bottom-left of the map, mirroring ExpansionPrompt — non-blocking, because the
+   choice is made by clicking the map behind it. */
+.place-prompt {
+  position: absolute;
+  left: 1rem;
+  bottom: 4.6rem;
+  z-index: 18;
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  max-width: 430px;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(12, 15, 26, 0.94);
+  border: 1px solid rgba(120, 200, 130, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.place-icon {
+  width: 46px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+}
+
+.place-body { min-width: 0; }
+
+.place-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.place-head b {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: #a8e6a0;
+}
+.place-kind {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7f879b;
+}
+.place-queue {
+  font-size: 0.68rem;
+  color: #d8ad4e;
+  border: 1px solid rgba(216, 173, 78, 0.45);
+  border-radius: 999px;
+  padding: 0.02rem 0.45rem;
+}
+
+.place-effect {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #c3cbdc;
+}
+
+.place-stats {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: #e2e7f2;
+}
+.place-stats span { display: flex; align-items: center; gap: 0.22rem; }
+.place-stats img { width: 15px; }
+
+.place-hint {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: #8b93a8;
+}
+
+.place-skip {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #99a1b5;
+  cursor: pointer;
+}
+.place-skip:hover { color: #e2e7f2; border-color: rgba(255, 255, 255, 0.3); }

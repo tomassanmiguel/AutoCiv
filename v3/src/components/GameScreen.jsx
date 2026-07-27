@@ -9,6 +9,9 @@ import ProgressTree from './Progress/ProgressTree.jsx'
 import CombatPanel from './Combat/CombatPanel.jsx'
 import ProgressOffer from './Progress/ProgressOffer.jsx'
 import ExpansionPrompt from './Expansion/ExpansionPrompt.jsx'
+import PlacementPrompt from './Placement/PlacementPrompt.jsx'
+import TilePanel from './Tile/TilePanel.jsx'
+import DefeatOverlay from './Hud/DefeatOverlay.jsx'
 import './GameScreen.css'
 
 /**
@@ -16,8 +19,8 @@ import './GameScreen.css'
  * HUD strip along the bottom and a compact output readout in the corner. The
  * progress web opens as a full overlay.
  *
- * No combat or roster yet — v3 is being rebuilt from the map outward. The tick
- * that drives the threshold bars is temporary scaffolding (see GameManager).
+ * Three prompts share the bottom-left slot and are mutually exclusive by
+ * construction — only one `selection` exists at a time.
  */
 export default function GameScreen({ seed, civ, difficulty, onExit }) {
   const manager = useMemo(() => new GameManager(seed, { civ, difficulty }), [seed, civ, difficulty])
@@ -34,6 +37,7 @@ export default function GameScreen({ seed, civ, difficulty, onExit }) {
         <div className="map-window">
           <HexMap />
           <OutputReadout />
+          <TilePanel />
           <div className="top-hud">
             <SpeedControl />
             <MenuOverlay onExit={onExit} />
@@ -43,8 +47,10 @@ export default function GameScreen({ seed, civ, difficulty, onExit }) {
             </button>
           </div>
           <ExpansionPrompt />
+          <PlacementPrompt />
           <CombatPanel />
           <ProgressOffer />
+          <DefeatOverlay onExit={onExit} />
           {treeOpen && <ProgressTree onClose={() => setTreeOpen(false)} />}
         </div>
       </div>

@@ -25,11 +25,14 @@ const ICON_TOKENS = {
   aerial: '/sprites/ui/aerial.png',
   astral: '/sprites/ui/astral.png',
   astral_utility: '/sprites/ui/astral-utility.png',
+  fort: '/sprites/ui/defense.png',
   // other slot types
   policy: '/sprites/ui/policy.png',
   pop: '/sprites/ui/pop.png',
   trap: '/sprites/ui/trap.png',
   wonder: '/sprites/ui/wonder.png',
+  building: '/sprites/ui/building.png',
+  road: '/sprites/ui/utility-building.png',
 }
 
 const TOKEN_RE = /(:[a-z_]+:)/g

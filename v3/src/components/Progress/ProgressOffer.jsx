@@ -3,17 +3,21 @@ import IconText from '../common/IconText.jsx'
 import './ProgressOffer.css'
 
 /**
- * Crossing a PROGRESS threshold offers a few advancements — v2's flow. The
- * clock is paused while this is open.
+ * Crossing a PROGRESS threshold offers three advancements — v2's flow. The clock
+ * is paused while this is open, and taking one applies its effects and may open
+ * the next ring of the web.
  *
- * Taking one adds it to the web (which may open the next ring). The node's own
- * effect is still a TODO: the tree is being redesigned, so an unlock currently
- * only opens more of the web.
+ * Gold can REDRAW the hand. The price doubles with each reroll inside one offer
+ * so it stays a decision rather than a slot machine, and resets at the next
+ * threshold.
  */
 export default function ProgressOffer() {
   const game = useGame()
   const sel = game.selection
   if (sel?.type !== 'progress') return null
+
+  const cost = game.rerollCost
+  const canReroll = cost != null && game.gold >= cost
 
   return (
     <div className="offer-backdrop">
@@ -35,7 +39,21 @@ export default function ProgressOffer() {
           ))}
         </div>
 
-        <button className="offer-skip" onClick={() => game.skipSelection()}>Skip</button>
+        <footer className="offer-foot">
+          <button
+            className={`offer-reroll${canReroll ? '' : ' poor'}`}
+            disabled={!canReroll}
+            onClick={() => game.rerollOffers()}
+            title={canReroll ? '' : 'Not enough gold'}
+          >
+            Reroll
+            <span className="offer-cost"><img src="/sprites/icons/gold.png" alt="gold" />{cost}</span>
+          </button>
+          <span className="offer-purse">
+            <img src="/sprites/icons/gold.png" alt="gold" />{game.gold}
+          </span>
+          <button className="offer-skip" onClick={() => game.skipSelection()}>Skip</button>
+        </footer>
       </div>
     </div>
   )

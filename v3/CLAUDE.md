@@ -1,9 +1,13 @@
 # AutoCiv v3 — Project Guide (WIP)
 
-> **Status: PLAYABLE LOOP.** The map, the **era cycle**, the **territory/expansion economy**,
-> **city growth**, and a **progress-offer flow** are wired together and run end to end. Combat
-> remains a "simulate this wave" toy on the side. The progress web is still a UI sample over
-> v2 content — **taking a node has no effect yet** beyond opening more of the web.
+> **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, era cycle,
+> territory economy, city growth, a 100-node progress web whose nodes have **real effects**,
+> unit/building placement, an **era-closing wave** with razing and permanent casualties, and
+> a **gold economy** (repair · upgrade · reroll) that is the counterweight to all of it.
+> `node sims/campaign.mjs 4` plays it headlessly.
+>
+> **Balance past ~era 5 is not tuned** and is known to fall apart in the late game; the
+> four-era slice is what has been measured.
 >
 > This file is the source of truth for v3. The root `../CLAUDE.md` describes **v2** (square
 > grid, legitimacy, specialists, policies) — most of it does **not** apply here. Keep this
@@ -45,6 +49,8 @@ npm run build
 npm run lint
 node sims/worldgen.mjs 200   # headless worldgen regression + map dump
 node sims/progress.mjs       # progress-web structure check (no crossed edges, forks, reach)
+node sims/campaign.mjs 4     # play 4 eras headlessly across 5 seeds — the balance instrument
+node sims/economy.mjs        # expansion-strategy sweep (wide vs tall)
 ```
 
 The v3 preview config is `autociv-v3-dev` in the repo-root `.claude/launch.json` (port
@@ -64,6 +70,7 @@ v3/
 │   └── logo/
 ├── sims/worldgen.mjs           # headless generation sweep + invariant report + ASCII map
 ├── sims/progress.mjs           # progress-web structure assertions + greedy playthrough
+├── sims/campaign.mjs           # plays the WHOLE loop headlessly: waves, gold, survival
 └── src/
     ├── App.jsx                 # screen router: loading → title → pregame → game
     ├── screens/                # LoadingScreen · TitleScreen · PreGameScreen (civ select)
@@ -293,16 +300,17 @@ era clock; v3 has no eras yet, so both are **dropped rather than faked**.
 ### Progress web (`game/data/progress.js`, `components/Progress/ProgressTree`)
 A radial tree that **grows outward**, opened from the HUD's Progress button.
 
-**72 nodes, 4 rings (12 / 16 / 20 / 24), four quadrants** — Society / Technology / Economy /
-Military — each owning a 90° sector.
+**100 nodes, 5 rings (12 / 16 / 20 / 24 / 28), four quadrants** — Society / Technology /
+Economy / Military — each owning a 90° sector.
 
 **The shape is generated from one parent template**, not hand-placed. Every quadrant is the
-same 3 → 4 → 5 → 6 tree:
+same 3 → 4 → 5 → 6 → 7 tree:
 
 ```
-ring 1 parents: [0] [0] [1] [2]           → parent 0 FORKS
-ring 2 parents: [0] [1] [2] [2] [3]       → parent 2 FORKS
-ring 3 parents: [0,1] [2] [2] [3] [4] [4] → DIAMOND, then two FORKS
+ring 1 parents: [0] [0] [1] [2]              → parent 0 FORKS
+ring 2 parents: [0] [1] [2] [2] [3]          → parent 2 FORKS
+ring 3 parents: [0,1] [2] [2] [3] [4] [4]    → DIAMOND, then two FORKS
+ring 4 parents: [0] [1] [1] [2] [3] [4] [5]  → parent 1 FORKS
 ```
 
 Two properties fall out of that, and **`validateStructure()` asserts both** (run
@@ -326,18 +334,41 @@ playthrough takes **48 of 72** — a third of the web is closed off by the choic
   unopened ring is **not rendered at all**, and the camera animates out to the new fit, so the
   web visibly expands.
 - **Camera is the HexMap pattern** — ref-based, applied imperatively, so pan/zoom never
-  re-render the 72 nodes. Wheel zooms at the cursor; left **or middle** drag pans; a drag that
+  re-render the 100 nodes. Wheel zooms at the cursor; left **or middle** drag pans; a drag that
   moved suppresses the click so panning never takes a node by accident. "Recentre" re-fits.
 - **States**: green = taken, blue = available (pulsing), grey = locked. Each node is a
   `clip-path` hexagon with its category silhouette; hover gives an `InfoTip` with what it
   unlocks and its effect (through `IconText`, so `:token:`s render as icons). Edges light
   green once their prerequisite is taken and go dashed when the route is dead.
 
-**The data is a sample, not the design.** All 72 names, what they unlock, and their effect
-text are **verbatim from v2's registries**; the *shape* is invented to exercise the UI. A few
-effects still mention `:legitimacy:`, which v3 dropped — left as-is so the file stays a
-faithful v2 sample. **Clicking simply takes a node**: no cost, no progress spend, no economy
-gating.
+#### Node effects — a vocabulary, not 100 bespoke rules
+A node is `[name, ...effects]` on one line. There are **twelve effect kinds** with parameters,
+applied by `GameManager._applyEffects` into ONE accumulated record, `game.mods`:
+
+| kind | what it does |
+|---|---|
+| `terrain` / `improved` | extra yields on a terrain type, or on every improvement |
+| `mult` | percentage on a resource — **additive per resource, applied once at the end** |
+| `threshold` | multiplier on a threshold (<1 is cheaper), applied at comparison time |
+| `unit` / `building` | unlocks it **and queues a placement** you aim at a tile |
+| `weapon` / `armor` | a **TIER**, see below |
+| `unitMod` | per-type (melee/ranged/cavalry/defense) atk/hp/range/moves |
+| `road` | unlocks roads and sets what a road-adjacent tile earns |
+| `settle` | an expansion permission (tundra, ocean, mountain…) |
+| `city` / `palace` | per-city yields and growth rate; palace HP |
+
+**Effect TEXT and the node icon are generated from the effects** (`describe`, `iconFor`), so a
+node's description can never drift from what it actually does — never hand-write one.
+
+**Weapons and armour are TIERS, not stacks.** You start the game on **Clubs** and **Hides**; a
+node moves you to Bronze → Iron → Steel (and Leather → Bronze Mail → Iron Mail), *replacing*
+the tier below via `bestTier`, so taking a lower tier later is a no-op. Weapons arm **melee and
+cavalry only** — ranged improve through their own `unitMod` line, so bows and blades advance
+separately. The weapon chain is deliberately reachable through **both** Military (Bronze
+Working, Iron Working) and Technology (Bronze Casting, Metallurgy), so neither quadrant is
+compulsory.
+
+`validateStructure()` also asserts every `unit`/`building` effect names something real.
 
 ---
 
@@ -363,6 +394,12 @@ gating.
 - **v3 has its own `node_modules`.** Run npm commands from `v3/`, not the repo root.
 - Set `localStorage['autociv.mute'] = '1'` to disable music (keeps automated screenshots
   from hanging on a looping media stream).
+- **The `sprites/ui/` set are BLACK SILHOUETTES** drawn for v2's parchment panel. v3's
+  surfaces are dark, so `index.css` inverts them wherever they appear as an inline `<img>`.
+  The 9-slice frames go through `border-image`, not `<img>`, so they are unaffected.
+- Dead units are filtered out of `combat.units` at the start of each turn, so end-of-combat
+  cannot see them. Casualties are **banked into `combat.fallen`** before that filter — without
+  it, units that died were never marked destroyed on their tiles and came back free.
 - Tile `x`/`y` are pre-computed by worldgen at **hex size 1** — multiply by `HEX_SIZE` when
   rendering, and note the noise fields sample the same coordinates.
 
@@ -462,6 +499,80 @@ take 18 seconds; it now takes 3.
 
 City growth is separate from the expansion meter: each city banks its adjacent food (×1.5 with
 water in reach) and buys population against an exponential cost.
+
+## Buildings, units, and placement
+
+**Buildings** (`data/buildings.js`) are unlocked by a progress node, which usually grants one
+or more **placements**. Every building's payout is **adjacency-shaped**: a flat base plus a
+per-neighbour bonus keyed to terrain / control / improvements / cities / other buildings.
+That is the whole design — *where* you put it matters more than which one you got. A Lumber
+Camp in deep forest pays several times what one on the plains does.
+
+**Units** (`data/units.js`) come in four flavours: **melee, ranged, cavalry, and defensive
+construction**. A construction (Mud Brick Wall, Palisade, Stone Wall) has `atk: 0` and
+`acts: 0` — it never moves and never strikes, it just soaks a lane. The Watchtower is the one
+construction that shoots back.
+
+**Where the army comes from is a deliberate split:**
+- **Territory** raises the *line*: each city musters one melee levy per era, capped at
+  `UNITS_PER_CITY_CAP` (3) units per city. Without this the army only ever shrank — casualties
+  are permanent and the web grants far fewer units than a wave kills, so every run died around
+  era 5 regardless of play.
+- **The progress web** gives *quality* (weapon/armour tiers) and the arms a levy never is —
+  bows, horses, walls.
+- You **start** with 3 Warriors ringing the palace, because otherwise surviving era 0 depends
+  on whether the web happened to offer a military node first — a coin flip, not a decision.
+
+Placement reuses the expansion affordance: legal tiles pulse, you click one. Units never stand
+on the palace tile (combat's occupancy map holds the palace there and would shadow them).
+
+## The era's battle & razing
+
+Each era **ends in a wave**, sized by the era you have reached — dawdling does not make it
+easier. Every **revealed, uncleared encampment fields an extra garrison standing on the camp**,
+already inside your frontier: that is the pressure to expand toward them.
+
+A camp garrison's **travel domain is derived from the flow fields** — the cheapest domain that
+can actually path between the camp and the palace. This is not flavour: a camp on an island
+handed a land-only garrison can never march in and your land units can never reach it, so the
+battle ran to the turn cap *every single era*.
+
+An enemy with nothing in reach **razes the ground it stands on** — building, then city, then
+improvement — leaving a **ruin**. Casualties are likewise not erased: a fallen unit stands on
+its tile as `destroyed`. Both are **repair bills, not erasures**, which is what gives gold
+something to do.
+
+## Gold (`data/costs.js`, `components/Tile/TilePanel`)
+
+Gold is the **only** resource you spend by hand — food buys expansions on a threshold,
+production and progress arrive on their own. It has three sinks, all priced in `costs.js`:
+
+- **Repair** — bring back a destroyed unit, or rebuild razed ground (a razed city returns
+  *with its population*: you are rebuilding, not refounding)
+- **Upgrade** — raise a unit's or building's level permanently. A building upgrade scales its
+  **whole** payout including adjacency, so upgrading a well-placed building is worth far more
+  than upgrading a badly-placed one.
+- **Reroll** — redraw the three advancements on offer. The price **doubles with each reroll
+  inside one offer** so it stays a decision rather than a slot machine, and resets at the next
+  threshold.
+
+Clicking a tile you control opens `TilePanel` with its actions and prices; buttons grey out
+when you cannot afford them. Gold cannot be spent during a battle (`canSpend`).
+
+**This is what makes the loop work.** Before it existed, waves killed 2–3 units an era with no
+way to replace them and every seed died by era 5. With it, the same waves are survivable and
+the tension is a budget rather than a death spiral.
+
+## Campaign analysis (`sims/campaign.mjs`)
+
+`node sims/campaign.mjs [eras]` plays the whole loop headlessly across 5 seeds with a greedy
+AI, and reports survival, wave outcomes, casualties, razes, and what gold was spent on. It is
+the instrument the economy sim cannot replace: it answers *does the assembled game survive*.
+
+Measured at **4 eras: 5/5 survive**, palace 92–100%, ~1 casualty and 1–3 razes per wave, and
+gold genuinely spent (≈40 upgrades, 4–7 repairs, 2–6 rebuilds per run). **Past ~era 12 it
+falls apart** — the wave budget outruns a unit count capped by cities. That is known and
+deliberately untuned.
 
 ## Economy analysis (`sims/economy.mjs`)
 

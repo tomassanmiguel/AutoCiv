@@ -71,3 +71,40 @@
   font-size: 0.8rem;
 }
 .offer-skip:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+
+/* --- footer: reroll / purse / skip ---------------------------------------- */
+.offer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.1rem;
+}
+
+.offer-reroll {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(216, 173, 78, 0.5);
+  background: rgba(216, 173, 78, 0.12);
+  color: #e8d5a0;
+  cursor: pointer;
+}
+.offer-reroll:hover:not(:disabled) { background: rgba(216, 173, 78, 0.24); }
+.offer-reroll.poor {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #6f7789;
+  cursor: not-allowed;
+}
+.offer-cost, .offer-purse {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-variant-numeric: tabular-nums;
+}
+.offer-cost img, .offer-purse img { width: 14px; }
+.offer-purse { color: #8b93a8; font-size: 0.85rem; }

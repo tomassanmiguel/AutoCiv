@@ -21,9 +21,13 @@
 // turn cap is hit (stalemate — a safety net, not a rule).
 
 import { key, neighbors, distance } from '../hex/coords.js'
-import { generateHost, domainCanTraverse, ENEMY_DOMAINS, waveBudget } from '../data/enemies.js'
+import {
+  generateHost, domainCanTraverse, ENEMY_DOMAINS, ENEMY_TYPES,
+  waveBudget, makeEnemy, rollTier,
+} from '../data/enemies.js'
 import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
 import { isPassable, isLand } from '../world/terrain.js'
+import { razeTile } from '../world/territory.js'
 import { makeRng, shuffle } from '../world/noise.js'
 
 export const MAX_WAVES = 30
@@ -44,7 +48,7 @@ const TURN_CAP = 300
 // at 0.45, strength 1 wins ~95% of the time, strength 2 ~40%, strength 3 ~20%.
 const DEFENCE_RATIO = 0.45
 const MAX_GARRISON = 60
-const MIX = [['melee', 0.5], ['ranged', 0.3], ['cavalry', 0.2]]
+const MIX = [['warrior', 0.5], ['slinger', 0.3], ['rider', 0.2]]
 
 class CombatMixin {
   // --- setup ---------------------------------------------------------------
@@ -53,7 +57,7 @@ class CombatMixin {
    * Build a fresh combat: flow fields, an enemy host on the battlefield ring,
    * and a scratch garrison scattered over nearby land.
    */
-  startCombat(wave = this.combat.wave, strength = this.combat.strength) {
+  startCombat(wave = this.combat.wave, strength = this.combat.strength, { scratch = false } = {}) {
     const rng = makeRng((this.seed ^ (wave * 2654435761)) >>> 0)
     const known = this.known
 
@@ -68,26 +72,110 @@ class CombatMixin {
     const spawns = known.battlefield.map((t) => ({ q: t.q, r: t.r, terrain: t.terrain }))
     const reachable = (domain, q, r) => this._fields[domain].has(key(q, r))
     const enemies = generateHost(wave, spawns, reachable, rng, strength)
+    // Every REVEALED encampment fields a garrison of its own, standing on the
+    // camp. They are already inside your frontier, so they do not have to march
+    // in — which is exactly why clearing a camp by expanding onto it matters.
+    enemies.push(...this._encampmentEnemies(wave, rng, enemies.length))
+
+    const maxHp = PALACE.def + (this.mods?.palaceDef ?? 0)
+    this.palaceHp = Math.min(this.palaceHp ?? maxHp, maxHp)
 
     this.combat = {
       ...this.combat,
-      wave, strength,
+      wave, strength, scratch,
       active: true,
       turn: 0, beat: 0, actionSeq: 0,
       result: null,
       queue: [], phase: null, acting: null,
       enemies,
-      units: this._makeGarrison(wave, rng),
-      palace: { ...PALACE, hp: PALACE.def, maxHp: PALACE.def, q: 0, r: 0, lastAttackSeq: null, lastAttackDir: null },
+      units: scratch ? this._scratchGarrison(wave, rng) : this._playerArmy(),
+      palace: {
+        ...PALACE, hp: this.palaceHp, maxHp, q: 0, r: 0,
+        atk: PALACE.atk + Math.round((this.mods?.unitAtk ?? 0) / 2),
+        lastAttackSeq: null, lastAttackDir: null,
+      },
       events: [],
-      breaches: 0,
+      breaches: 0, razed: 0, losses: 0, fallen: [],
     }
     this._emit()
   }
 
+  /**
+   * The real defenders: every unit the progress web granted and you placed.
+   * Their stats are live — weapons/armour/per-type mods are folded in here, so
+   * a Warrior placed in era 0 fights at era-3 strength once you have the tech.
+   */
+  _playerArmy() {
+    const units = []
+    let id = 0
+    for (const t of this.world.terr.controlled) {
+      // A destroyed unit is a ruin, not a soldier — it sits the battle out
+      // until it is repaired.
+      if (!t.unit || t.unit.destroyed) continue
+      const def = UNIT_DEFS[t.unit.key]
+      if (!def) continue
+      const s = unitStats(def, this.era, this.mods, t.unit.level ?? 1)
+      units.push({
+        id: id++, side: 'player', key: def.key, name: s.name, type: s.type,
+        q: t.q, r: t.r, home: t,
+        hp: s.def, maxHp: s.def, atk: s.atk,
+        range: s.range, acts: s.acts,
+        dead: false, lastAttackSeq: null, lastAttackDir: null,
+      })
+    }
+    return units
+  }
+
+  /**
+   * One garrison enemy per revealed, uncleared encampment, standing on the camp.
+   *
+   * Its DOMAIN is the cheapest one that can actually path between the camp and
+   * the palace. That is not flavour — a camp on an island handed a land-only
+   * garrison can never march in, and your land units can never reach it, so the
+   * battle runs to the turn cap every single era. Deriving the domain from the
+   * flow fields makes an unreachable camp structurally impossible.
+   */
+  _encampmentEnemies(wave, rng, startId) {
+    const out = []
+    const types = Object.values(ENEMY_TYPES)
+    const ORDER = ['default', 'amphibious', 'astral']
+    for (const t of this.known.tiles) {
+      if (!t.encampment) continue
+      const domainKey = ORDER.find((d) => this._fields[d]?.has(key(t.q, t.r))) ?? 'astral'
+      const type = types[Math.floor(rng() * types.length)]
+      // A camp always fields a real body, never a grunt — it is a landmark.
+      const tier = rollTier(rng)
+      const e = makeEnemy(startId + out.length, type, ENEMY_DOMAINS[domainKey],
+        tier.mult < 1 ? { key: 'normal', prefix: '', mult: 1 } : tier, wave, t)
+      e.name = `Encamped ${e.name}`
+      e.fromCamp = true
+      out.push(e)
+    }
+    return out
+  }
+
+  /**
+   * Tear the combat down and write its consequences back into the world:
+   * casualties are removed from their tiles for good, survivors heal, and the
+   * palace keeps the damage it took into the next era.
+   */
   endCombat() {
+    const c = this.combat
+    if (!c.scratch) {
+      let losses = 0
+      // Both the banked fallen and anything that died in the final beat.
+      // A casualty is NOT erased — it stands on its tile as a destroyed unit
+      // that gold can bring back. That is the whole point of keeping gold.
+      for (const u of [...c.fallen, ...c.units]) {
+        if (!u.home?.unit) continue
+        if (u.dead || u.hp <= 0) { u.home.unit.destroyed = true; losses++ }
+      }
+      c.losses = losses
+      this.palaceHp = Math.max(0, c.palace?.hp ?? this.palaceHp)
+      this.world.terr.version++
+    }
     this.combat = { ...this.combat, active: false }
-    this.setSpeed('paused')
+    this._knownCache = null
     this._emit()
   }
 
@@ -129,7 +217,12 @@ class CombatMixin {
       isLand(tile.terrain) && isPassable(tile.terrain) && !(tile.q === 0 && tile.r === 0)
   }
 
-  _makeGarrison(wave, rng) {
+  /**
+   * The DEBUG garrison, for the "Simulate Combat" bar only — a scratch army
+   * bought against the same budget curve so any wave is demoable without having
+   * played up to it. The real game uses `_playerArmy`.
+   */
+  _scratchGarrison(wave, rng) {
     // Defenders cluster near the palace — sorted by distance, so the ring the
     // enemies must grind through is the inner one.
     const spots = shuffle(
@@ -141,9 +234,9 @@ class CombatMixin {
     let spent = 0
     for (let i = 0; i < spots.length && i < MAX_GARRISON && spent < budget; i++) {
       let roll = rng()
-      let pickKey = 'melee'
+      let pickKey = MIX[0][0]
       for (const [k, p] of MIX) { if (roll < p) { pickKey = k; break } roll -= p }
-      const stats = unitStats(UNIT_DEFS[pickKey], wave)
+      const stats = unitStats(UNIT_DEFS[pickKey], wave, this.mods)
       const t = spots[i]
       spent += stats.def
       units.push({
@@ -202,13 +295,17 @@ class CombatMixin {
     const c = this.combat
     if (!c.queue.length) {
       // New turn: clear last turn's dead (they had a beat on screen to fade).
+      // Casualties are BANKED first — they are dropped from `c.units` here, so
+      // end-of-combat would otherwise never see them and their tiles would keep
+      // a unit that died.
+      for (const u of c.units) if (u.dead) c.fallen.push(u)
       c.enemies = c.enemies.filter((e) => !e.dead)
       c.units = c.units.filter((u) => !u.dead)
       if (this._checkEnd()) return null
       c.turn++
       this._moveField = null
       c.queue = this._buildQueue()
-      if (!c.queue.length) { c.result = 'stalemate'; this.setSpeed('paused'); return null }
+      if (!c.queue.length) { c.result = 'stalemate'; if (c.scratch) this.setSpeed('paused'); return null }
     }
 
     const beat = c.queue.shift()
@@ -223,7 +320,11 @@ class CombatMixin {
     switch (beat.phase) {
       case 'enemy-move': visible = this._enemyMove(piece); break
       case 'player-move': visible = this._playerMove(piece); break
-      case 'player-attack': visible = this._strike(piece, this._lowestHpWithin(c.enemies, piece, piece.range)); break
+      // A defensive construction has atk 0: it never strikes, it only soaks.
+      case 'player-attack':
+        visible = piece.atk > 0 &&
+          this._strike(piece, this._lowestHpWithin(c.enemies, piece, piece.range))
+        break
       case 'enemy-attack': visible = this._enemyAttack(piece); break
       default: break
     }
@@ -247,7 +348,9 @@ class CombatMixin {
     if (c.palace.hp <= 0) c.result = 'lost'
     else if (!c.enemies.some((e) => !e.dead)) c.result = 'won'
     else if (c.turn >= TURN_CAP) c.result = 'stalemate'
-    if (c.result) { this.setSpeed('paused'); c.acting = null }
+    // Only the debug "Simulate" bar stops the clock on a result; an era wave
+    // hands control back to the main cycle, which decides what happens next.
+    if (c.result) { if (c.scratch) this.setSpeed('paused'); c.acting = null }
     return !!c.result
   }
 
@@ -348,8 +451,8 @@ class CombatMixin {
     return field
   }
 
-  // 4 — ONE enemy hits a defender in reach, else the palace. Returns whether it
-  //     found anything to hit.
+  // 4 — ONE enemy hits a defender in reach, else the palace, else it RAZES the
+  //     ground it is standing on. Returns whether anything happened.
   _enemyAttack(e) {
     const c = this.combat
     const target = this._lowestHpWithin(c.units, e, e.range)
@@ -358,7 +461,23 @@ class CombatMixin {
       c.breaches++
       return this._strike(e, c.palace)
     }
-    return false
+    return this._raze(e)
+  }
+
+  /**
+   * An enemy with nothing to fight wrecks what it is standing on — building
+   * first, then city, then the improvement. It leaves a RUIN, which gold can
+   * rebuild; the palace tile is never razed, since losing it is losing the run.
+   */
+  _raze(e) {
+    const t = this.world.tiles.get(key(e.q, e.r))
+    const what = razeTile(this.world, t)
+    if (!what) return false
+    this.combat.razed++
+    this.combat.events.push({ id: `raze-${this.combat.actionSeq}-${key(t.q, t.r)}`, q: t.q, r: t.r, kind: 'raze', amount: what })
+    this.combat.actionSeq++
+    this._knownCache = null
+    return true
   }
 
   _lowestHpWithin(pool, from, range) {

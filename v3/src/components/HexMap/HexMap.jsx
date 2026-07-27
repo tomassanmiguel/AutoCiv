@@ -4,6 +4,10 @@ import { SQRT3, DIRS } from '../../game/hex/coords.js'
 import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
 
 import PieceCard from './PieceCard.jsx'
+import { UNIT_DEFS } from '../../game/data/units.js'
+import { BUILDING_DEFS, buildingYield, buildingEffectText } from '../../game/data/buildings.js'
+import { tileYield } from '../../game/world/territory.js'
+import IconText from '../common/IconText.jsx'
 import './HexMap.css'
 
 // Flat-top hexes. `HEX_SIZE` is the circumradius, so a hex is 2*size wide and
@@ -37,13 +41,20 @@ export default function HexMap() {
   const known = game.known
   const combat = game.combat
   const sel = game.selection
-  // While an expansion is being aimed, the legal tiles glow and become clickable.
+  // While an expansion or a placement is being aimed, the legal tiles glow and
+  // become clickable. Both use the same affordance — one aiming state, one look.
   const expMode = sel?.type === 'expansion' ? sel.mode : null
+  const placing = sel?.type === 'placement' ? sel.item : null
   const expSet = (() => {
+    if (placing) return new Set(game.placementTargets.map((x) => `${x.q},${x.r}`))
     if (!expMode) return null
     const t = game.expansionTargets
     return new Set((expMode === 'city' ? t.city : t.improve).map((x) => `${x.q},${x.r}`))
   })()
+  const aimAt = (t) => {
+    if (placing) game.placeGrant(t)
+    else if (expMode) game.expandOnto(t, expMode)
+  }
 
   const viewportRef = useRef(null)
   const contentRef = useRef(null)
@@ -299,6 +310,20 @@ export default function HexMap() {
     }
   }
 
+  // Roads are drawn as segments between adjacent road tiles. Only the first
+  // three directions are walked, so each link is emitted once rather than twice.
+  const roadEdges = []
+  for (const t of shown) {
+    if (!t.road) continue
+    const c = centerOf(t.q, t.r)
+    for (let i = 0; i < 3; i++) {
+      const o = game.world.at(t.q + DIRS[i][0], t.r + DIRS[i][1])
+      if (!o?.road) continue
+      const oc = centerOf(o.q, o.r)
+      roadEdges.push({ id: `${t.q},${t.r}:${i}`, x1: c.x, y1: c.y, x2: oc.x, y2: oc.y })
+    }
+  }
+
   return (
     <div className="hexmap-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
       <div
@@ -310,6 +335,8 @@ export default function HexMap() {
           const k = `${t.q},${t.r}`
           const { left, top } = posOf(t)
           const isBf = known.bfSet.has(k)
+          const bDef = t.building && BUILDING_DEFS[t.building.key]
+          const uDef = t.unit && UNIT_DEFS[t.unit.key]
           return (
             <div
               key={k}
@@ -325,16 +352,37 @@ export default function HexMap() {
               }}
               onMouseEnter={() => setHover(t)}
               onMouseLeave={() => setHover((h) => (h === t ? null : h))}
-              onClick={() => { if (expSet?.has(k)) game.expandOnto(t, expMode) }}
+              onClick={() => {
+                if (expSet?.has(k)) aimAt(t)
+                // Clicking your own ground opens the gold panel for it.
+                else if (!isBf && t.controlled) game.inspect(t)
+                else game.inspect(null)
+              }}
             >
-              {!isBf && t.improved && !t.city && <span className="hex-improved" />}
+              {!isBf && t.improved && !t.city && !bDef && <span className="hex-improved" />}
               {!isBf && t.city && (
                 <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>
               )}
+              {!isBf && bDef && !t.city && <img className="hex-building" src={bDef.icon} alt="" />}
+              {/* The garrison sits ON TOP of whatever the tile already holds.
+                  A destroyed unit stays visible, greyed — it is a repair bill,
+                  not an erasure. */}
+              {!isBf && uDef && !combat.active && (
+                <img className={`hex-unit${t.unit.destroyed ? ' destroyed' : ''}`} src={uDef.icon} alt="" />
+              )}
+              {!isBf && t.ruin && <span className="hex-ruin">✕</span>}
               {!isBf && t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
             </div>
           )
         })}
+
+        {roadEdges.length > 0 && (
+          <svg className="road-net" width={layout.w} height={layout.h}>
+            {roadEdges.map((e) => (
+              <line key={e.id} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} />
+            ))}
+          </svg>
+        )}
 
         {borderEdges.length > 0 && (
           <svg className="territory-outline" width={layout.w} height={layout.h}>
@@ -364,13 +412,21 @@ export default function HexMap() {
             ) })}
             {combat.events.map((ev) => { const c = centerOf(ev.q, ev.r); return (
               <div key={ev.id} className={`combat-float ${ev.kind}`}
-                style={{ left: c.x, top: c.y, fontSize: HEX_W * 0.26 }}>−{ev.amount}</div>
+                style={{ left: c.x, top: c.y, fontSize: HEX_W * 0.26 }}>
+                {ev.kind === 'raze' ? `${ev.amount} razed!` : `−${ev.amount}`}
+              </div>
             ) })}
           </>
         )}
       </div>
 
-      {hover && <TileTip tile={hover} battlefield={known.bfSet.has(`${hover.q},${hover.r}`)} />}
+      {hover && (
+        <TileTip
+          game={game}
+          tile={hover}
+          battlefield={known.bfSet.has(`${hover.q},${hover.r}`)}
+        />
+      )}
 
       <div className="hexmap-readout">
         {known.tiles.length} tiles known · {known.encampments.length} encampments
@@ -380,7 +436,7 @@ export default function HexMap() {
 }
 
 /** Hover card: terrain, what the tile yields, and what sits on it. */
-function TileTip({ tile, battlefield }) {
+function TileTip({ game, tile, battlefield }) {
   if (battlefield) {
     return (
       <div className="hex-tip">
@@ -391,15 +447,24 @@ function TileTip({ tile, battlefield }) {
     )
   }
   const def = terrainOf(tile.terrain)
+  // What it ACTUALLY makes right now, with every progress bonus folded in —
+  // more useful than the raw terrain table once the web starts stacking up.
+  const live = tile.controlled ? tileYield(game.world, tile, game.mods) : null
+  const shownYield = live && Object.values(live).some((v) => v > 0)
+    ? live
+    : def.yields
+  const bDef = tile.building && BUILDING_DEFS[tile.building.key]
+  const uDef = tile.unit && UNIT_DEFS[tile.unit.key]
   return (
     <div className="hex-tip">
       <div className="hex-tip-title">{def.name}</div>
       <div className="hex-tip-sub">
         {tile.region.replace(/_/g, ' ')} · ring {tile.d} · wedge {tile.wedge}
+        {tile.improved && ' · improved'}{tile.road && ' · road'}
       </div>
       <div className="hex-tip-body">
-        {Object.entries(def.yields).some(([, v]) => v > 0)
-          ? Object.entries(def.yields).filter(([, v]) => v > 0).map(([res, v]) => (
+        {Object.entries(shownYield).some(([, v]) => v > 0)
+          ? Object.entries(shownYield).filter(([, v]) => v > 0).map(([res, v]) => (
             <span key={res} className="hex-tip-yield">+{v} {res}</span>
           ))
           : <span className="hex-tip-none">no yield</span>}
@@ -407,9 +472,23 @@ function TileTip({ tile, battlefield }) {
       </div>
       {def.note && <div className="hex-tip-note">{def.note}</div>}
       {tile.q === 0 && tile.r === 0 && <div className="hex-tip-note palace">Your palace stands here.</div>}
+      {bDef && (
+        <div className="hex-tip-note build">
+          <b>{bDef.name}</b> — <IconText>{buildingEffectText(bDef)}</IconText>
+          <div className="hex-tip-sub">
+            here: {Object.entries(buildingYield(game.world, tile)).filter(([, v]) => v > 0)
+              .map(([r, v]) => `+${v} ${r}`).join(' ') || 'nothing yet'}
+          </div>
+        </div>
+      )}
+      {uDef && (
+        <div className="hex-tip-note unit">
+          <b>{uDef.name}</b> — {uDef.blurb}
+        </div>
+      )}
       {tile.encampment && (
         <div className="hex-tip-note camp">
-          Enemy encampment (level {tile.encampment.level}) — reinforces every wave until your borders reach it.
+          Enemy encampment (level {tile.encampment.level}) — fields a garrison every wave until your borders reach it.
         </div>
       )}
     </div>

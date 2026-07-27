@@ -53,6 +53,7 @@ const HILL_CUT = 0.60
 const MAX_LOCAL_DRY = 3 // desert/tundra tiles allowed inside the opening view
 const ENCAMPMENT_MIN_DIST = 6
 const ENCAMPMENT_SPACING = 3
+const EARTH_CAMPS_PER_WEDGE = 1
 
 /** Build every hex in the map with its band + pixel position, terrain unset. */
 function blankTiles() {
@@ -668,7 +669,11 @@ function placeEncampments(tiles, rng, marsCenter) {
   for (const t of shuffle(earthCands, rng)) byWedge[t.wedge].push(t)
   for (const w of byWedge) w.sort((a, b) => a.d - b.d)
 
-  for (let i = 0; i < 3; i++) {
+  // ONE per wedge on Earth. Every revealed camp fields a garrison in every
+  // wave, so a dozen of them inside the Old World turned the classical eras into
+  // a siege you could not answer. Six plus the local one is enough to point in
+  // every direction and still be clearable.
+  for (let i = 0; i < EARTH_CAMPS_PER_WEDGE; i++) {
     for (let w = 0; w < 6; w++) {
       const spot = byWedge[w].find((t) => !t.encampment && tryPlace(t))
       if (spot) continue

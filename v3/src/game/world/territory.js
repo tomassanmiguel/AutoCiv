@@ -16,8 +16,9 @@
 // its adjacent tiles and buys population against an exponential cost, with a
 // multiplier if it can reach water.
 
-import { neighbors } from '../hex/coords.js'
-import { terrainOf, isWater } from './terrain.js'
+import { neighbors, key as hkey } from '../hex/coords.js'
+import { terrainOf, isWater, isPassable } from './terrain.js'
+import { buildingYield } from '../data/buildings.js'
 
 // --- City growth knobs -----------------------------------------------------
 export const CITY_POP_BASE = 260      // food for pop 2
@@ -79,11 +80,18 @@ export function initTerritory(world) {
     t.controlled = false
     t.improved = false
     t.city = null
+    t.building = null
+    t.road = false
+    t.unit = null
+    t.ruin = null
   }
   world.terr = {
     controlled: new Set(),
     improved: new Set(),
     cities: new Set(),
+    buildings: new Set(),
+    roads: new Set(),
+    ruins: new Set(),
     entered: new Set(), // regions that already hold an improvement
     cleared: 0,         // encampments absorbed by your borders
     borders: regionBorders(world),
@@ -285,37 +293,248 @@ export function foundCity(world, t) {
   return true
 }
 
-/** Per-tick yield of one tile, given control / improvement / city. */
-export function tileYield(world, t) {
+// ---------------------------------------------------------------------------
+// Roads
+// ---------------------------------------------------------------------------
+
+/**
+ * Lay the road network: every city joined to the palace along the shortest route
+ * through ground you control. Called when roads unlock and whenever a city is
+ * founded, so the network always reflects the current city list.
+ *
+ * The network GROWS rather than being rebuilt: each city is joined to the
+ * nearest tile already carrying road, which is what makes it read as a road
+ * system and not a bundle of separate spokes out of the capital.
+ */
+export function layRoads(world) {
+  const roads = world.terr.roads
+  const home = world.at(0, 0)
+  if (!roads.size) { home.road = true; roads.add(home) }
+
+  const passable = (t) => t && t.controlled && visible(world, t) && isPassable(t.terrain)
+  // Nearest-first, so short spurs are absorbed before long ones are drawn.
+  const todo = [...world.terr.cities].filter((t) => !t.road).sort((a, b) => a.d - b.d)
+
+  for (const target of todo) {
+    if (target.road) continue
+    // BFS outward from the whole existing network at once.
+    const prev = new Map()
+    const q = [...roads]
+    const seen = new Set(q)
+    let hit = null
+    while (q.length && !hit) {
+      const t = q.shift()
+      for (const n of neighbors(t.q, t.r)) {
+        const o = world.tiles.get(hkey(n.q, n.r))
+        if (!o || seen.has(o) || !passable(o)) continue
+        seen.add(o)
+        prev.set(o, t)
+        if (o === target) { hit = o; break }
+        q.push(o)
+      }
+    }
+    if (!hit) continue // unreachable overland (another continent) — no road
+    for (let t = hit; t && !t.road; t = prev.get(t)) { t.road = true; roads.add(t) }
+  }
+  world.terr.version++
+}
+
+/** Memoised "does this tile touch the road network" — same reasoning as foodAround. */
+function roadAround(world, t) {
+  const v = world.terr.version
+  if (t._roadVersion === v) return t._roadAround
+  const r = t.road || neighbors(t.q, t.r).some((n) => world.tiles.get(hkey(n.q, n.r))?.road)
+  t._roadVersion = v
+  t._roadAround = r
+  return r
+}
+
+// ---------------------------------------------------------------------------
+// Yield
+// ---------------------------------------------------------------------------
+
+const addInto = (out, y, n = 1) => {
+  if (y.food) out.food += y.food * n
+  if (y.production) out.production += y.production * n
+  if (y.gold) out.gold += y.gold * n
+  if (y.progress) out.progress += y.progress * n
+  return out
+}
+
+/**
+ * Per-tick yield of one tile.
+ *
+ * ORDER MATTERS, and it is: (terrain + terrain bonuses) × improvement, then the
+ * flat adders — improvement bonus, roads, buildings, city population. So a
+ * progress node that buffs forests is worth double on an improved forest, while
+ * a building's output does not silently double.
+ *
+ * `mods` is the GameManager's accumulated progress-web state; it is optional so
+ * the worldgen sims can price raw terrain without a game running.
+ */
+export function tileYield(world, t, mods) {
   const out = { food: 0, production: 0, gold: 0, progress: 0 }
   // Claimed but not yet revealed produces nothing — see `visible`.
   if (!t.controlled || !visible(world, t)) return out
-  const base = terrainOf(t.terrain).yields
-  const mult = t.improved ? 2 : 1
-  out.food = base.food * mult
-  out.production = base.production * mult
-  out.gold = base.gold * mult
-  out.progress = base.progress * mult
+  addInto(out, terrainOf(t.terrain).yields)
+  const tb = mods?.terrain?.[t.terrain]
+  if (tb) addInto(out, tb)
+  if (t.improved) { out.food *= 2; out.production *= 2; out.gold *= 2; out.progress *= 2 }
+
+  if (t.improved && mods?.improved) addInto(out, mods.improved)
+  if (mods?.roadYield && roadAround(world, t)) addInto(out, mods.roadYield)
+  if (t.building) addInto(out, buildingYield(world, t))
   if (t.city) {
     // A city keeps its tile's natural yield and adds its population on top.
     out.production += t.city.pop
     out.gold += t.city.pop
     out.progress += t.city.pop
+    if (mods?.cityYields) addInto(out, mods.cityYields)
   }
   return out
 }
 
-/** Summed per-tick output of everything you control. */
-export function territoryYield(world) {
+/**
+ * Summed per-tick output of everything you control.
+ *
+ * Percentage modifiers are ADDITIVE per resource and applied ONCE at the end —
+ * sum the bonuses, then ×(1 + bonus). Chaining them multiplicatively is how v2's
+ * late game ran away, so don't.
+ */
+export function territoryYield(world, mods) {
   const out = { food: 0, production: 0, gold: 0, progress: 0 }
   for (const t of world.terr.controlled) {
-    const y = tileYield(world, t)
+    const y = tileYield(world, t, mods)
     out.food += y.food
     out.production += y.production
     out.gold += y.gold
     out.progress += y.progress
   }
+  if (mods?.mult) {
+    for (const k of ['food', 'production', 'gold', 'progress']) {
+      out[k] = Math.round(out[k] * (1 + (mods.mult[k] ?? 0)))
+    }
+  }
   return out
+}
+
+// ---------------------------------------------------------------------------
+// Placement (buildings and units granted by the progress web)
+// ---------------------------------------------------------------------------
+
+/** May a granted BUILDING go here? Controlled, revealed, land, nothing there yet. */
+export function canPlaceBuilding(world, t) {
+  return !!t && t.controlled && visible(world, t) && !t.building
+    && isPassable(t.terrain) && !NEVER.has(t.terrain)
+}
+
+/**
+ * May a granted UNIT stand here? Same as a building, but one may sit underneath
+ * it — and never on the palace tile, where combat's occupancy map already holds
+ * the palace and would shadow the unit.
+ */
+export function canPlaceUnit(world, t) {
+  return !!t && t.controlled && visible(world, t) && !t.unit
+    && !(t.q === 0 && t.r === 0)
+    && isPassable(t.terrain) && !NEVER.has(t.terrain)
+}
+
+export function placeBuilding(world, t, key) {
+  if (!canPlaceBuilding(world, t)) return false
+  t.building = { key, level: 1 }
+  world.terr.buildings.add(t)
+  world.terr.version++
+  return true
+}
+
+export function placeUnit(world, t, key) {
+  if (!canPlaceUnit(world, t)) return false
+  // `destroyed` is the repairable state: the unit fell in combat and stands as a
+  // ruin on its tile until gold brings it back. hp comes from live stats at
+  // combat start, so it is not stored.
+  t.unit = { key, level: 1, destroyed: false }
+  world.terr.version++
+  return true
+}
+
+// ---------------------------------------------------------------------------
+// Damage and repair
+// ---------------------------------------------------------------------------
+
+/**
+ * Raze the most valuable thing on a tile and leave a RUIN behind. The ruin is
+ * what makes gold matter: losing ground is a bill, not an erasure, so a bad wave
+ * costs you the gold to rebuild rather than the work itself.
+ *
+ * @returns the kind razed, or null if there was nothing to take.
+ */
+export function razeTile(world, t) {
+  if (!t || !t.controlled || (t.q === 0 && t.r === 0)) return null
+  const terr = world.terr
+  let ruin = null
+  if (t.building) {
+    ruin = { kind: 'building', key: t.building.key, level: t.building.level ?? 1 }
+    t.building = null
+    terr.buildings.delete(t)
+  } else if (t.city) {
+    ruin = { kind: 'city', pop: t.city.pop, food: t.city.food }
+    t.city = null
+    terr.cities.delete(t)
+  } else if (t.improved) {
+    ruin = { kind: 'improvement' }
+    t.improved = false
+    terr.improved.delete(t)
+  } else {
+    return null
+  }
+  // Only the most recent loss is repairable — ruins do not stack up on one tile.
+  t.ruin = ruin
+  terr.ruins.add(t)
+  terr.version++
+  return ruin.kind
+}
+
+/** Rebuild whatever was razed here. */
+export function restoreTile(world, t) {
+  const ruin = t.ruin
+  if (!ruin) return false
+  if (ruin.kind === 'building') {
+    t.building = { key: ruin.key, level: ruin.level }
+    world.terr.buildings.add(t)
+  } else if (ruin.kind === 'city') {
+    // The population comes back with it — you are rebuilding, not refounding.
+    t.improved = true
+    world.terr.improved.add(t)
+    t.city = { pop: ruin.pop, food: ruin.food, palace: false }
+    world.terr.cities.add(t)
+  } else {
+    t.improved = true
+    world.terr.improved.add(t)
+  }
+  t.ruin = null
+  world.terr.ruins.delete(t)
+  world.terr.version++
+  return true
+}
+
+/** Bring a destroyed unit back to the field. */
+export function repairUnit(world, t) {
+  if (!t.unit?.destroyed) return false
+  t.unit.destroyed = false
+  world.terr.version++
+  return true
+}
+
+/** Everything on the board that gold could currently fix. */
+export function repairTargets(world) {
+  const units = []
+  const tiles = []
+  for (const t of world.terr.controlled) {
+    if (!visible(world, t)) continue
+    if (t.unit?.destroyed) units.push(t)
+    if (t.ruin) tiles.push(t)
+  }
+  return { units, tiles }
 }
 
 /**
@@ -323,10 +542,10 @@ export function territoryYield(world) {
  * CITY_WATER_BONUS if it can reach water — and buys population against an
  * exponential cost.
  */
-export function growCities(world) {
+export function growCities(world, growthMult = 1) {
   const grew = []
   for (const t of world.terr.cities) {
-    const rate = foodAround(world, t) * (waterAround(world, t) ? CITY_WATER_BONUS : 1)
+    const rate = foodAround(world, t) * (waterAround(world, t) ? CITY_WATER_BONUS : 1) * growthMult
     t.city.food += rate
     let guard = 0
     while (t.city.food >= cityPopCost(t.city.pop) && guard++ < 50) {
@@ -349,6 +568,9 @@ export function territoryStats(world) {
     claimedBeyondFrontier: world.terr.controlled.size - live,
     improved: world.terr.improved.size,
     cities: world.terr.cities.size,
+    buildings: world.terr.buildings.size,
+    roads: world.terr.roads.size,
+    ruins: world.terr.ruins.size,
     cleared: world.terr.cleared ?? 0,
     pop,
   }

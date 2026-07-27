@@ -34,7 +34,10 @@ export default function OutputReadout() {
     <div className="output-readout">
       {THRESHOLD_RESOURCES.map((key) => {
         const s = res[key]
-        const pct = Math.max(0, Math.min(100, (s.value / s.threshold) * 100))
+        // Threshold discounts from the web apply at comparison time, so the bar
+        // must measure against the DISCOUNTED bar or it would lag the crossing.
+        const need = s.threshold * (game.mods.threshold[key] ?? 1)
+        const pct = Math.max(0, Math.min(100, (s.value / need) * 100))
         return (
           <InfoTip
             key={key}
@@ -44,7 +47,7 @@ export default function OutputReadout() {
               <div>
                 <div>{TIP[key]}</div>
                 <div className="output-tip-nums">
-                  Level {s.level} · {Math.floor(s.value)} / {Math.round(s.threshold)} toward the next
+                  Level {s.level} · {Math.floor(s.value)} / {Math.round(need)} toward the next
                 </div>
               </div>
             }

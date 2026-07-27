@@ -154,6 +154,13 @@
 }
 .combat-float.damage { color: #ff9a8a; }
 .combat-float.palace { color: #ffd76a; }
+/* A raze names what was lost rather than a number — it is not damage. */
+.combat-float.raze {
+  color: #ff7a4a;
+  font-size: 0.75em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 @keyframes float-up {
   0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); }
   25% { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }

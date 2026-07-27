@@ -54,13 +54,46 @@ function rollTier(rng) {
   return TIERS[1]
 }
 
+/**
+ * Build one enemy. Shared by the wave host and by encampment garrisons, so a
+ * camp's defenders are stated exactly like anything else on the board.
+ *
+ * Damage is DIRECT: `atk` is subtracted from whatever it hits, unit or palace.
+ * There is no separate chip/breach damage track.
+ */
+export function makeEnemy(id, t, d, tier, wave, cell) {
+  const scale = Math.pow(1.25, wave)
+  const hp = Math.max(1, Math.round(Math.round(t.def * scale) * tier.mult))
+  const atk = Math.max(1, Math.round((t.atk + 2 * wave) * tier.mult))
+  return {
+    id,
+    side: 'enemy',
+    key: `${d.domain}_${t.type}`,
+    name: tier.prefix + d.prefix + t.name,
+    type: t.type, domain: d.domain, tier: tier.key,
+    q: cell.q, r: cell.r,
+    hp, maxHp: hp, atk,
+    range: t.range(wave), acts: t.acts,
+    dead: false, lastAttackSeq: null, lastAttackDir: null,
+  }
+}
+
+export { TIERS, rollTier }
+
 /** HP budget a wave may spend. `strength` is the UI slider (0.25 … 3). */
 // Budget growth (1.34) deliberately OUTPACES per-enemy HP growth (1.25), so the
 // host grows in BODIES as waves rise rather than staying a constant handful of
 // ever-fatter units. v2 landed on the same split for the same reason.
 export function waveBudget(wave, strength = 1) {
-  return 45 * Math.pow(1.34, wave) * strength
+  return BUDGET_BASE * Math.pow(BUDGET_GROWTH, wave) * strength
 }
+
+// Tuned against `sims/campaign.mjs`: the player's army compounds on three axes
+// at once (more units, era scaling, weapons/armour), so a budget that only grew
+// as fast as per-enemy HP left every wave from era 4 on a formality. These are
+// the count knobs, deliberately — per-enemy stat curves are v2's and stay.
+const BUDGET_BASE = 85
+const BUDGET_GROWTH = 1.4
 
 /**
  * Compose a host for a wave.
@@ -72,7 +105,6 @@ export function waveBudget(wave, strength = 1) {
  */
 export function generateHost(wave, spawns, reachable, rng = Math.random, strength = 1) {
   if (!spawns.length) return []
-  const scale = Math.pow(1.25, wave)
   const budget = waveBudget(wave, strength)
 
   // Which domains can actually get in from somewhere on the ring? A domain with
@@ -120,21 +152,9 @@ export function generateHost(wave, spawns, reachable, rng = Math.random, strengt
     const idx = okIdx[Math.floor(rng() * okIdx.length)]
     const cell = free.splice(idx, 1)[0]
 
-    const tier = rollTier(rng)
-    const hp = Math.max(1, Math.round(Math.round(t.def * scale) * tier.mult))
-    const atk = Math.max(1, Math.round((t.atk + 2 * wave) * tier.mult))
-    units.push({
-      id: id++,
-      side: 'enemy',
-      key: `${d.domain}_${t.type}`,
-      name: tier.prefix + d.prefix + t.name,
-      type: t.type, domain: d.domain, tier: tier.key,
-      q: cell.q, r: cell.r,
-      hp, maxHp: hp, atk,
-      range: t.range(wave), acts: t.acts,
-      dead: false, lastAttackSeq: null, lastAttackDir: null,
-    })
-    spent += hp
+    const e = makeEnemy(id++, t, d, rollTier(rng), wave, cell)
+    units.push(e)
+    spent += e.hp
   }
   return units
 }

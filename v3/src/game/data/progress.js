@@ -1,40 +1,45 @@
-// Sample progress web (v3 prototype).
+// The progress web (v3).
 //
-// Every node is a REAL advancement from the v2 content registries — name, what
-// it unlocks, and its effect text are taken verbatim from v2's units /
-// buildings / policies / pops / wonders defs. What is invented is the SHAPE.
-// This exists to exercise the radial-tree UI, not to be v3's real tech tree.
-//
-// NOTE: a few effects still reference :legitimacy:, which v3 has dropped. Left
-// as-is so this file stays a faithful sample of v2 content.
+// 100 nodes: four quadrants — Society / Technology / Economy / Military — each
+// an identical 3 → 4 → 5 → 6 → 7 tree, so the five rings hold 12 / 16 / 20 / 24 / 28.
 //
 // ---------------------------------------------------------------------------
 // STRUCTURE — the rules that make the drawing legible
 // ---------------------------------------------------------------------------
-// Each quadrant is an identical 3 → 4 → 5 → 6 tree, so all four rings hold
-// 12 / 16 / 20 / 24 nodes. Every quadrant uses this same parent template:
+// Every quadrant uses this same parent template:
 //
-//   ring 1 parents: [0] [0] [1] [2]        → parent 0 FORKS
-//   ring 2 parents: [0] [1] [2] [2] [3]    → parent 2 FORKS
-//   ring 3 parents: [0,1] [2] [2] [3] [4] [4]
-//                    ^ DIAMOND            ^ fork      ^ fork
+//   ring 1 parents: [0] [0] [1] [2]              → parent 0 FORKS
+//   ring 2 parents: [0] [1] [2] [2] [3]          → parent 2 FORKS
+//   ring 3 parents: [0,1] [2] [2] [3] [4] [4]    → DIAMOND, then two FORKS
+//   ring 4 parents: [0] [1] [1] [2] [3] [4] [5]  → parent 1 FORKS
 //
-// Two properties fall out of that, and both are asserted by
-// `validateStructure()` (run by sims/progress.mjs):
+// Two properties fall out of that, and both are asserted by `validateStructure()`
+// (run by `sims/progress.mjs`):
 //
-//  1. NO CROSSED EDGES. Within a quadrant every ring is laid out in index
-//     order, and each ring's parent-index sequence is non-decreasing. Two
-//     straight edges between concentric arcs cannot cross when both endpoint
-//     orders agree, so the drawing is planar by construction rather than by eye.
+//  1. NO CROSSED EDGES. Within a quadrant every ring is laid out in index order,
+//     and each ring's parent-index sequence is non-decreasing. Two straight edges
+//     between concentric arcs cannot cross when both endpoint orders agree, so the
+//     drawing is planar by construction rather than by eye.
 //
-//  2. FORKS ARE ALWAYS SIBLINGS. A parent has either exactly one child, or a
-//     set of children that are mutually exclusive — choosing one kills the rest
+//  2. FORKS ARE ALWAYS SIBLINGS. A parent has either exactly one child, or a set
+//     of children that are mutually exclusive — choosing one kills the rest
 //     permanently. Nothing else is ever exclusive, so `excludes` is derived
 //     rather than hand-listed.
 //
 // The DIAMOND is the "A → B or C → D" case: D lists both fork descendants as
 // parents, and `prereqs` is ANY-of, so either branch reaches it. That is what
 // lets a split RE-UNIFY.
+//
+// ---------------------------------------------------------------------------
+// EFFECTS — a small vocabulary, applied by GameManager._applyEffects
+// ---------------------------------------------------------------------------
+// Deliberately NOT one bespoke effect per node: ~12 kinds with parameters, so
+// nodes stay one line each and the tree can be re-shaped without re-writing the
+// engine. Effect TEXT is generated from the data (see `describe`), so a node's
+// description can never drift from what it actually does.
+
+import { UNIT_DEFS, weaponTier, armorTier } from './units.js'
+import { BUILDING_DEFS } from './buildings.js'
 
 /** Nodes that must be chosen from a ring before the next ring appears. */
 export const RING_UNLOCK = 6
@@ -51,15 +56,183 @@ export const QUADRANTS = {
 }
 export const QUADRANT_LIST = Object.values(QUADRANTS)
 
-const ICON = {
-  building: '/sprites/ui/building.png',
-  policy: '/sprites/ui/policy.png',
-  pop: '/sprites/ui/pop.png',
-  wonder: '/sprites/ui/wonder.png',
-  melee: '/sprites/ui/melee.png',
-  ranged: '/sprites/ui/ranged.png',
-  cavalry: '/sprites/ui/cavalry.png',
-  siege: '/sprites/ui/siege.png',
+// --- effect constructors ----------------------------------------------------
+const terrain = (t, yields) => ({ kind: 'terrain', terrain: t, yields })
+const improved = (yields) => ({ kind: 'improved', yields })
+const mult = (res, pct) => ({ kind: 'mult', res, pct })
+const thresh = (res, pct) => ({ kind: 'threshold', res, pct })
+const unit = (u, grant = 1) => ({ kind: 'unit', unit: u, grant })
+// Weapons/armour are TIERS: taking one re-arms the civilization, replacing the
+// tier below rather than stacking on it. You start on Clubs and Hides.
+const weapon = (tier) => ({ kind: 'weapon', tier })
+const armor = (tier) => ({ kind: 'armor', tier })
+const umod = (type, mod) => ({ kind: 'unitMod', type, mod })
+const build = (b, grant = 1) => ({ kind: 'building', building: b, grant })
+const road = (yields) => ({ kind: 'road', yields })
+const settle = (s) => ({ kind: 'settle', settle: s })
+const city = (mod) => ({ kind: 'city', mod })
+const palace = (mod) => ({ kind: 'palace', mod })
+
+// ---------------------------------------------------------------------------
+// The tree. Each entry is [name, ...effects]; quadrant, ring, parents and
+// exclusivity all come from the template above.
+// ---------------------------------------------------------------------------
+const TREE = {
+  economy: [
+    [
+      ['Foraging', terrain('forest', { food: 1 })],
+      ['Bartering', mult('gold', 0.1)],
+      ['Stone Tools', terrain('hills', { production: 1 })],
+    ],
+    [
+      ['Agriculture', terrain('plains', { food: 2 })],
+      ['Horticulture', terrain('forest', { food: 2 })],
+      ['Pottery', build('granary')],
+      ['Quarrying', terrain('mountain', { production: 2 }), settle('mountain')],
+    ],
+    [
+      ['Irrigation', thresh('food', -0.08)],
+      ['Terrace Farming', terrain('hills', { food: 2 })],
+      ['Marketplaces', build('market')],
+      ['Caravans', mult('gold', 0.25)],
+      ['Masonry', build('quarry'), unit('stonewall')],
+    ],
+    [
+      ['Crop Rotation', mult('food', 0.2)],
+      ['Coinage', mult('gold', 0.3)],
+      ['Guilds', build('workshop')],
+      ['Trade Roads', road({ gold: 1 })],
+      ['Aqueducts', city({ growth: 0.5 })],
+      ['Mining', build('mine')],
+    ],
+    [
+      ['Granaries', build('granary', 2), thresh('food', -0.1)],
+      ['Currency', mult('gold', 0.4)],
+      ['Treasury', city({ yields: { gold: 3 } })],
+      ['Manufactories', mult('production', 0.3)],
+      ['Highways', road({ production: 1 })],
+      ['Sanitation', city({ growth: 0.5, yields: { food: 2 } })],
+      ['Deep Shafts', terrain('mountain', { production: 4 }), build('mine')],
+    ],
+  ],
+
+  society: [
+    [
+      ['Oral Tradition', mult('progress', 0.1)],
+      ['Fire Rites', terrain('tundra', { progress: 2 })],
+      ['Burial Rites', city({ yields: { progress: 1 } })],
+    ],
+    [
+      ['Storytelling', mult('progress', 0.2)],
+      ['Cave Painting', build('amphitheater')],
+      ['Shamanism', build('temple')],
+      ['Ancestor Cult', city({ yields: { progress: 3 } })],
+    ],
+    [
+      ['Language', thresh('progress', -0.08)],
+      ['Symbolism', improved({ progress: 1 })],
+      ['Priesthood', city({ yields: { progress: 2 }, growth: 0.25 })],
+      ['Mysticism', build('temple', 2)],
+      ['Tribal Council', unit('warrior', 2)],
+    ],
+    [
+      ['Writing', build('library'), mult('progress', 0.2)],
+      ['Temples', build('temple', 2)],
+      ['Divine Right', palace({ def: 120 }), city({ yields: { progress: 3 } })],
+      ['Astrology', settle('tundra'), terrain('tundra', { progress: 3 })],
+      ['Chieftains', mult('food', 0.25)],
+      ['Warbands', unit('spearman', 2)],
+    ],
+    [
+      ['Philosophy', thresh('progress', -0.12), mult('progress', 0.25)],
+      ['Monuments', build('amphitheater', 2), improved({ progress: 2 })],
+      ['Pilgrimage', city({ yields: { progress: 5 } })],
+      ['Codified Law', mult('gold', 0.2), mult('progress', 0.2)],
+      ['Calendar', thresh('food', -0.1), thresh('progress', -0.06)],
+      ['Feudal Levy', unit('legion')],
+      ['Standing Army', unit('spearman', 3), armor('ironmail')],
+    ],
+  ],
+
+  // You begin the game on CLUBS and HIDES. The military quadrant is where you
+  // re-arm out of them — and the weapon chain is deliberately reachable through
+  // Technology as well (Bronze Casting, Metallurgy), so there are two routes to
+  // being properly armed and neither quadrant is compulsory.
+  military: [
+    [
+      ['Flint Knapping', umod('melee', { atk: 3 })],
+      ['Tanning', armor('leather')],
+      ['Hunting', unit('warrior'), terrain('forest', { food: 1 })],
+    ],
+    [
+      ['Bronze Working', weapon('bronze'), unit('spearman')],
+      ['Slings', unit('slinger', 2), umod('ranged', { atk: 3 })],
+      ['Scale Armour', armor('bronzemail')],
+      ['Trapping', unit('warrior', 2), unit('mudbrick')],
+    ],
+    [
+      ['Smithing', umod('melee', { atk: 4 }), umod('cavalry', { atk: 4 })],
+      ['Archery', unit('archer', 2), umod('ranged', { range: 1 })],
+      ['Mud Brick', unit('mudbrick', 2)],
+      ['Palisades', unit('palisade', 2)],
+      ['Horseback Riding', umod('cavalry', { acts: 1 }), unit('rider', 2)],
+    ],
+    [
+      ['Iron Working', weapon('iron'), unit('legion')],
+      ['Watchtowers', unit('watchtower', 2)],
+      ['Fortification', umod('defense', { hp: 60 })],
+      ['Stockades', unit('palisade', 3), umod('defense', { hp: 40 })],
+      ['Chariotry', unit('chariot', 2)],
+      ['Cavalry Doctrine', umod('cavalry', { atk: 6, acts: 1 })],
+    ],
+    [
+      ['Steel', weapon('steel')],
+      ['Siege Craft', unit('watchtower', 3), umod('ranged', { range: 1 })],
+      ['Ballistics', umod('ranged', { atk: 10 })],
+      ['Stone Walls', unit('stonewall', 2)],
+      ['Masonry Forts', unit('stonewall'), umod('defense', { hp: 80 })],
+      ['War Chariots', unit('chariot', 3)],
+      ['Horse Archery', unit('horseman', 2), umod('cavalry', { range: 1 })],
+    ],
+  ],
+
+  technology: [
+    [
+      ['Firemaking', mult('production', 0.1)],
+      ['Toolmaking', terrain('hills', { production: 1 })],
+      ['Weaving', terrain('plains', { gold: 1 })],
+    ],
+    [
+      ['Kilns', build('workshop')],
+      ['Smelting', mult('production', 0.25)],
+      ['The Lever', terrain('mountain', { production: 2 })],
+      ['Basketry', thresh('food', -0.06)],
+    ],
+    [
+      ['Brickwork', build('quarry'), unit('mudbrick')],
+      ['Bronze Casting', mult('production', 0.3), weapon('bronze')],
+      ['The Wheel', road({ gold: 1 }), unit('rider')],
+      ['The Plough', terrain('plains', { food: 3 })],
+      ['Textiles', mult('gold', 0.2), armor('bronzemail')],
+    ],
+    [
+      ['Metallurgy', mult('production', 0.35), weapon('iron')],
+      ['Axles', road({ production: 1 }), unit('chariot')],
+      ['Cartography', settle('ocean'), terrain('coast', { gold: 2 })],
+      ['Crop Terracing', terrain('hills', { food: 2 }), terrain('forest', { food: 1 })],
+      ['Dyeworks', mult('gold', 0.3)],
+      ['Looms', build('market', 2)],
+    ],
+    [
+      ['Engineering', build('mine', 2), city({ yields: { production: 2 } })],
+      ['Shipbuilding', settle('ocean'), build('harbor', 2)],
+      ['Chariot Works', unit('chariot', 2), umod('cavalry', { acts: 1 })],
+      ['Navigation', terrain('ocean', { gold: 3 }), build('harbor')],
+      ['Fertiliser', mult('food', 0.3), thresh('food', -0.08)],
+      ['Glassworks', build('library', 2)],
+      ['Mass Weaving', mult('gold', 0.25), mult('production', 0.15)],
+    ],
+  ],
 }
 
 // The parent template every quadrant follows (see the header).
@@ -68,122 +241,94 @@ const PARENTS = [
   [[0], [0], [1], [2]],
   [[0], [1], [2], [2], [3]],
   [[0, 1], [2], [2], [3], [4], [4]],
+  [[0], [1], [1], [2], [3], [4], [5]],
 ]
 
-// [name, kind, iconKey, unlocks, effect] — all five fields lifted from v2.
-const TREE = {
-  society: [
-    [
-      ['Burial Rites', 'policy', 'policy', 'Burial Rites', 'Whenever a unit dies, gain :progress: equal to its :attack:.'],
-      ['Language', 'policy', 'policy', 'Language', 'Each Citizen also produces +1 :progress: per tick.'],
-      ['Code of Laws', 'policy', 'policy', 'Code of Laws', 'Unit and building repair costs are reduced by 75%.'],
-    ],
-    [
-      ['Mysticism', 'wonder', 'wonder', 'Stonehenge', 'At the end of each era, gain +25 :legitimacy:.'],
-      ['Monotheism', 'pop', 'pop', 'Priest', 'At the end of each era, gain +1 :legitimacy: per Priest.'],
-      ['Writing', 'policy', 'policy', 'Writing', 'Reduce :progress: threshold by 5%.'],
-      ['Diplomatic Marriage', 'policy', 'policy', 'Diplomatic Marriage', 'Mercenaries are hired 3 upgrade levels higher.'],
-    ],
-    [
-      ['Organized Religion', 'building', 'building', 'Temple', 'On completion, gain +20 :legitimacy:. At the end of each era, gain :gold: equal to 3× your :legitimacy:.'],
-      ['Scriptoria', 'policy', 'policy', 'Scriptoria', 'Each Citizen also produces +1 :progress: per tick.'],
-      ['Poetry', 'policy', 'policy', 'Poetry', 'At the end of each era, gain :progress: equal to the total :attack: of surviving units.'],
-      ['Philosophy', 'policy', 'policy', 'Philosophy', 'Reduce :progress: threshold by 6%.'],
-      ['Feudalism', 'policy', 'policy', 'Feudalism', 'All :food: outputs +30%, but all :progress: outputs −20%.'],
-    ],
-    [
-      ['Theocracy', 'policy', 'policy', 'Theocracy', 'At the end of each era, gain +25 :legitimacy:.'],
-      ['Civil Rights', 'policy', 'policy', 'Civil Rights', 'All :progress: outputs +30%, but all :food: outputs −20%.'],
-      ['Freedom of Religion', 'policy', 'policy', 'Freedom of Religion', 'All :progress: outputs +30%, but :legitimacy: losses are doubled.'],
-      ['Nationalism', 'policy', 'policy', 'Nationalism', 'Whenever a unit dies, gain :gold: equal to its :attack:.'],
-      ['Manorial Levy', 'policy', 'policy', 'Manorial Levy', 'Each Citizen also produces +1 :production: per tick.'],
-      ['Inquisition', 'wonder', 'wonder', 'Hagia Sophia', 'On completion, double current :legitimacy:. Each era start: :production: = 2× :legitimacy:.'],
-    ],
-  ],
-  technology: [
-    [
-      ['Tools', 'pop', 'pop', 'Builder', 'A specialist who works raw material into :production:.'],
-      ['Astrology', 'pop', 'pop', 'Astrologer', 'A specialist who reads the sky for :progress:.'],
-      ['Pottery', 'building', 'building', 'Kiln', 'Produces 2 :production: per tick, plus 1 for each adjacent building.'],
-    ],
-    [
-      ['Mathematics', 'policy', 'policy', 'Mathematics', 'On unlock, gain +2 free :production: builds.'],
-      ['Machinery', 'building', 'building', 'Workshop', 'Produces 7 :production: per tick.'],
-      ['Alphabet', 'policy', 'policy', 'Alphabet', 'When you build a :progress: building, upgrade it once for free.'],
-      ['Metallurgy', 'building', 'building', 'Forge', 'Produces 7 :production: per tick.'],
-    ],
-    [
-      ['Engineering', 'policy', 'policy', 'Engineering', 'On unlock, gain +2 free :production: builds.'],
-      ['Mass Production', 'building', 'building', 'Factory', 'Produces 16 :production: per tick.'],
-      ['University', 'pop', 'pop', 'Scholar', 'A specialist who produces a great deal of :progress:.'],
-      ['Optics', 'policy', 'policy', 'Optics', ':naval: units deal +50% :attack:.'],
-      ['Steel', 'policy', 'policy', 'Steel', 'All units deal +15% :attack:.'],
-    ],
-    [
-      ['Printing Press', 'policy', 'policy', 'Printing Press', 'Reduce :progress: threshold by 7%.'],
-      ['Scientific Method', 'pop', 'pop', 'Scientist', 'A specialist who produces a great deal of :progress:.'],
-      ['Physics', 'building', 'building', 'Windmill', 'Units & buildings in range gain +1 free upgrade level.'],
-      ['Clocks', 'policy', 'policy', 'Clocks', "Each era's development lasts 6 more ticks."],
-      ['Blueprints', 'policy', 'policy', 'Blueprints', 'Building repair costs 50% less :gold:.'],
-      ['Replaceable Parts', 'policy', 'policy', 'Mass Production', 'On unlock, gain +2 free :production: builds.'],
-    ],
-  ],
-  economy: [
-    [
-      ['Agriculture', 'pop', 'pop', 'Farmer', 'A specialist who works the land for :food:.'],
-      ['Bartering', 'pop', 'pop', 'Trader', 'A specialist who deals for :gold:.'],
-      ['Fishing', 'building', 'building', 'Pier', 'Produces 200 :food: at the end of combat.'],
-    ],
-    [
-      ['The Plough', 'building', 'building', 'Farm', 'Produces +5 :food: per tick for each adjacent Plains tile (including its own).'],
-      ['Granaries', 'policy', 'policy', 'Granaries', 'Double the plains terrain economy bonus.'],
-      ['Coinage', 'building', 'building', 'Mint', 'Produces :gold: each tick equal to 5% of your current :legitimacy:.'],
-      ['Shipbuilding', 'building', 'building', 'Harbor', 'Produces :production: per tick equal to 6 × (units in range).'],
-    ],
-    [
-      ['Irrigation', 'policy', 'policy', 'Irrigation', 'Reduce :food: threshold by 6%.'],
-      ['Crop Rotation', 'policy', 'policy', 'Crop Rotation', 'Reduce :food: threshold by 7%.'],
-      ['Banking', 'building', 'building', 'Bank', 'At the end of each era, gain :gold: equal to 5% of unspent :gold:.'],
-      ['Trade Networks', 'building', 'building', 'Market', 'Produces 7 :gold: per tick.'],
-      ['Compass', 'building', 'building', 'Caravansary', 'Produces :gold: per tick equal to 10 + 5 × (other Caravansaries).'],
-    ],
-    [
-      ['Canning', 'policy', 'policy', 'Canning', 'Each Citizen also produces +1 :food: per tick.'],
-      ['Usury', 'policy', 'policy', 'Usury', 'At the end of each era, gain :gold: equal to 10% of your unspent :gold:.'],
-      ['Guilds', 'policy', 'policy', 'Guilds', 'Every specialist produces +2 of its highest output.'],
-      ['Milling', 'building', 'building', 'Lumber Mill', "Placed on a forest tile. Produces :production: per tick equal to 4 × the forest tile's economy-bonus value."],
-      ['Merchant Navy', 'policy', 'policy', 'Merchant Navy', ':naval: units also produce +2 :gold: per tick.'],
-      ['Mercantilism', 'policy', 'policy', 'Mercantilism', 'Total :gold: output +25%.'],
-    ],
-  ],
-  military: [
-    [
-      ['Hunting', 'unit', 'melee', 'Hunter', 'Gains :food: on a kill.'],
-      ['The Sling', 'unit', 'ranged', 'Slinger', 'The earliest :ranged: skirmisher.'],
-      ['Pack Bonding', 'unit', 'cavalry', 'Wolf', 'After attacking, shifts to an adjacent empty valid tile.'],
-    ],
-    [
-      ['Tribalism', 'policy', 'policy', 'Tribalism', 'Each unit gains +2 :attack: for every other friendly unit of the same type on the board.'],
-      ['Alloying', 'unit', 'melee', 'Spearman', '+50% :attack: versus :cavalry:-type enemies.'],
-      ['Archery', 'unit', 'ranged', 'Archer', 'A :ranged: bowman.'],
-      ['The Wheel', 'unit', 'cavalry', 'Chariot', 'A bronze :cavalry: war chariot.'],
-    ],
-    [
-      ['Professional Soldiers', 'pop', 'pop', 'Soldier', 'Every friendly unit gains +1 :attack: per Soldier.'],
-      ['Armor', 'policy', 'policy', 'Armor', 'All units gain +1 :defense:.'],
-      ['Siege', 'unit', 'siege', 'Ballista', 'Single-target; pushes the target back 1 tile.'],
-      ['Compound Bow', 'policy', 'policy', 'Compound Bow', ':ranged: units deal +50% :attack:.'],
-      ['Stirrups', 'unit', 'cavalry', 'Heavy Cavalry', 'A shock :cavalry: charger.'],
-    ],
-    [
-      ['Military Tradition', 'policy', 'policy', 'Military Tradition', 'Overbuilding a unit keeps its upgrade levels.'],
-      ['Counterweights', 'unit', 'siege', 'Trebuchet', 'Splash, range 4.'],
-      ['Fortification', 'building', 'building', 'Stone Wall', 'A blocker. Upgrades add +1 :defense:/level.'],
-      ['Crossbows', 'unit', 'ranged', 'Crossbowman', 'A :ranged: crossbowman.'],
-      ['Dressage', 'policy', 'policy', 'Dressage', ':cavalry: units deal +50% :attack:.'],
-      ['Crusades', 'unit', 'melee', 'Knight', 'An armoured :melee: knight.'],
-    ],
-  ],
+// ---------------------------------------------------------------------------
+// Generated description + icon — derived from the effects so they can't drift
+// ---------------------------------------------------------------------------
+const TOKEN = { food: ':food:', production: ':production:', gold: ':gold:', progress: ':progress:' }
+const yieldText = (y) => Object.entries(y).filter(([, v]) => v).map(([k, v]) => `+${v} ${TOKEN[k]}`).join(' ')
+const pct = (p) => `${p > 0 ? '+' : ''}${Math.round(p * 100)}%`
+const TYPE_TOKEN = { melee: ':melee:', ranged: ':ranged:', cavalry: ':cavalry:', defense: ':fort:' }
+const times = (n) => (n > 1 ? ` ×${n}` : '')
+
+const MOD_TEXT = {
+  atk: (v) => `+${v} :attack:`,
+  hp: (v) => `+${v} :defense:`,
+  acts: (v) => `+${v} :speed:`,
+  range: (v) => `+${v} range`,
+}
+
+function describeOne(fx) {
+  switch (fx.kind) {
+    case 'terrain': return `${yieldText(fx.yields)} on every ${fx.terrain} tile you control.`
+    case 'improved': return `${yieldText(fx.yields)} on every improved tile.`
+    case 'mult': return `All ${TOKEN[fx.res]} output ${pct(fx.pct)}.`
+    case 'threshold': return `${TOKEN[fx.res]} thresholds ${pct(fx.pct)}.`
+    case 'unit': return `Unlocks ${TYPE_TOKEN[UNIT_DEFS[fx.unit].type]} ${UNIT_DEFS[fx.unit].name}, and grants one to place${times(fx.grant)}.`
+    case 'weapon': return `WEAPONS → ${weaponTier(fx.tier).name}. Re-arms every :melee: and :cavalry: unit: +${weaponTier(fx.tier).atk} :attack: over Clubs.`
+    case 'armor': return `ARMOR → ${armorTier(fx.tier).name}. Re-equips every unit: +${armorTier(fx.tier).hp} :defense: over Hides.`
+    case 'unitMod': return `All ${TYPE_TOKEN[fx.type]} units gain ${Object.entries(fx.mod).map(([k, v]) => MOD_TEXT[k](v)).join(', ')}.`
+    case 'building': return `Unlocks the :building: ${BUILDING_DEFS[fx.building].name}, and grants one to place${times(fx.grant)}.`
+    case 'road': return `Roads link your cities and give ${yieldText(fx.yields)} to every tile they touch.`
+    case 'settle': return `You may now settle ${fx.settle} tiles.`
+    case 'city': return [
+      fx.mod.yields ? `Every city produces ${yieldText(fx.mod.yields)}.` : '',
+      fx.mod.growth ? `Cities grow ${pct(fx.mod.growth)} faster.` : '',
+    ].filter(Boolean).join(' ')
+    case 'palace': return `The palace gains +${fx.mod.def} :defense:.`
+    default: return ''
+  }
+}
+const describe = (fxs) => fxs.map(describeOne).filter(Boolean).join(' ')
+
+// Icon is picked from the node's FIRST effect — that is the headline.
+const ICON = {
+  building: '/sprites/ui/building.png',
+  road: '/sprites/ui/utility-building.png',
+  settle: '/sprites/ui/pop.png',
+  city: '/sprites/ui/pop.png',
+  palace: '/sprites/ui/wonder.png',
+  weapon: '/sprites/icons/attack.png',
+  armor: '/sprites/icons/defense.png',
+  terrain: '/sprites/ui/utility.png',
+  improved: '/sprites/ui/utility.png',
+  threshold: '/sprites/ui/policy.png',
+}
+const RES_ICON = {
+  food: '/sprites/ui/food.png', gold: '/sprites/ui/gold.png',
+  production: '/sprites/ui/production.png', progress: '/sprites/ui/progress.png',
+}
+const UNIT_ICON = { melee: '/sprites/ui/melee.png', ranged: '/sprites/ui/ranged.png', cavalry: '/sprites/ui/cavalry.png', defense: '/sprites/ui/defense.png' }
+
+function iconFor(fxs) {
+  const f = fxs[0]
+  if (f.kind === 'unit') return UNIT_ICON[UNIT_DEFS[f.unit].type]
+  if (f.kind === 'unitMod') return UNIT_ICON[f.type]
+  if (f.kind === 'mult') return RES_ICON[f.res]
+  if (f.kind === 'terrain' || f.kind === 'improved') {
+    const res = Object.keys(f.yields)[0]
+    return RES_ICON[res] ?? ICON.terrain
+  }
+  return ICON[f.kind] ?? '/sprites/ui/policy.png'
+}
+
+/** Short "what does this give me" line for the offer card. */
+function unlocksFor(fxs) {
+  const u = fxs.find((f) => f.kind === 'unit')
+  if (u) return `${UNIT_DEFS[u.unit].name}${times(u.grant)}`
+  const b = fxs.find((f) => f.kind === 'building')
+  if (b) return `${BUILDING_DEFS[b.building].name}${times(b.grant)}`
+  const w = fxs.find((f) => f.kind === 'weapon')
+  if (w) return weaponTier(w.tier).name
+  const a = fxs.find((f) => f.kind === 'armor')
+  if (a) return armorTier(a.tier).name
+  const r = fxs.find((f) => f.kind === 'road')
+  if (r) return 'Roads'
+  const s = fxs.find((f) => f.kind === 'settle')
+  if (s) return `${s.settle} settling`
+  return 'a permanent bonus'
 }
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -195,13 +340,17 @@ const idAt = {} // quadrant -> ring -> index -> id
 for (const [quadrant, rings] of Object.entries(TREE)) {
   idAt[quadrant] = rings.map((ring) => ring.map(([name]) => `${quadrant}-${slug(name)}`))
   rings.forEach((ring, r) => {
-    ring.forEach(([name, kind, iconKey, unlocks, effect], i) => {
+    ring.forEach(([name, ...fx], i) => {
       const parents = r === 0 ? [] : PARENTS[r][i].map((pi) => idAt[quadrant][r - 1][pi])
       PROGRESS_NODES.push({
         id: idAt[quadrant][r][i],
-        name, kind, unlocks, effect,
+        name,
+        effects: fx,
+        effect: describe(fx),
+        unlocks: unlocksFor(fx),
+        kind: fx[0].kind,
         quadrant, ring: r, index: i,
-        icon: ICON[iconKey],
+        icon: iconFor(fx),
         prereqs: parents,
         excludes: [],
       })
@@ -329,6 +478,14 @@ export function validateStructure() {
     const attainable = inRing.length - lostToForks
     if (attainable < RING_UNLOCK) {
       v.push(`ring ${r} offers only ${attainable} attainable nodes (< ${RING_UNLOCK})`)
+    }
+  }
+
+  // 5. every effect must name something real
+  for (const n of PROGRESS_NODES) {
+    for (const f of n.effects) {
+      if (f.kind === 'unit' && !UNIT_DEFS[f.unit]) v.push(`${n.id}: unknown unit ${f.unit}`)
+      if (f.kind === 'building' && !BUILDING_DEFS[f.building]) v.push(`${n.id}: unknown building ${f.building}`)
     }
   }
 

@@ -1,52 +1,110 @@
-// Player unit roster (v3 scaffold).
+// Player units (v3).
 //
-// Deliberately generic: three archetypes with the same stat vocabulary the
-// enemies use, so the turn engine can treat both sides uniformly. Real content
-// comes from the progress web later — these exist so combat has something to
-// simulate.
+// Four flavours. The first three fight and move; a DEFENSIVE CONSTRUCTION is a
+// unit that never moves and never attacks — it is a wall with hit points, meant
+// to soak a lane while your ranged units work.
 //
-//   def   = HP
-//   atk   = damage per attack
-//   range = attack radius in hex distance
-//   acts  = cells moved per turn (0 = holds position)
+// Units are granted by progress nodes, which also apply global modifiers:
+// WEAPONS raise every unit's attack, ARMOR raises every unit's HP, and per-type
+// mods (Horseback Riding) touch one flavour.
+
+export const UNIT_TYPES = ['melee', 'ranged', 'cavalry', 'defense']
 
 export const UNIT_DEFS = {
-  melee: {
-    key: 'melee', name: 'Warrior', type: 'melee',
-    def: 22, atk: 7, range: 1, acts: 1,
-    icon: '/sprites/ui/melee.png',
-    blurb: 'Closes with the nearest enemy and holds the line.',
-  },
-  ranged: {
-    key: 'ranged', name: 'Archer', type: 'ranged',
-    def: 12, atk: 6, range: 3, acts: 0,
-    icon: '/sprites/ui/ranged.png',
-    blurb: 'Strikes from behind the line; never advances.',
-  },
-  cavalry: {
-    key: 'cavalry', name: 'Rider', type: 'cavalry',
-    def: 16, atk: 8, range: 1, acts: 2,
-    icon: '/sprites/ui/cavalry.png',
-    blurb: 'Fast melee — covers two tiles a turn to reach a breach.',
-  },
+  // --- melee ---
+  warrior: { key: 'warrior', name: 'Warrior', type: 'melee', def: 22, atk: 7, range: 1, acts: 1,
+    icon: '/sprites/ui/melee.png', blurb: 'Closes with the nearest enemy and holds the line.' },
+  spearman: { key: 'spearman', name: 'Spearman', type: 'melee', def: 30, atk: 9, range: 1, acts: 1,
+    icon: '/sprites/ui/melee.png', blurb: 'A braced line that punishes chargers.' },
+  legion: { key: 'legion', name: 'Legion', type: 'melee', def: 42, atk: 14, range: 1, acts: 1,
+    icon: '/sprites/ui/melee.png', blurb: 'Disciplined heavy infantry.' },
+
+  // --- ranged ---
+  slinger: { key: 'slinger', name: 'Slinger', type: 'ranged', def: 12, atk: 6, range: 2, acts: 0,
+    icon: '/sprites/ui/ranged.png', blurb: 'Strikes from behind the line; never advances.' },
+  archer: { key: 'archer', name: 'Archer', type: 'ranged', def: 15, atk: 9, range: 3, acts: 0,
+    icon: '/sprites/ui/ranged.png', blurb: 'Longer reach, still glass.' },
+  crossbowman: { key: 'crossbowman', name: 'Crossbowman', type: 'ranged', def: 20, atk: 14, range: 3, acts: 0,
+    icon: '/sprites/ui/ranged.png', blurb: 'Punches through armour at range.' },
+
+  // --- cavalry ---
+  rider: { key: 'rider', name: 'Rider', type: 'cavalry', def: 16, atk: 8, range: 1, acts: 2,
+    icon: '/sprites/ui/cavalry.png', blurb: 'Fast melee — reaches a breach in a turn.' },
+  chariot: { key: 'chariot', name: 'Chariot', type: 'cavalry', def: 24, atk: 12, range: 1, acts: 2,
+    icon: '/sprites/ui/cavalry.png', blurb: 'A bronze war chariot.' },
+  horseman: { key: 'horseman', name: 'Horseman', type: 'cavalry', def: 30, atk: 15, range: 1, acts: 3,
+    icon: '/sprites/ui/cavalry.png', blurb: 'Rides down stragglers across the map.' },
+
+  // --- defensive constructions: never move, never attack ---
+  mudbrick: { key: 'mudbrick', name: 'Mud Brick Wall', type: 'defense', def: 60, atk: 0, range: 0, acts: 0,
+    icon: '/sprites/ui/defense.png', blurb: 'Does not move or strike. Soaks a lane while your line works.' },
+  palisade: { key: 'palisade', name: 'Palisade', type: 'defense', def: 95, atk: 0, range: 0, acts: 0,
+    icon: '/sprites/ui/defense.png', blurb: 'A timber wall. Cheap bulk in a chokepoint.' },
+  watchtower: { key: 'watchtower', name: 'Watchtower', type: 'defense', def: 70, atk: 6, range: 3, acts: 0,
+    icon: '/sprites/ui/defense.png', blurb: 'The one construction that shoots back.' },
+  stonewall: { key: 'stonewall', name: 'Stone Wall', type: 'defense', def: 160, atk: 0, range: 0, acts: 0,
+    icon: '/sprites/ui/defense.png', blurb: 'Masonry. Very little gets through it quickly.' },
 }
 
 export const UNIT_LIST = Object.values(UNIT_DEFS)
 
-// The palace is the fail state: if it falls, the run ends. It fights back.
+// The palace is the fail state. It fights, and its HP persists between eras.
 export const PALACE = {
   key: 'palace', name: 'Palace', type: 'palace',
   def: 240, atk: 10, range: 2, acts: 0,
   icon: '/sprites/ui/wonder.png',
 }
 
-/** Stats scaled for a wave. Growth matches enemy HP growth (1.25) so the two
- *  sides stay comparable and the garrison is bought against a budget instead. */
-export function unitStats(def, wave) {
-  const s = Math.pow(1.25, wave)
+// ---------------------------------------------------------------------------
+// WEAPONS and ARMOR — tiers, not stacks
+// ---------------------------------------------------------------------------
+// You start with Clubs and a progress node UPGRADES you to Bronze, then Iron,
+// then Steel. Taking a higher tier REPLACES the lower one rather than adding to
+// it, so "Bronze Weapons" reads as re-arming the whole civilization — which is
+// the story — instead of as a stacking trinket.
+//
+// Weapons arm the units that swing them: MELEE and CAVALRY. Ranged units get
+// their own line through per-type mods (Archery, Ballistics), so bows and blades
+// improve separately.
+
+export const WEAPON_TIERS = [
+  { key: 'clubs', name: 'Clubs', atk: 0 },
+  { key: 'bronze', name: 'Bronze Weapons', atk: 6 },
+  { key: 'iron', name: 'Iron Weapons', atk: 14 },
+  { key: 'steel', name: 'Steel Weapons', atk: 26 },
+]
+export const ARMOR_TIERS = [
+  { key: 'hides', name: 'Hides', hp: 0 },
+  { key: 'leather', name: 'Leatherwork', hp: 10 },
+  { key: 'bronzemail', name: 'Bronze Mail', hp: 24 },
+  { key: 'ironmail', name: 'Iron Mail', hp: 44 },
+]
+
+const tierIndex = (tiers, key) => Math.max(0, tiers.findIndex((t) => t.key === key))
+export const weaponTier = (key) => WEAPON_TIERS[tierIndex(WEAPON_TIERS, key)]
+export const armorTier = (key) => ARMOR_TIERS[tierIndex(ARMOR_TIERS, key)]
+/** Only ever move FORWARD along a tier chain. */
+export const bestTier = (tiers, a, b) =>
+  tiers[Math.max(tierIndex(tiers, a), tierIndex(tiers, b))].key
+
+/** Which unit types a weapon upgrade actually arms. */
+export const WEAPON_TYPES = new Set(['melee', 'cavalry'])
+
+/**
+ * A unit's live stats: its base, scaled by era and by its own upgrade LEVEL,
+ * plus the civilization-wide weapon/armour tiers and per-type mods.
+ */
+export function unitStats(def, era, mods, level = 1) {
+  const s = Math.pow(1.18, era) * (1 + 0.25 * (level - 1))
+  const typeMod = mods?.unitMod?.[def.type] ?? {}
+  const weap = WEAPON_TYPES.has(def.type) ? weaponTier(mods?.weapon).atk : 0
+  const arm = armorTier(mods?.armor).hp
   return {
     ...def,
-    def: Math.max(1, Math.round(def.def * s)),
-    atk: Math.max(1, Math.round(def.atk * s)),
+    level,
+    def: Math.max(1, Math.round(def.def * s) + arm + (typeMod.hp ?? 0)),
+    atk: def.atk === 0 ? 0 : Math.max(1, Math.round(def.atk * s) + weap + (typeMod.atk ?? 0)),
+    range: def.range + (typeMod.range ?? 0),
+    acts: def.acts === 0 ? 0 : def.acts + (typeMod.acts ?? 0),
   }
 }

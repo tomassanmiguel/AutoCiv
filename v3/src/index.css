@@ -62,3 +62,11 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 }
 .frame-box { border-image-source: url("/sprites/ui/box.png"); }
 .frame-box-dark { border-image-source: url("/sprites/ui/box-dark.png"); }
+
+/* The `sprites/ui/` set are BLACK SILHOUETTES, drawn for v2's parchment panel.
+   v3's surfaces are dark, so used as-is they render as holes. Invert them
+   wherever they appear as an inline <img> — the frames (box, box-dark,
+   title-card) go through `border-image`, not <img>, so they are unaffected. */
+img[src^="/sprites/ui/"] {
+  filter: invert(1) brightness(1.15);
+}

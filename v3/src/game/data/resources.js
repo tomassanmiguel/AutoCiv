@@ -33,18 +33,23 @@ export function initialResources() {
 /**
  * Add one tick of `output` to each stock, crossing as many thresholds as the
  * income covers. Returns the number of levels gained per resource.
+ *
+ * `mult` is the progress web's threshold discount (1 = none, 0.9 = 10% cheaper).
+ * It is applied at COMPARISON time rather than baked into `stock.threshold`, so
+ * taking a discount is retroactive and two discounts can't compound into free.
  */
-export function accrue(resources, output) {
+export function accrue(resources, output, mult = null) {
   const gained = {}
   resources.gold.value += output.gold ?? 0
   for (const res of THRESHOLD_RESOURCES) {
     const cfg = RESOURCE_CONFIG[res]
     const stock = resources[res]
+    const m = mult?.[res] ?? 1
     stock.value += output[res] ?? 0
     let levels = 0
     // Guarded: a very large output could otherwise spin here for a long time.
-    while (stock.value >= stock.threshold && levels < 1000) {
-      stock.value -= stock.threshold
+    while (stock.value >= stock.threshold * m && levels < 1000) {
+      stock.value -= stock.threshold * m
       stock.level += 1
       stock.threshold = nextThreshold(stock.threshold, cfg.X, stock.level)
       levels++
@@ -53,3 +58,6 @@ export function accrue(resources, output) {
   }
   return gained
 }
+
+/** What the UI should show as "the bar you are filling". */
+export const effectiveThreshold = (stock, mult = 1) => stock.threshold * mult
