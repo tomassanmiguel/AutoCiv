@@ -538,6 +538,71 @@ function repairStart(tiles, rng) {
 }
 
 /**
+ * Every Old World land tile must be walkable from the palace — territory you
+ * cannot expand into is dead space. Mountains and rivers (and, rarely, a strait)
+ * can cut a pocket off, so rather than re-rolling we BRIDGE it: BFS from each
+ * orphaned pocket back to the reachable mass and convert whatever blocks the
+ * shortest way (mountain -> hills, water -> plains). Because BFS takes the
+ * shortest path it naturally crosses at the thinnest point, reading as a pass or
+ * a ford rather than a bulldozed corridor.
+ */
+function connectOldWorldLand(tiles) {
+  const home = tiles.get(key(0, 0))
+  const walkable = (t) => !!t && t.region === 'old_world' && isLand(t.terrain) && isPassable(t.terrain)
+  const all = [...tiles.values()].filter(walkable)
+
+  for (let guard = 0; guard < 24; guard++) {
+    const seen = new Set([key(0, 0)])
+    const stack = [home]
+    while (stack.length) {
+      const t = stack.pop()
+      for (const n of neighbors(t.q, t.r)) {
+        const nk = key(n.q, n.r)
+        if (seen.has(nk)) continue
+        const o = tiles.get(nk)
+        if (!walkable(o)) continue
+        seen.add(nk)
+        stack.push(o)
+      }
+    }
+    const orphans = all.filter((t) => !seen.has(key(t.q, t.r)))
+    if (!orphans.length) return
+
+    const prev = new Map()
+    const queue = []
+    for (const t of orphans) {
+      prev.set(key(t.q, t.r), null)
+      queue.push(t)
+    }
+    let hit = null
+    for (let i = 0; i < queue.length && !hit; i++) {
+      const c = queue[i]
+      for (const n of neighbors(c.q, c.r)) {
+        const nk = key(n.q, n.r)
+        if (prev.has(nk)) continue
+        const o = tiles.get(nk)
+        if (!o || o.band !== 'earth') continue
+        prev.set(nk, key(c.q, c.r))
+        if (seen.has(nk)) { hit = o; break }
+        queue.push(o)
+      }
+    }
+    if (!hit) return
+
+    let cur = prev.get(key(hit.q, hit.r))
+    while (cur) {
+      const t = tiles.get(cur)
+      if (t && !walkable(t)) {
+        t.terrain = t.terrain === 'mountain' ? 'hills' : 'plains'
+        t.region = 'old_world'
+        t.seaKind = null
+      }
+      cur = prev.get(cur)
+    }
+  }
+}
+
+/**
  * Enemy encampments: uncleared bases that add units to every wave until your
  * borders reach them. LAND ONLY — Earth's continents/islands and the exoplanet.
  * The Moon, Mars, asteroids and open space stay clear.
@@ -657,6 +722,72 @@ function assignReveal(tiles, inCorridorAt, galaxyReach) {
 }
 
 /**
+ * Keep the known world CONTIGUOUS at every stage.
+ *
+ * sealReveal closes holes (unknown enclosed by known); this closes the opposite
+ * failure — a fragment of known world floating free of the rest, cut off by
+ * battlefield. Islands were the usual culprit: an island reveals with its stage
+ * while the water around it waits for a later one, leaving a speck adrift.
+ *
+ * For each stage we find the component holding the palace and, for anything
+ * else, pull the shortest connecting path into that stage.
+ */
+function connectReveal(tiles, list) {
+  const home = tiles.get(key(0, 0))
+  for (let s = 0; s < STAGE_COUNT; s++) {
+    for (let guard = 0; guard < 24; guard++) {
+      const known = list.filter((t) => t.revealStage <= s)
+      if (!known.length) break
+
+      const main = new Set([key(0, 0)])
+      const stack = [home]
+      while (stack.length) {
+        const t = stack.pop()
+        for (const n of neighbors(t.q, t.r)) {
+          const nk = key(n.q, n.r)
+          if (main.has(nk)) continue
+          const o = tiles.get(nk)
+          if (!o || o.revealStage > s) continue
+          main.add(nk)
+          stack.push(o)
+        }
+      }
+      const orphans = known.filter((t) => !main.has(key(t.q, t.r)))
+      if (!orphans.length) break
+
+      const prev = new Map()
+      const queue = []
+      for (const t of orphans) {
+        prev.set(key(t.q, t.r), null)
+        queue.push(t)
+      }
+      let hit = null
+      for (let i = 0; i < queue.length && !hit; i++) {
+        const c = queue[i]
+        for (const n of neighbors(c.q, c.r)) {
+          const nk = key(n.q, n.r)
+          if (prev.has(nk)) continue
+          const o = tiles.get(nk)
+          // Never route through the battlefield rings — they are never known.
+          if (!o || o.revealStage === Infinity) continue
+          prev.set(nk, key(c.q, c.r))
+          if (main.has(nk)) { hit = o; break }
+          queue.push(o)
+        }
+      }
+      if (!hit) break
+
+      let cur = prev.get(key(hit.q, hit.r))
+      while (cur) {
+        const t = tiles.get(cur)
+        if (t && t.revealStage > s) t.revealStage = s
+        cur = prev.get(cur)
+      }
+    }
+  }
+}
+
+/**
  * Close any hole in the known set.
  *
  * Region- and corridor-shaped stages can enclose a pocket of not-yet-revealed
@@ -728,10 +859,14 @@ export function buildWorld(seed) {
 
   generateOuterSpecials(tiles, rng, inWidestCorridor)
   repairStart(tiles, rng)
+  connectOldWorldLand(tiles)
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt, galaxyReach)
 
   const list = [...tiles.values()]
+  // Contiguity first (it only ever adds tiles, so it cannot re-open a hole),
+  // then hole-sealing.
+  connectReveal(tiles, list)
   sealReveal(tiles, list)
 
   return {

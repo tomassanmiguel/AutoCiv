@@ -33,7 +33,6 @@ const MAX_TUNDRA_FRACTION = 0.22
 // Earth is only ~400 tiles, so its region-shaped stages are naturally small;
 // this floor exists to catch a DEAD notch, not to enforce an even ladder.
 const MIN_STAGE_TILES = 8
-const MIN_REACHABLE_FRACTION = 0.8
 const ENCAMPMENT_MIN_DIST = 6
 const EARLY_ENCAMPMENT_DIST = 12
 const MOON_GAP = 1  // the Moon hangs exactly one ring beyond Earth
@@ -131,18 +130,18 @@ export function validate(world) {
   ).length
   if (edgeFeatures) v.push(`${edgeFeatures} feature(s) on the map's final ring`)
 
-  // The palace must not be walled in: most of the Old World has to be reachable
-  // on foot. Only mountains block (rivers will be bridgeable).
+  // EVERY Old World land tile must be walkable from the palace. Territory you
+  // can never expand into is dead space, so this is exact, not a percentage —
+  // mountains, rivers and straits all count as blockers.
   const oldWorld = world.list.filter((t) => t.region === 'old_world')
-  const walkable = oldWorld.filter((t) => t.terrain !== 'mountain')
-  if (walkable.length) {
+  const owLand = oldWorld.filter((t) => isLand(t.terrain) && isPassable(t.terrain))
+  if (owLand.length) {
     const reach = bfs([{ q: 0, r: 0 }], (q, r) => {
       const t = at(q, r)
-      return !!t && t.region === 'old_world' && t.terrain !== 'mountain'
+      return !!t && t.region === 'old_world' && isLand(t.terrain) && isPassable(t.terrain)
     })
-    const frac = reach.size / walkable.length
-    if (frac < MIN_REACHABLE_FRACTION) {
-      v.push(`only ${(frac * 100).toFixed(0)}% of the Old World is walkable from the palace`)
+    if (reach.size < owLand.length) {
+      v.push(`${owLand.length - reach.size} Old World land tile(s) unreachable from the palace`)
     }
   }
 
@@ -155,12 +154,18 @@ export function validate(world) {
     }
   }
 
-  // The known set must never enclose a pocket of unrevealed tiles. Earth's
-  // stages are region-shaped and the exoplanet stages are corridor-shaped, so
-  // every stage gets a real (radius-bounded) flood.
+  // Two things must hold of the known set at EVERY stage:
+  //   - it encloses no pocket of unrevealed tiles (a hole)
+  //   - it is one connected piece (no fragment adrift across the battlefield)
   for (let s = 0; s < STAGE_COUNT; s++) {
     const holes = enclosedUnknown(world, s)
     if (holes) v.push(`stage "${STAGES[s].name}" encloses ${holes} unrevealed tiles`)
+
+    const known = world.list.filter((t) => t.revealStage <= s).length
+    const reach = bfs([{ q: 0, r: 0 }], (q, r) => (world.tiles.get(key(q, r))?.revealStage ?? Infinity) <= s)
+    if (reach.size < known) {
+      v.push(`stage "${STAGES[s].name}" leaves ${known - reach.size} revealed tiles disconnected`)
+    }
   }
 
   // The exoplanet's landmass must be one piece (its water may be as odd as it likes).

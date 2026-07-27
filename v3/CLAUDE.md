@@ -147,6 +147,11 @@ state. A run persists only its seed.
 - **Islands live in the CHANNEL**, not the rim sea — tiles carry `seaKind: 'channel' | 'rim'`
   so the crossing between continents has stepping stones. They are single tiles, never
   adjacent to each other (a spacing of 3 guarantees it), and never inside the Local radius.
+- **Every Old World land tile is walkable from the palace.** Mountains, rivers and the odd
+  strait can cut a pocket off, so `connectOldWorldLand` BRIDGES rather than re-rolls: BFS from
+  each orphaned pocket back to the reachable mass, converting whatever blocks the shortest way
+  (mountain → hills, water → plains). Shortest-path means it crosses at the thinnest point, so
+  it reads as a pass or a ford, not a bulldozed corridor.
 - **Mountains use RIDGED noise** (`1 - |2n-1|` on its own higher-frequency field, cut high).
   A plain elevation threshold produced dense blobs; ridged noise peaks along the field's
   mid-contour, so ranges come out as sparse lines and the occasional small cluster. An
@@ -178,10 +183,11 @@ state. A run persists only its seed.
 `validate(world)` returns violations; `generateWorld` **re-rolls deterministically**
 (`seed + n·φ`) until clean, up to 16 attempts. This is what makes generation "varied but
 predictable". Two classes:
-- **Correctness** — palace on passable land, palace ring open, bodies inside their band and
-  ≥2 rings clear of Earth, ≥80% of the Old World walkable from the palace (only mountains
-  block; rivers will be bridgeable), exoplanet landmass connected, **no holes in the known
-  world**, every reveal stage adds ≥8 tiles.
+- **Correctness** — palace on passable land, palace ring open, bodies inside their band with
+  their spacing rules, **every** Old World land tile walkable from the palace (exact, not a
+  percentage — dead territory is territory you can never expand into), exoplanet landmass
+  connected, the known world **contiguous and hole-free at every stage**, feature-placement
+  rules (asteroid spacing, island spacing, clean map edge), every reveal stage adds ≥8 tiles.
 - **Viability** — plains/forest/hills/water all within the start radius, minimum total Earth
   yield per resource, continent size floors (~2:1 Old:New), New World genuinely separated by
   water, an arid equator and **polar** tundra (≥85% of tundra above the polar latitude, and
@@ -192,7 +198,7 @@ The hole check floods per stage but is **radius-bounded** — a hole can only si
 known frontier, so there is no point sweeping 5,400 tiles when the frontier is at ring 11.
 Unbounded it cost ~25ms per world; bounded it is ~4ms.
 
-`node sims/worldgen.mjs 200` is the source of truth: currently **200/200 clean, ~59ms per
+`node sims/worldgen.mjs 200` is the source of truth: currently **200/200 clean, ~80ms per
 world**, and it prints the reveal ladder, Earth yield spread, and an ASCII map.
 
 ### Known world (`GameManager`, `regions.js` `STAGES`)
@@ -219,10 +225,19 @@ Reveal has **three shapes**:
   full map **0**. `galaxyReach` also floors itself at the corridor reach inside the corridor
   angle, so a tuning change can never re-expose the spike.
 
-**The known world must never contain an unrevealed hole.** Region- and corridor-shaped stages
-can enclose a pocket, so `sealReveal` floods the unknown region inward from the map rim after
-every stage and pulls anything it cannot reach into that stage. The map is free to grow as a
-non-circle; it just cannot grow *around* something.
+**Two properties must hold of the known set at every stage**, each with its own repair pass
+(run in this order — `connectReveal` only ever adds tiles, so it cannot re-open a hole):
+
+1. **Contiguous** — no fragment adrift across the battlefield. `connectReveal` finds the
+   component holding the palace and pulls the shortest connecting path into that stage for
+   anything else. Islands were the usual culprit: an island revealed with its stage while the
+   water around it waited for a later one, leaving a speck stranded.
+2. **No holes** — no pocket of unrevealed tiles enclosed by known ones. `sealReveal` floods
+   the unknown region inward from the map rim and pulls anything it cannot reach into the
+   stage that enclosed it.
+
+The map is free to grow as a non-circle; it just cannot grow *around* something, or leave
+pieces of itself behind.
 
 The 15-notch ladder: Local · Nearby Lands · Distant Lands · Old World · Islands · New World
 Coastline · Full Earth · Earth and Space · Moon · Mars · Deeper Space · Exo Coastline · Full
