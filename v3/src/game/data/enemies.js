@@ -13,9 +13,9 @@
 //   atk      = (base atk + 2·wave) × tier-mult   (v2's curve, kept as-is)
 //   acts     = cells moved per turn (melee 1, cavalry 2, ranged 1)
 //   range    = attack radius in hex distance
-//   domain   = which terrain buckets it may path through
+//   domain   = which travel classes it may path through (all cross the void)
 
-import { terrainDomain } from '../world/terrain.js'
+import { travelClass } from '../world/terrain.js'
 
 export const ENEMY_TYPES = {
   melee: { type: 'melee', name: 'Raider', def: 16, atk: 6, acts: 1, range: () => 1 },
@@ -23,18 +23,23 @@ export const ENEMY_TYPES = {
   ranged: { type: 'ranged', name: 'Ranger', def: 6, atk: 6, acts: 1, range: (w) => 2 + Math.floor(w / 8) },
 }
 
-// Terrain buckets each domain may cross. v3 terrain domains are land / water /
-// space, so this maps more directly than v2's basic/water/exotic.
+// Travel classes each domain may cross (see terrain.js `travelClass`).
+//
+// EVERY domain crosses the VOID — open space is how a host reaches you, not a
+// barrier. What the higher domains add is the ability to set foot on things:
+// amphibious adds water, and astral adds celestial BODIES (Moon, Mars,
+// asteroids, planets, stars) and mountains. So astral is a strict superset,
+// not a separate "space-only" lane.
 export const ENEMY_DOMAINS = {
-  default: { domain: 'default', prefix: '', buckets: new Set(['land']), weight: () => 6 },
-  amphibious: { domain: 'amphibious', prefix: 'Amphibious ', buckets: new Set(['land', 'water']), weight: (w) => (w < 3 ? 0 : 2 + 0.4 * w) },
-  astral: { domain: 'astral', prefix: 'Astral ', buckets: new Set(['land', 'water', 'space']), weight: (w) => Math.max(0, (w - 10) * 0.8) },
+  default: { domain: 'default', prefix: '', buckets: new Set(['land', 'void']), weight: () => 6 },
+  amphibious: { domain: 'amphibious', prefix: 'Amphibious ', buckets: new Set(['land', 'void', 'water']), weight: (w) => (w < 3 ? 0 : 2 + 0.4 * w) },
+  astral: { domain: 'astral', prefix: 'Astral ', buckets: new Set(['land', 'void', 'water', 'body', 'blocked']), weight: (w) => Math.max(0, (w - 10) * 0.8) },
 }
 
 /** Whether an enemy DOMAIN can traverse a terrain. */
 export function domainCanTraverse(domain, terrainKey) {
   const d = ENEMY_DOMAINS[domain] ?? ENEMY_DOMAINS.default
-  return d.buckets.has(terrainDomain(terrainKey))
+  return d.buckets.has(travelClass(terrainKey))
 }
 
 // Grunts (½) are cheap bodies; elites (×2) are rare walls.

@@ -374,11 +374,25 @@ generate, then watch it play out at 2/6/12/30 beats per second (or Step / Resolv
 - **Enemies are v2's composition system**, kept as-is: a TYPE (melee / cavalry / ranged) × a
   DOMAIN (default / amphibious / astral) × a spawn TIER (grunt ½ / normal / elite ×2), bought
   against a per-wave HP budget. Their stat curves are v2's and should stay that way.
+- **Travel classes** (`terrain.js` `travelClass`) decide what may path where, and they are
+  finer than terrain `domain` because open space and a celestial body are both "space" for
+  placement but nothing alike for movement:
+
+  | class | who crosses it | terrain |
+  |---|---|---|
+  | `void` | **everyone** | space, deep space, battlefield |
+  | `land` | everyone | plains, forest, hills, desert, tundra, island, exo-land |
+  | `water` | amphibious, astral | coast, ocean, river, exosea |
+  | `body` | **astral only** | Moon, Mars, asteroid, planet, star, singularity, exomoon |
+  | `blocked` | **astral only** | mountain, exomountain |
+
+  So **every domain crosses the void** — open space is how a host reaches you, not a barrier —
+  and **astral is a strict superset**, not a separate space-only lane: what it buys is the
+  ability to set foot on bodies and mountains.
 - **Pathing is a FLOW FIELD, not columns.** One inward BFS from the palace per domain,
-  computed once at combat start. The muster ring itself is crossable by everything, so a host
-  can walk it to find an entry its domain can use; a domain with no viable entry is dropped
-  from the roll and its weight redistributed (otherwise an all-space frontier produced empty
-  waves).
+  computed once at combat start. Because the void is universal there is no special case for
+  the muster ring; a domain with no viable entry is still dropped from the roll and its weight
+  redistributed, as a safety net.
 - **Phase order per turn**: enemies move → defenders move → defenders attack (the palace
   strikes here too) → enemies attack.
 - **ONE PIECE ACTS PER BEAT.** A turn is expanded into a queue of single-piece actions and

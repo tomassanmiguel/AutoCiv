@@ -38,7 +38,6 @@ export const PHASE_LABEL = {
   'enemy-attack': 'Enemies attack',
 }
 const TURN_CAP = 300
-const MOUNTAINS = new Set(['mountain', 'exomountain'])
 
 // The scratch garrison is bought against the SAME budget curve as the host, at
 // this fraction of it. Scaling both sides off one curve is what keeps every one
@@ -64,7 +63,6 @@ class CombatMixin {
     // Cells combat may use: the revealed world plus the muster ring.
     const cells = new Set(known.all.map((t) => key(t.q, t.r)))
     this._combatCells = cells
-    this._bfSet = known.bfSet
 
     // One inward flow field per domain, computed once — terrain does not change.
     this._fields = {}
@@ -119,15 +117,12 @@ class CombatMixin {
     return dist
   }
 
+  // Travel rules live entirely in the terrain travel classes now: every domain
+  // crosses the void, so no special case is needed for the muster ring, and
+  // mountains fall out of the 'blocked' class rather than a hard-coded check.
   _canTraverse(domain, tile) {
     if (!tile) return false
-    const k = key(tile.q, tile.r)
-    if (!this._combatCells.has(k)) return false
-    // The muster ring is crossable by everything — a host arrives there by
-    // whatever means, and may walk it to find an entry its domain can use.
-    if (this._bfSet.has(k)) return true
-    // Mountains stop anything on the ground; astral enemies pass over them.
-    if (MOUNTAINS.has(tile.terrain)) return domain === 'astral'
+    if (!this._combatCells.has(key(tile.q, tile.r))) return false
     return domainCanTraverse(domain, tile.terrain)
   }
 

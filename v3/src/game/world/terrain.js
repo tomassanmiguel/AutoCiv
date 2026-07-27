@@ -73,5 +73,23 @@ export const isPassable = (k) => terrainOf(k).passable
 export const isLand = (k) => terrainOf(k).domain === 'land'
 export const isWater = (k) => terrainOf(k).domain === 'water'
 
-/** Terrain domain bucket — what an enemy DOMAIN checks when pathing. */
-export const terrainDomain = (k) => terrainOf(k).domain
+// --- Travel classes --------------------------------------------------------
+// What an enemy DOMAIN checks when pathing. Finer than `domain`, because empty
+// space and a celestial body are both "space" for placement but very different
+// for movement: EVERYTHING crosses the void, only astral walks on a body.
+//
+//   void    — open space; every domain crosses it (it is how a host arrives)
+//   land    — ordinary ground
+//   water   — needs amphibious or better
+//   body    — the Moon, Mars, asteroids, planets, stars… astral only
+//   blocked — mountains; astral only
+const TRAVEL_BODY = new Set(['asteroid', 'moon', 'mars', 'planet', 'star', 'singularity', 'exomoon'])
+const TRAVEL_BLOCKED = new Set(['mountain', 'exomountain'])
+const TRAVEL_VOID = new Set(['space', 'deep_space', 'battlefield'])
+
+export function travelClass(k) {
+  if (TRAVEL_BLOCKED.has(k)) return 'blocked'
+  if (TRAVEL_BODY.has(k)) return 'body'
+  if (TRAVEL_VOID.has(k)) return 'void'
+  return terrainOf(k).domain === 'water' ? 'water' : 'land'
+}
