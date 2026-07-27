@@ -10,7 +10,6 @@ import CombatPanel from './Combat/CombatPanel.jsx'
 import ProgressOffer from './Progress/ProgressOffer.jsx'
 import ExpansionPrompt from './Expansion/ExpansionPrompt.jsx'
 import PlacementPrompt from './Placement/PlacementPrompt.jsx'
-import TilePanel from './Tile/TilePanel.jsx'
 import DefeatOverlay from './Hud/DefeatOverlay.jsx'
 import './GameScreen.css'
 
@@ -37,7 +36,6 @@ export default function GameScreen({ seed, civ, difficulty, onExit }) {
         <div className="map-window">
           <HexMap />
           <OutputReadout />
-          <TilePanel />
           <div className="top-hud">
             <SpeedControl />
             <MenuOverlay onExit={onExit} />

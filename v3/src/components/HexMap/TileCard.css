@@ -1,0 +1,162 @@
+/* One anchor per occupied tile, centred on the hex. It lives OUTSIDE the hex
+   because `.hex` has a clip-path, which would clip the action buttons away. */
+.tile-card-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none;
+}
+.tile-card-anchor.hovered { z-index: 9; }
+
+/* Everything on a tile stacks in the middle of it and never eats clicks —
+   only the gold buttons do, so the hex underneath stays a placement target. */
+.tile-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3%;
+  pointer-events: none;
+}
+
+/* --- unit: a hexagon badge echoing the board ------------------------------ */
+.tc-unit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46%;
+  aspect-ratio: 1 / 0.92;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: linear-gradient(160deg, #33405c, #1a2134);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.75);
+}
+/* A coloured inner rim reads the flavour without needing four sprites. */
+.tc-unit::before {
+  content: '';
+  position: absolute;
+  inset: 7%;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: var(--tc-rim, #6d7ea6);
+}
+.tc-unit::after {
+  content: '';
+  position: absolute;
+  inset: 13%;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: linear-gradient(160deg, #222c42, #131a29);
+}
+.tc-unit.melee { --tc-rim: #c9a24a; }
+.tc-unit.ranged { --tc-rim: #6fae7a; }
+.tc-unit.cavalry { --tc-rim: #b07ad0; }
+.tc-unit.defense { --tc-rim: #8a94a8; }
+
+.tc-unit img {
+  position: relative;
+  z-index: 1;
+  width: 52%;
+}
+.tc-unit.destroyed { filter: grayscale(1) brightness(0.55); }
+
+.tc-stats {
+  position: absolute;
+  z-index: 2;
+  bottom: -14%;
+  padding: 0 0.28em;
+  border-radius: 999px;
+  background: rgba(8, 10, 18, 0.92);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  color: #cdd5e6;
+  white-space: nowrap;
+}
+.tc-stats b { color: #f0e2b4; font-weight: 700; }
+
+/* --- building: a name card ------------------------------------------------ */
+.tc-building {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  max-width: 82%;
+  padding: 0.1em 0.42em;
+  border-radius: 5px;
+  background: rgba(12, 16, 27, 0.92);
+  border: 1px solid rgba(150, 190, 230, 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tc-bname { color: #cfe0f2; overflow: hidden; text-overflow: ellipsis; }
+.tc-byield { color: #9fd88a; font-weight: 700; }
+/* On a city tile the card tucks up so the population pip stays readable. */
+.tc-building.with-city { margin-bottom: 26%; }
+
+.tc-ruin {
+  padding: 0.08em 0.4em;
+  border-radius: 5px;
+  background: rgba(40, 12, 8, 0.9);
+  border: 1px solid rgba(255, 122, 74, 0.55);
+  color: #ff9a72;
+  font-size: 0.62rem;
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* --- level pip ------------------------------------------------------------ */
+.tc-level {
+  position: absolute;
+  top: -12%;
+  right: -8%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  min-width: 1.25em;
+  height: 1.25em;
+  padding: 0 0.15em;
+  border-radius: 999px;
+  background: linear-gradient(160deg, #f3dfa4, #b58c2a);
+  border: 1px solid #3a2c10;
+  color: #2b2007;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* --- gold actions: only on hover ------------------------------------------ */
+.tc-actions {
+  position: absolute;
+  top: 100%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+  pointer-events: auto;
+}
+
+.tc-action {
+  display: flex;
+  align-items: center;
+  gap: 0.18em;
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
+  border: 1px solid rgba(216, 173, 78, 0.65);
+  background: rgba(24, 20, 10, 0.96);
+  color: #f0d894;
+  font-size: 0.62rem;
+  line-height: 1.6;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tc-action:hover:not(:disabled) { background: rgba(216, 173, 78, 0.32); }
+.tc-action img { width: 0.85em; }
+.tc-action.poor {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(14, 16, 24, 0.94);
+  color: #737b8e;
+  cursor: not-allowed;
+}

@@ -129,11 +129,13 @@ class CombatMixin {
   /**
    * One garrison enemy per revealed, uncleared encampment, standing on the camp.
    *
-   * Its DOMAIN is the cheapest one that can actually path between the camp and
-   * the palace. That is not flavour — a camp on an island handed a land-only
-   * garrison can never march in, and your land units can never reach it, so the
-   * battle runs to the turn cap every single era. Deriving the domain from the
-   * flow fields makes an unreachable camp structurally impossible.
+   * DOMAIN RULES, in order:
+   *   1. An ISLAND camp is always amphibious or astral. Nothing else can leave
+   *      an island, and a land-only garrison stuck on one can neither march in
+   *      nor be reached — the battle then runs to the turn cap every single era.
+   *   2. Otherwise, the cheapest domain that can actually path between the camp
+   *      and the palace, read off the flow fields. That makes an unreachable
+   *      camp structurally impossible anywhere else too (Mars, the exomoon).
    */
   _encampmentEnemies(wave, rng, startId) {
     const out = []
@@ -141,7 +143,9 @@ class CombatMixin {
     const ORDER = ['default', 'amphibious', 'astral']
     for (const t of this.known.tiles) {
       if (!t.encampment) continue
-      const domainKey = ORDER.find((d) => this._fields[d]?.has(key(t.q, t.r))) ?? 'astral'
+      const domainKey = t.region === 'island' || t.terrain === 'island'
+        ? (rng() < 0.75 ? 'amphibious' : 'astral')
+        : ORDER.find((d) => this._fields[d]?.has(key(t.q, t.r))) ?? 'astral'
       const type = types[Math.floor(rng() * types.length)]
       // A camp always fields a real body, never a grunt — it is a landmark.
       const tier = rollTier(rng)

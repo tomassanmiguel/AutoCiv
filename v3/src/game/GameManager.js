@@ -45,7 +45,7 @@ const PALACE_REGEN = 0.25
  * the player cannot influence, which is not a decision.
  */
 const STARTING_UNIT = 'warrior'
-const STARTING_UNITS = 3
+const STARTING_UNITS = 1
 
 /**
  * Cities muster a levy each era. Without this the army only ever SHRINKS —
@@ -137,7 +137,6 @@ export class GameManager {
     this.phase = 'development' // 'development' | 'combat'
     this.defeated = false
     this.palaceHp = PALACE.def
-    this.inspected = null
 
     this._garrisonStart()
 
@@ -475,12 +474,6 @@ export class GameManager {
   }
 
   get repairTargets() { return repairTargets(this.world) }
-
-  /** The tile the player is inspecting — drives the gold action panel. */
-  inspect(t) {
-    this.inspected = t ?? null
-    this._emit()
-  }
 
   /** Resolve a progress offer: take the node and apply everything it grants. */
   chooseOffer(node) {

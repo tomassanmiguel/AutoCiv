@@ -185,51 +185,6 @@
   box-shadow: 0 0 20px rgba(216, 173, 78, 0.9), 0 2px 8px rgba(0, 0, 0, 0.7);
 }
 
-/* A building sits in the middle of its tile; a garrison unit rides on top of
-   whatever is already there, tucked into the lower corner so both read. */
-.hex-building {
-  width: 46%;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85));
-  pointer-events: none;
-}
-.hex-unit {
-  position: absolute;
-  right: 12%;
-  bottom: 8%;
-  width: 34%;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
-  pointer-events: none;
-}
-/* Destroyed but not gone: gold brings it back. */
-.hex-unit.destroyed { filter: grayscale(1) brightness(0.5); }
-
-.hex-ruin {
-  position: absolute;
-  left: 14%;
-  top: 12%;
-  font-size: 0.9rem;
-  font-weight: 800;
-  color: #ff7a4a;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  pointer-events: none;
-}
-
-/* Roads: drawn between the centres of adjacent road tiles, under the border. */
-.road-net {
-  position: absolute;
-  top: 0;
-  left: 0;
-  overflow: visible;
-  pointer-events: none;
-  z-index: 3;
-}
-.road-net line {
-  stroke: #d8c39a;
-  stroke-width: 7;
-  stroke-linecap: round;
-  opacity: 0.7;
-}
-
 .hex-tip-note.build { color: #b8d2e6; }
 .hex-tip-note.unit { color: #e3d3a0; }
 

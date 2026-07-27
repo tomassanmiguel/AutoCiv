@@ -4,6 +4,7 @@ import { SQRT3, DIRS } from '../../game/hex/coords.js'
 import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
 
 import PieceCard from './PieceCard.jsx'
+import TileCard from './TileCard.jsx'
 import { UNIT_DEFS } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingYield, buildingEffectText } from '../../game/data/buildings.js'
 import { tileYield } from '../../game/world/territory.js'
@@ -335,8 +336,6 @@ export default function HexMap() {
           const k = `${t.q},${t.r}`
           const { left, top } = posOf(t)
           const isBf = known.bfSet.has(k)
-          const bDef = t.building && BUILDING_DEFS[t.building.key]
-          const uDef = t.unit && UNIT_DEFS[t.unit.key]
           return (
             <div
               key={k}
@@ -352,25 +351,12 @@ export default function HexMap() {
               }}
               onMouseEnter={() => setHover(t)}
               onMouseLeave={() => setHover((h) => (h === t ? null : h))}
-              onClick={() => {
-                if (expSet?.has(k)) aimAt(t)
-                // Clicking your own ground opens the gold panel for it.
-                else if (!isBf && t.controlled) game.inspect(t)
-                else game.inspect(null)
-              }}
+              onClick={() => { if (expSet?.has(k)) aimAt(t) }}
             >
-              {!isBf && t.improved && !t.city && !bDef && <span className="hex-improved" />}
+              {!isBf && t.improved && !t.city && !t.building && <span className="hex-improved" />}
               {!isBf && t.city && (
                 <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>
               )}
-              {!isBf && bDef && !t.city && <img className="hex-building" src={bDef.icon} alt="" />}
-              {/* The garrison sits ON TOP of whatever the tile already holds.
-                  A destroyed unit stays visible, greyed — it is a repair bill,
-                  not an erasure. */}
-              {!isBf && uDef && !combat.active && (
-                <img className={`hex-unit${t.unit.destroyed ? ' destroyed' : ''}`} src={uDef.icon} alt="" />
-              )}
-              {!isBf && t.ruin && <span className="hex-ruin">✕</span>}
               {!isBf && t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
             </div>
           )
@@ -391,6 +377,35 @@ export default function HexMap() {
             ))}
           </svg>
         )}
+
+        {/* Buildings, the garrison and any ruin live on one card per tile, which
+            also carries that tile's gold actions.
+
+            This is its OWN LAYER rather than a child of the hex: `.hex` has a
+            `clip-path`, which clips descendants, so an action button hanging
+            below the hex was in the DOM but invisible. Hidden during a battle,
+            when the combat pieces own the board. */}
+        {!combat.active && shown.map((t) => {
+          const k = `${t.q},${t.r}`
+          if (known.bfSet.has(k) || (!t.unit && !t.building && !t.ruin)) return null
+          const c = centerOf(t.q, t.r)
+          return (
+            <div
+              key={`c${k}`}
+              // The hovered tile lifts above its neighbours, so its action
+              // buttons are not overlapped by the card on the tile below.
+              className={`tile-card-anchor${hover === t ? ' hovered' : ''}`}
+              style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H }}
+            >
+              <TileCard
+                game={game}
+                tile={t}
+                hovered={hover === t}
+                onHover={() => setHover(t)}
+              />
+            </div>
+          )
+        })}
 
         {/* --- combat layer ------------------------------------------------ */}
         {combat.active && (

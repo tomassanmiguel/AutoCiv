@@ -520,11 +520,23 @@ construction that shoots back.
   era 5 regardless of play.
 - **The progress web** gives *quality* (weapon/armour tiers) and the arms a levy never is —
   bows, horses, walls.
-- You **start** with 3 Warriors ringing the palace, because otherwise surviving era 0 depends
-  on whether the web happened to offer a military node first — a coin flip, not a decision.
+- You **start** with a single Warrior; **every ring-0 node grants a unit or a building**, so
+  the opening is stocked by what you choose rather than by what you were handed.
 
 Placement reuses the expansion affordance: legal tiles pulse, you click one. Units never stand
 on the palace tile (combat's occupancy map holds the palace there and would shadow them).
+
+**On-tile UI** (`components/HexMap/TileCard`): a unit is a **hexagon badge** with its type
+icon centred and a rim coloured by flavour; a building is a **name card** with its live yield.
+Hovering either reveals its **gold actions** (repair / upgrade) with prices, right on the
+thing being spent on — repair and upgrade are the only gold sinks, so they belong there rather
+than in a side panel.
+
+⚠️ TileCards render in **their own layer**, not inside the hex. `.hex` has a `clip-path`,
+which clips descendants: an action button hanging below the hex was in the DOM but invisible.
+The hovered anchor also lifts its `z-index` so a neighbour's card cannot cover its buttons,
+and `.tc-actions` re-asserts hover — the buttons are the only part that takes the pointer, so
+moving onto one would otherwise leave the hex and unmount the button under the cursor.
 
 ## The era's battle & razing
 
@@ -532,10 +544,11 @@ Each era **ends in a wave**, sized by the era you have reached — dawdling does
 easier. Every **revealed, uncleared encampment fields an extra garrison standing on the camp**,
 already inside your frontier: that is the pressure to expand toward them.
 
-A camp garrison's **travel domain is derived from the flow fields** — the cheapest domain that
-can actually path between the camp and the palace. This is not flavour: a camp on an island
-handed a land-only garrison can never march in and your land units can never reach it, so the
-battle ran to the turn cap *every single era*.
+A camp garrison's **travel domain** is: **island camps are always amphibious or astral**
+(nothing else can leave an island); everything else takes the cheapest domain that can
+actually path between the camp and the palace, read off the flow fields. This is not flavour —
+a land-only garrison stuck on an island can neither march in nor be reached, so the battle ran
+to the turn cap *every single era*.
 
 An enemy with nothing in reach **razes the ground it stands on** — building, then city, then
 improvement — leaving a **ruin**. Casualties are likewise not erased: a fallen unit stands on

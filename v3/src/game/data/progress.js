@@ -78,17 +78,20 @@ const palace = (mod) => ({ kind: 'palace', mod })
 // exclusivity all come from the template above.
 // ---------------------------------------------------------------------------
 const TREE = {
+  // NOTE: every RING-0 node grants a unit or a building. The opening eras only
+  // ever draw from ring 0, so a ring of pure passive bonuses left the first two
+  // eras with an empty board and nothing to place.
   economy: [
     [
-      ['Foraging', terrain('forest', { food: 1 })],
-      ['Bartering', mult('gold', 0.1)],
-      ['Stone Tools', terrain('hills', { production: 1 })],
+      ['Foraging', build('lumbercamp'), terrain('forest', { food: 1 })],
+      ['Bartering', build('market'), mult('gold', 0.1)],
+      ['Stone Tools', build('quarry'), terrain('hills', { production: 1 })],
     ],
     [
-      ['Agriculture', terrain('plains', { food: 2 })],
-      ['Horticulture', terrain('forest', { food: 2 })],
-      ['Pottery', build('granary')],
-      ['Quarrying', terrain('mountain', { production: 2 }), settle('mountain')],
+      ['Agriculture', build('granary'), terrain('plains', { food: 2 })],
+      ['Horticulture', build('lumbercamp'), terrain('forest', { food: 2 })],
+      ['Pottery', build('granary', 2)],
+      ['Quarrying', unit('mudbrick'), terrain('mountain', { production: 2 }), settle('mountain')],
     ],
     [
       ['Irrigation', thresh('food', -0.08)],
@@ -118,15 +121,15 @@ const TREE = {
 
   society: [
     [
-      ['Oral Tradition', mult('progress', 0.1)],
-      ['Fire Rites', terrain('tundra', { progress: 2 })],
-      ['Burial Rites', city({ yields: { progress: 1 } })],
+      ['Oral Tradition', build('amphitheater'), mult('progress', 0.1)],
+      ['Fire Rites', unit('warrior'), terrain('tundra', { progress: 2 })],
+      ['Burial Rites', build('temple'), city({ yields: { progress: 1 } })],
     ],
     [
-      ['Storytelling', mult('progress', 0.2)],
-      ['Cave Painting', build('amphitheater')],
-      ['Shamanism', build('temple')],
-      ['Ancestor Cult', city({ yields: { progress: 3 } })],
+      ['Storytelling', build('amphitheater'), mult('progress', 0.2)],
+      ['Cave Painting', build('library')],
+      ['Shamanism', build('temple', 2)],
+      ['Ancestor Cult', unit('warrior', 2), city({ yields: { progress: 3 } })],
     ],
     [
       ['Language', thresh('progress', -0.08)],
@@ -160,9 +163,9 @@ const TREE = {
   // being properly armed and neither quadrant is compulsory.
   military: [
     [
-      ['Flint Knapping', umod('melee', { atk: 3 })],
-      ['Tanning', armor('leather')],
-      ['Hunting', unit('warrior'), terrain('forest', { food: 1 })],
+      ['Flint Knapping', unit('warrior'), umod('melee', { atk: 3 })],
+      ['Tanning', unit('mudbrick'), armor('leather')],
+      ['Hunting', unit('warrior', 2), terrain('forest', { food: 1 })],
     ],
     [
       ['Bronze Working', weapon('bronze'), unit('spearman')],
@@ -198,15 +201,15 @@ const TREE = {
 
   technology: [
     [
-      ['Firemaking', mult('production', 0.1)],
-      ['Toolmaking', terrain('hills', { production: 1 })],
-      ['Weaving', terrain('plains', { gold: 1 })],
+      ['Firemaking', build('workshop'), mult('production', 0.1)],
+      ['Toolmaking', build('mine'), terrain('hills', { production: 1 })],
+      ['Weaving', unit('warrior'), terrain('plains', { gold: 1 })],
     ],
     [
-      ['Kilns', build('workshop')],
-      ['Smelting', mult('production', 0.25)],
-      ['The Lever', terrain('mountain', { production: 2 })],
-      ['Basketry', thresh('food', -0.06)],
+      ['Kilns', build('workshop', 2)],
+      ['Smelting', build('mine'), mult('production', 0.25)],
+      ['The Lever', unit('mudbrick', 2), terrain('mountain', { production: 2 })],
+      ['Basketry', build('granary'), thresh('food', -0.06)],
     ],
     [
       ['Brickwork', build('quarry'), unit('mudbrick')],
