@@ -18,8 +18,8 @@
 
 import { generateWorld } from './world/worldgen.js'
 import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
-import { terrainOf } from './world/terrain.js'
-import { key, neighbors, lengthOf } from './hex/coords.js'
+import { terrainOf, isLand, isPassable } from './world/terrain.js'
+import { key, neighbors, lengthOf, disc } from './hex/coords.js'
 import { PROGRESS_NODES, RING_UNLOCK, MAX_RING, progressById } from './data/progress.js'
 import { initialResources, accrue } from './data/resources.js'
 import { ERAS, TICKS_PER_ERA, ERA_COUNT, stageForEra, unlocksForEra, EXPANSION_UNLOCKS } from './data/eras.js'
@@ -32,7 +32,9 @@ import {
 import {
   unitRepairCost, tileRepairCost, unitUpgradeCost, buildingUpgradeCost, rerollCost,
 } from './data/costs.js'
-import { PALACE, UNIT_DEFS, WEAPON_TIERS, ARMOR_TIERS, bestTier } from './data/units.js'
+import {
+  PALACE, UNIT_DEFS, WEAPON_TIERS, ARMOR_TIERS, bestTier, bestOfType, unitStats,
+} from './data/units.js'
 import { BUILDING_DEFS } from './data/buildings.js'
 import { installCombat, MAX_WAVES } from './manager/combat.js'
 
@@ -475,6 +477,66 @@ export class GameManager {
 
   get repairTargets() { return repairTargets(this.world) }
 
+  /**
+   * Where the unit on `tile` could go and what it could hit — for the hover
+   * highlight.
+   *
+   *   move   — tiles it can walk to this turn (`acts` steps over passable land)
+   *   attack — tiles it can strike from where it stands
+   *   threat — extra tiles it could strike after moving first
+   *
+   * Split into three because "how far can it reach" and "what can it hit right
+   * now" are different questions, and a ranged unit that never moves answers
+   * them very differently from cavalry.
+   */
+  unitReachCells(tile) {
+    const u = tile?.unit
+    if (!u || u.destroyed) return null
+    const def = UNIT_DEFS[u.key]
+    if (!def) return null
+    const s = unitStats(def, this.era, this.mods, u.level ?? 1)
+
+    const walkable = (t) => !!t && isLand(t.terrain) && isPassable(t.terrain) &&
+      t.revealStage <= this.stage && !(t.q === 0 && t.r === 0)
+
+    const move = new Set()
+    let frontier = [tile]
+    const seen = new Set([key(tile.q, tile.r)])
+    for (let step = 0; step < s.acts; step++) {
+      const next = []
+      for (const c of frontier) {
+        for (const n of neighbors(c.q, c.r)) {
+          const k = key(n.q, n.r)
+          if (seen.has(k)) continue
+          const o = this.world.tiles.get(k)
+          if (!walkable(o)) continue
+          seen.add(k)
+          move.add(k)
+          next.push(o)
+        }
+      }
+      frontier = next
+    }
+
+    const attack = new Set()
+    if (s.atk > 0 && s.range > 0) {
+      for (const c of disc(tile.q, tile.r, s.range)) attack.add(key(c.q, c.r))
+      attack.delete(key(tile.q, tile.r))
+    }
+    // Reach after moving — only interesting for a unit that can actually move.
+    const threat = new Set()
+    if (s.atk > 0 && s.range > 0) {
+      for (const mk of move) {
+        const [q, r] = mk.split(',').map(Number)
+        for (const c of disc(q, r, s.range)) {
+          const k = key(c.q, c.r)
+          if (!attack.has(k) && !move.has(k) && k !== key(tile.q, tile.r)) threat.add(k)
+        }
+      }
+    }
+    return { move, attack, threat, stats: s }
+  }
+
   /** Resolve a progress offer: take the node and apply everything it grants. */
   chooseOffer(node) {
     if (this.selection?.type !== 'progress') return false
@@ -499,19 +561,27 @@ export class GameManager {
 
   get placementTargets() { return this._placementTargets(this.selection?.item) }
 
+  /** What a queued grant actually puts down — class grants resolve here. */
+  grantDef(item) {
+    if (!item) return null
+    if (item.kind === 'building') return BUILDING_DEFS[item.key] ?? null
+    return item.key ? UNIT_DEFS[item.key] : bestOfType(item.type, this.mods.units)
+  }
+
   /** Put the granted unit/building down. */
   placeGrant(tile) {
     const sel = this.selection
     if (sel?.type !== 'placement') return false
-    const { kind, key: k } = sel.item
-    const ok = kind === 'building'
-      ? placeBuilding(this.world, tile, k)
-      : placeUnit(this.world, tile, k)
+    const def = this.grantDef(sel.item)
+    if (!def) return false
+    const ok = sel.item.kind === 'building'
+      ? placeBuilding(this.world, tile, def.key)
+      : placeUnit(this.world, tile, def.key)
     if (!ok) return false
     this.grants.shift()
     this.selection = null
     this._knownCache = null
-    this.log.push({ era: this.era, text: `Placed ${sel.item.name} on ${terrainOf(tile.terrain).name}.` })
+    this.log.push({ era: this.era, text: `Placed ${def.name} on ${terrainOf(tile.terrain).name}.` })
     this._openNextSelection()
     this._restartTimer()
     this._emit()
@@ -635,6 +705,13 @@ export class GameManager {
         case 'unit':
           m.units.add(f.unit)
           for (let i = 0; i < f.grant; i++) this.grants.push({ kind: 'unit', key: f.unit, name: UNIT_NAME(f.unit) })
+          break
+        // A bare class grant resolves to the best unlocked unit of that class
+        // AT PLACEMENT TIME, so troops queued before an upgrade still benefit
+        // from it. If the class is still empty it opens with the base unit, so
+        // a grant can never be stranded.
+        case 'troops':
+          for (let i = 0; i < f.grant; i++) this.grants.push({ kind: 'unit', type: f.type })
           break
         case 'building':
           m.buildings.add(f.building)

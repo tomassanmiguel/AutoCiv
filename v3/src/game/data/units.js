@@ -48,6 +48,21 @@ export const UNIT_DEFS = {
 
 export const UNIT_LIST = Object.values(UNIT_DEFS)
 
+/** The unit a class opens with, when a bare troop grant finds it empty. */
+export const BASE_OF_TYPE = {
+  melee: 'warrior', ranged: 'slinger', cavalry: 'rider', defense: 'mudbrick',
+}
+
+/** Rough worth, used to pick the best unlocked unit of a class. */
+const worth = (d) => d.def + d.atk * 3
+
+/** The strongest unlocked unit of a class, or its base if none is unlocked. */
+export function bestOfType(type, unlocked) {
+  const owned = UNIT_LIST.filter((d) => d.type === type && unlocked?.has(d.key))
+  if (!owned.length) return UNIT_DEFS[BASE_OF_TYPE[type]]
+  return owned.sort((a, b) => worth(b) - worth(a))[0]
+}
+
 // The palace is the fail state. It fights, and its HP persists between eras.
 export const PALACE = {
   key: 'palace', name: 'Palace', type: 'palace',

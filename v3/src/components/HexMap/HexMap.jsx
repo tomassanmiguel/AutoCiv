@@ -69,6 +69,11 @@ export default function HexMap() {
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
 
+  // Hovering a unit shows where it could go and what it could hit — the
+  // clearest way to read a stat block is to see it drawn on the board. Must sit
+  // AFTER the `hover` state: reading it above is a temporal-dead-zone crash.
+  const reach = !combat.active && hover?.unit ? game.unitReachCells(hover) : null
+
   // --- Content layout (origin + size of the known world in content px) -------
   const layout = useMemo(() => {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
@@ -341,7 +346,10 @@ export default function HexMap() {
               key={k}
               className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}` +
                 `${t.controlled && !isBf && t.revealStage <= game.stage ? ' controlled' : ''}` +
-                `${expSet?.has(k) ? ' expandable' : ''}`}
+                `${expSet?.has(k) ? ' expandable' : ''}` +
+                `${reach?.move.has(k) ? ' reach-move' : ''}` +
+                `${reach?.attack.has(k) ? ' reach-attack' : ''}` +
+                `${reach?.threat.has(k) ? ' reach-threat' : ''}`}
               style={{
                 left,
                 top,

@@ -1,5 +1,6 @@
 import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
 import { BUILDING_DEFS, buildingYield } from '../../game/data/buildings.js'
+import { RESOURCES, RES_ICON } from '../../game/world/terrain.js'
 import './TileCard.css'
 
 /**
@@ -23,26 +24,42 @@ export default function TileCard({ game, tile, hovered, onHover }) {
 
   return (
     <div className="tile-card">
-      {buildDef && (
-        <div className={`tc-building${tile.city ? ' with-city' : ''}`}>
-          <span className="tc-bname">{buildDef.name}</span>
-          <span className="tc-byield">
-            {Object.values(buildingYield(game.world, tile)).filter((v) => v > 0)
-              .map((v) => `+${v}`).join(' ') || '—'}
-          </span>
-          {(tile.building.level ?? 1) > 1 && <span className="tc-level">{tile.building.level}</span>}
-        </div>
-      )}
+      {buildDef && (() => {
+        const y = buildingYield(game.world, tile)
+        const earning = RESOURCES.filter((r) => y[r] > 0)
+        return (
+          <div className={`tc-building${tile.city ? ' with-city' : ''}`}>
+            <span className="tc-bname">{buildDef.name}</span>
+            {earning.length > 0 ? (
+              <span className="tc-byield">
+                {earning.map((r) => (
+                  <span key={r} className={`tc-res ${r}`}>
+                    <img src={RES_ICON[r]} alt={r} />{y[r]}
+                  </span>
+                ))}
+              </span>
+            ) : <span className="tc-bidle">idle</span>}
+            {(tile.building.level ?? 1) > 1 && <span className="tc-level">{tile.building.level}</span>}
+          </div>
+        )
+      })()}
 
       {tile.ruin && <div className="tc-ruin">Ruined {tile.ruin.kind}</div>}
 
       {unitDef && (
         <div className={`tc-unit ${unitDef.type}${tile.unit.destroyed ? ' destroyed' : ''}`}>
-          <img src={unitDef.icon} alt={unitDef.name} />
+          <img className="tc-uicon" src={unitDef.icon} alt={unitDef.name} />
           {(tile.unit.level ?? 1) > 1 && <span className="tc-level">{tile.unit.level}</span>}
-          {hovered && !tile.unit.destroyed && (
-            <span className="tc-stats">
-              <b>{stats.atk || '—'}</b>/<b>{stats.def}</b>
+          {/* Attack bottom-left, defence bottom-right — the same two corners
+              every time, so the numbers are read by position, not by label. */}
+          {!tile.unit.destroyed && stats.atk > 0 && (
+            <span className="tc-stat atk">
+              <img src="/sprites/icons/attack.png" alt="attack" />{stats.atk}
+            </span>
+          )}
+          {!tile.unit.destroyed && (
+            <span className="tc-stat def">
+              <img src="/sprites/icons/defense.png" alt="defense" />{stats.def}
             </span>
           )}
         </div>

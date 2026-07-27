@@ -52,26 +52,34 @@
 .tc-unit.cavalry { --tc-rim: #b07ad0; }
 .tc-unit.defense { --tc-rim: #8a94a8; }
 
-.tc-unit img {
+.tc-uicon {
   position: relative;
   z-index: 1;
-  width: 52%;
+  width: 46%;
+  margin-bottom: 8%; /* clear the stat pills sitting in the lower corners */
 }
 .tc-unit.destroyed { filter: grayscale(1) brightness(0.55); }
 
-.tc-stats {
+/* Attack and defence live in fixed corners of the badge, so the eye learns
+   "left is what it hits with, right is what it takes" and stops reading labels. */
+.tc-stat {
   position: absolute;
-  z-index: 2;
-  bottom: -14%;
-  padding: 0 0.28em;
+  z-index: 3;
+  bottom: -6%;
+  display: flex;
+  align-items: center;
+  gap: 0.08em;
+  padding: 0 0.22em;
   border-radius: 999px;
-  background: rgba(8, 10, 18, 0.92);
-  font-size: 0.62rem;
+  background: rgba(8, 10, 18, 0.95);
+  font-size: 0.58rem;
+  font-weight: 700;
   line-height: 1.5;
-  color: #cdd5e6;
   white-space: nowrap;
 }
-.tc-stats b { color: #f0e2b4; font-weight: 700; }
+.tc-stat img { width: 0.85em; }
+.tc-stat.atk { left: -12%; color: #ffb3a0; }
+.tc-stat.def { right: -12%; color: #a8cdf5; }
 
 /* --- building: a name card ------------------------------------------------ */
 .tc-building {
@@ -90,7 +98,18 @@
   white-space: nowrap;
 }
 .tc-bname { color: #cfe0f2; overflow: hidden; text-overflow: ellipsis; }
-.tc-byield { color: #9fd88a; font-weight: 700; }
+
+/* Output reads as ICONS with numbers, tinted per resource — the same palette
+   the corner readout uses, so a building's yield is recognisable without
+   reading it. */
+.tc-byield { display: flex; gap: 0.3em; font-weight: 700; }
+.tc-res { display: flex; align-items: center; gap: 0.1em; }
+.tc-res img { width: 0.95em; }
+.tc-res.food { color: #8fd48a; }
+.tc-res.production { color: #e79a63; }
+.tc-res.gold { color: #f0cf6a; }
+.tc-res.progress { color: #a99bea; }
+.tc-bidle { color: #6b7488; font-style: italic; }
 /* On a city tile the card tucks up so the population pip stays readable. */
 .tc-building.with-city { margin-bottom: 26%; }
 

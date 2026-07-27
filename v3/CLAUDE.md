@@ -350,7 +350,9 @@ applied by `GameManager._applyEffects` into ONE accumulated record, `game.mods`:
 | `terrain` / `improved` | extra yields on a terrain type, or on every improvement |
 | `mult` | percentage on a resource — **additive per resource, applied once at the end** |
 | `threshold` | multiplier on a threshold (<1 is cheaper), applied at comparison time |
-| `unit` / `building` | unlocks it **and queues a placement** you aim at a tile |
+| `unit` | unlocks a **better unit of its class** and grants some. Each unit key appears **exactly once** in the tree — asserted, because two techs both "unlocking the Mud Brick Wall" is a design smell |
+| `troops` | just bodies: N units of a **class**, resolved to the best unlocked unit of it **at placement time**. Opens with the class's base unit if it is still empty, so a grant can never be stranded |
+| `building` | unlocks it and queues a placement. Which node is the **unlocker** is derived — the earliest in ring order — so later ones read "grants another Granary" |
 | `weapon` / `armor` | a **TIER**, see below |
 | `unitMod` | per-type (melee/ranged/cavalry/defense) atk/hp/range/moves |
 | `road` | unlocks roads and sets what a road-adjacent tile earns |
@@ -359,6 +361,10 @@ applied by `GameManager._applyEffects` into ONE accumulated record, `game.mods`:
 
 **Effect TEXT and the node icon are generated from the effects** (`describe`, `iconFor`), so a
 node's description can never drift from what it actually does — never hand-write one.
+
+**Units are described by CLASS, never by name** — "grants 2 :melee: units". Which unit you
+actually get is the reveal when you place it, and it keeps the offer readable as the tiers
+climb. Buildings keep their names; they are distinctive, named things.
 
 **Weapons and armour are TIERS, not stacks.** You start the game on **Clubs** and **Hides**; a
 node moves you to Bronze → Iron → Steel (and Leather → Bronze Mail → Iron Mail), *replacing*
@@ -526,11 +532,17 @@ construction that shoots back.
 Placement reuses the expansion affordance: legal tiles pulse, you click one. Units never stand
 on the palace tile (combat's occupancy map holds the palace there and would shadow them).
 
-**On-tile UI** (`components/HexMap/TileCard`): a unit is a **hexagon badge** with its type
-icon centred and a rim coloured by flavour; a building is a **name card** with its live yield.
-Hovering either reveals its **gold actions** (repair / upgrade) with prices, right on the
-thing being spent on — repair and upgrade are the only gold sinks, so they belong there rather
-than in a side panel.
+**On-tile UI** (`components/HexMap/TileCard`): a unit is a **hexagon badge** with its type icon
+centred, a rim coloured by flavour, and **attack bottom-left / defence bottom-right** — always
+the same two corners, so the numbers are read by position rather than by label. A building is a
+**name card** showing its live yield as resource icons tinted to match the corner readout.
+Hovering either reveals its **gold actions** (repair / upgrade) with prices, right on the thing
+being spent on — repair and upgrade are the only gold sinks, so they belong there rather than
+in a side panel.
+
+**Hovering a unit paints its reach** (`GameManager.unitReachCells`): BLUE = ground it can walk
+to this turn, RED = what it can strike from where it stands, AMBER = what it could strike after
+moving first. Seeing a stat block drawn on the board reads far faster than the numbers do.
 
 ⚠️ TileCards render in **their own layer**, not inside the hex. `.hex` has a `clip-path`,
 which clips descendants: an action button hanging below the hex was in the DOM but invisible.

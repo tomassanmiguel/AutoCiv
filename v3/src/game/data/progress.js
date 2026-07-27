@@ -38,7 +38,7 @@
 // engine. Effect TEXT is generated from the data (see `describe`), so a node's
 // description can never drift from what it actually does.
 
-import { UNIT_DEFS, weaponTier, armorTier } from './units.js'
+import { UNIT_DEFS, UNIT_TYPES, weaponTier, armorTier } from './units.js'
 import { BUILDING_DEFS } from './buildings.js'
 
 /** Nodes that must be chosen from a ring before the next ring appears. */
@@ -61,7 +61,17 @@ const terrain = (t, yields) => ({ kind: 'terrain', terrain: t, yields })
 const improved = (yields) => ({ kind: 'improved', yields })
 const mult = (res, pct) => ({ kind: 'mult', res, pct })
 const thresh = (res, pct) => ({ kind: 'threshold', res, pct })
+// Two ways to be given soldiers, and the distinction matters:
+//   unit(key, n)   — UNLOCKS a better unit of its class and grants n. Each unit
+//                    key appears exactly ONCE in the tree (asserted).
+//   troops(type,n) — just bodies: n of whatever the best unlocked unit of that
+//                    class currently is. If the class is still empty it opens
+//                    with the base unit, so a grant can never be stranded.
+//
+// Units are described by CLASS, never by name — "grants 2 :melee: units". Which
+// unit you actually get is revealed when you place it.
 const unit = (u, grant = 1) => ({ kind: 'unit', unit: u, grant })
+const troops = (type, grant = 1) => ({ kind: 'troops', type, grant })
 // Weapons/armour are TIERS: taking one re-arms the civilization, replacing the
 // tier below rather than stacking on it. You start on Clubs and Hides.
 const weapon = (tier) => ({ kind: 'weapon', tier })
@@ -91,7 +101,7 @@ const TREE = {
       ['Agriculture', build('granary'), terrain('plains', { food: 2 })],
       ['Horticulture', build('lumbercamp'), terrain('forest', { food: 2 })],
       ['Pottery', build('granary', 2)],
-      ['Quarrying', unit('mudbrick'), terrain('mountain', { production: 2 }), settle('mountain')],
+      ['Quarrying', troops('defense'), terrain('mountain', { production: 2 }), settle('mountain')],
     ],
     [
       ['Irrigation', thresh('food', -0.08)],
@@ -122,21 +132,21 @@ const TREE = {
   society: [
     [
       ['Oral Tradition', build('amphitheater'), mult('progress', 0.1)],
-      ['Fire Rites', unit('warrior'), terrain('tundra', { progress: 2 })],
+      ['Fire Rites', troops('melee'), terrain('tundra', { progress: 2 })],
       ['Burial Rites', build('temple'), city({ yields: { progress: 1 } })],
     ],
     [
       ['Storytelling', build('amphitheater'), mult('progress', 0.2)],
       ['Cave Painting', build('library')],
       ['Shamanism', build('temple', 2)],
-      ['Ancestor Cult', unit('warrior', 2), city({ yields: { progress: 3 } })],
+      ['Ancestor Cult', troops('melee', 2), city({ yields: { progress: 3 } })],
     ],
     [
       ['Language', thresh('progress', -0.08)],
       ['Symbolism', improved({ progress: 1 })],
       ['Priesthood', city({ yields: { progress: 2 }, growth: 0.25 })],
       ['Mysticism', build('temple', 2)],
-      ['Tribal Council', unit('warrior', 2)],
+      ['Tribal Council', troops('melee', 2)],
     ],
     [
       ['Writing', build('library'), mult('progress', 0.2)],
@@ -144,7 +154,7 @@ const TREE = {
       ['Divine Right', palace({ def: 120 }), city({ yields: { progress: 3 } })],
       ['Astrology', settle('tundra'), terrain('tundra', { progress: 3 })],
       ['Chieftains', mult('food', 0.25)],
-      ['Warbands', unit('spearman', 2)],
+      ['Warbands', troops('melee', 2)],
     ],
     [
       ['Philosophy', thresh('progress', -0.12), mult('progress', 0.25)],
@@ -152,8 +162,8 @@ const TREE = {
       ['Pilgrimage', city({ yields: { progress: 5 } })],
       ['Codified Law', mult('gold', 0.2), mult('progress', 0.2)],
       ['Calendar', thresh('food', -0.1), thresh('progress', -0.06)],
-      ['Feudal Levy', unit('legion')],
-      ['Standing Army', unit('spearman', 3), armor('ironmail')],
+      ['Feudal Levy', troops('melee', 3)],
+      ['Standing Army', troops('melee', 3), armor('ironmail')],
     ],
   ],
 
@@ -163,38 +173,38 @@ const TREE = {
   // being properly armed and neither quadrant is compulsory.
   military: [
     [
-      ['Flint Knapping', unit('warrior'), umod('melee', { atk: 3 })],
+      ['Flint Knapping', troops('melee'), umod('melee', { atk: 3 })],
       ['Tanning', unit('mudbrick'), armor('leather')],
-      ['Hunting', unit('warrior', 2), terrain('forest', { food: 1 })],
+      ['Hunting', troops('melee', 2), terrain('forest', { food: 1 })],
     ],
     [
       ['Bronze Working', weapon('bronze'), unit('spearman')],
       ['Slings', unit('slinger', 2), umod('ranged', { atk: 3 })],
       ['Scale Armour', armor('bronzemail')],
-      ['Trapping', unit('warrior', 2), unit('mudbrick')],
+      ['Trapping', troops('melee', 2), troops('defense')],
     ],
     [
       ['Smithing', umod('melee', { atk: 4 }), umod('cavalry', { atk: 4 })],
       ['Archery', unit('archer', 2), umod('ranged', { range: 1 })],
-      ['Mud Brick', unit('mudbrick', 2)],
+      ['Mud Brick', troops('defense', 3)],
       ['Palisades', unit('palisade', 2)],
-      ['Horseback Riding', umod('cavalry', { acts: 1 }), unit('rider', 2)],
+      ['Horseback Riding', unit('rider', 2), umod('cavalry', { acts: 1 })],
     ],
     [
       ['Iron Working', weapon('iron'), unit('legion')],
       ['Watchtowers', unit('watchtower', 2)],
       ['Fortification', umod('defense', { hp: 60 })],
-      ['Stockades', unit('palisade', 3), umod('defense', { hp: 40 })],
+      ['Stockades', troops('defense', 3), umod('defense', { hp: 40 })],
       ['Chariotry', unit('chariot', 2)],
       ['Cavalry Doctrine', umod('cavalry', { atk: 6, acts: 1 })],
     ],
     [
       ['Steel', weapon('steel')],
-      ['Siege Craft', unit('watchtower', 3), umod('ranged', { range: 1 })],
-      ['Ballistics', umod('ranged', { atk: 10 })],
-      ['Stone Walls', unit('stonewall', 2)],
-      ['Masonry Forts', unit('stonewall'), umod('defense', { hp: 80 })],
-      ['War Chariots', unit('chariot', 3)],
+      ['Siege Craft', troops('defense', 3), umod('ranged', { range: 1 })],
+      ['Ballistics', unit('crossbowman', 2), umod('ranged', { atk: 10 })],
+      ['Stone Walls', troops('defense', 2)],
+      ['Masonry Forts', troops('defense', 2), umod('defense', { hp: 80 })],
+      ['War Chariots', troops('cavalry', 3)],
       ['Horse Archery', unit('horseman', 2), umod('cavalry', { range: 1 })],
     ],
   ],
@@ -203,24 +213,24 @@ const TREE = {
     [
       ['Firemaking', build('workshop'), mult('production', 0.1)],
       ['Toolmaking', build('mine'), terrain('hills', { production: 1 })],
-      ['Weaving', unit('warrior'), terrain('plains', { gold: 1 })],
+      ['Weaving', troops('melee'), terrain('plains', { gold: 1 })],
     ],
     [
       ['Kilns', build('workshop', 2)],
       ['Smelting', build('mine'), mult('production', 0.25)],
-      ['The Lever', unit('mudbrick', 2), terrain('mountain', { production: 2 })],
+      ['The Lever', troops('defense', 2), terrain('mountain', { production: 2 })],
       ['Basketry', build('granary'), thresh('food', -0.06)],
     ],
     [
-      ['Brickwork', build('quarry'), unit('mudbrick')],
+      ['Brickwork', build('quarry'), troops('defense')],
       ['Bronze Casting', mult('production', 0.3), weapon('bronze')],
-      ['The Wheel', road({ gold: 1 }), unit('rider')],
+      ['The Wheel', road({ gold: 1 }), troops('cavalry')],
       ['The Plough', terrain('plains', { food: 3 })],
       ['Textiles', mult('gold', 0.2), armor('bronzemail')],
     ],
     [
       ['Metallurgy', mult('production', 0.35), weapon('iron')],
-      ['Axles', road({ production: 1 }), unit('chariot')],
+      ['Axles', road({ production: 1 }), troops('cavalry')],
       ['Cartography', settle('ocean'), terrain('coast', { gold: 2 })],
       ['Crop Terracing', terrain('hills', { food: 2 }), terrain('forest', { food: 1 })],
       ['Dyeworks', mult('gold', 0.3)],
@@ -229,7 +239,7 @@ const TREE = {
     [
       ['Engineering', build('mine', 2), city({ yields: { production: 2 } })],
       ['Shipbuilding', settle('ocean'), build('harbor', 2)],
-      ['Chariot Works', unit('chariot', 2), umod('cavalry', { acts: 1 })],
+      ['Chariot Works', troops('cavalry', 2), umod('cavalry', { acts: 1 })],
       ['Navigation', terrain('ocean', { gold: 3 }), build('harbor')],
       ['Fertiliser', mult('food', 0.3), thresh('food', -0.08)],
       ['Glassworks', build('library', 2)],
@@ -263,17 +273,27 @@ const MOD_TEXT = {
   range: (v) => `+${v} range`,
 }
 
+const plural = (n, s) => `${n} ${s}${n > 1 ? 's' : ''}`
+
 function describeOne(fx) {
   switch (fx.kind) {
     case 'terrain': return `${yieldText(fx.yields)} on every ${fx.terrain} tile you control.`
     case 'improved': return `${yieldText(fx.yields)} on every improved tile.`
     case 'mult': return `All ${TOKEN[fx.res]} output ${pct(fx.pct)}.`
     case 'threshold': return `${TOKEN[fx.res]} thresholds ${pct(fx.pct)}.`
-    case 'unit': return `Unlocks ${TYPE_TOKEN[UNIT_DEFS[fx.unit].type]} ${UNIT_DEFS[fx.unit].name}, and grants one to place${times(fx.grant)}.`
+    // Units are described by CLASS, never by name — which unit you actually get
+    // is the reveal when you place it.
+    case 'troops': return `Grants ${plural(fx.grant, `${TYPE_TOKEN[fx.type]} unit`)} to place.`
+    case 'unit': return `A stronger ${TYPE_TOKEN[UNIT_DEFS[fx.unit].type]} unit — all future grants of that class use it. Grants ${plural(fx.grant, 'one')} to place.`
     case 'weapon': return `WEAPONS → ${weaponTier(fx.tier).name}. Re-arms every :melee: and :cavalry: unit: +${weaponTier(fx.tier).atk} :attack: over Clubs.`
     case 'armor': return `ARMOR → ${armorTier(fx.tier).name}. Re-equips every unit: +${armorTier(fx.tier).hp} :defense: over Hides.`
     case 'unitMod': return `All ${TYPE_TOKEN[fx.type]} units gain ${Object.entries(fx.mod).map(([k, v]) => MOD_TEXT[k](v)).join(', ')}.`
-    case 'building': return `Unlocks the :building: ${BUILDING_DEFS[fx.building].name}, and grants one to place${times(fx.grant)}.`
+    // `first` is stamped on the earliest node in the tree that grants this
+    // building — everything after it reads as more of the same, so no two nodes
+    // ever both claim to "unlock" it.
+    case 'building': return fx.first
+      ? `Unlocks the :building: ${BUILDING_DEFS[fx.building].name}${times(fx.grant)}, and grants one to place.`
+      : `Grants ${plural(fx.grant, `${BUILDING_DEFS[fx.building].name}`)} to place.`
     case 'road': return `Roads link your cities and give ${yieldText(fx.yields)} to every tile they touch.`
     case 'settle': return `You may now settle ${fx.settle} tiles.`
     case 'city': return [
@@ -308,7 +328,7 @@ const UNIT_ICON = { melee: '/sprites/ui/melee.png', ranged: '/sprites/ui/ranged.
 function iconFor(fxs) {
   const f = fxs[0]
   if (f.kind === 'unit') return UNIT_ICON[UNIT_DEFS[f.unit].type]
-  if (f.kind === 'unitMod') return UNIT_ICON[f.type]
+  if (f.kind === 'troops' || f.kind === 'unitMod') return UNIT_ICON[f.type]
   if (f.kind === 'mult') return RES_ICON[f.res]
   if (f.kind === 'terrain' || f.kind === 'improved') {
     const res = Object.keys(f.yields)[0]
@@ -317,10 +337,14 @@ function iconFor(fxs) {
   return ICON[f.kind] ?? '/sprites/ui/policy.png'
 }
 
+const TYPE_NAME = { melee: 'melee', ranged: 'ranged', cavalry: 'cavalry', defense: 'defensive' }
+
 /** Short "what does this give me" line for the offer card. */
 function unlocksFor(fxs) {
   const u = fxs.find((f) => f.kind === 'unit')
-  if (u) return `${UNIT_DEFS[u.unit].name}${times(u.grant)}`
+  if (u) return `a better ${TYPE_NAME[UNIT_DEFS[u.unit].type]} unit`
+  const t = fxs.find((f) => f.kind === 'troops')
+  if (t) return plural(t.grant, `${TYPE_NAME[t.type]} unit`)
   const b = fxs.find((f) => f.kind === 'building')
   if (b) return `${BUILDING_DEFS[b.building].name}${times(b.grant)}`
   const w = fxs.find((f) => f.kind === 'weapon')
@@ -335,6 +359,26 @@ function unlocksFor(fxs) {
 }
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+// Stamp `first` on the EARLIEST building grant of each key, walking the tree in
+// ring order across all quadrants (a ring-0 Technology node comes before a
+// ring-1 Economy one). Derived rather than hand-marked, so two nodes can never
+// both claim to unlock the same building.
+{
+  const seen = new Set()
+  const rings = Math.max(...Object.values(TREE).map((q) => q.length))
+  for (let r = 0; r < rings; r++) {
+    for (const quadrant of Object.values(TREE)) {
+      for (const entry of quadrant[r] ?? []) {
+        for (const fx of entry.slice(1)) {
+          if (fx.kind !== 'building' || seen.has(fx.building)) continue
+          seen.add(fx.building)
+          fx.first = true
+        }
+      }
+    }
+  }
+}
 
 // --- Build the flat node list ----------------------------------------------
 export const PROGRESS_NODES = []
@@ -484,13 +528,24 @@ export function validateStructure() {
     }
   }
 
-  // 5. every effect must name something real
+  // 5. every effect must name something real, and NO UNIT IS UNLOCKED TWICE —
+  //    two techs that both "unlock the Mud Brick Wall" is a design smell, so it
+  //    is a hard check rather than a review habit. Extra bodies of a class go
+  //    through `troops`, which unlocks nothing.
+  const unlockedBy = new Map()
   for (const n of PROGRESS_NODES) {
     for (const f of n.effects) {
-      if (f.kind === 'unit' && !UNIT_DEFS[f.unit]) v.push(`${n.id}: unknown unit ${f.unit}`)
+      if (f.kind === 'unit') {
+        if (!UNIT_DEFS[f.unit]) v.push(`${n.id}: unknown unit ${f.unit}`)
+        if (unlockedBy.has(f.unit)) v.push(`${f.unit} unlocked twice: ${unlockedBy.get(f.unit)} and ${n.id}`)
+        unlockedBy.set(f.unit, n.id)
+      }
+      if (f.kind === 'troops' && !UNIT_TYPES.includes(f.type)) v.push(`${n.id}: unknown unit class ${f.type}`)
       if (f.kind === 'building' && !BUILDING_DEFS[f.building]) v.push(`${n.id}: unknown building ${f.building}`)
     }
   }
+  // The starting unit is never "unlocked" by a node — you begin with it.
+  if (unlockedBy.has('warrior')) v.push('warrior is the starting unit and must not be a node unlock')
 
   return v
 }
