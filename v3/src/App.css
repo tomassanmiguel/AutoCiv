@@ -1,0 +1,38 @@
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Fade-to-black overlay used when transitioning between screens.
+   The transition duration must match FADE_MS in App.jsx. */
+.screen-fade {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #05060c;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.26s ease;
+}
+.screen-fade.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Shared button styles (used by the in-game menu overlay). */
+.btn {
+  padding: 0.7rem 1.6rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: transform 0.12s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--accent); }

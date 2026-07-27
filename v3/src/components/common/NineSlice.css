@@ -1,0 +1,7 @@
+.nine-slice {
+  box-sizing: border-box;
+  border-image-outset: 0;
+}
+.nine-slice--pixel {
+  image-rendering: pixelated;
+}
