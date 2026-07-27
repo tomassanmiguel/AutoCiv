@@ -544,11 +544,26 @@ in a side panel.
 to this turn, RED = what it can strike from where it stands, AMBER = what it could strike after
 moving first. Seeing a stat block drawn on the board reads far faster than the numbers do.
 
-⚠️ TileCards render in **their own layer**, not inside the hex. `.hex` has a `clip-path`,
-which clips descendants: an action button hanging below the hex was in the DOM but invisible.
-The hovered anchor also lifts its `z-index` so a neighbour's card cannot cover its buttons,
-and `.tc-actions` re-asserts hover — the buttons are the only part that takes the pointer, so
-moving onto one would otherwise leave the hex and unmount the button under the cursor.
+⚠️ **`clip-path` clips DESCENDANTS.** This has bitten twice and will again:
+- `.hex` is clipped, so TileCards render in **their own layer** — an action button hanging
+  below the hex was in the DOM but invisible.
+- `.tc-unit` (the hexagon badge) is clipped, so the stat pills and level pip are **siblings**
+  of it inside `.tc-unit-wrap`, not children, or they get sliced off at the badge edge.
+
+⚠️ **A CSS `inset box-shadow` cannot outline a clip-path hexagon.** It is painted on the
+element's *rectangle* and clipped afterwards, so the ring survives along the flat top/bottom
+and the left/right extremes and vanishes on all four diagonals — it never actually borders the
+tile. Every tile highlight (unit reach, expansion targets) is therefore a **real SVG polygon**
+in one shared `.hex-overlay` layer, via `hexPoints()`.
+
+⚠️ **Hover is cleared on a grace timer** (160 ms), because a tile's gold buttons hang below its
+hex: reaching them means leaving the hex, and an instant clear unmounts the button out from
+under the cursor mid-travel. Any new hover cancels the pending clear. The hovered anchor also
+lifts its `z-index` so a neighbour's card cannot cover its buttons.
+
+⚠️ **Card type is sized off the HEX, never in `rem`.** The whole content layer is camera-scaled,
+so a fixed `rem` size shrinks to illegibility when zoomed out. The anchor sets
+`fontSize: HEX_W * 0.17` inline and everything inside the card uses `em`.
 
 ## The era's battle & razing
 

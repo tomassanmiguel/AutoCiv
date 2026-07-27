@@ -21,12 +21,21 @@
   pointer-events: none;
 }
 
-/* --- unit: a hexagon badge echoing the board ------------------------------ */
+/* --- unit: a hexagon badge echoing the board ------------------------------
+   The wrapper is what the pips hang off. It must NOT be clipped — the badge
+   inside it is, and a clip-path clips descendants. */
+.tc-unit-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 58%;
+}
+
 .tc-unit {
   position: relative;
   display: grid;
   place-items: center;
-  width: 46%;
+  width: 100%;
   aspect-ratio: 1 / 0.92;
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   background: linear-gradient(160deg, #33405c, #1a2134);
@@ -56,7 +65,7 @@
   position: relative;
   z-index: 1;
   width: 46%;
-  margin-bottom: 8%; /* clear the stat pills sitting in the lower corners */
+  margin-bottom: 10%; /* clear the stat pills sitting in the lower corners */
 }
 .tc-unit.destroyed { filter: grayscale(1) brightness(0.55); }
 
@@ -65,21 +74,22 @@
 .tc-stat {
   position: absolute;
   z-index: 3;
-  bottom: -6%;
+  bottom: -14%;
   display: flex;
   align-items: center;
-  gap: 0.08em;
-  padding: 0 0.22em;
+  gap: 0.1em;
+  padding: 0 0.3em;
   border-radius: 999px;
-  background: rgba(8, 10, 18, 0.95);
-  font-size: 0.58rem;
-  font-weight: 700;
-  line-height: 1.5;
+  background: rgba(6, 8, 15, 0.96);
+  font-size: 0.95em;
+  font-weight: 800;
+  line-height: 1.45;
   white-space: nowrap;
+  box-shadow: 0 0.06em 0.2em rgba(0, 0, 0, 0.8);
 }
-.tc-stat img { width: 0.85em; }
-.tc-stat.atk { left: -12%; color: #ffb3a0; }
-.tc-stat.def { right: -12%; color: #a8cdf5; }
+.tc-stat img { width: 0.95em; }
+.tc-stat.atk { left: -24%; color: #ff9f88; border: 1px solid rgba(255, 159, 136, 0.4); }
+.tc-stat.def { right: -24%; color: #9ec9f7; border: 1px solid rgba(158, 201, 247, 0.4); }
 
 /* --- building: a name card ------------------------------------------------ */
 .tc-building {
@@ -87,13 +97,13 @@
   display: flex;
   align-items: center;
   gap: 0.3em;
-  max-width: 82%;
-  padding: 0.1em 0.42em;
-  border-radius: 5px;
-  background: rgba(12, 16, 27, 0.92);
+  max-width: 96%;
+  padding: 0.1em 0.4em;
+  border-radius: 0.3em;
+  background: rgba(12, 16, 27, 0.94);
   border: 1px solid rgba(150, 190, 230, 0.5);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
-  font-size: 0.66rem;
+  box-shadow: 0 0.1em 0.3em rgba(0, 0, 0, 0.7);
+  font-size: 0.85em;
   line-height: 1.5;
   white-space: nowrap;
 }
@@ -119,7 +129,7 @@
   background: rgba(40, 12, 8, 0.9);
   border: 1px solid rgba(255, 122, 74, 0.55);
   color: #ff9a72;
-  font-size: 0.62rem;
+  font-size: 0.78em;
   line-height: 1.5;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -140,20 +150,30 @@
   background: linear-gradient(160deg, #f3dfa4, #b58c2a);
   border: 1px solid #3a2c10;
   color: #2b2007;
-  font-size: 0.58rem;
+  font-size: 0.82em;
   font-weight: 800;
   line-height: 1;
 }
 
-/* --- gold actions: only on hover ------------------------------------------ */
+/* --- gold actions: only on hover ------------------------------------------
+   Reaching a button means leaving the hex, which fires the hex's mouseleave and
+   would unmount the button out from under the cursor. Two things prevent that:
+   the container's PADDING is a hover bridge that covers the gap (it belongs to
+   this element, so it keeps the pointer inside something that re-asserts hover),
+   and it starts flush at the hex edge with no dead space to cross. */
 .tc-actions {
   position: absolute;
   top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 6;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 2px;
+  align-items: center;
+  gap: 0.12em;
+  /* Bridges the gap over the attack/defence pills without a pointer-events hole. */
+  padding: 0.5em 0.9em 0.3em;
+  margin-top: -0.1em;
   pointer-events: auto;
 }
 
@@ -166,7 +186,7 @@
   border: 1px solid rgba(216, 173, 78, 0.65);
   background: rgba(24, 20, 10, 0.96);
   color: #f0d894;
-  font-size: 0.62rem;
+  font-size: 0.78em;
   line-height: 1.6;
   white-space: nowrap;
   cursor: pointer;

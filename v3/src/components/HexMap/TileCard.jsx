@@ -46,9 +46,14 @@ export default function TileCard({ game, tile, hovered, onHover }) {
 
       {tile.ruin && <div className="tc-ruin">Ruined {tile.ruin.kind}</div>}
 
+      {/* The badge is clip-pathed to a hexagon, and a clip-path clips its
+          DESCENDANTS — so the stat pills and the level pip have to be siblings
+          of it, not children, or they get sliced off at the hex edge. */}
       {unitDef && (
-        <div className={`tc-unit ${unitDef.type}${tile.unit.destroyed ? ' destroyed' : ''}`}>
-          <img className="tc-uicon" src={unitDef.icon} alt={unitDef.name} />
+        <div className="tc-unit-wrap">
+          <div className={`tc-unit ${unitDef.type}${tile.unit.destroyed ? ' destroyed' : ''}`}>
+            <img className="tc-uicon" src={unitDef.icon} alt={unitDef.name} />
+          </div>
           {(tile.unit.level ?? 1) > 1 && <span className="tc-level">{tile.unit.level}</span>}
           {/* Attack bottom-left, defence bottom-right — the same two corners
               every time, so the numbers are read by position, not by label. */}
@@ -67,9 +72,10 @@ export default function TileCard({ game, tile, hovered, onHover }) {
 
       {actions.length > 0 && (
         // The buttons are the only part that takes the pointer, so moving onto
-        // one would otherwise leave the hex, clear `hover`, and unmount the
-        // button out from under the cursor. Re-assert the hover here.
-        <div className="tc-actions" onMouseEnter={onHover} onMouseMove={onHover}>
+        // one leaves the hex, clears `hover`, and would unmount the button out
+        // from under the cursor. Re-assert hover on enter AND on move — enter
+        // alone loses the race when the pointer crosses a sliver of dead space.
+        <div className="tc-actions" onMouseEnter={onHover} onMouseMove={onHover} onMouseOver={onHover}>
           {actions.map((a) => (
             <button
               key={a.kind}

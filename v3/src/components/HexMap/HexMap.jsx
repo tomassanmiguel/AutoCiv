@@ -22,6 +22,12 @@ const FIT_PADDING = 0.94
 const MIN_TILES_ACROSS = 6 // most zoomed-in view
 const CULL_MARGIN = HEX_W * 1.5
 
+/** The six corners of a flat-top hex, as an SVG `points` string. */
+const hexPoints = (cx, cy, R) => Array.from({ length: 6 }, (_, i) => {
+  const a = (-60 * i) * (Math.PI / 180)
+  return `${cx + R * Math.cos(a)},${cy + R * Math.sin(a)}`
+}).join(' ')
+
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const lerp = (a, b, t) => a + (b - a) * t
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
@@ -68,6 +74,22 @@ export default function HexMap() {
 
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
+
+  // Hover is cleared on a GRACE TIMER, not immediately. A tile's gold buttons
+  // hang below its hex, so reaching them means leaving the hex — and an instant
+  // clear unmounts the button out from under the cursor mid-travel. Any new
+  // hover (including the button strip re-asserting its own tile) cancels the
+  // pending clear, so the only thing that actually clears it is leaving for good.
+  const hoverTimer = useRef(null)
+  const hoverOn = (t) => {
+    clearTimeout(hoverTimer.current)
+    setHover((h) => (h === t ? h : t))
+  }
+  const hoverOff = (t) => {
+    clearTimeout(hoverTimer.current)
+    hoverTimer.current = setTimeout(() => setHover((h) => (h === t ? null : h)), 160)
+  }
+  useEffect(() => () => clearTimeout(hoverTimer.current), [])
 
   // Hovering a unit shows where it could go and what it could hit — the
   // clearest way to read a stat block is to see it drawn on the board. Must sit
@@ -256,6 +278,7 @@ export default function HexMap() {
     // autoscroll widget from hijacking the drag.
     if (e.button !== 0 && e.button !== 1) return
     if (e.button === 1) e.preventDefault()
+    clearTimeout(hoverTimer.current)
     setHover(null)
     dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...cameraRef.current } }
     const onMove = (ev) => {
@@ -333,7 +356,7 @@ export default function HexMap() {
   return (
     <div className="hexmap-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
       <div
-        className="hexmap-content"
+        className={`hexmap-content${reach ? ' reaching' : ''}`}
         ref={contentRef}
         style={{ width: layout.w, height: layout.h }}
       >
@@ -346,10 +369,7 @@ export default function HexMap() {
               key={k}
               className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}` +
                 `${t.controlled && !isBf && t.revealStage <= game.stage ? ' controlled' : ''}` +
-                `${expSet?.has(k) ? ' expandable' : ''}` +
-                `${reach?.move.has(k) ? ' reach-move' : ''}` +
-                `${reach?.attack.has(k) ? ' reach-attack' : ''}` +
-                `${reach?.threat.has(k) ? ' reach-threat' : ''}`}
+                `${expSet?.has(k) ? ' expandable' : ''}`}
               style={{
                 left,
                 top,
@@ -357,8 +377,8 @@ export default function HexMap() {
                 height: HEX_H - SEAM,
                 backgroundImage: `url(${spriteUrl(isBf ? 'battlefield' : t.terrain)})`,
               }}
-              onMouseEnter={() => setHover(t)}
-              onMouseLeave={() => setHover((h) => (h === t ? null : h))}
+              onMouseEnter={() => hoverOn(t)}
+              onMouseLeave={() => hoverOff(t)}
               onClick={() => { if (expSet?.has(k)) aimAt(t) }}
             >
               {!isBf && t.improved && !t.city && !t.building && <span className="hex-improved" />}
@@ -369,6 +389,34 @@ export default function HexMap() {
             </div>
           )
         })}
+
+        {/* Tile highlights are REAL SVG HEXAGONS, not CSS rings.
+            An `inset box-shadow` is painted on the element's rectangle and only
+            then clipped by the clip-path, so the ring survives along the flat
+            top/bottom and the left/right extremes and vanishes on all four
+            diagonals — it never actually borders the tile. A polygon does.
+
+            One layer serves both highlights so they cannot fight each other,
+            and reach is composited rather than ranked: for a melee unit "can
+            move here" and "can hit here" are the same tiles, so picking one
+            would make the other invisible for the commonest unit in the game.
+            FILL = where it can stand, STROKE = what it can hit. */}
+        {(reach || expSet) && (
+          <svg className="hex-overlay" width={layout.w} height={layout.h}>
+            {shown.map((t) => {
+              const k = `${t.q},${t.r}`
+              const cls = [
+                expSet?.has(k) && 'target',
+                reach?.move.has(k) && 'can-move',
+                reach?.attack.has(k) && 'can-hit',
+                reach?.threat.has(k) && 'threat',
+              ].filter(Boolean)
+              if (!cls.length) return null
+              const c = centerOf(t.q, t.r)
+              return <polygon key={k} className={cls.join(' ')} points={hexPoints(c.x, c.y, HEX_SIZE - SEAM)} />
+            })}
+          </svg>
+        )}
 
         {roadEdges.length > 0 && (
           <svg className="road-net" width={layout.w} height={layout.h}>
@@ -403,13 +451,16 @@ export default function HexMap() {
               // The hovered tile lifts above its neighbours, so its action
               // buttons are not overlapped by the card on the tile below.
               className={`tile-card-anchor${hover === t ? ' hovered' : ''}`}
-              style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H }}
+              // Card type is sized off the HEX, not in rem: the whole content
+              // layer is scaled by the camera, so a fixed rem size shrinks to
+              // nothing when zoomed out. Everything inside the card uses `em`.
+              style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H, fontSize: HEX_W * 0.17 }}
             >
               <TileCard
                 game={game}
                 tile={t}
                 hovered={hover === t}
-                onHover={() => setHover(t)}
+                onHover={() => hoverOn(t)}
               />
             </div>
           )

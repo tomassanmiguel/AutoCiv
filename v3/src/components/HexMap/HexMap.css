@@ -189,46 +189,62 @@
 .hex-tip-note.unit { color: #e3d3a0; }
 
 /* --- unit reach ------------------------------------------------------------
-   Hovering a unit paints where it could go and what it could hit. Three states,
-   drawn as a flat tint plus an inset ring on the `::after` layer so they compose
-   with the territory wash on `::before` rather than replacing the terrain. */
-.hex.reach-move::after,
-.hex.reach-attack::after,
-.hex.reach-threat::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  pointer-events: none;
-}
-/* BLUE — ground it can walk to this turn. */
-.hex.reach-move::after {
-  background: rgba(96, 165, 250, 0.24);
-  box-shadow: inset 0 0 0 2px rgba(147, 197, 253, 0.85);
-}
-/* RED — what it can strike from where it stands. Wins over blue. */
-.hex.reach-attack::after {
-  background: rgba(248, 113, 113, 0.26);
-  box-shadow: inset 0 0 0 2px rgba(252, 165, 165, 0.9);
-}
-/* AMBER — only reachable after moving first. */
-.hex.reach-threat::after {
-  background: rgba(251, 191, 36, 0.14);
-  box-shadow: inset 0 0 0 2px rgba(252, 211, 77, 0.45);
+   While a unit's reach is shown the whole board DIMS, including the territory
+   wash — otherwise the warm control tint, the expansion pulse and the reach
+   colours all mix on one surface and none of them reads. Reach is the only lit
+   thing on screen, so it cannot be mistaken for control. */
+.hexmap-content.reaching .hex::before,
+.hexmap-content.reaching .hex.controlled::before {
+  background: rgba(3, 5, 12, 0.62);
 }
 
-/* Legal targets while an expansion is being aimed: a pulsing ring that follows
-   the hex, so it reads as an affordance rather than as changed terrain. */
-.hex.expandable { cursor: pointer; }
-.hex.expandable::after {
-  content: '';
+/* Highlights are POLYGONS, so the border actually follows the hexagon. A CSS
+   inset ring is painted on the rectangle and clipped afterwards, which leaves
+   the four diagonals bare — see the note in HexMap.jsx. */
+.hex-overlay {
   position: absolute;
-  inset: 0;
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  top: 0;
+  left: 0;
+  overflow: visible;
   pointer-events: none;
-  animation: hex-expandable 1.3s ease-in-out infinite;
+  z-index: 6; /* above the territory outline, which also lives on the map */
 }
-@keyframes hex-expandable {
-  0%, 100% { box-shadow: inset 0 0 0 3px rgba(150, 240, 140, 0.75); background: rgba(120, 230, 120, 0.1); }
-  50%      { box-shadow: inset 0 0 0 4px rgba(200, 255, 190, 1); background: rgba(150, 245, 145, 0.26); }
+.hex-overlay polygon {
+  fill: none;
+  stroke: none;
+  stroke-linejoin: round;
 }
+/* The gold border is the other thing that says "control", so fade it too. */
+.hexmap-content.reaching .territory-outline { opacity: 0.2; }
+
+/* FILL = ground it can stand on. STROKE = what it can hit. A tile is often
+   both, which is why these are separate channels and not one ranked colour. */
+.hex-overlay polygon.can-move { fill: rgba(56, 189, 248, 0.34); }
+.hex-overlay polygon.can-hit {
+  stroke: #fca5a5;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 3px rgba(248, 113, 113, 0.9));
+}
+.hex-overlay polygon.can-hit:not(.can-move) { fill: rgba(248, 113, 113, 0.2); }
+/* AMBER, faint — only reachable if it moves first. */
+.hex-overlay polygon.threat:not(.can-move):not(.can-hit) {
+  fill: rgba(251, 191, 36, 0.13);
+  stroke: rgba(252, 211, 77, 0.5);
+  stroke-width: 2;
+}
+
+/* Legal expansion / placement targets, same layer so they cannot fight. */
+.hex-overlay polygon.target {
+  fill: rgba(120, 230, 120, 0.16);
+  stroke: rgba(180, 250, 170, 0.95);
+  stroke-width: 4;
+  animation: hex-target 1.3s ease-in-out infinite;
+}
+@keyframes hex-target {
+  0%, 100% { fill-opacity: 0.5; stroke-opacity: 0.7; }
+  50% { fill-opacity: 1; stroke-opacity: 1; }
+}
+
+/* The pulsing target ring itself is drawn in `.hex-overlay` as a polygon; the
+   hex only needs to say it is clickable. */
+.hex.expandable { cursor: pointer; }
