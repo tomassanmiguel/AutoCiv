@@ -88,9 +88,12 @@ export function initTerritory(world) {
     cleared: 0,         // encampments absorbed by your borders
     borders: regionBorders(world),
     isolated: world.list.filter((t) => ALWAYS_REACHABLE.has(t.terrain) && t.revealStage !== Infinity),
-    // Bumped by any improvement/city. `foodAround` is memoised against it —
-    // recomputing it for every city every tick dominated the whole simulation.
+    // Bumped by any improvement/city, and by a reveal — `foodAround` is memoised
+    // against it, and visibility changes what counts.
     version: 0,
+    // Territory may spill past the frontier, but anything not yet REVEALED is
+    // inert: no yield, no expansion target, no city site. See `visible()`.
+    stage: 0,
   }
 
   const home = world.at(0, 0)
@@ -129,6 +132,23 @@ function regionBorders(world) {
   return out
 }
 
+/**
+ * Is this tile part of the known world yet?
+ *
+ * Improving a tile claims its six neighbours, and some of those can lie beyond
+ * the current reveal — out in what is drawn as enemy battlefield. Those tiles
+ * stay claimed but count for NOTHING until the map catches up: they produce no
+ * yield, cannot be expanded onto, and cannot host a city.
+ */
+export const visible = (world, t) => !!t && t.revealStage <= world.terr.stage
+
+/** Tell territory which reveal stage is current. Bumps the memo version. */
+export function setTerritoryStage(world, stage) {
+  if (!world.terr || world.terr.stage === stage) return
+  world.terr.stage = stage
+  world.terr.version++
+}
+
 const gateFor = (t) => TERRAIN_GATE[t.terrain] ?? null
 const regionEntered = (world, region) => world.terr.entered.has(region)
 const isRegionBorder = (world, t) => (world.terr.borders[t.region] ?? []).includes(t)
@@ -139,7 +159,7 @@ const isRegionBorder = (world, t) => (world.terr.borders[t.region] ?? []).includ
  */
 export function canExpandOnto(world, t, unlocks) {
   if (!t || NEVER.has(t.terrain)) return false
-  if (t.revealStage === Infinity) return false
+  if (!visible(world, t)) return false
   const gate = gateFor(t)
   if (gate && !unlocks.has(gate)) return false
   if (ALWAYS_REACHABLE.has(t.terrain)) return true
@@ -206,6 +226,7 @@ export function expansionTargets(world, unlocks) {
  */
 export function canFoundCity(world, t) {
   if (!t.improved || t.city) return false
+  if (!visible(world, t)) return false
   if (NO_CITY.has(t.terrain) || isWater(t.terrain)) return false
   if (neighbors(t.q, t.r).some((n) => world.at(n.q, n.r)?.city)) return false
   return foodAround(world, t) > 0
@@ -219,10 +240,10 @@ export function canFoundCity(world, t) {
 export function foodAround(world, t) {
   const v = world.terr.version
   if (t._foodVersion === v) return t._foodAround
-  let food = terrainOf(t.terrain).yields.food * (t.improved ? 2 : 1)
+  let food = visible(world, t) ? terrainOf(t.terrain).yields.food * (t.improved ? 2 : 1) : 0
   for (const n of neighbors(t.q, t.r)) {
     const o = world.at(n.q, n.r)
-    if (!o) continue
+    if (!o || !visible(world, o)) continue
     food += terrainOf(o.terrain).yields.food * (o.improved ? 2 : 1)
   }
   t._foodVersion = v
@@ -245,7 +266,7 @@ function waterAround(world, t) {
 
 /** Spend an expansion: improve a tile and pull its neighbours into control. */
 export function improveTile(world, t) {
-  if (t.improved) return false
+  if (t.improved || !visible(world, t)) return false
   t.improved = true
   world.terr.version++
   world.terr.improved.add(t)
@@ -265,9 +286,10 @@ export function foundCity(world, t) {
 }
 
 /** Per-tick yield of one tile, given control / improvement / city. */
-export function tileYield(t) {
+export function tileYield(world, t) {
   const out = { food: 0, production: 0, gold: 0, progress: 0 }
-  if (!t.controlled) return out
+  // Claimed but not yet revealed produces nothing — see `visible`.
+  if (!t.controlled || !visible(world, t)) return out
   const base = terrainOf(t.terrain).yields
   const mult = t.improved ? 2 : 1
   out.food = base.food * mult
@@ -287,7 +309,7 @@ export function tileYield(t) {
 export function territoryYield(world) {
   const out = { food: 0, production: 0, gold: 0, progress: 0 }
   for (const t of world.terr.controlled) {
-    const y = tileYield(t)
+    const y = tileYield(world, t)
     out.food += y.food
     out.production += y.production
     out.gold += y.gold
@@ -320,8 +342,11 @@ export function growCities(world) {
 export function territoryStats(world) {
   let pop = 0
   for (const t of world.terr.cities) pop += t.city.pop
+  let live = 0
+  for (const t of world.terr.controlled) if (visible(world, t)) live++
   return {
-    controlled: world.terr.controlled.size,
+    controlled: live,
+    claimedBeyondFrontier: world.terr.controlled.size - live,
     improved: world.terr.improved.size,
     cities: world.terr.cities.size,
     cleared: world.terr.cleared ?? 0,

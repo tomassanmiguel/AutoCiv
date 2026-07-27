@@ -91,7 +91,7 @@ function run(seed, name) {
   // to empty space and reads as nonsense.
   const byRegion = {}
   for (const t of g.world.terr.controlled) {
-    const y = sum(tileYield(t))
+    const y = sum(tileYield(g.world, t))
     if (y <= 0) continue
     const bucket = EARTH_REGIONS.has(t.region) ? `earth: ${t.terrain}` : t.terrain
     byRegion[bucket] = (byRegion[bucket] ?? 0) + y

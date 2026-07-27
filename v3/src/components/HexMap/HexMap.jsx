@@ -280,7 +280,9 @@ export default function HexMap() {
   // tile individually read as a grid of boxes instead of a border.
   const borderEdges = []
   for (const t of shown) {
-    if (!t.controlled || known.bfSet.has(`${t.q},${t.r}`)) continue
+    // Claimed-but-unrevealed ground is inert, so it must not read as territory.
+    if (!t.controlled || t.revealStage > game.stage) continue
+    if (known.bfSet.has(`${t.q},${t.r}`)) continue
     const c = centerOf(t.q, t.r)
     for (let i = 0; i < 6; i++) {
       const o = game.world.at(t.q + DIRS[i][0], t.r + DIRS[i][1])
@@ -312,7 +314,8 @@ export default function HexMap() {
             <div
               key={k}
               className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}` +
-                `${t.controlled && !isBf ? ' controlled' : ''}${expSet?.has(k) ? ' expandable' : ''}`}
+                `${t.controlled && !isBf && t.revealStage <= game.stage ? ' controlled' : ''}` +
+                `${expSet?.has(k) ? ' expandable' : ''}`}
               style={{
                 left,
                 top,
@@ -324,7 +327,6 @@ export default function HexMap() {
               onMouseLeave={() => setHover((h) => (h === t ? null : h))}
               onClick={() => { if (expSet?.has(k)) game.expandOnto(t, expMode) }}
             >
-              {!isBf && t.controlled && <span className="hex-control" />}
               {!isBf && t.improved && !t.city && <span className="hex-improved" />}
               {!isBf && t.city && (
                 <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>

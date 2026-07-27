@@ -444,6 +444,13 @@ Reachability has three shapes:
   the exomoon) are settleable directly the moment their gate opens. The border-first rule
   would strand them forever, since nothing is ever adjacent to them.
 
+**Claimed ground beyond the frontier is INERT.** Improving a tile claims its six neighbours,
+and some of those can lie past the current reveal — out in what is drawn as enemy battlefield.
+Those tiles stay claimed but count for nothing until the map catches up: no yield, no expansion
+target, no city site, and they are not painted as territory. They come alive on their own when
+the era reveals them (`setTerritoryStage` bumps the memo version). `territoryStats` reports them
+separately as `claimedBeyondFrontier`.
+
 Territory is drawn as a **continuous outline** — one SVG segment per hex edge where controlled
 meets uncontrolled — rather than a ring per tile, which read as a grid of boxes. Controlled
 ground takes a faint warm wash; a brightness filter washed the terrain art out and fought the

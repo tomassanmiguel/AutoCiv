@@ -25,7 +25,7 @@ import { initialResources, accrue } from './data/resources.js'
 import { ERAS, TICKS_PER_ERA, ERA_COUNT, stageForEra, unlocksForEra, EXPANSION_UNLOCKS } from './data/eras.js'
 import {
   initTerritory, expansionTargets, improveTile, foundCity,
-  territoryYield, territoryStats, growCities,
+  territoryYield, territoryStats, growCities, setTerritoryStage,
 } from './world/territory.js'
 import { installCombat, MAX_WAVES } from './manager/combat.js'
 
@@ -53,6 +53,7 @@ export class GameManager {
     this.tick = 0
     this.speed = 'paused'
     this.stage = stageForEra(0)
+    setTerritoryStage(this.world, this.stage)
     this._knownCache = null
 
     this.progress = new Set()
@@ -139,7 +140,12 @@ export class GameManager {
     this.era++
     this.tick = 0
     const stage = stageForEra(this.era)
-    if (stage !== this.stage) { this.stage = stage; this._knownCache = null }
+    if (stage !== this.stage) {
+      this.stage = stage
+      this._knownCache = null
+      // Territory claimed past the old frontier comes alive as the map catches up.
+      setTerritoryStage(this.world, stage)
+    }
     this.log.push({ era: this.era, text: `Entered the ${this.eraName} era.` })
   }
 
@@ -331,6 +337,7 @@ export class GameManager {
     this.tick = 0
     this.stage = stageForEra(this.era)
     this._knownCache = null
+    setTerritoryStage(this.world, this.stage)
     this._emit()
   }
 
@@ -339,6 +346,7 @@ export class GameManager {
     if (next === this.stage) return
     this.stage = next
     this._knownCache = null
+    setTerritoryStage(this.world, next)
     this._emit()
   }
 
