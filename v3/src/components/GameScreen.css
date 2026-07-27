@@ -29,3 +29,20 @@
   gap: 0.6rem;
   padding: 0.7rem 1rem;
 }
+
+/* Framed HUD action button (progress web, and future overlays). */
+.hud-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 154, 46, 0.4);
+  background: rgba(201, 154, 46, 0.1);
+  color: #e6d6a8;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.hud-btn:hover { background: rgba(201, 154, 46, 0.24); transform: translateY(-1px); }
+.hud-btn img { width: 18px; height: 18px; object-fit: contain; }

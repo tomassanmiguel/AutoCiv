@@ -15,6 +15,7 @@ import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { yieldOf } from './world/invariants.js'
 import { terrainOf } from './world/terrain.js'
 import { key, neighbors } from './hex/coords.js'
+import { PROGRESS_NODES, RING_UNLOCK, MAX_RING } from './data/progress.js'
 
 export class GameManager {
   constructor(seed, { civ, difficulty } = {}) {
@@ -31,6 +32,56 @@ export class GameManager {
     this.world = generateWorld(this.seed)
     this.stage = 0
     this._knownCache = null
+    this.progress = new Set() // chosen advancement ids
+  }
+
+  // --- Progress web ---------------------------------------------------------
+
+  /** How many nodes have been chosen from a given ring. */
+  chosenInRing(ring) {
+    let n = 0
+    for (const node of PROGRESS_NODES) if (node.ring === ring && this.progress.has(node.id)) n++
+    return n
+  }
+
+  /** A ring appears once RING_UNLOCK nodes from the previous one are chosen. */
+  ringVisible(ring) {
+    return ring === 0 || this.chosenInRing(ring - 1) >= RING_UNLOCK
+  }
+
+  /** The outermost ring currently on screen. */
+  get visibleRing() {
+    let r = 0
+    while (r < MAX_RING && this.ringVisible(r + 1)) r++
+    return r
+  }
+
+  /**
+   * 'unlocked' | 'available' | 'locked' | 'hidden'.
+   *
+   * `prereqs` is ANY-of, which is what lets a forked branch re-unify later.
+   * `excludes` is what makes a fork a real choice: taking one side locks the
+   * other out permanently, and anything downstream with no other route in.
+   */
+  progressState(node) {
+    if (this.progress.has(node.id)) return 'unlocked'
+    if (!this.ringVisible(node.ring)) return 'hidden'
+    if (node.excludes.some((id) => this.progress.has(id))) return 'locked'
+    if (node.prereqs.length && !node.prereqs.some((id) => this.progress.has(id))) return 'locked'
+    return 'available'
+  }
+
+  /** Prototype: clicking an available node simply takes it. */
+  chooseProgress(node) {
+    if (this.progressState(node) !== 'available') return false
+    this.progress.add(node.id)
+    this._emit()
+    return true
+  }
+
+  resetProgress() {
+    this.progress = new Set()
+    this._emit()
   }
 
   // --- React bridge ---------------------------------------------------------

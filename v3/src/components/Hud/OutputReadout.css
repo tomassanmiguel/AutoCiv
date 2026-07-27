@@ -1,0 +1,38 @@
+/* Floats in the top-right of the map window — the map is the main view now, so
+   this replaces the old full-height civilization panel. */
+.output-readout {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 15;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 10px;
+  background: rgba(10, 12, 22, 0.82);
+  border: 1px solid rgba(201, 154, 46, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+}
+
+.output-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  cursor: default;
+}
+.output-cell:hover { background: rgba(255, 255, 255, 0.06); }
+
+.output-cell img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.output-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #e8dcc0;
+}

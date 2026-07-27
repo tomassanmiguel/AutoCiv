@@ -1,8 +1,9 @@
 # AutoCiv v3 — Project Guide (WIP)
 
-> **Status: EARLY.** Only the **map** exists — hex grid, world generation, and a pan/zoom
-> viewer, wrapped in the ported screen shell. There is **no economy, combat, roster, tech
-> tree, or tick loop yet.**
+> **Status: EARLY.** The **map** (hex grid, world generation, pan/zoom viewer) and a
+> **progress-web UI prototype** exist, wrapped in the ported screen shell. There is **no
+> economy, combat, roster, or tick loop yet**, and the progress web is a UI sample over v2
+> content rather than v3's real tech tree.
 >
 > This file is the source of truth for v3. The root `../CLAUDE.md` describes **v2** (square
 > grid, legitimacy, specialists, policies) — most of it does **not** apply here. Keep this
@@ -74,14 +75,15 @@ v3/
     │   │   ├── worldgen.js     # generateWorld(seed) — pure, deterministic
     │   │   └── invariants.js   # validate(world) -> violations[]
     │   ├── data/civilizations.js  # placeholder civ + difficulty for the pre-game screen
+    │   ├── data/progress.js    # SAMPLE progress web (v2 content, invented shape)
     │   ├── audio/              # AudioManager (ported) + tracks.js
     │   └── react/GameProvider.jsx # <GameProvider> + useGame()
     └── components/
         ├── common/             # NineSlice · InfoTip · IconText (ported unchanged)
-        ├── GameScreen.jsx      # map + panel + HUD strip
+        ├── GameScreen.jsx      # map + HUD strip + progress overlay
         ├── HexMap/             # camera, culling, hex rendering, hover card
-        ├── UIPanel/            # known-world yield readout + terrain census
-        ├── Hud/StageBanner.jsx # current reveal stage
+        ├── Progress/           # radial progress web overlay
+        ├── Hud/                # StageBanner + OutputReadout (corner yields)
         └── Menu/MenuOverlay.jsx# known-world slider + reroll + exit
 ```
 
@@ -264,11 +266,37 @@ tech; for now the menu slider drives it directly.
 - The hover card is anchored **bottom-left of the map**, never to the cursor, so it can't
   cover the tile being inspected.
 
-### Panel (`components/UIPanel`)
-Deliberately narrow (320px) — the map is the main view. Shows the **known world's potential**:
-total base yield of every revealed tile plus a terrain census, which makes it a design
-instrument (reveal a stage, read what that frontier is worth). Switches to a two-column
-legend past 12 terrains so it never scrolls. Roster tabs are gone until v3 content exists.
+### Output readout (`components/Hud/OutputReadout`)
+A compact corner box (top-right of the map) with the four output types. The map is the whole
+window now — v2's full-height civilization panel is gone. Until the economy exists, the number
+shown is the **total base yield of every revealed tile**, i.e. the map's potential rather than
+a live per-tick rate.
+
+### Progress web (`game/data/progress.js`, `components/Progress/ProgressTree`)
+A radial tree that **grows outward**, opened from the HUD's Progress button.
+
+- **Four quadrants** — Society / Technology / Economy / Military — each own a 90° sector;
+  nodes are spread evenly within their quadrant+ring, so the layout is pure polar maths
+  (`LAID_OUT` is computed once at module load).
+- **Rings unlock by count**: take `RING_UNLOCK` (6) nodes from a ring and the next appears. A
+  ring that has not opened is **not rendered at all**, and the content extent + scale ease to
+  match, so the web visibly expands.
+- **States**: green = taken, blue = available (pulsing), grey = locked. Each node is a
+  `clip-path` hexagon holding its category silhouette; hover gives an `InfoTip` with what it
+  unlocks and its effect (routed through `IconText`, so `:token:`s render as icons).
+- **`prereqs` is ANY-of**, which is what lets a forked branch **re-unify** later.
+  **`excludes` is mutual**: taking one side of a fork locks the other out permanently, and
+  with it anything downstream that had no other route in. Both behaviours are live in the
+  sample data — Philosophy/Organized Religion stay split to the end (the loser's descendant
+  locks too), while University/Machinery and Alloying/The Wheel re-converge at Printing Press
+  and Professional Soldiers.
+- Edges light up green once their prerequisite is taken, and go dashed when the route is dead.
+
+**The data is a sample, not the design.** All 52 node names, what they unlock, and their
+effect text are taken **verbatim from v2's content registries**; the *shape* (quadrant, ring,
+prereqs, forks) is invented to exercise the UI. A few effects still mention `:legitimacy:`,
+which v3 dropped — left as-is so the file stays a faithful v2 sample. **Clicking simply takes
+a node** — there is no cost, no progress spend, and no gating on the economy yet.
 
 ---
 
