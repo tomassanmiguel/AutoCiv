@@ -17,9 +17,12 @@ import { BANDS, BODIES, STAGES, STAGE, STAGE_COUNT, MAX_RADIUS, LOCAL_RADIUS } f
 import { isPassable, isLand, isWater, terrainOf } from './terrain.js'
 
 const START_RADIUS = 5
-const MIN_OLD_WORLD = 50
-const MIN_NEW_WORLD = 24
-// Earth is only ~271 tiles, so its region-shaped stages are naturally small;
+// Earth is split roughly 2/3 Old World, 1/3 New World across the ocean channel.
+const MIN_OLD_WORLD = 80
+const MIN_NEW_WORLD = 45
+const MIN_ISLANDS = 3
+const MAX_TUNDRA_FRACTION = 0.22
+// Earth is only ~400 tiles, so its region-shaped stages are naturally small;
 // this floor exists to catch a DEAD notch, not to enforce an even ladder.
 const MIN_STAGE_TILES = 8
 const MIN_REACHABLE_FRACTION = 0.8
@@ -29,12 +32,12 @@ const EARTH_MARS_GAP = 2
 
 // Earth must sustain all four economies, not merely have one tile of each near
 // the palace — progress especially, since it drives the tech tree.
-const MIN_EARTH_YIELD = { food: 48, production: 30, gold: 90, progress: 22 }
+const MIN_EARTH_YIELD = { food: 70, production: 45, gold: 160, progress: 45 }
 
 // Mountains are gameplay obstacles, so they must exist but stay sparse.
 const MOUNTAIN_FRACTION = { min: 0.015, max: 0.15 }
 
-const MIN_RIVER_TILES = 6
+const MIN_RIVER_TILES = 4
 const MIN_RIVER_RUN = 4
 const MIN_CLIMATE_TILES = 3
 
@@ -97,22 +100,11 @@ export function validate(world) {
   }
 
   // The known set must never enclose a pocket of unrevealed tiles. Earth's
-  // stages are region-shaped and genuinely can, so they get a real flood.
-  // Beyond Earth the reveal is concentric and hole-free by construction — which
-  // is verified far more cheaply by checking each ring flips in one go.
-  for (let s = 0; s <= STAGE.full_earth; s++) {
+  // stages are region-shaped and the exoplanet stages are corridor-shaped, so
+  // every stage gets a real (radius-bounded) flood.
+  for (let s = 0; s < STAGE_COUNT; s++) {
     const holes = enclosedUnknown(world, s)
     if (holes) v.push(`stage "${STAGES[s].name}" encloses ${holes} unrevealed tiles`)
-  }
-  const ringStage = new Map()
-  for (const t of world.list) {
-    if (t.band === 'earth') continue
-    const cur = ringStage.get(t.d)
-    if (cur === undefined) ringStage.set(t.d, t.revealStage)
-    else if (cur !== t.revealStage) {
-      v.push(`ring ${t.d} is revealed unevenly (would leave holes)`)
-      break
-    }
   }
 
   // The exoplanet's landmass must be one piece (its water may be as odd as it likes).
@@ -155,11 +147,27 @@ export function validate(world) {
   )
   if (bridged) v.push('New World touches the Old World (no ocean channel)')
 
-  // Climate belts: an arid middle and tundra out towards Earth's rim.
-  const desertMid = earth.filter((t) => t.terrain === 'desert' && t.d <= earthR * 0.6).length
-  const tundraEdge = earth.filter((t) => t.terrain === 'tundra' && t.d >= earthR * 0.6).length
-  if (desertMid < MIN_CLIMATE_TILES) v.push(`too little desert in Earth's middle (${desertMid})`)
-  if (tundraEdge < MIN_CLIMATE_TILES) v.push(`too little tundra towards Earth's rim (${tundraEdge})`)
+  // Climate is latitudinal: an arid equator, tundra confined to the two poles.
+  const PR = Math.sqrt(3) * earthR
+  const latOf = (t) => Math.abs(t.y) / PR
+  const desertMid = earth.filter((t) => t.terrain === 'desert' && latOf(t) < 0.5).length
+  const tundra = earth.filter((t) => t.terrain === 'tundra')
+  const tundraPolar = tundra.filter((t) => latOf(t) > 0.5).length
+  if (desertMid < MIN_CLIMATE_TILES) v.push(`too little desert near Earth's equator (${desertMid})`)
+  if (tundraPolar < MIN_CLIMATE_TILES) v.push(`too little polar tundra (${tundraPolar})`)
+  if (tundra.length && tundraPolar / tundra.length < 0.85) {
+    v.push(`tundra is not confined to the poles (${tundraPolar}/${tundra.length} polar)`)
+  }
+  const earthLandAll = earth.filter((t) => isLand(t.terrain)).length
+  if (earthLandAll && tundra.length / earthLandAll > MAX_TUNDRA_FRACTION) {
+    v.push(`too much tundra (${((tundra.length / earthLandAll) * 100).toFixed(0)}% of land)`)
+  }
+
+  // Islands belong in the channel between the continents, not the rim sea.
+  const islands = world.list.filter((t) => t.region === 'island')
+  if (islands.length < MIN_ISLANDS) v.push(`too few islands (${islands.length})`)
+  const strayIslands = islands.filter((t) => t.seaKind === 'rim').length
+  if (strayIslands) v.push(`${strayIslands} island(s) outside the ocean channel`)
 
   // Mountains: present, but sparse enough to leave the map open.
   const earthLand = earth.filter((t) => isLand(t.terrain)).length

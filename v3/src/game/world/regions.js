@@ -9,10 +9,10 @@
 // map feels too small or too sprawling.
 
 export const BANDS = {
-  earth: { min: 0, max: 9 },        //  271 tiles — two continents + ocean + islands
-  space: { min: 10, max: 20 },      //  Moon (r1) and Mars (r2) discs live here
-  deep: { min: 21, max: 31 },       //  the deep-space "ocean"; exoplanet (r4) lives here
-  galactic: { min: 32, max: 38 },   //  planets / stars / singularities littered throughout
+  earth: { min: 0, max: 11 },       //  397 tiles — two continents + ocean + islands
+  space: { min: 12, max: 22 },      //  Moon (r1) and Mars (r2) discs live here
+  deep: { min: 23, max: 33 },       //  the deep-space "ocean"; exoplanet (r4) lives here
+  galactic: { min: 34, max: 40 },   //  planets / stars / singularities / asteroids
 }
 
 // The world is generated 2 rings PAST the last revealable ring, so the derived
@@ -28,9 +28,18 @@ export const MAX_RADIUS = MAX_REVEAL_RADIUS + BATTLEFIELD_DEPTH
 // The Moon sits exactly 2 rings clear of Earth's rim; Mars is further out so the
 // two are reached at different stages by a purely concentric reveal.
 export const BODIES = {
-  moon: { radius: 1, dist: 13 },      // spans 12..14 (2-ring gap from Earth's rim at 9)
-  mars: { radius: 2, dist: 18 },      // spans 16..20
-  exoplanet: { radius: 4, dist: 27 }, // spans 23..31
+  moon: { radius: 1, dist: 15 },      // spans 14..16 (2-ring gap from Earth's rim at 11)
+  mars: { radius: 2, dist: 20 },      // spans 18..22
+  exoplanet: { radius: 4, dist: 29 }, // spans 25..33
+}
+
+// The exoplanet is reached along a CORRIDOR rather than by revealing the whole
+// deep band, so the space between Earth and it opens first and the rest of deep
+// space stays dark (and keeps its planets/stars a surprise). Half-angle of that
+// cone, in radians, per stage.
+export const EXO_CORRIDOR = {
+  approach: 0.46, // ~26°, out to the exoplanet's centre ring
+  arrival: 0.58,  // ~33°, out past its far edge
 }
 
 /** Which band a distance falls in. */
@@ -80,18 +89,23 @@ export const STAGE_COUNT = STAGES.length
 export const STAGE = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
 
 /**
- * Reveal radius for the concentric (off-Earth) stages. Earth's stages are
- * region-shaped instead and are handled by the generator.
+ * Reveal radius for the CONCENTRIC off-Earth stages. Earth's stages are
+ * region-shaped and the two exoplanet stages are corridor-shaped; both are
+ * handled by the generator.
  */
 export const REVEAL_RADIUS = {
-  [STAGE.space]: 11,     // the 2-ring gap of open space around Earth
-  [STAGE.moon]: 15,      // reaches the Moon (12..14)
-  [STAGE.mars]: 20,      // reaches Mars (16..20)
-  [STAGE.deep]: 22,      // first rings of the deep-space ocean
-  [STAGE.exo_coast]: 27, // the near side of the exoplanet (23..31)
-  [STAGE.full_exo]: 31,  // all of it
-  [STAGE.galaxy1]: 35,
+  [STAGE.space]: 13,   // the 2-ring gap of open space around Earth
+  [STAGE.moon]: 17,    // reaches the Moon (14..16)
+  [STAGE.mars]: 22,    // reaches Mars (18..22)
+  [STAGE.deep]: 24,    // first rings of the deep-space ocean
+  [STAGE.galaxy1]: 34, // everything the exo corridor left dark, out to mid-galactic
   [STAGE.full_map]: MAX_REVEAL_RADIUS,
+}
+
+/** How far out each exoplanet stage pushes its corridor. */
+export const EXO_REACH = {
+  [STAGE.exo_coast]: BODIES.exoplanet.dist,
+  [STAGE.full_exo]: BODIES.exoplanet.dist + BODIES.exoplanet.radius,
 }
 
 /** Radius of the starting "Local" reveal. */

@@ -4,12 +4,12 @@
 // no Math.random, no game state. A run persists only its seed.
 //
 // Shape of the world, outward from the palace at (0,0):
-//   Earth      — a disc holding the Old World (which contains the palace), an
-//                ocean channel, the New World, islands and inland rivers
+//   Earth      — a disc split roughly 2/3 Old World (holding the palace) and
+//                1/3 New World across a wide ocean channel, with islands in it
 //   Space      — a band containing the Moon and Mars discs plus asteroids
 //   Deep space — the "ocean" separating Earth from the exoplanet, which is its
 //                own small world embedded in the band
-//   Galactic   — deep space littered throughout with planets, stars, singularities
+//   Galactic   — deep space littered with planets, stars, singularities, asteroids
 //
 // The battlefield ring is NOT generated here: it is derived per-stage from the
 // known set (see GameManager) so it always hugs the current frontier.
@@ -21,7 +21,7 @@
 import { key, disc, ring, neighbors, lengthOf, toPixel, wedgeOf, SQRT3 } from '../hex/coords.js'
 import { makeRng, makeNoise2D, shuffle } from './noise.js'
 import {
-  BANDS, BODIES, MAX_RADIUS, MAX_REVEAL_RADIUS, REVEAL_RADIUS,
+  BANDS, BODIES, MAX_RADIUS, MAX_REVEAL_RADIUS, REVEAL_RADIUS, EXO_REACH, EXO_CORRIDOR,
   bandAt, STAGE, STAGE_COUNT, LOCAL_RADIUS,
 } from './regions.js'
 import { isPassable, isLand, isWater } from './terrain.js'
@@ -30,12 +30,21 @@ import { validate } from './invariants.js'
 const MAX_ATTEMPTS = 16
 
 // --- Earth shaping knobs -----------------------------------------------------
-const OW_EDGE = 0.02    // split-axis value below which land is Old World
-const NW_EDGE = 0.28    // ...above which land is New World (between = ocean channel)
-const RIM_SEA = 0.88    // normalised radius past which Earth TENDS to open sea.
-                        // Deliberately loose + noisy: land reaching the rim is fine.
-const RIDGE_CUT = 0.96  // ridged-noise threshold for mountains — high, so ranges
-                        // come out as sparse lines rather than blobs
+// The split axis is positioned to give the Old World ~2/3 of the disc and the
+// New World ~1/3, with a wide ocean channel between them (where the islands go).
+const OW_EDGE = 0.06
+const NW_EDGE = 0.36
+const SPLIT_WOBBLE = 0.30 // kept below the channel width so the ocean rarely closes
+const RIM_SEA = 0.94      // radius past which Earth TENDS to sea; loose, land may reach the rim
+
+// Climate is LATITUDINAL: an arid equator, tundra at the two poles. The polar
+// axis is the world's vertical, so north/south read as up/down on the map.
+const TUNDRA_LAT = 0.62
+const TUNDRA_CLUSTER = 0.45 // tundra also needs a cluster field, so it forms patches
+const DESERT_LAT = 0.42
+
+const RIDGE_CUT = 0.96 // ridged-noise threshold for mountains — high, so ranges
+                       // come out as sparse lines rather than blobs
 const HILL_CUT = 0.60
 
 const ENCAMPMENT_MIN_DIST = 6
@@ -57,6 +66,7 @@ function blankTiles() {
         wedge: wedgeOf(h.q, h.r),
         terrain: 'deep_space',
         region: 'deep_space',
+        seaKind: null, // 'channel' | 'rim' — islands only go in the channel
         elev: 0.5,
         revealStage: Infinity, // the outermost rings are battlefield-only, never known
         encampment: null,
@@ -75,7 +85,7 @@ function generateEarth(tiles, seed, rng) {
   const PR = SQRT3 * R // pixel radius of the Earth disc at hex size 1
 
   // A random split axis. The Old World always holds the palace; the New World
-  // sits across an ocean channel on the far side.
+  // sits across the ocean channel on the far side.
   const theta = rng() * Math.PI * 2
   const ux = Math.cos(theta)
   const uy = Math.sin(theta)
@@ -85,6 +95,7 @@ function generateEarth(tiles, seed, rng) {
   const elevN = makeNoise2D(seed + 37, { scale: 3.2 })
   const moistN = makeNoise2D(seed + 53, { scale: 4.5 })
   const climN = makeNoise2D(seed + 67, { scale: 3.6 })
+  const polarN = makeNoise2D(seed + 101, { scale: 2.6 })
   // Separate, higher-frequency field for mountains. Ridged noise (1 - |2n-1|)
   // peaks along the field's mid-contour, so a high cut yields thin RIDGELINES
   // instead of the blobs a plain elevation threshold produces.
@@ -98,19 +109,21 @@ function generateEarth(tiles, seed, rng) {
     const py = t.y / PR
     const s = px * ux + py * uy
     const rad = Math.hypot(px, py) // 0 at the palace, ~1 at Earth's rim
+    const lat = Math.abs(py)       // 0 at the equator, ~1 at the poles
 
     // Continent boundary wobble, damped to zero at the centre so the palace is
     // always solidly inside the Old World.
     const cn = contN(px * 8, py * 8)
-    const wobble = 0.42 * (2 * cn - 1) * Math.min(1, rad * 2.2)
-    const s2 = s + wobble
+    const s2 = s + SPLIT_WOBBLE * (2 * cn - 1) * Math.min(1, rad * 2.2)
 
     const rn = rimN(px * 8 + 50, py * 8 + 50)
     const rimSea = rad + 0.30 * (2 * rn - 1) > RIM_SEA
+    const inChannel = s2 >= OW_EDGE && s2 <= NW_EDGE
 
-    if (rimSea || (s2 >= OW_EDGE && s2 <= NW_EDGE)) {
+    if (rimSea || inChannel) {
       t.region = 'sea'
       t.terrain = 'ocean'
+      t.seaKind = inChannel ? 'channel' : 'rim'
       continue
     }
 
@@ -119,19 +132,17 @@ function generateEarth(tiles, seed, rng) {
     const e = elevN(px * 10, py * 10)
     const m = moistN(px * 9 + 30, py * 9 + 30)
     const c = climN(px * 7 + 80, py * 7 + 80)
+    const pol = polarN(px * 6 + 120, py * 6 + 120)
     const ridge = 1 - Math.abs(2 * ridgeN(px * 14, py * 14) - 1)
     t.elev = e
 
-    // Climate is CONCENTRIC on a radial map: an arid belt through the middle,
-    // tundra out towards the rim. Both boundaries are noise-wobbled.
-    const tundraEdge = 0.70 + 0.13 * (2 * c - 1)
-    const aridEdge = 0.58
+    const tundraCut = TUNDRA_LAT + 0.10 * (2 * c - 1)
     const dryCut = 0.50 + 0.12 * (2 * c - 1)
 
     if (ridge > RIDGE_CUT && e > 0.42) t.terrain = 'mountain'
     else if (e > HILL_CUT) t.terrain = 'hills'
-    else if (rad > tundraEdge) t.terrain = 'tundra'
-    else if (rad < aridEdge && m < dryCut) t.terrain = 'desert'
+    else if (lat > tundraCut && pol > TUNDRA_CLUSTER) t.terrain = 'tundra'
+    else if (lat < DESERT_LAT && m < dryCut) t.terrain = 'desert'
     else if (m > 0.54) t.terrain = 'forest'
     else t.terrain = 'plains'
   }
@@ -141,16 +152,19 @@ function generateEarth(tiles, seed, rng) {
   markCoasts(tiles, earth)
 }
 
-/** Small island clusters out in open water (never hugging a continent). */
+/**
+ * Islands live in the CHANNEL — the wide ocean between the two continents —
+ * not out in the rim sea, so crossing the divide has stepping stones.
+ */
 function scatterIslands(tiles, earth, rng) {
   const open = earth.filter(
-    (t) => t.region === 'sea' && neighbors(t.q, t.r).every((n) => {
+    (t) => t.seaKind === 'channel' && neighbors(t.q, t.r).every((n) => {
       const o = tiles.get(key(n.q, n.r))
       return !o || !isLand(o.terrain)
     }),
   )
   shuffle(open, rng)
-  const want = 4 + Math.floor(rng() * 4)
+  const want = 5 + Math.floor(rng() * 4)
   const placed = []
   for (const t of open) {
     if (placed.length >= want) break
@@ -161,7 +175,7 @@ function scatterIslands(tiles, earth, rng) {
     if (rng() < 0.4) {
       for (const n of shuffle(neighbors(t.q, t.r), rng)) {
         const o = tiles.get(key(n.q, n.r))
-        if (o && o.band === 'earth' && o.region === 'sea') {
+        if (o && o.seaKind === 'channel' && o.region === 'sea') {
           o.region = 'island'
           o.terrain = 'island'
           break
@@ -178,7 +192,7 @@ function scatterIslands(tiles, earth, rng) {
  * barrier rather than as coastline.
  */
 function carveRivers(tiles, earth, rng) {
-  const want = 2 + Math.floor(rng() * 3) // 2..4
+  const want = 1 + Math.floor(rng() * 2) // 1..2 — they read as major features, not drainage
   const sources = earth.filter(
     (t) => isLand(t.terrain) && t.d >= 2 && t.d < BANDS.earth.max && t.elev > 0.55,
   )
@@ -253,15 +267,7 @@ function generateSpace(tiles, rng) {
   const open = []
   for (const t of tiles.values()) if (t.band === 'space' && t.region === 'space') open.push(t)
   shuffle(open, rng)
-  const want = 12 + Math.floor(rng() * 7)
-  const placed = []
-  for (const t of open) {
-    if (placed.length >= want) break
-    if (placed.some((p) => lengthOf(p.q - t.q, p.r - t.r) < 3)) continue
-    t.terrain = 'asteroid'
-    t.region = 'asteroid'
-    placed.push(t)
-  }
+  scatterInto(open, [...Array(14).fill('asteroid')], 3, (t) => { t.region = 'asteroid' })
 }
 
 const pickOnRing = (rng, dist) => {
@@ -279,6 +285,19 @@ function stampBody(tiles, center, radius, terrain, region) {
   return center
 }
 
+/** Drop a bag of terrains onto candidate tiles, keeping them `spacing` apart. */
+function scatterInto(candidates, bag, spacing, after) {
+  const placed = []
+  for (const t of candidates) {
+    if (!bag.length) break
+    if (placed.some((p) => lengthOf(p.q - t.q, p.r - t.r) < spacing)) continue
+    t.terrain = bag.pop()
+    after?.(t)
+    placed.push(t)
+  }
+  return placed
+}
+
 // ---------------------------------------------------------------------------
 // Deep space + the exoplanet
 // ---------------------------------------------------------------------------
@@ -290,7 +309,8 @@ function generateDeep(tiles, seed, rng) {
     t.region = 'deep_space'
   }
 
-  const center = pickOnRing(rng, BODIES.exoplanet.dist)
+  const c = pickOnRing(rng, BODIES.exoplanet.dist)
+  const center = tiles.get(key(c.q, c.r))
   const RAD = BODIES.exoplanet.radius
   const elevN = makeNoise2D(seed + 71, { scale: 2.0 })
   const moistN = makeNoise2D(seed + 97, { scale: 2.4 })
@@ -368,13 +388,10 @@ function connectExoLand(tiles, cells) {
     const main = new Set(comps[0].map((t) => key(t.q, t.r)))
     const orphan = comps[1]
 
-    // BFS from the orphan across the whole exoplanet until we touch the main
-    // component, then convert the water along the way back into land.
     const prev = new Map()
     const queue = []
     for (const t of orphan) {
-      const k = key(t.q, t.r)
-      prev.set(k, null)
+      prev.set(key(t.q, t.r), null)
       queue.push(t)
     }
     let hit = null
@@ -389,7 +406,7 @@ function connectExoLand(tiles, cells) {
         queue.push(o)
       }
     }
-    if (!hit) return // nothing to bridge to; leave it (the invariant will catch it)
+    if (!hit) return
     let cur = prev.get(key(hit.q, hit.r))
     while (cur) {
       const t = tiles.get(cur)
@@ -400,42 +417,44 @@ function connectExoLand(tiles, cells) {
 }
 
 // ---------------------------------------------------------------------------
-// Outer galaxy — specials littered through deep space, not ringing the edge
+// Outer specials — spread through deep space AND the galactic band
 // ---------------------------------------------------------------------------
 
-function generateGalactic(tiles, rng) {
+/**
+ * Planets, stars, singularities and asteroids are scattered across the WHOLE
+ * outer world rather than ringed at its edge, so the far map does not read as a
+ * band of empties with treasure round the rim.
+ *
+ * They deliberately avoid the exoplanet corridor: everything outside it stays
+ * dark until "Outer Galaxy I", which is what keeps them a surprise.
+ */
+function generateOuterSpecials(tiles, rng, inCorridor) {
   const open = []
   for (const t of tiles.values()) {
-    if (t.band !== 'galactic') continue
-    t.terrain = 'deep_space'
-    t.region = 'galactic'
-    if (t.d <= MAX_REVEAL_RADIUS) open.push(t)
+    if (t.band === 'galactic') { t.region = 'galactic'; t.terrain = 'deep_space' }
+    if (t.band !== 'deep' && t.band !== 'galactic') continue
+    if (t.d > MAX_REVEAL_RADIUS) continue
+    if (t.region === 'exoplanet') continue
+    if (inCorridor(t)) continue
+    open.push(t)
   }
   shuffle(open, rng)
-
-  const specials = [
-    ...Array(14).fill('planet'),
-    ...Array(8).fill('star'),
-    ...Array(4).fill('singularity'),
-  ]
-  const placed = []
-  for (const t of open) {
-    if (!specials.length) break
-    if (placed.some((p) => lengthOf(p.q - t.q, p.r - t.r) < 3)) continue
-    t.terrain = specials.pop()
-    placed.push(t)
-  }
+  scatterInto(
+    open,
+    [
+      ...Array(16).fill('planet'),
+      ...Array(9).fill('star'),
+      ...Array(5).fill('singularity'),
+      ...Array(18).fill('asteroid'),
+    ],
+    3,
+  )
 }
 
 // ---------------------------------------------------------------------------
 // Repair + encampments + reveal
 // ---------------------------------------------------------------------------
 
-/**
- * Cheap fixes before validation: the palace and its ring must be open buildable
- * land, and the opening radius must contain at least one of each Earth yield so
- * no start is economically dead.
- */
 function repairStart(tiles, rng) {
   const at = (q, r) => tiles.get(key(q, r))
 
@@ -464,6 +483,7 @@ function repairStart(tiles, rng) {
     if (cands.length) {
       const pick = cands[Math.floor(rng() * cands.length)]
       pick.region = 'sea'
+      pick.seaKind = 'rim'
       pick.terrain = 'coast'
     }
   }
@@ -473,8 +493,6 @@ function repairStart(tiles, rng) {
  * Enemy encampments: uncleared bases that add units to every wave until your
  * borders reach them. LAND ONLY — Earth's continents/islands and the exoplanet.
  * The Moon, Mars, asteroids and open space stay clear.
- *
- * Earth's are spread round-robin over the six wedges so no approach is free.
  */
 function placeEncampments(tiles, rng) {
   const LAND_REGIONS = new Set(['old_world', 'new_world', 'island'])
@@ -501,11 +519,10 @@ function placeEncampments(tiles, rng) {
   for (const t of shuffle(earthCands, rng)) byWedge[t.wedge].push(t)
   for (const w of byWedge) w.sort((a, b) => a.d - b.d)
 
-  const perWedge = 3
-  for (let i = 0; i < perWedge; i++) {
+  for (let i = 0; i < 3; i++) {
     for (let w = 0; w < 6; w++) {
-      const spot = byWedge[w].find((t) => !t.encampment && tryPlaceable(t, placed))
-      if (spot) tryPlace(spot)
+      const spot = byWedge[w].find((t) => !t.encampment && tryPlace(t))
+      if (spot) continue
     }
   }
 
@@ -516,26 +533,24 @@ function placeEncampments(tiles, rng) {
   return placed
 }
 
-const tryPlaceable = (t, placed) =>
-  !placed.some((p) => lengthOf(p.q - t.q, p.r - t.r) < ENCAMPMENT_SPACING)
-
 /**
  * Stamp each tile with the reveal stage that first makes it visible.
  *
- * Earth's stages are region-shaped (Old World → islands → New World coast →
- * everything); beyond Earth the reveal is purely CONCENTRIC, which is what
- * keeps the Moon, Mars and the exoplanet from ever being holes.
+ * Three shapes:
+ *  - Earth's stages are REGION-shaped (Old World → islands → the New World's
+ *    coast → its interior)
+ *  - most off-Earth stages are CONCENTRIC (see REVEAL_RADIUS)
+ *  - the two exoplanet stages are a CORRIDOR: a cone reaching out through deep
+ *    space towards the exoplanet, leaving the rest of the far map dark
  */
-function assignReveal(tiles) {
+function assignReveal(tiles, inCorridorAt) {
   const at = (q, r) => tiles.get(key(q, r))
   const touches = (t, pred) => neighbors(t.q, t.r).some((n) => {
     const o = at(n.q, n.r)
     return o && pred(o)
   })
 
-  const outerStages = Object.keys(REVEAL_RADIUS)
-    .map(Number)
-    .sort((a, b) => a - b)
+  const concentric = Object.keys(REVEAL_RADIUS).map(Number).sort((a, b) => a - b)
 
   for (const t of tiles.values()) {
     if (t.d <= LOCAL_RADIUS) { t.revealStage = STAGE.local; continue }
@@ -545,16 +560,28 @@ function assignReveal(tiles) {
       else if (t.region === 'sea' && touches(t, (o) => o.region === 'old_world')) t.revealStage = STAGE.old_world
       else if (t.region === 'island') t.revealStage = STAGE.islands
       else if (t.region === 'sea' && !touches(t, (o) => o.region === 'new_world')) t.revealStage = STAGE.islands
-      // You chart the WATERS off the New World first, then make landfall. Giving
-      // the coastal stage the sea (rather than the sea plus the shore ring) is
-      // what keeps "Full Earth" substantial — a small New World is nearly all
-      // coastline, so splitting the land across both stages starved the last one.
+      // Making landfall: the coastal stage shows the waters AND the shore, so
+      // "New World Coastline" actually shows you the new continent.
       else if (t.region === 'sea') t.revealStage = STAGE.new_coast
-      else t.revealStage = STAGE.full_earth
+      else if (t.region === 'new_world' && touches(t, (o) => o.region === 'sea' || o.region === 'island')) {
+        t.revealStage = STAGE.new_coast
+      } else t.revealStage = STAGE.full_earth
       continue
     }
 
-    const s = outerStages.find((st) => t.d <= REVEAL_RADIUS[st])
+    // The exoplanet corridor beats the concentric radii where they overlap.
+    if (t.region === 'exoplanet' || inCorridorAt(t, EXO_CORRIDOR.approach, EXO_REACH[STAGE.exo_coast])) {
+      t.revealStage = t.region === 'exoplanet' && t.d > EXO_REACH[STAGE.exo_coast]
+        ? STAGE.full_exo
+        : Math.min(STAGE.exo_coast, concentric.find((s) => t.d <= REVEAL_RADIUS[s]) ?? STAGE.exo_coast)
+      continue
+    }
+    if (inCorridorAt(t, EXO_CORRIDOR.arrival, EXO_REACH[STAGE.full_exo])) {
+      t.revealStage = Math.min(STAGE.full_exo, concentric.find((s) => t.d <= REVEAL_RADIUS[s]) ?? STAGE.full_exo)
+      continue
+    }
+
+    const s = concentric.find((st) => t.d <= REVEAL_RADIUS[st])
     t.revealStage = s === undefined ? Infinity : s
   }
 }
@@ -562,10 +589,10 @@ function assignReveal(tiles) {
 /**
  * Close any hole in the known set.
  *
- * Earth's region-shaped stages can enclose a pocket of not-yet-revealed tiles
- * (a lake inside a continent, an enclave across a strait). At every stage we
- * flood the UNKNOWN region inward from the map's outer rim; anything unknown
- * that the flood cannot reach is enclosed, and gets pulled into this stage.
+ * Region- and corridor-shaped stages can enclose a pocket of not-yet-revealed
+ * tiles. At every stage we flood the UNKNOWN region inward from the map's outer
+ * rim; anything unknown the flood cannot reach is enclosed, and is pulled into
+ * this stage.
  */
 function sealReveal(tiles, list) {
   for (let s = 0; s < STAGE_COUNT; s++) {
@@ -592,8 +619,6 @@ function sealReveal(tiles, list) {
       if (t.revealStage > s && t.revealStage !== Infinity && !reached.has(key(t.q, t.r))) {
         t.revealStage = s
       }
-      // Never-revealable outer rings stay battlefield-only, holes or not.
-      if (t.revealStage === Infinity) continue
     }
   }
 }
@@ -606,11 +631,23 @@ export function buildWorld(seed) {
 
   generateEarth(tiles, seed, rng)
   generateSpace(tiles, rng)
-  generateDeep(tiles, seed, rng)
-  generateGalactic(tiles, rng)
+  const exoCenter = generateDeep(tiles, seed, rng)
+
+  // Cone test towards the exoplanet, shared by the reveal and the special-scatter.
+  const exoAngle = Math.atan2(exoCenter.y, exoCenter.x)
+  const inCorridorAt = (t, halfAngle, maxD) => {
+    if (t.d > maxD || t.d <= BANDS.space.max) return false
+    let da = Math.abs(Math.atan2(t.y, t.x) - exoAngle)
+    if (da > Math.PI) da = 2 * Math.PI - da
+    return da <= halfAngle
+  }
+  const inWidestCorridor = (t) =>
+    inCorridorAt(t, EXO_CORRIDOR.arrival, EXO_REACH[STAGE.full_exo])
+
+  generateOuterSpecials(tiles, rng, inWidestCorridor)
   repairStart(tiles, rng)
   const encampments = placeEncampments(tiles, rng)
-  assignReveal(tiles)
+  assignReveal(tiles, inCorridorAt)
 
   const list = [...tiles.values()]
   sealReveal(tiles, list)
@@ -620,6 +657,7 @@ export function buildWorld(seed) {
     tiles,
     list,
     palace: { q: 0, r: 0 },
+    exoCenter,
     encampments,
     at: (q, r) => tiles.get(key(q, r)) ?? null,
     stats: summarize(list),
