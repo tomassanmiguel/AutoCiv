@@ -104,18 +104,23 @@ Concentric bands by distance from the palace at `(0,0)`, all radii in one place:
 
 | Band | Rings | Contents |
 |---|---|---|
-| `earth` | 0–11 | Old World (holds the palace), ocean channel, New World, islands, rivers |
-| `space` | 12–22 | Moon disc (r1, @15) + Mars disc (r2, @20) + scattered asteroids |
-| `deep` | 23–33 | the deep-space "ocean"; the exoplanet (r4, @29) is embedded here |
-| `galactic` | 34–40 | outer deep space |
+| `earth` | 0–11 | Old World (holds the palace), a wide ocean, New World, islands, rivers |
+| `space` | 12–22 | Moon (r1, @14) + Mars (r2, @19) + asteroids |
+| `deep` | 23–41 | the deep-space "ocean"; the exoplanet (r6, @31) and its moon (r1, @40) |
+| `galactic` | 42–44 | outer deep space |
 
 Planets / stars / singularities / asteroids are scattered across the **whole** deep +
 galactic region, not ringed at its edge, so the far map doesn't read as empties with treasure
 round the rim.
 
-≈**5,400 tiles** total; **4,921** are revealable and the outer 2 rings exist purely as
-battlefield headroom. A band must be ≥ `2·radius+1` rings wide to contain its body, and the
-Moon/Mars sit ≥2 rings clear of Earth's rim — both are invariants.
+**Body spacing is invariant-enforced**, not incidental: the Moon hangs exactly ONE ring of
+open space beyond Earth's rim; Mars keeps open space on *both* sides (it must not touch deep
+space); no asteroid may sit at or inside the Moon's ring, so the first two space stages are
+clean sky; and the exoplanet's moon is always on its **backside** — same bearing, further out
+— so you meet the planet before its moon.
+
+≈**6,500 tiles** total; **5,941** are revealable and the outer 2 rings exist purely as
+battlefield headroom. A band must be ≥ `2·radius+1` rings wide to contain its body.
 
 **The battlefield ring is derived, not generated.** `GameManager._battlefieldRing` dilates the
 current known set by `BATTLEFIELD_DEPTH` (2), so the muster zone always hugs the frontier and
@@ -125,11 +130,14 @@ last revealable one.
 ### Generation (`game/world/worldgen.js`)
 `generateWorld(seed)` is **pure and deterministic** — no `Math.random`, no React, no game
 state. A run persists only its seed.
-- **Earth** is shaped by a random split axis positioned to give the Old World ~2/3 of the disc
-  and the New World ~1/3, with a wide ocean channel between them. A noisy radial falloff
-  turns *some* of the rim to sea; land reaching the edge is fine. The continent-boundary
-  wobble is **damped to zero at the centre**, so the palace is always solidly inland in the
-  Old World, and is kept **below the channel width** so the ocean rarely pinches closed.
+- **Earth** is shaped by a random split axis with a wide ocean channel between the two
+  continents. A noisy radial falloff turns *some* of the rim to sea; land reaching the edge is
+  fine. The continent-boundary wobble is **damped to zero at the centre**, so the palace is
+  always solidly inland in the Old World.
+  **Why the New World is the smaller share:** `OW_EDGE` has to stay comfortably above 0 or the
+  palace (at `s = 0`, where the wobble is damped to nothing) would land in the water. Pushing
+  `NW_EDGE` out is therefore the *only* way to widen the ocean, so a bigger sea necessarily
+  comes out of the New World rather than the Old. Land ends up roughly 3:1.
 - **Climate is LATITUDINAL**: an arid equator and tundra confined to the two poles, where the
   polar axis is the world's vertical (north/south read as up/down on the map). Tundra also
   needs a **cluster field** to pass, so it forms polar patches rather than a solid cap.
@@ -153,9 +161,14 @@ state. A run persists only its seed.
   re-rolling.
 - Outer-galaxy specials are **littered throughout the band**, not ringed at the extreme edge,
   and only become visible after the exoplanet stages.
-- **Encampments are LAND ONLY** — Earth's continents/islands and the exoplanet. The Moon,
-  Mars, asteroids and open space stay clear. Earth's are placed round-robin over the six
-  wedges so the angular spread is guaranteed rather than hoped for.
+- **Encampments are LAND ONLY** — Earth's continents/islands and the exoplanet — with one
+  deliberate exception: **Mars' dead centre always holds one**, a fixed prize in the middle
+  of the red planet. The Moon, asteroids, the exomoon and open space stay clear. Earth's are
+  placed round-robin over the six wedges so the angular spread is guaranteed, not hoped for.
+- **The opening view is guaranteed to read well**: at most 3 desert/tundra tiles inside the
+  Local radius, and at least one mountain (never on the palace ring, which must stay
+  passable). `repairStart` applies these *before* the yield pass, so anything they break gets
+  fixed after.
 
 ### Invariants (`game/world/invariants.js`)
 `validate(world)` returns violations; `generateWorld` **re-rolls deterministically**
@@ -175,7 +188,7 @@ The hole check floods per stage but is **radius-bounded** — a hole can only si
 known frontier, so there is no point sweeping 5,400 tiles when the frontier is at ring 11.
 Unbounded it cost ~25ms per world; bounded it is ~4ms.
 
-`node sims/worldgen.mjs 200` is the source of truth: currently **250/250 clean, ~39ms per
+`node sims/worldgen.mjs 200` is the source of truth: currently **200/200 clean, ~61ms per
 world**, and it prints the reveal ladder, Earth yield spread, and an ASCII map.
 
 ### Known world (`GameManager`, `regions.js` `STAGES`)
@@ -184,8 +197,9 @@ Every tile is stamped a `revealStage` at generation time; a tile is known when
 generator, where it belongs.
 
 Reveal has **three shapes**:
-- **Earth** — region-shaped: Old World (+ its seas) → islands and open ocean → the New
-  World's coast (waters *and* shore, so the stage actually shows you the continent) → its
+- **Earth** — region-shaped: the Old World is charted in three outward steps (Local → Nearby
+  → Distant → the rest, via `NEARBY_RADIUS`/`DISTANT_RADIUS`) → islands and open ocean → the
+  New World's coast (waters *and* shore, so the stage actually shows you the continent) → its
   interior.
 - **Most off-Earth stages** — concentric (`REVEAL_RADIUS`). This is *why* the Moon and Mars
   sit at different distances rather than side by side: each must fall entirely inside one
@@ -199,10 +213,10 @@ can enclose a pocket, so `sealReveal` floods the unknown region inward from the 
 every stage and pulls anything it cannot reach into that stage. The map is free to grow as a
 non-circle; it just cannot grow *around* something.
 
-The 13-notch ladder: Local · Old World · Islands · New World Coastline · Full Earth · Earth
-and Space · Moon · Mars · Deeper Space · Exo Coastline · Full Exo · Outer Galaxy I · Full
-Map. In the real game each notch will be unlocked by a progress tech; for now the menu
-slider drives it directly.
+The 15-notch ladder: Local · Nearby Lands · Distant Lands · Old World · Islands · New World
+Coastline · Full Earth · Earth and Space · Moon · Mars · Deeper Space · Exo Coastline · Full
+Exo · Outer Galaxy I · Full Map. In the real game each notch will be unlocked by a progress
+tech; for now the menu slider drives it directly.
 
 ### Map viewer (`components/HexMap`)
 - **Camera lives in a ref** and is applied imperatively (`transform` on the content div), so

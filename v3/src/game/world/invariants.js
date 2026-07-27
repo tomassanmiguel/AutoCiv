@@ -13,14 +13,14 @@
 //                 no encampments).
 
 import { key, disc, neighbors, bfs } from '../hex/coords.js'
-import { BANDS, BODIES, STAGES, STAGE, STAGE_COUNT, MAX_RADIUS, LOCAL_RADIUS } from './regions.js'
+import { BANDS, STAGES, STAGE_COUNT, MAX_RADIUS, LOCAL_RADIUS } from './regions.js'
 import { isPassable, isLand, isWater, terrainOf } from './terrain.js'
 
 const START_RADIUS = 5
-// Earth is split roughly 2/3 Old World, 1/3 New World across the ocean channel.
+// The main ocean is wide, so the New World is the smaller share by design.
 const MIN_OLD_WORLD = 80
-const MIN_NEW_WORLD = 45
-const MIN_ISLANDS = 3
+const MIN_NEW_WORLD = 35
+const MIN_ISLANDS = 2
 const MAX_TUNDRA_FRACTION = 0.22
 // Earth is only ~400 tiles, so its region-shaped stages are naturally small;
 // this floor exists to catch a DEAD notch, not to enforce an even ladder.
@@ -28,7 +28,9 @@ const MIN_STAGE_TILES = 8
 const MIN_REACHABLE_FRACTION = 0.8
 const ENCAMPMENT_MIN_DIST = 6
 const EARLY_ENCAMPMENT_DIST = 12
-const EARTH_MARS_GAP = 2
+const MOON_GAP = 1  // the Moon hangs exactly one ring beyond Earth
+const MARS_INNER_GAP = 2 // rings of space between Earth's rim and Mars
+const MARS_OUTER_GAP = 1 // at least one layer of space beyond Mars before deep space
 
 // Earth must sustain all four economies, not merely have one tile of each near
 // the palace — progress especially, since it drives the tech tree.
@@ -40,6 +42,7 @@ const MOUNTAIN_FRACTION = { min: 0.015, max: 0.15 }
 const MIN_RIVER_TILES = 4
 const MIN_RIVER_RUN = 4
 const MIN_CLIMATE_TILES = 3
+const MAX_LOCAL_DRY = 3
 
 export function validate(world) {
   const v = []
@@ -64,16 +67,49 @@ export function validate(world) {
   }
 
   // Bodies must sit wholly inside their band, or the concentric structure breaks.
-  for (const [region, band] of [['moon', 'space'], ['mars', 'space'], ['asteroid', 'space'], ['exoplanet', 'deep']]) {
+  const containment = [
+    ['moon', 'space'], ['mars', 'space'], ['asteroid', 'space'],
+    ['exoplanet', 'deep'], ['exomoon', 'deep'],
+  ]
+  for (const [region, band] of containment) {
     const stray = world.list.filter((t) => t.region === region && t.band !== band)
     if (stray.length) v.push(`${region} spills outside the ${band} band (${stray.length} tiles)`)
   }
 
-  // Open space must separate Earth from its neighbours.
-  const marsMin = Math.min(...world.list.filter((t) => t.region === 'mars').map((t) => t.d), Infinity)
-  const moonMin = Math.min(...world.list.filter((t) => t.region === 'moon').map((t) => t.d), Infinity)
-  if (marsMin - earthR - 1 < EARTH_MARS_GAP) v.push(`Mars only ${marsMin - earthR - 1} rings clear of Earth`)
-  if (moonMin - earthR - 1 < EARTH_MARS_GAP) v.push(`Moon only ${moonMin - earthR - 1} rings clear of Earth`)
+  const spanOf = (region) => {
+    const ds = world.list.filter((t) => t.region === region).map((t) => t.d)
+    return ds.length ? { min: Math.min(...ds), max: Math.max(...ds) } : null
+  }
+  const moon = spanOf('moon')
+  const mars = spanOf('mars')
+  const exo = spanOf('exoplanet')
+  const exomoon = spanOf('exomoon')
+
+  // The Moon hangs exactly one ring of open space beyond Earth's rim.
+  if (!moon) v.push('no Moon')
+  else if (moon.min - earthR - 1 !== MOON_GAP) {
+    v.push(`Moon is ${moon.min - earthR - 1} rings clear of Earth (want ${MOON_GAP})`)
+  }
+
+  // Mars must float in open space — clear of Earth AND of deep space.
+  if (!mars) v.push('no Mars')
+  else {
+    if (mars.min - earthR - 1 < MARS_INNER_GAP) v.push(`Mars only ${mars.min - earthR - 1} rings clear of Earth`)
+    if (BANDS.space.max - mars.max < MARS_OUTER_GAP) {
+      v.push(`Mars only ${BANDS.space.max - mars.max} rings clear of deep space`)
+    }
+    if (moon && mars.min <= moon.max) v.push('Mars and the Moon overlap in radius')
+  }
+
+  // The exoplanet's moon sits on its BACKSIDE — strictly further out.
+  if (!exomoon) v.push('no exomoon')
+  else if (exo && exomoon.min <= exo.max) v.push('exomoon is not beyond the exoplanet')
+
+  // No asteroid may appear before the Moon does.
+  if (moon) {
+    const early = world.list.filter((t) => t.region === 'asteroid' && t.d <= moon.max).length
+    if (early) v.push(`${early} asteroid(s) sit at or inside the Moon's ring`)
+  }
 
   // The palace must not be walled in: most of the Old World has to be reachable
   // on foot. Only mountains block (rivers will be bridgeable).
@@ -163,6 +199,12 @@ export function validate(world) {
     v.push(`too much tundra (${((tundra.length / earthLandAll) * 100).toFixed(0)}% of land)`)
   }
 
+  // The opening view must read well: not a wasteland, and visibly varied.
+  const localTiles = disc(0, 0, LOCAL_RADIUS).map((h) => at(h.q, h.r)).filter(Boolean)
+  const localDry = localTiles.filter((t) => t.terrain === 'desert' || t.terrain === 'tundra').length
+  if (localDry > MAX_LOCAL_DRY) v.push(`${localDry} desert/tundra tiles in the local view (max ${MAX_LOCAL_DRY})`)
+  if (!localTiles.some((t) => t.terrain === 'mountain')) v.push('no mountain in the local view')
+
   // Islands belong in the channel between the continents, not the rim sea.
   const islands = world.list.filter((t) => t.region === 'island')
   if (islands.length < MIN_ISLANDS) v.push(`too few islands (${islands.length})`)
@@ -191,10 +233,14 @@ export function validate(world) {
   if (!camps.length) {
     v.push('no encampments placed')
   } else {
-    const offLand = camps.filter((t) => !isLand(t.terrain))
+    // Land only, with ONE deliberate exception: a guaranteed camp dead centre
+    // on Mars.
+    const marsCamps = camps.filter((t) => t.region === 'mars')
+    if (marsCamps.length !== 1) v.push(`Mars should hold exactly 1 encampment (has ${marsCamps.length})`)
+    const offLand = camps.filter((t) => !isLand(t.terrain) && t.region !== 'mars')
     if (offLand.length) v.push(`${offLand.length} encampment(s) not on land`)
-    const banned = camps.filter((t) => t.region === 'moon' || t.region === 'mars' || t.region === 'asteroid')
-    if (banned.length) v.push(`${banned.length} encampment(s) on the Moon/Mars/asteroids`)
+    const banned = camps.filter((t) => t.region === 'moon' || t.region === 'asteroid' || t.region === 'exomoon')
+    if (banned.length) v.push(`${banned.length} encampment(s) on the Moon/asteroids/exomoon`)
     const tooClose = camps.filter((t) => t.band === 'earth' && t.d < ENCAMPMENT_MIN_DIST)
     if (tooClose.length) v.push(`${tooClose.length} encampment(s) inside the start radius`)
     const wedges = new Set(camps.filter((t) => t.band === 'earth').map((t) => t.wedge))
@@ -280,4 +326,4 @@ export function yieldOf(tiles) {
   return out
 }
 
-export { LOCAL_RADIUS, BANDS, BODIES }
+export { LOCAL_RADIUS, BANDS }

@@ -22,7 +22,7 @@ import { key, disc, ring, neighbors, lengthOf, toPixel, wedgeOf, SQRT3 } from '.
 import { makeRng, makeNoise2D, shuffle } from './noise.js'
 import {
   BANDS, BODIES, MAX_RADIUS, MAX_REVEAL_RADIUS, REVEAL_RADIUS, EXO_REACH, EXO_CORRIDOR,
-  bandAt, STAGE, STAGE_COUNT, LOCAL_RADIUS,
+  bandAt, STAGE, STAGE_COUNT, LOCAL_RADIUS, NEARBY_RADIUS, DISTANT_RADIUS,
 } from './regions.js'
 import { isPassable, isLand, isWater } from './terrain.js'
 import { validate } from './invariants.js'
@@ -30,12 +30,14 @@ import { validate } from './invariants.js'
 const MAX_ATTEMPTS = 16
 
 // --- Earth shaping knobs -----------------------------------------------------
-// The split axis is positioned to give the Old World ~2/3 of the disc and the
-// New World ~1/3, with a wide ocean channel between them (where the islands go).
+// The split axis. OW_EDGE must stay comfortably above 0 or the palace (at s=0,
+// where the wobble is damped to nothing) would fall in the water. Pushing
+// NW_EDGE out is therefore the only way to widen the ocean, which is why the
+// main sea grows at the New World's expense rather than the Old World's.
 const OW_EDGE = 0.06
-const NW_EDGE = 0.36
+const NW_EDGE = 0.52
 const SPLIT_WOBBLE = 0.30 // kept below the channel width so the ocean rarely closes
-const RIM_SEA = 0.94      // radius past which Earth TENDS to sea; loose, land may reach the rim
+const RIM_SEA = 0.99      // radius past which Earth TENDS to sea; loose, land may reach the rim
 
 // Climate is LATITUDINAL: an arid equator, tundra at the two poles. The polar
 // axis is the world's vertical, so north/south read as up/down on the map.
@@ -47,6 +49,7 @@ const RIDGE_CUT = 0.96 // ridged-noise threshold for mountains — high, so rang
                        // come out as sparse lines rather than blobs
 const HILL_CUT = 0.60
 
+const MAX_LOCAL_DRY = 3 // desert/tundra tiles allowed inside the opening view
 const ENCAMPMENT_MIN_DIST = 6
 const ENCAMPMENT_SPACING = 3
 
@@ -164,7 +167,7 @@ function scatterIslands(tiles, earth, rng) {
     }),
   )
   shuffle(open, rng)
-  const want = 5 + Math.floor(rng() * 4)
+  const want = 3 + Math.floor(rng() * 3)
   const placed = []
   for (const t of open) {
     if (placed.length >= want) break
@@ -262,12 +265,20 @@ function generateSpace(tiles, rng) {
   }
 
   stampBody(tiles, pickOnRing(rng, BODIES.moon.dist), BODIES.moon.radius, 'moon', 'moon')
-  stampBody(tiles, pickOnRing(rng, BODIES.mars.dist), BODIES.mars.radius, 'mars', 'mars')
+  const mc = pickOnRing(rng, BODIES.mars.dist)
+  stampBody(tiles, mc, BODIES.mars.radius, 'mars', 'mars')
+  const marsCenter = tiles.get(key(mc.q, mc.r))
 
+  // Asteroids stay BEYOND the Moon, so the first two space stages are clean sky.
+  const minAsteroid = BODIES.moon.dist + BODIES.moon.radius + 1
   const open = []
-  for (const t of tiles.values()) if (t.band === 'space' && t.region === 'space') open.push(t)
+  for (const t of tiles.values()) {
+    if (t.band === 'space' && t.region === 'space' && t.d >= minAsteroid) open.push(t)
+  }
   shuffle(open, rng)
   scatterInto(open, [...Array(14).fill('asteroid')], 3, (t) => { t.region = 'asteroid' })
+
+  return marsCenter
 }
 
 const pickOnRing = (rng, dist) => {
@@ -336,13 +347,29 @@ function generateDeep(tiles, seed, rng) {
     if (w < 0.38) t.terrain = 'exosea'
     else if (ridge > 0.93 && e > 0.45) t.terrain = 'exomountain'
     else if (e > 0.62) t.terrain = 'exohills'
-    else if (dd > 0.72) t.terrain = 'exotundra'
-    else if (m < 0.38) t.terrain = 'exodesert'
+    else if (dd > 0.86) t.terrain = 'exotundra'
+    else if (m < 0.28) t.terrain = 'exodesert'
     else t.terrain = 'exoplains'
     cells.push(t)
   }
 
   connectExoLand(tiles, cells)
+
+  // The exoplanet's moon always sits on its BACKSIDE — same bearing, further
+  // out — so you always meet the planet before its moon.
+  const bearing = Math.atan2(center.y, center.x)
+  const md = BODIES.exomoon.dist
+  const moonRing = ring(0, 0, md)
+  let best = moonRing[0]
+  let bestDa = Infinity
+  for (const h of moonRing) {
+    const t = tiles.get(key(h.q, h.r))
+    let da = Math.abs(Math.atan2(t.y, t.x) - bearing)
+    if (da > Math.PI) da = 2 * Math.PI - da
+    if (da < bestDa) { bestDa = da; best = h }
+  }
+  stampBody(tiles, best, BODIES.exomoon.radius, 'exomoon', 'exomoon')
+
   return center
 }
 
@@ -467,6 +494,18 @@ function repairStart(tiles, rng) {
     if (!isLand(t.terrain) || !isPassable(t.terrain)) t.terrain = 'plains'
   }
 
+  // Local-view guarantees. The opening screen must not read as a wasteland, and
+  // should show at least one mountain so the terrain looks varied from turn one.
+  // Runs BEFORE the yield `ensure` pass below, so anything it breaks gets fixed.
+  const local = disc(0, 0, LOCAL_RADIUS).map((h) => at(h.q, h.r)).filter(Boolean)
+  const dry = shuffle(local.filter((t) => t.terrain === 'desert' || t.terrain === 'tundra'), rng)
+  while (dry.length > MAX_LOCAL_DRY) dry.pop().terrain = 'plains'
+  if (!local.some((t) => t.terrain === 'mountain')) {
+    // Never on the palace ring — that has to stay passable.
+    const cands = local.filter((t) => t.d >= 2 && isLand(t.terrain) && isPassable(t.terrain))
+    if (cands.length) cands[Math.floor(rng() * cands.length)].terrain = 'mountain'
+  }
+
   const near = disc(0, 0, 5).map((h) => at(h.q, h.r)).filter(Boolean)
   const ensure = (terrain, test) => {
     if (near.some(test)) return
@@ -494,7 +533,7 @@ function repairStart(tiles, rng) {
  * borders reach them. LAND ONLY — Earth's continents/islands and the exoplanet.
  * The Moon, Mars, asteroids and open space stay clear.
  */
-function placeEncampments(tiles, rng) {
+function placeEncampments(tiles, rng, marsCenter) {
   const LAND_REGIONS = new Set(['old_world', 'new_world', 'island'])
   const eligible = (t) => isLand(t.terrain) && isPassable(t.terrain)
 
@@ -530,6 +569,13 @@ function placeEncampments(tiles, rng) {
     if (placed.filter((p) => p.region === 'exoplanet').length >= 4) break
     tryPlace(t)
   }
+
+  // Mars is otherwise encampment-free, but its dead centre always holds one —
+  // a fixed prize sitting in the middle of the red planet.
+  if (marsCenter) {
+    marsCenter.encampment = { level: 1 + Math.floor(marsCenter.d / 8) }
+    placed.push(marsCenter)
+  }
   return placed
 }
 
@@ -556,8 +602,14 @@ function assignReveal(tiles, inCorridorAt) {
     if (t.d <= LOCAL_RADIUS) { t.revealStage = STAGE.local; continue }
 
     if (t.band === 'earth') {
-      if (t.region === 'old_world') t.revealStage = STAGE.old_world
-      else if (t.region === 'sea' && touches(t, (o) => o.region === 'old_world')) t.revealStage = STAGE.old_world
+      // The Old World is charted in three outward steps before the rest of it.
+      const oldish = t.region === 'old_world' ||
+        (t.region === 'sea' && touches(t, (o) => o.region === 'old_world'))
+      if (oldish) {
+        t.revealStage = t.d <= NEARBY_RADIUS ? STAGE.nearby
+          : t.d <= DISTANT_RADIUS ? STAGE.distant
+            : STAGE.old_world
+      }
       else if (t.region === 'island') t.revealStage = STAGE.islands
       else if (t.region === 'sea' && !touches(t, (o) => o.region === 'new_world')) t.revealStage = STAGE.islands
       // Making landfall: the coastal stage shows the waters AND the shore, so
@@ -568,6 +620,9 @@ function assignReveal(tiles, inCorridorAt) {
       } else t.revealStage = STAGE.full_earth
       continue
     }
+
+    // The exoplanet's moon arrives with the full planet reveal.
+    if (t.region === 'exomoon') { t.revealStage = STAGE.full_exo; continue }
 
     // The exoplanet corridor beats the concentric radii where they overlap.
     if (t.region === 'exoplanet' || inCorridorAt(t, EXO_CORRIDOR.approach, EXO_REACH[STAGE.exo_coast])) {
@@ -630,7 +685,7 @@ export function buildWorld(seed) {
   const tiles = blankTiles()
 
   generateEarth(tiles, seed, rng)
-  generateSpace(tiles, rng)
+  const marsCenter = generateSpace(tiles, rng)
   const exoCenter = generateDeep(tiles, seed, rng)
 
   // Cone test towards the exoplanet, shared by the reveal and the special-scatter.
@@ -646,7 +701,7 @@ export function buildWorld(seed) {
 
   generateOuterSpecials(tiles, rng, inWidestCorridor)
   repairStart(tiles, rng)
-  const encampments = placeEncampments(tiles, rng)
+  const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt)
 
   const list = [...tiles.values()]

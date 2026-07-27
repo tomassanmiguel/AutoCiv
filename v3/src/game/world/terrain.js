@@ -55,6 +55,7 @@ export const TERRAIN = Object.fromEntries([
   T('exosea', 'Exosea', 'exosea', 'water', true, 'gold', 12),
   T('exodesert', 'Exodesert', 'desert', 'land', true, null, 0, 'Produces nothing on its own.'),
   T('exotundra', 'Exotundra', 'tundra', 'land', true, null, 0, 'Produces nothing on its own.'),
+  T('exomoon', 'Exomoon', 'moon', 'space', true, 'gold', 15),
 
   // --- Outer galaxy ---
   T('planet', 'Planet', 'planet', 'space', true, 'food', 30),

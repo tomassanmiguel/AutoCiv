@@ -1,22 +1,22 @@
 // The concentric layout of the world, and the known-world reveal ladder.
 //
 // The map is a disc centred on the palace at (0,0). Bands are pure functions of
-// axial distance from that centre; discrete bodies (Moon / Mars / the exoplanet)
-// are DISCS embedded inside a band, so a band must be at least 2*radius+1 rings
-// wide to contain its body.
+// axial distance from that centre; discrete bodies (Moon / Mars / the exoplanet
+// and its moon) are DISCS embedded inside a band, so a band must be at least
+// 2*radius+1 rings wide to contain its body.
 //
 // Radii are deliberately all in one place — this is the knob to turn when the
 // map feels too small or too sprawling.
 
 export const BANDS = {
-  earth: { min: 0, max: 11 },       //  397 tiles — two continents + ocean + islands
+  earth: { min: 0, max: 11 },       //  397 tiles — two continents + a wide ocean + islands
   space: { min: 12, max: 22 },      //  Moon (r1) and Mars (r2) discs live here
-  deep: { min: 23, max: 33 },       //  the deep-space "ocean"; exoplanet (r4) lives here
-  galactic: { min: 34, max: 40 },   //  planets / stars / singularities / asteroids
+  deep: { min: 23, max: 41 },       //  the deep-space "ocean"; exoplanet (r6) + its moon
+  galactic: { min: 42, max: 44 },   //  outer deep space
 }
 
 // The world is generated 2 rings PAST the last revealable ring, so the derived
-// battlefield ring (see below) always has real tiles to occupy.
+// battlefield ring (see GameManager) always has real tiles to occupy.
 export const BATTLEFIELD_DEPTH = 2
 export const MAX_REVEAL_RADIUS = BANDS.galactic.max
 export const MAX_RADIUS = MAX_REVEAL_RADIUS + BATTLEFIELD_DEPTH
@@ -25,12 +25,16 @@ export const MAX_RADIUS = MAX_REVEAL_RADIUS + BATTLEFIELD_DEPTH
 // a body spans dist±radius, which must stay inside its band AND inside a single
 // reveal step (otherwise it would be half-revealed).
 //
-// The Moon sits exactly 2 rings clear of Earth's rim; Mars is further out so the
-// two are reached at different stages by a purely concentric reveal.
+// Spacing rules the invariants enforce:
+//   - the Moon sits exactly ONE ring of open space beyond Earth's rim
+//   - Mars keeps open space on BOTH sides (it must not touch deep space)
+//   - the exoplanet's moon is always on its BACKSIDE — further out along the
+//     same bearing, so you meet the planet before its moon
 export const BODIES = {
-  moon: { radius: 1, dist: 15 },      // spans 14..16 (2-ring gap from Earth's rim at 11)
-  mars: { radius: 2, dist: 20 },      // spans 18..22
-  exoplanet: { radius: 4, dist: 29 }, // spans 25..33
+  moon: { radius: 1, dist: 14 },      // spans 13..15 — ring 12 is the lone gap from Earth
+  mars: { radius: 2, dist: 19 },      // spans 17..21 — ring 22 is open space before deep
+  exoplanet: { radius: 6, dist: 31 }, // spans 25..37
+  exomoon: { radius: 1, dist: 40 },   // spans 39..41, past the planet's far edge
 }
 
 // The exoplanet is reached along a CORRIDOR rather than by revealing the whole
@@ -39,7 +43,7 @@ export const BODIES = {
 // cone, in radians, per stage.
 export const EXO_CORRIDOR = {
   approach: 0.46, // ~26°, out to the exoplanet's centre ring
-  arrival: 0.58,  // ~33°, out past its far edge
+  arrival: 0.58,  // ~33°, out past its moon
 }
 
 /** Which band a distance falls in. */
@@ -54,15 +58,9 @@ export function bandAt(d) {
 // Known-world reveal ladder.
 //
 // Every tile is stamped with a `revealStage` at generation time; a tile is known
-// when `tile.revealStage <= currentStage`.
-//
-// TWO RULES the generator must uphold:
-//  1. The known set is CLOSED — never a hole of unrevealed tiles inside it.
-//     Earth's stages are region-shaped, so worldgen runs a sealing pass that
-//     pulls any enclosed pocket into the stage that enclosed it.
-//  2. Beyond Earth the reveal is purely CONCENTRIC (see RADIUS below), which
-//     makes holes impossible and is why the Moon and Mars sit at different
-//     distances rather than side by side.
+// when `tile.revealStage <= currentStage`. Reveal has THREE shapes — see
+// worldgen's assignReveal — and none of them may leave a hole in the known set
+// (sealReveal enforces that).
 //
 // In the real game each notch is unlocked by a progress tech (cartography,
 // ocean navigation, spaceflight, generation ships…). For now the debug menu
@@ -71,6 +69,8 @@ export function bandAt(d) {
 
 export const STAGES = [
   { key: 'local', name: 'Local' },
+  { key: 'nearby', name: 'Nearby Lands' },
+  { key: 'distant', name: 'Distant Lands' },
   { key: 'old_world', name: 'Old World' },
   { key: 'islands', name: 'Islands' },
   { key: 'new_coast', name: 'New World Coastline' },
@@ -94,19 +94,22 @@ export const STAGE = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
  * handled by the generator.
  */
 export const REVEAL_RADIUS = {
-  [STAGE.space]: 13,   // the 2-ring gap of open space around Earth
-  [STAGE.moon]: 17,    // reaches the Moon (14..16)
-  [STAGE.mars]: 22,    // reaches Mars (18..22)
-  [STAGE.deep]: 24,    // first rings of the deep-space ocean
-  [STAGE.galaxy1]: 34, // everything the exo corridor left dark, out to mid-galactic
+  [STAGE.space]: 12,   // the lone ring of open space around Earth
+  [STAGE.moon]: 15,    // reaches the Moon (13..15)
+  [STAGE.mars]: 22,    // reaches Mars (17..21) plus the open ring beyond it
+  [STAGE.deep]: 24,    // first rings of the deep-space ocean, short of the exoplanet
+  [STAGE.galaxy1]: 36, // everything the exo corridor left dark, out to mid-deep
   [STAGE.full_map]: MAX_REVEAL_RADIUS,
 }
 
 /** How far out each exoplanet stage pushes its corridor. */
 export const EXO_REACH = {
   [STAGE.exo_coast]: BODIES.exoplanet.dist,
-  [STAGE.full_exo]: BODIES.exoplanet.dist + BODIES.exoplanet.radius,
+  [STAGE.full_exo]: BODIES.exomoon.dist + BODIES.exomoon.radius,
 }
 
-/** Radius of the starting "Local" reveal. */
+// Earth's opening stages walk outward from the palace before the whole Old
+// World is charted.
 export const LOCAL_RADIUS = 3
+export const NEARBY_RADIUS = 6
+export const DISTANT_RADIUS = 9
