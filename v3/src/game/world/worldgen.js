@@ -641,9 +641,14 @@ function placeEncampments(tiles, rng, marsCenter) {
 
   const earthCands = []
   const exoCands = []
+  const localCands = []
   for (const t of tiles.values()) {
     if (!eligible(t)) continue
-    if (LAND_REGIONS.has(t.region) && t.d >= ENCAMPMENT_MIN_DIST) earthCands.push(t)
+    // Exactly one camp sits inside the opening view — close enough to teach the
+    // clear-by-expanding mechanic in the first few expansions. Kept off the
+    // palace ring so it is a short march rather than a free gift.
+    if (LAND_REGIONS.has(t.region) && t.d >= 2 && t.d <= LOCAL_RADIUS) localCands.push(t)
+    else if (LAND_REGIONS.has(t.region) && t.d >= ENCAMPMENT_MIN_DIST) earthCands.push(t)
     else if (t.region === 'exoplanet') exoCands.push(t)
   }
 
@@ -655,6 +660,9 @@ function placeEncampments(tiles, rng, marsCenter) {
     placed.push(t)
     return true
   }
+
+  const local = shuffle(localCands, rng)[0]
+  if (local) tryPlace(local)
 
   const byWedge = Array.from({ length: 6 }, () => [])
   for (const t of shuffle(earthCands, rng)) byWedge[t.wedge].push(t)

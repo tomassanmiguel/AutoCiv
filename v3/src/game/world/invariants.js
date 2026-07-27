@@ -273,8 +273,13 @@ export function validate(world) {
     if (offLand.length) v.push(`${offLand.length} encampment(s) not on land`)
     const banned = camps.filter((t) => t.region === 'moon' || t.region === 'asteroid' || t.region === 'exomoon')
     if (banned.length) v.push(`${banned.length} encampment(s) on the Moon/asteroids/exomoon`)
-    const tooClose = camps.filter((t) => t.band === 'earth' && t.d < ENCAMPMENT_MIN_DIST)
-    if (tooClose.length) v.push(`${tooClose.length} encampment(s) inside the start radius`)
+    // Exactly one camp in the opening view; nothing in the gap beyond it.
+    const localCamps = camps.filter((t) => t.d <= LOCAL_RADIUS).length
+    if (localCamps !== 1) v.push(`${localCamps} encampment(s) in the local view (want exactly 1)`)
+    const inGap = camps.filter(
+      (t) => t.band === 'earth' && t.d > LOCAL_RADIUS && t.d < ENCAMPMENT_MIN_DIST,
+    ).length
+    if (inGap) v.push(`${inGap} encampment(s) in the gap between the local view and the frontier`)
     const wedges = new Set(camps.filter((t) => t.band === 'earth').map((t) => t.wedge))
     if (wedges.size < 6) v.push(`Earth encampments only cover ${wedges.size}/6 wedges`)
     if (!camps.some((t) => t.d <= EARLY_ENCAMPMENT_DIST)) v.push('no encampment within early reach')
