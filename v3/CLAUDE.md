@@ -313,11 +313,31 @@ Military, each owning a 90° sector. **A ring is an AGE**, and `RING_AGES` names
 |---|---|---|---|---|---|---|---|---|---|---|
 | Ancient | Bronze | Classical | Medieval | Renaissance | Industrial | Modern | Information | Solar System | Extrasolar | Galactic |
 
-**Rings are deliberately UNEQUAL** — a tech sits in the ring its age belongs to, full stop.
-Society's Modern ring holds 15 nodes and its Extrasolar ring holds 1, because that is where the
-design's culture and government material actually lives. **Do not pad a ring to match its
-neighbours**; add a tech that belongs there, or leave the TBDs. Totals per ring run
-17 / 20 / 32 / 31 / 29 / 37 / 39 / 24 / 27 / 20 / 21.
+**Placement is DATED, not vibed.** Each ring is a period with real boundaries, and a tech goes
+where its actual invention does — Fireworks is 9th-century China (Medieval), Satellites is 1957
+(Modern), the ridden horse postdates the neolithic (Bronze, not Ancient):
+
+| ring | span | ring | span |
+|---|---|---|---|
+| Ancient | before ~3300 BC | Industrial | ~1700–1900 |
+| Bronze | ~3300–1200 BC | Modern | ~1900–1975 |
+| Classical | ~1200 BC–500 AD | Information | ~1975–2040 |
+| Medieval | ~500–1450 | Solar System | settling this system |
+| Renaissance | ~1450–1700 | Extrasolar / Galactic | leaving it / the far future |
+
+The three off-Earth rings are the exception: they are ordered by **reach**, not date, because
+there are no dates to have.
+
+**Rings are therefore UNEQUAL, and that is correct.** Economy's Industrial ring holds 16 nodes
+because that is when economics happened; **Society's Information ring holds NONE**, which is a
+real gap in the design (no internet-age culture or government material exists in the brief)
+rather than something to paper over. **Do not pad a ring to match its neighbours.** Totals per
+ring run 18 / 20 / 27 / 33 / 29 / 41 / 40 / 23 / 24 / 20 / 22.
+
+⚠️ **Exactly four techs sit off their date**, all for the same reason — an exclusive group must
+occupy one ring or its choice can never be offered. They are listed in the file header
+(Democracy, Schism, Techno, Yakhchals). **Anything else that looks misplaced is a bug**; fix it
+rather than adding to that list.
 
 Every quadrant-ring also carries `TBD_PER_RING` placeholder nodes (1 in ring 0, 2 elsewhere):
 drawn as dashed hollow hexes with a `?`, **never takeable and never offered**
@@ -336,11 +356,10 @@ room. They are generated in the build loop, not authored — change the constant
 > dependencies can come back without a rewrite — and the validator still enforces them, so the
 > first `from:` you add is checked the moment you add it.
 
-**Exclusivity is explicit and rare** (`EXCLUSIVE`, 17 groups) — only real either/ors: Longbow
+**Exclusivity is explicit and rare** (`EXCLUSIVE`, 18 groups) — only real either/ors: Longbow
 vs Crossbow, Monotheism vs Polytheism, Democracy vs Communism vs Fascism, the six music
-genres. Members must share a ring, which is **why some techs sit an age off their strictest
-placement**: Polytheism rides up to Classical to stand beside Monotheism, Democracy down to
-Modern to stand beside Communism and Fascism. A greedy playthrough takes **274 of 297**.
+genres. Members must share a ring (see the four dated exceptions above). A greedy playthrough
+takes **273 of 297**.
 
 **`validateStructure()` asserts the structure** (`node sims/progress.mjs`): one ring per age,
 **every ring legible at its radius**, unique names, exclusivity within one ring, every `sub:`
@@ -349,9 +368,9 @@ crossed edges.
 
 - **Ring radii are sized by the FULLEST ring, not by taste.** A quadrant-ring of `k` nodes
   spreads them over 90°, so the arc between neighbours is `R·(π/2)/(k+1)` and must clear
-  `NODE_SIZE`. Society's Classical ring (13 techs + 2 TBD) is the binding constraint at
-  `RING0 = 460`; the sim prints the tightest gap per ring, so shrink these only if it still
-  passes.
+  `NODE_SIZE`. Economy's Ancient ring (8 techs + a TBD, at the smallest radius) is the binding
+  constraint at `RING0 = 520`; the sim prints the tightest gap per ring, so shrink these only if
+  it still passes.
 - **Edges are polar CURVES, not chords** (`edgePoints`) — unused while there are no
   dependencies, kept because it is what keeps the drawing planar when they return. A straight
   chord between two rings dips *inside* the inner ring whenever its endpoints are far apart in
@@ -364,7 +383,7 @@ crossed edges.
   backwards**.
 - **Rings unlock by count**, and the count is DERIVED: `ringUnlock(r)` is 40% of what ring `r`
   actually holds (min 4), because the rings are unequal — a fixed number would be a stroll
-  through Ancient (17 nodes) and a wall at Modern (39). Reaching Galactic takes **112 picks**.
+  through Ancient (18 nodes) and a wall at Industrial (41). Reaching Galactic takes **110 picks**.
   An unopened ring is **not rendered at all**, and the camera animates out to the new fit.
 - **"Show all"** (header toggle) draws every ring regardless of what is open — the design view
   of the whole web. It is **presentation only**: nodes in unopened rings read `locked` and

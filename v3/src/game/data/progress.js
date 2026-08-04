@@ -7,13 +7,48 @@
 //   Modern · Information · Solar System · Extrasolar · Galactic
 //
 // ---------------------------------------------------------------------------
-// RINGS ARE AGES, NOT BUDGETS
+// WHAT EACH RING MEANS — placement is dated, not vibed
 // ---------------------------------------------------------------------------
-// A tech sits in the ring its age belongs to, full stop. Rings are therefore
-// DELIBERATELY UNEQUAL — Society's Modern ring holds fifteen nodes and its
-// Extrasolar ring holds one, because that is where the design's culture and
-// government material actually lives. Do not pad a ring to match its
-// neighbours; add a tech that belongs there, or leave the TBD slots.
+// Every tech sits in the ring its real invention belongs to. The boundaries:
+//
+//   Ancient       before ~3300 BC — stone, fire, farming, the first burials
+//   Bronze        ~3300–1200 BC — metal, writing, the wheel, the ridden horse
+//   Classical     ~1200 BC–500 AD — iron, the legion, coinage, the Senate
+//   Medieval      ~500–1450 — castles, the stirrup, gunpowder's invention
+//   Renaissance   ~1450–1700 — the gun, the galleon, the scientific method
+//   Industrial    ~1700–1900 — steam, rail, capitalism, the mass army
+//   Modern        ~1900–1975 — flight, radio, the world wars, the space race
+//   Information   ~1975–2040 — the microprocessor, and everything after it
+//   Solar System  settling this system: the Moon, Mars, the belt
+//   Extrasolar    leaving it: the exoplanet, and what we become to get there
+//   Galactic      the far future — singularities, time, Dyson spheres
+//
+// The off-Earth rings are the exception to dating: they are ordered by REACH
+// (this system → another star → the galaxy) rather than by date, because there
+// are no dates to have.
+//
+// RINGS ARE THEREFORE UNEQUAL, and that is correct. Economy's Industrial ring
+// holds sixteen nodes because that is when economics happened; Society's
+// Information ring holds NONE, which is a real gap in the design rather than
+// something to paper over. Do not pad a ring to match its neighbours.
+//
+// ⚠️ FOUR PLACEMENTS ARE DELIBERATELY OFF THEIR DATE, and all four for the same
+// reason — an EXCLUSIVE group must sit in ONE ring or the choice between its
+// members can never be offered:
+//
+//   Democracy      Athenian democracy is Classical; the fork against Communism
+//                  and Fascism is a 20th-century one, so it sits in Modern.
+//   Schism         The Great Schism is 1054; it forks against the Reformation
+//                  (1517), so both sit in Renaissance.
+//   Techno         1988, so Information by date; it is one of six mutually
+//                  exclusive music genres spanning 1917–1988, and the other
+//                  five are Modern.
+//   Yakhchals      A Persian icehouse, ~400 BC; it forks against Sewing (a
+//                  paleolithic technology) over which harsh terrain you may
+//                  settle, and Ancient is the smaller lie of the two.
+//
+// Anything else that looks misplaced is a bug — fix it rather than adding to
+// this list.
 //
 // Every quadrant-ring also carries `TBD_PER_RING` placeholder nodes: visible,
 // never takeable, there to show where the web has room. They are generated, not
@@ -27,10 +62,6 @@
 // option and the whole edge-drawing/planarity apparatus are kept intact and
 // simply unused, so dependencies can come back without a rewrite — see
 // `edgePoints` for the rule they must obey when they do.
-//
-// EXCLUSIVITY still applies (`EXCLUSIVE`), and members must share a ring — which
-// is why Polytheism sits in Classical beside Monotheism, and Democracy in Modern
-// beside Communism and Fascism, rather than each in its strictest age.
 //
 // ---------------------------------------------------------------------------
 // TEXT vs WIRING
@@ -92,99 +123,99 @@ const N = (name, tag, text, opts = {}) => ({
 // MILITARY — units, arms, fortification, doctrine
 // ---------------------------------------------------------------------------
 const MILITARY = [
-  // — Ancient —
+  // — Ancient — mud brick walls (Jericho, ~9000 BC), slings and hide armour
   [
     N('Mud Brick', 'fort', 'Unlocks :fort: fortification units — walls that never attack and never move, but taunt every enemy in reach.', { sub: ['fortification', 'taunt'] }),
     N('The Sling', 'ranged', 'Unlocks :ranged: units, which strike from behind the line and never advance.', { sub: ['range_stat'] }),
-    N('Horseback Riding', 'cavalry', 'Unlocks :cavalry: units — fast, and not as strong for it.', { sub: ['speed_stat'] }),
     N('Leatherwork', 'armor', 'All units gain +8 :defense:.'),
   ],
-  // — Bronze —
+  // — Bronze — the ridden horse (~2000 BC), bronze arms, the composite bow
   [
     N('Bronze Working', 'weapon', 'All units gain +3 :attack:. Creates a :melee: unit.'),
+    N('Horseback Riding', 'cavalry', 'Unlocks :cavalry: units — fast, and not as strong for it.', { sub: ['speed_stat'] }),
     N('Archery', 'ranged', 'Creates a :ranged: unit and gives all ranged units +5 :attack:.'),
-    N('Masonry', 'fort', 'Grants a :fort: fortification. All fortifications gain +5 :defense:.', { sub: ['fortification'] }),
     N('Composite Bows', 'ranged', 'Creates a :ranged: unit. Ranged units gain +5 :attack:.'),
+    N('Masonry', 'fort', 'Grants a :fort: fortification. All fortifications gain +5 :defense:.', { sub: ['fortification'] }),
     N('Armor', 'armor', 'All units gain +12 :defense:. Creates a :melee: unit.'),
     N('War Horns', 'command', 'Unlocks :utility: command units: they never attack, but every friendly unit inside their command radius takes their buff.', { sub: ['command_unit', 'command_radius'] }),
   ],
-  // — Classical —
+  // — Classical — iron, the legion, the testudo, Greek siege engines
   [
     N('Iron Working', 'weapon', 'All units gain +6 :attack:. Creates a :melee: unit.'),
     N('Legionnaires', 'melee', 'Grants 2 :melee: units. Every melee unit gains +1 :attack: and +1 :defense: for each melee unit you own.'),
     N('Siege', 'siege', 'Unlocks :siege: units — slow, heavy hitters that splash their damage across neighbouring tiles.', { sub: ['blast'] }),
+    N('Turtle Formation', 'command', 'Grants a :utility: command unit. Units inside its command radius gain +50% :defense:.', { sub: ['command_unit', 'command_radius'] }),
     N('Caltrops', 'fort', 'Grants a :melee: unit. Enemies attacking your melee units take damage equal to that unit\'s :defense:.'),
     N('Watchtowers', 'fort', 'Grants a :ranged: unit. Ranged units may be stationed on mountains.'),
-    N('Horseshoes', 'cavalry', 'Creates a :cavalry: unit. Cavalry gain +9 :attack: and +9 :defense:.'),
     N('Dressage', 'cavalry', 'Grants 2 :cavalry: units. Cavalry gain +1 :attack: for every tile they have moved this combat.'),
   ],
-  // — Medieval —
+  // — Medieval — the stirrup, the castle, the trebuchet, the longbow
   [
     N('Steel', 'weapon', 'All units gain +12 :attack:. Creates a :melee: unit.'),
+    N('Stirrups', 'cavalry', 'Creates a :cavalry: unit. Cavalry gain +1 :speed:.', { sub: ['speed_stat'] }),
+    N('Horseshoes', 'cavalry', 'Creates a :cavalry: unit. Cavalry gain +9 :attack: and +9 :defense:.'),
     N('Castles', 'fort', 'Grants a :fort: fortification. All fortifications gain +10 :defense:.', { sub: ['fortification'] }),
     N('Moats', 'fort', 'Grants a :fort: fortification. Enemies attacking a fortification take damage equal to its :defense:.', { sub: ['fortification'] }),
-    N('Stirrups', 'cavalry', 'Creates a :cavalry: unit. Cavalry gain +1 :speed:.', { sub: ['speed_stat'] }),
+    N('Hospitality', 'fort', 'Every 10 ticks, all units adjacent to a fortification gain +1 :defense:.', { sub: ['fortification'] }),
     N('Longbow', 'ranged', 'Creates a :ranged: unit. Ranged units gain +1 range.', { sub: ['range_stat'] }),
     N('Crossbow', 'ranged', 'Creates a :ranged: unit. Ranged units gain +25% :attack:.'),
     N('Counterweights', 'siege', 'Creates a :siege: unit. Siege units gain +1 blast radius, at 20% damage falloff per tile.', { sub: ['blast'] }),
+    N('Flaming Projectiles', 'siege', 'Grants a :siege: unit. Siege units burn what they hit: 2% of maximum :defense: per turn for the rest of the battle.', { sub: ['burn'] }),
     N('Pikes', 'melee', 'Grants a :melee: unit. Melee units deal double damage to enemy :cavalry:.'),
-    N('Hospitality', 'fort', 'Every 10 ticks, all units adjacent to a fortification gain +1 :defense:.', { sub: ['fortification'] }),
-    N('Turtle Formation', 'command', 'Grants a :utility: command unit. Units inside its command radius gain +50% :defense:.', { sub: ['command_unit', 'command_radius'] }),
+    N('Rudder', 'naval', 'Creates a :naval: unit. Naval units gain +10 :attack: and +5 :defense:.'),
   ],
-  // — Renaissance —
+  // — Renaissance — the gun, the broadside, the trace italienne
   [
-    N('Star Forts', 'fort', 'Grants a :fort: fortification. All fortifications gain +20 :defense:.', { sub: ['fortification'] }),
     N('Gunpowder', 'weapon', 'Grants a :melee: unit. All units gain +15 :attack:.'),
+    N('Cannon Artillery', 'siege', 'Increases the :attack: of all :siege: units by 20. Creates a siege unit.'),
+    N('Star Forts', 'fort', 'Grants a :fort: fortification. All fortifications gain +20 :defense:.', { sub: ['fortification'] }),
     N('Metallurgy', 'building', 'Creates the armory and grants a :melee: unit.', { sub: ['armory'] }),
     N('Square Rigging', 'naval', 'Increases the :attack: of all :naval: units by 12. Creates a naval unit.'),
-    N('Rudder', 'naval', 'Creates a :naval: unit. Naval units gain +10 :attack: and +5 :defense:.'),
     N('Deck Cannons', 'naval', 'Increases the range of :naval: units by 1. Grants a naval unit.'),
-    N('Cannon Artillery', 'siege', 'Increases the :attack: of all :siege: units by 20. Creates a siege unit.'),
-    N('Flaming Projectiles', 'siege', 'Grants a :siege: unit. Siege units burn what they hit: 2% of maximum :defense: per turn for the rest of the battle.', { sub: ['burn'] }),
-    N('Guerilla Warfare', 'melee', 'Grants a :melee: unit. Melee units gain +30 :attack: while standing on a rural tile.', { sub: ['rural'] }),
     N('Dragoons', 'cavalry', 'Grants a :cavalry: unit. Cavalry gain +1 range and +15 :attack:.'),
   ],
-  // — Industrial —
+  // — Industrial — the line, the rifle, the levée, the ironclad
   [
     N('Bayonets', 'melee', 'Grants a :melee: unit. Melee attacks apply bleed, costing the target 1% of its :defense: per turn.', { sub: ['bleed'] }),
     N('Rifling', 'melee', 'Grants a :melee: unit. Melee units gain +1 range.', { sub: ['range_stat'] }),
     N('Levee en Masse', 'melee', 'Grants 3 :melee: units and 2 :cavalry: units.'),
+    N('Guerilla Warfare', 'melee', 'Grants a :melee: unit. Melee units gain +30 :attack: while standing on a rural tile.', { sub: ['rural'] }),
     N('Triage', 'command', 'Grants a :utility: command unit. Units inside a command radius recover 5% :defense: every turn.', { sub: ['command_unit', 'command_radius'] }),
     N('Foreign Legion', 'command', 'Mercenaries you hire arrive with +2 upgrade levels.', { sub: ['mercenary', 'upgrade_level'] }),
     N('Ballistics', 'ranged', 'Increases the :attack: of all :ranged: units by 25. Creates a ranged unit.'),
     N('Scorched Earth', 'policy', 'Whenever an enemy razes one of your tiles it takes 5% :defense: damage.', { sub: ['raze'] }),
     N('Bombardment', 'naval', 'Grants a :naval: unit. Naval units gain +1 range.'),
   ],
-  // — Modern —
+  // — Modern — the world wars: armour, the carrier, the bomb
   [
     N('Tanks', 'cavalry', 'Grants a :cavalry: unit. Cavalry gain +40 :defense:.'),
     N('Mortars', 'ranged', 'Grants a :ranged: unit. Ranged units now deal area damage.', { sub: ['blast'] }),
     N('Blitzkrieg', 'cavalry', 'Grants a :cavalry: unit. A cavalry unit\'s FIRST attack on a target deals +100% damage.'),
+    N('Urban Warfare', 'melee', 'Grants a :melee: unit. Melee units gain +5 :defense: per adjacent outpost and +1 per adjacent citizen.', { sub: ['outpost', 'citizen'] }),
     N('Submarines', 'naval', 'Grants a :naval: unit. Naval units can no longer be destroyed by enemies.'),
     N('Aircraft Carriers', 'naval', 'Grants an :aerial: unit. Aerial units may be placed on water tiles and take every bonus that applies to :naval: units.'),
     N('Air Support', 'aerial', 'Grants an :aerial: unit. Aerial units gain +1 range and +15 :attack:.'),
     N('Kamikaze', 'aerial', 'Grants an :aerial: unit. Aerial units gain +20 :attack: but die after their first attack, exploding for their :attack: in a radius of 1.', { sub: ['blast'] }),
-    N('Urban Warfare', 'melee', 'Grants a :melee: unit. Melee units gain +5 :defense: per adjacent outpost and +1 per adjacent citizen.', { sub: ['outpost', 'citizen'] }),
     N('Megaton Explosives', 'siege', 'Grants a :siege: unit. Siege units gain +40 :attack: and a wider blast radius.', { sub: ['blast'] }),
+    N('Hovercraft', 'cavalry', 'Grants a :cavalry: unit. After attacking, cavalry move again and attack a second time.'),
   ],
-  // — Information —
+  // — Information — the drone, the machine soldier
   [
     N('Drone Warfare', 'cavalry', 'Grants a :cavalry: unit. Cavalry gain +2 :speed:, +25 :attack: and the ability to cross water, but lose 15 :defense:.'),
-    N('Hovercraft', 'cavalry', 'Grants a :cavalry: unit. After attacking, cavalry move again and attack a second time.'),
-    N('Cryo Bombing', 'siege', 'Grants a :siege: unit. Siege units take one turn longer to fire, but their damage stuns for a turn.', { sub: ['stun'] }),
     N('Terminators', 'melee', 'Grants a :melee: unit. Melee units execute any enemy below 10% health.'),
     N('Clone Armies', 'melee', 'At the end of every combat, receive a :melee: unit.'),
-    N('Magnetic Deflectors', 'fort', 'Grants a :fort: fortification. Fortifications gain +40 :defense:.', { sub: ['fortification'] }),
+    N('Cryo Bombing', 'siege', 'Grants a :siege: unit. Siege units take one turn longer to fire, but their damage stuns for a turn.', { sub: ['stun'] }),
   ],
-  // — Solar System —
+  // — Solar System — fighting off Earth
   [
     N('Astral Command', 'astral', 'Grants an :astral: unit and a :utility: command unit. Command units may be placed in space.', { sub: ['command_unit'] }),
+    N('Space Marines', 'melee', 'Grants a :melee: unit. Melee units gain +30 :attack: and +30 :defense: while stationed off Earth.'),
     N('Radiation Occlusion', 'astral', 'Grants an :astral: unit. Astral units gain +50 :defense:.'),
     N('Shield Arrays', 'fort', 'Grants a :fort: fortification. Fortifications may be placed ANYWHERE and repositioned for free.', { sub: ['fortification'] }),
-    N('Space Marines', 'melee', 'Grants a :melee: unit. Melee units gain +30 :attack: and +30 :defense: while stationed off Earth.'),
+    N('Magnetic Deflectors', 'fort', 'Grants a :fort: fortification. Fortifications gain +40 :defense:.', { sub: ['fortification'] }),
     N('Suspensors', 'melee', 'Grants a :melee: unit and a :cavalry: unit. Both classes may now cross mountains.'),
   ],
-  // — Extrasolar —
+  // — Extrasolar — interstellar warships
   [
     N('Ion Torpedoes', 'astral', 'Grants an :astral: unit. Astral units gain +100 :attack: and +1 range.'),
     N('Ion Shields', 'astral', 'Grants 2 :astral: units. Astral units gain +100 :defense:.'),
@@ -192,7 +223,7 @@ const MILITARY = [
     N('Adaptive Troops', 'melee', 'Grants an :astral:, a :melee: and a :naval: unit. Every unit gains +1 :attack: each turn of combat.'),
     N('Superhumanity', 'melee', 'Every citizen in a city produces +1 :production:. Grants a :melee: unit; melee units gain +20 :attack:, +20 :defense:, +1 :speed:, and may enter space.', { sub: ['citizen'] }),
   ],
-  // — Galactic —
+  // — Galactic — exotic matter and fleet actions
   [
     N('Galactic Armada', 'astral', 'Grants 4 :astral: units. Astral units gain +10% :attack: for each adjacent astral unit.'),
     N('Liminite Weaponry', 'weapon', 'All units gain +30 :attack:. Grants a :ranged: unit.'),
@@ -206,50 +237,49 @@ const MILITARY = [
 // TECHNOLOGY — measurement, materials, vision, flight, the far future
 // ---------------------------------------------------------------------------
 const TECHNOLOGY = [
-  // — Ancient —
+  // — Ancient — counting, the lunar calendar, knowing the next valley
   [
     N('Scouting', 'vision', 'Increases vision range across the Old World.', { sub: ['vision', 'old_world'] }),
     N('Mathematics', 'progress', 'Reduces the cost of all future :progress: thresholds by 3%.'),
     N('Calendar', 'policy', 'Increases the length of each era by 5 ticks.'),
   ],
-  // — Bronze —
+  // — Bronze — rope-stretchers, Babylonian star tables, the workshop
   [
     N('Surveying', 'vision', 'Increases vision further across the Old World.', { sub: ['vision', 'old_world'] }),
     N('Astronomy', 'building', 'Unlocks the observatory, buildable on mountains only.', { sub: ['observatory', 'reroll'] }),
     N('Machinery', 'building', 'Unlocks the workshop building.', { sub: ['workshop'] }),
-    N('Algebra', 'progress', 'Reduces the cost of all future :progress: thresholds by 5%.'),
   ],
-  // — Classical —
+  // — Classical — the Silk Road, the arch, blown glass, the deep hull
   [
     N('Silk Road', 'vision', 'Completes your vision of the Old World.', { sub: ['vision', 'old_world'] }),
     N('Celestial Navigation', 'vision', 'Extends vision out to the islands.', { sub: ['vision'] }),
     N('Arches', 'building', 'Unlocks the aqueduct, placed between a mountain and a city.', { sub: ['aqueduct', 'city'] }),
     N('Glassblowing', 'building', 'Unlocks the glassworks.', { sub: ['glassworks'] }),
-    N('Optics', 'naval', 'Grants a :naval: unit and increases naval :speed: by 1.'),
     N('Shipbuilding', 'building', 'Grants a :naval: unit and unlocks the wharf.', { sub: ['wharf'] }),
   ],
-  // — Medieval —
+  // — Medieval — al-Khwarizmi, the compass, the mechanical clock, Gothic stone
   [
+    N('Algebra', 'progress', 'Reduces the cost of all future :progress: thresholds by 5%.'),
+    N('Optics', 'naval', 'Grants a :naval: unit and increases naval :speed: by 1.'),
     N('Compass', 'vision', 'Extends vision to the coast of the New World.', { sub: ['vision', 'new_world'] }),
     N('Clocks', 'policy', 'Increases the length of each era by 5 ticks.'),
     N('Flying Buttress', 'fort', 'Grants a :fort: fortification. Every fortification produces :progress: equal to its :defense: at the end of each era.', { sub: ['fortification'] }),
-    N('Chemistry', 'siege', 'Grants a :siege: unit. Siege units gain +1 range.'),
-    N('Espionage', 'building', 'Unlocks the decoy building.', { sub: ['decoy'] }),
   ],
-  // — Renaissance —
+  // — Renaissance — Mercator, Bacon, Newton, Boyle, Walsingham
   [
     N('Cartography', 'vision', 'Extends vision across the whole New World.', { sub: ['vision', 'new_world'] }),
     N('Scientific Method', 'building', 'Unlocks the laboratory building.', { sub: ['laboratory'] }),
     N('Calculus', 'progress', 'Grants a :siege: unit and lowers all future :progress: thresholds by 8%.'),
+    N('Chemistry', 'siege', 'Grants a :siege: unit. Siege units gain +1 range.'),
+    N('Espionage', 'building', 'Unlocks the decoy building.', { sub: ['decoy'] }),
   ],
-  // — Industrial —
+  // — Industrial — interchangeable parts, the engine, the wireless
   [
+    N('Replaceable Parts', 'building', 'Unlocks the hangar and grants an :aerial: unit.', { sub: ['hangar'] }),
     N('Combustion', 'weapon', 'Increases the :attack: of all units by 15. Grants a :naval: unit.'),
     N('Radio', 'policy', 'Increases the range of every ranged EFFECT by 1 — auras, command radii, building ranges.', { sub: ['command_radius'] }),
-    N('Replaceable Parts', 'building', 'Unlocks the hangar and grants an :aerial: unit.', { sub: ['hangar'] }),
-    N('Renewable Energy', 'building', 'Unlocks the hydroelectric dam, the solar panel farm and the geothermal plant — one per terrain.', { sub: ['hydro_dam', 'solar_farm', 'geothermal'] }),
   ],
-  // — Modern —
+  // — Modern — powered flight to Sputnik and Apollo
   [
     N('Flight', 'aerial', 'Unlocks :aerial: units — very fast, planet-bound until a later tech gives them space.', { sub: ['speed_stat'] }),
     N('Aerodynamics', 'aerial', 'Grants an :aerial: unit. Aerial units gain +2 :speed:.'),
@@ -258,28 +288,28 @@ const TECHNOLOGY = [
     N('Commercial Air Travel', 'building', 'Unlocks the airport and grants an :aerial: unit.', { sub: ['airport'] }),
     N('Supersonics', 'aerial', 'Grants an :aerial: unit. Aerial units gain +2 :speed:.'),
     N('Automation', 'building', 'Unlocks the skunkworks building.', { sub: ['skunkworks', 'reroll'] }),
-    N('Fracking', 'policy', 'Reduces the base yield of every rural tile by 1, but increases all yields by 10%.', { sub: ['rural', 'base_yield'] }),
+    N('Satellites', 'astral', 'Unlocks :astral: units and extends vision to the first ring of space tiles.', { sub: ['vision', 'space_tile'] }),
+    N('Space Race', 'vision', 'Extends vision to the Moon.', { sub: ['vision'] }),
   ],
-  // — Information —
+  // — Information — the microprocessor and everything after it
   [
     N('Microprocessors', 'policy', 'Increases the length of each era by 5 ticks.'),
     N('Cloud Computing', 'building', 'Unlocks the data center building.', { sub: ['data_center'] }),
     N('Artificial General Intelligence', 'policy', 'All outputs +10%, but the enemy budget grows 25% faster.'),
     N('Butlerian Jihad', 'policy', 'All outputs −10%, but the enemy budget grows 25% slower.'),
     N('Stealth', 'aerial', 'Grants an :aerial: unit. Aerial units have a 25% chance to avoid an incoming attack.'),
+    N('Railguns', 'ranged', 'Grants a :ranged: unit. Ranged units gain +30 :attack:.'),
+    N('High Fidelity Combat Sims', 'policy', 'Every 20 ticks, all units gain +1 :attack:.'),
     N('Cloning', 'city', 'Whenever a city gains a citizen, it gains a second one.', { sub: ['citizen', 'city'] }),
     N('Semaglutides', 'food', 'Decreases all future :food: thresholds by 20%.'),
     N('3D Printing', 'building', 'Unlocks the 3D printer building.', { sub: ['printer3d', 'outpost'] }),
-    N('High Fidelity Combat Sims', 'policy', 'Every 20 ticks, all units gain +1 :attack:.'),
-    N('Railguns', 'ranged', 'Grants a :ranged: unit. Ranged units gain +30 :attack:.'),
-    N('Rapid Reconstruction', 'policy', 'Enemies can no longer raze your buildings.', { sub: ['raze'] }),
-  ],
-  // — Solar System —
-  [
-    N('Satellites', 'astral', 'Unlocks :astral: units and extends vision to the first ring of space tiles.', { sub: ['vision', 'space_tile'] }),
-    N('Space Race', 'vision', 'Extends vision to the Moon.', { sub: ['vision'] }),
+    N('Fracking', 'policy', 'Reduces the base yield of every rural tile by 1, but increases all yields by 10%.', { sub: ['rural', 'base_yield'] }),
+    N('Renewable Energy', 'building', 'Unlocks the hydroelectric dam, the solar panel farm and the geothermal plant — one per terrain.', { sub: ['hydro_dam', 'solar_farm', 'geothermal'] }),
     N('Advanced Propulsion', 'vision', 'Extends vision to Mars.', { sub: ['vision'] }),
     N('Reusable Rockets', 'vision', 'Extends vision across the full solar system.', { sub: ['vision'] }),
+  ],
+  // — Solar System — living and building off Earth
+  [
     N('Solar Sails', 'astral', 'Grants an :astral: unit. Astral units gain +1 :speed:.'),
     N('Orbital Assembly', 'building', 'Unlocks the spaceport, placed adjacent to a planetary tile.', { sub: ['spaceport'] }),
     N('Orbital Bombardment', 'astral', 'Grants an :astral: unit. Astral range over planet tiles increases by 2.'),
@@ -288,22 +318,23 @@ const TECHNOLOGY = [
     N('Gravity Boots', 'building', 'Unlocks the zero-G laboratory.', { sub: ['zerograv_lab', 'space_tile'] }),
     N('Helium-3', 'building', 'Unlocks the helium-3 mine, buildable on the Moon or Mars.', { sub: ['helium3_mine'] }),
     N('Fusion Power', 'building', 'Unlocks the fusion plant.', { sub: ['fusion_plant', 'upgrade_level'] }),
+    N('Rapid Reconstruction', 'policy', 'Enemies can no longer raze your buildings.', { sub: ['raze'] }),
   ],
-  // — Extrasolar —
+  // — Extrasolar — crossing to another star, and what we become to do it
   [
     N('Lightspeed Acceleration', 'vision', 'Extends vision to the exoplanet.', { sub: ['vision', 'exoplanet'] }),
     N('Warp Drive', 'astral', 'Grants an :astral: unit. Astral units have infinite :speed:.'),
     N('Von Neumann Craft', 'astral', 'Grants an :astral: unit — and another at the end of every combat.'),
     N('Tightbeams', 'building', 'Unlocks the interplanetary beacon — built in pairs, they weld two distant neighbourhoods into one.', { sub: ['beacon'] }),
-    N('Planetogenesis', 'settle', 'Creates a planet tile and immediately puts an outpost on it.', { sub: ['outpost'] }),
     N('Biological Immortality', 'food', 'Doubles :food: output everywhere. :melee: and :ranged: units gain +25 :defense:.'),
     N('Cortical Stacks', 'gold', 'All :food: output becomes :gold:. Each combat ends with 3 expansion events, and a fallen unit respawns 10 turns later on a tile you control.', { sub: ['expansion_event'] }),
     N('Consciousness Upload', 'city', 'Cities grow enormously faster, but every tile produces 1 less :production:.', { sub: ['city'] }),
     N('Biological Ascendancy', 'policy', 'Military units gain +25% :attack: and +25% :defense:. All future :food: thresholds rise 10%.'),
     N('Human Purity', 'policy', 'Every Earth tile gains +1 base yield; every non-Earth base yield is halved.', { sub: ['base_yield'] }),
   ],
-  // — Galactic —
+  // — Galactic — making worlds, unmaking time
   [
+    N('Planetogenesis', 'settle', 'Creates a planet tile and immediately puts an outpost on it.', { sub: ['outpost'] }),
     N('Artificial Singularity', 'settle', 'Creates a singularity tile and puts an outpost on it. Enemies moving beside a singularity take 5% :defense: damage.', { sub: ['outpost'] }),
     N('Tachyons', 'ranged', 'Grants a :ranged: unit. Ranged units have infinite range; enemies inside their ordinary range take double damage instead.', { sub: ['range_stat'] }),
     N('Time Travel', 'policy', 'Doubles the length of every era.'),
@@ -319,7 +350,7 @@ const TECHNOLOGY = [
 // ECONOMY — terrain, territory, trade, the sea, and settling the rest of space
 // ---------------------------------------------------------------------------
 const ECONOMY = [
-  // — Ancient —
+  // — Ancient — fire, farming, the first mines and pots, needle and thread
   [
     N('Fire', 'city', 'Enables the establishment of cities.', { sub: ['city'] }),
     N('Foraging', 'food', 'Increases the :food: yield of forests.'),
@@ -327,45 +358,43 @@ const ECONOMY = [
     N('Mining', 'production', 'Increases the :production: yield of hills and mountains.'),
     N('Timbering', 'production', 'Increases the :production: yield of forests by 1.'),
     N('Pottery', 'building', 'Unlocks the granary building.', { sub: ['granary'] }),
+    N('Sewing', 'settle', 'Enables outposts in tundra.', { sub: ['outpost'] }),
+    N('Yakhchals', 'settle', 'Enables outposts in deserts.', { sub: ['outpost'] }),
   ],
-  // — Bronze —
+  // — Bronze — the wheel, the sail, the terrace, the brewery
   [
     N('The Wheel', 'road', 'Lays roads between your cities by the shortest route — mountains count triple. Every tile on or beside a road gains +1 :gold:.', { sub: ['city'] }),
     N('Sailing', 'naval', 'Unlocks :naval: units, which may be melee or ranged depending on what you take.'),
-    N('Currency', 'building', 'Unlocks the market building.', { sub: ['market', 'citizen'] }),
-    N('Yakhchals', 'settle', 'Enables outposts in deserts.', { sub: ['outpost'] }),
-    N('Sewing', 'settle', 'Enables outposts in tundra.', { sub: ['outpost'] }),
     N('Terracing', 'food', 'Increases the :food: yield of mountains and hills by 2.'),
-  ],
-  // — Classical —
-  [
-    N('Caravansaries', 'gold', 'Outposts generate +2 :gold:.', { sub: ['outpost'] }),
-    N('Milling', 'building', 'Unlocks the windmill building.', { sub: ['windmill', 'rural'] }),
-    N('Naval Trade', 'building', 'Unlocks the harbor building.', { sub: ['harbor'] }),
-    N('Mountaineering', 'settle', 'Allows outposts on mountains.', { sub: ['outpost'] }),
-    N('Crop Rotation', 'food', 'Increases the :food: output of plains by 2.'),
     N('Fermentation', 'building', 'Unlocks the plantation building.', { sub: ['plantation'] }),
   ],
-  // — Medieval —
+  // — Classical — coinage, the caravan road, the deep harbour
   [
-    N('Deep Water Navigation', 'naval', 'Increases the :speed: of :naval: units by 1. Grants a naval unit.'),
-    N('Clinker Construction', 'naval', 'Naval units may enter the open ocean. Grants a naval unit.'),
+    N('Currency', 'building', 'Unlocks the market building.', { sub: ['market', 'citizen'] }),
+    N('Caravansaries', 'gold', 'Outposts generate +2 :gold:.', { sub: ['outpost'] }),
+    N('Naval Trade', 'building', 'Unlocks the harbor building.', { sub: ['harbor'] }),
+  ],
+  // — Medieval — the windmill, three-field rotation, the bank, the guild
+  [
+    N('Milling', 'building', 'Unlocks the windmill building.', { sub: ['windmill', 'rural'] }),
+    N('Crop Rotation', 'food', 'Increases the :food: output of plains by 2.'),
     N('Banking', 'building', 'Unlocks the bank building.', { sub: ['bank'] }),
     N('Guilds', 'building', 'Unlocks the guildhall building.', { sub: ['guildhall'] }),
     N('Feudalism', 'settle', 'Increases the outpost multiplier by 1 — a doubling becomes a tripling.', { sub: ['outpost'] }),
-    N('Skiing', 'gold', 'Mountains gain +5 :gold: yield.'),
+    N('Deep Water Navigation', 'naval', 'Increases the :speed: of :naval: units by 1. Grants a naval unit.'),
+    N('Clinker Construction', 'naval', 'Naval units may enter the open ocean. Grants a naval unit.'),
   ],
-  // — Renaissance —
+  // — Renaissance — the crossing, and everything that came back across it
   [
     N('Colonialism', 'building', 'Unlocks the hacienda, built in the New World.', { sub: ['hacienda', 'new_world'] }),
-    N('Piracy', 'naval', 'Grants a :naval: unit. Naval units produce :gold: equal to half their :attack: every time they attack.'),
-    N('Admiralty', 'naval', 'Grants a :naval: unit and a :utility: command unit. Command units may be placed in water.', { sub: ['command_unit'] }),
     N('Columbian Exchange', 'building', 'Buildings outside the Old World produce +5 :gold:. Unlocks the colonial office.', { sub: ['colonial_office', 'old_world'] }),
     N('Potatoes', 'food', 'Plains in the New World gain +5 :food:.', { sub: ['new_world'] }),
     N('Coffee', 'progress', 'Forests in the New World gain +5 :progress:.', { sub: ['new_world'] }),
     N('Creole Culture', 'settle', 'Units and buildings in the New World gain +2 upgrade levels, and you gain a New World outpost.', { sub: ['new_world', 'upgrade_level'] }),
+    N('Piracy', 'naval', 'Grants a :naval: unit. Naval units produce :gold: equal to half their :attack: every time they attack.'),
+    N('Admiralty', 'naval', 'Grants a :naval: unit and a :utility: command unit. Command units may be placed in water.', { sub: ['command_unit'] }),
   ],
-  // — Industrial —
+  // — Industrial — steam, rail, the factory, and the science of money
   [
     N('Industrialization', 'building', 'Unlocks the factory. Founding a city also builds a factory beside it.', { sub: ['factory', 'city'] }),
     N('Railroad', 'road', 'Upgrades your roads to railroads: +3 :gold: to every tile they touch instead of +1.'),
@@ -373,33 +402,35 @@ const ECONOMY = [
     N('Protectionism', 'gold', 'Reduces building upgrade costs by 40%.', { sub: ['upgrade_level'] }),
     N('Economics', 'gold', 'Immediately upgrades all your :gold: buildings, and raises all :gold: yields by 10%.'),
     N('Laissez-Faire', 'building', 'Unlocks the stock exchange building.', { sub: ['stock_exchange', 'citizen'] }),
+    N('Statistics', 'gold', 'Every building in your civilization produces +2 :gold:.'),
     N('Urbanization', 'city', 'Increases the growth rate of cities.', { sub: ['city'] }),
     N('Sanitation', 'city', 'Increases the growth rate of cities.', { sub: ['city'] }),
-    N('Manifest Destiny', 'settle', 'Building an outpost claims a second ring of territory around it.', { sub: ['outpost'] }),
+    N('Subways', 'city', 'Increases the growth rate of cities.', { sub: ['city'] }),
+    N('Germ Theory', 'building', 'Unlocks the hospital building.', { sub: ['hospital', 'city'] }),
     N('Refrigeration', 'food', 'Increases the :food: output of water tiles by 1. Grants a :naval: unit.'),
-    N('Coast Guard', 'naval', 'Grants a :naval: unit. Buildings gain +1 upgrade level for every adjacent naval unit.', { sub: ['upgrade_level'] }),
+    N('Manifest Destiny', 'settle', 'Building an outpost claims a second ring of territory around it.', { sub: ['outpost'] }),
+    N('Mountaineering', 'settle', 'Allows outposts on mountains.', { sub: ['outpost'] }),
     N('Naturalism', 'food', 'Increases the base yields of all rural tiles by 1.', { sub: ['rural', 'base_yield'] }),
-    N('Statistics', 'gold', 'Every building in your civilization produces +2 :gold:.'),
+    N('Coast Guard', 'naval', 'Grants a :naval: unit. Buildings gain +1 upgrade level for every adjacent naval unit.', { sub: ['upgrade_level'] }),
   ],
-  // — Modern —
+  // — Modern — reconstruction, the suburb, the package holiday
   [
     N('Marshall Plan', 'gold', 'Building repair and upgrade costs drop 30%.', { sub: ['upgrade_level'] }),
     N('Rearmament', 'gold', 'Unit repair and upgrade costs drop 30%.', { sub: ['upgrade_level'] }),
-    N('Subways', 'city', 'Increases the growth rate of cities.', { sub: ['city'] }),
     N('Suburbanization', 'city', 'A city with an adjacent rural tile spawns a second city there once its population reaches 15 — once per city.', { sub: ['city', 'rural'] }),
     N('Immigration', 'city', 'Whenever an Old World city grows, a city outside the Old World grows too.', { sub: ['city', 'old_world'] }),
-    N('Germ Theory', 'building', 'Unlocks the hospital building.', { sub: ['hospital', 'city'] }),
     N('Tourism', 'building', 'Unlocks the tourism office building.', { sub: ['tourism_office', 'wonder'] }),
+    N('Skiing', 'gold', 'Mountains gain +5 :gold: yield.'),
   ],
-  // — Information —
+  // — Information — engineered food, engineered ground, engineered markets
   [
-    N('Predictive Markets', 'building', 'Unlocks the casino building.', { sub: ['casino', 'reroll'] }),
     N('GMOs', 'building', 'Unlocks the megafarm building.', { sub: ['megafarm'] }),
     N('Hydroponics', 'food', 'Every tile that is neither on Earth nor open space produces +2 :food:.', { sub: ['space_tile'] }),
+    N('Predictive Markets', 'building', 'Unlocks the casino building.', { sub: ['casino', 'reroll'] }),
     N('Maglev', 'road', 'Upgrades your railroads to maglev: +8 :gold: to every tile they touch.'),
     N('Artificial Island', 'settle', 'Creates an island tile on an ocean tile with an outpost on it. Doubles all island yields.', { sub: ['outpost'] }),
   ],
-  // — Solar System —
+  // — Solar System — the Moon, Mars and the belt as territory
   [
     N('Vac Living', 'settle', 'Allows outposts in space. They produce 10% of the yields of every adjacent tile.', { sub: ['outpost', 'space_tile'] }),
     N('Off Planet Habitats', 'settle', 'Enables outposts on the Moon, Mars and the exoplanet.', { sub: ['outpost', 'exoplanet'] }),
@@ -409,16 +440,16 @@ const ECONOMY = [
     N('Beltalowda', 'astral', 'Grants an :astral: unit. Astral units beside asteroids gain +20 :attack: and +20 :defense: per adjacent asteroid, and those asteroids gain +10 base :production: per astral unit.'),
     N('Martian Independence', 'settle', 'Grants a :ranged: unit on Mars. All Martian tiles yield 50% more.'),
     N('Terraforming', 'settle', 'Increases the output of Martian and planet tiles.'),
-    N('Spice Harvesting', 'production', 'Desert tiles gain +50 :production:.'),
   ],
-  // — Extrasolar —
+  // — Extrasolar — the exoplanet as a place to live
   [
     N('Cryogenics', 'city', 'Enables cities on the exoplanet.', { sub: ['city', 'exoplanet'] }),
     N('Frontier Cuisine', 'food', 'Increases the base :food: output of every exoplanet tile by 10.', { sub: ['exoplanet', 'base_yield'] }),
     N('Neocolonialism', 'settle', 'Increases all exoplanet yields by 25%.', { sub: ['exoplanet'] }),
+    N('Spice Harvesting', 'production', 'Desert tiles gain +50 :production:.'),
     N('Cold Quantum', 'progress', 'Tundra tiles gain +50 :progress:.'),
   ],
-  // — Galactic —
+  // — Galactic — planets, stars and singularities as real estate
   [
     N('Foldspace', 'settle', 'Enables outposts on planets.', { sub: ['outpost'] }),
     N('Ecumenopolis', 'city', 'Enables cities on planets.', { sub: ['city'] }),
@@ -432,54 +463,55 @@ const ECONOMY = [
 // SOCIETY — religion, government, culture, and the traditions of an army
 // ---------------------------------------------------------------------------
 const SOCIETY = [
-  // — Ancient —
+  // — Ancient — the grave, the shaman, the feast
   [
     N('Burial Rites', 'progress', 'Whenever one of your units dies, gain :progress: equal to its :attack:.'),
-    N('Slavery', 'gold', 'For every 2 enemy units you defeat, permanently gain +1 :gold: per tick.'),
-    N('Festivals', 'policy', 'End-of-combat effects happen one additional time.'),
     N('Mysticism', 'policy', 'Rerolls cost 25% less.', { sub: ['reroll'] }),
+    N('Festivals', 'policy', 'End-of-combat effects happen one additional time.'),
+    N('Slavery', 'gold', 'For every 2 enemy units you defeat, permanently gain +1 :gold: per tick.'),
   ],
-  // — Bronze —
+  // — Bronze — writing, kingship, the temple calendar, the megalith
   [
     N('Writing', 'building', 'Unlocks the library building.', { sub: ['library'] }),
-    N('Holidays', 'building', 'Builds a temple. Temples raise all base outputs by 1 after every combat.', { sub: ['temple', 'base_yield'] }),
     N('Hereditary Rule', 'palace', 'The palace gains +8 :attack: and +30 :defense:.', { sub: ['palace'] }),
-    N('Oligarchy', 'palace', 'The palace produces +4 :gold:.', { sub: ['palace'] }),
+    N('Holidays', 'building', 'Builds a temple. Temples raise all base outputs by 1 after every combat.', { sub: ['temple', 'base_yield'] }),
+    N('Polytheism', 'building', 'Builds a temple. Temples produce 1 :progress: for each adjacent outpost or citizen.', { sub: ['temple', 'outpost', 'citizen'] }),
+    N('Monotheism', 'building', 'Builds a temple. Temples produce 1 :progress:, multiplied by the number of temples you own.', { sub: ['temple'] }),
+    N('Monumentality', 'building', 'Unlocks the monument. Buildings gain +2 upgrade levels for each adjacent wonder.', { sub: ['monument', 'wonder', 'upgrade_level'] }),
   ],
-  // — Classical —
+  // — Classical — the polis, the arena, the legion's paymaster
   [
     N('Drama', 'building', 'Unlocks the theater building.', { sub: ['theater'] }),
     N('Education', 'building', 'Unlocks the university building.', { sub: ['university', 'citizen'] }),
     N('Entertainment', 'building', 'Unlocks the arena building.', { sub: ['arena'] }),
-    N('Monotheism', 'building', 'Builds a temple. Temples produce 1 :progress:, multiplied by the number of temples you own.', { sub: ['temple'] }),
-    N('Polytheism', 'building', 'Builds a temple. Temples produce 1 :progress: for each adjacent outpost or citizen.', { sub: ['temple', 'outpost', 'citizen'] }),
+    N('Senate', 'building', 'Buildings gain +1 upgrade level for each adjacent outpost.', { sub: ['outpost', 'upgrade_level'] }),
+    N('Oligarchy', 'palace', 'The palace produces +4 :gold:.', { sub: ['palace'] }),
+    N('Caste System', 'policy', 'Increases the effect of every upgrade by 10%.', { sub: ['upgrade_level'] }),
     N('Organized Religion', 'building', 'Builds a temple. Your temples produce 1 :gold:.', { sub: ['temple'] }),
     N('Daoism', 'building', 'Builds a temple. Your temples produce 1 :production:.', { sub: ['temple'] }),
     N('Professional Army', 'policy', 'After every combat, all units gain a permanent +1 :attack: and +1 :defense:.'),
     N('Mercenary Army', 'policy', 'Mercenaries cost less to recruit and arrive with +1 upgrade level.', { sub: ['mercenary', 'upgrade_level'] }),
     N('Praetorian Guard', 'palace', 'Grants a :melee: unit. The palace gains +20 :defense: and +10 :attack:.', { sub: ['palace'] }),
     N('Imperial Guard', 'palace', 'Increases the damage the palace deals by 40.', { sub: ['palace'] }),
-    N('Senate', 'building', 'Buildings gain +1 upgrade level for each adjacent outpost.', { sub: ['outpost', 'upgrade_level'] }),
-    N('Caste System', 'policy', 'Increases the effect of every upgrade by 10%.', { sub: ['upgrade_level'] }),
   ],
-  // — Medieval —
+  // — Medieval — the cathedral, the crusade, the knight's code, fireworks
   [
     N('Theology', 'building', 'Grants 2 temples.', { sub: ['temple'] }),
     N('Crusade', 'building', 'Builds a temple and creates a :melee: unit.', { sub: ['temple'] }),
     N('Pilgrimage', 'building', 'Builds a temple. At the end of combat each temple produces :progress: equal to the distance to the next nearest temple.', { sub: ['temple'] }),
-    N('Absolute Monarchy', 'palace', 'Building output rises 100%, reduced by 10% for each tile away from the palace.', { sub: ['palace'] }),
     N('Trial by Jury', 'building', 'Unlocks the courthouse building.', { sub: ['courthouse'] }),
-    N('Monumentality', 'building', 'Unlocks the monument. Buildings gain +2 upgrade levels for each adjacent wonder.', { sub: ['monument', 'wonder', 'upgrade_level'] }),
     N('Chivalry', 'cavalry', 'Grants a :cavalry: unit. Cavalry retreat to a safe tile after attacking, given the :speed: and somewhere to go.'),
     N('Bushido', 'melee', 'Grants a :melee: unit. Melee units gain +10 :defense:, and +50% :attack: while below half :defense:.'),
     N('Haka', 'melee', 'Grants a :melee: unit. Melee units gain +10 :defense: and taunt enemies.', { sub: ['taunt'] }),
     N('Diplomatic Marriage', 'policy', 'The first mercenary you hire each combat is free.', { sub: ['mercenary'] }),
+    N('Fireworks', 'gold', 'At the end of each era, gain +10 :gold: for every citizen in your empire.', { sub: ['citizen'] }),
   ],
-  // — Renaissance —
+  // — Renaissance — the Reformation, the court, the drill, the embassy
   [
     N('Reformation', 'building', 'Grants a temple. Temples produce double :progress:.', { sub: ['temple'] }),
     N('Schism', 'building', 'Grants a temple and a :ranged: unit.', { sub: ['temple'] }),
     N('Religious Tolerance', 'building', 'Builds a temple. Your temples produce 1 :food:.', { sub: ['temple'] }),
+    N('Absolute Monarchy', 'palace', 'Building output rises 100%, reduced by 10% for each tile away from the palace.', { sub: ['palace'] }),
     N('Opera', 'building', 'Unlocks the opera house building.', { sub: ['opera_house'] }),
     N('Architecture', 'progress', 'Every building in your civilization produces +1 :progress:.'),
     N('Military Science', 'policy', 'At the end of each combat, a random unit or building is upgraded.', { sub: ['upgrade_level'] }),
@@ -487,44 +519,43 @@ const SOCIETY = [
     N('Native Diplomacy', 'policy', 'Mercenaries cost 50% less in the New World and arrive with +1 upgrade level.', { sub: ['mercenary', 'new_world'] }),
     N('Diplomatic Corps', 'policy', 'Reduces the cost of hiring mercenaries by 25%.', { sub: ['mercenary'] }),
   ],
-  // — Industrial —
+  // — Industrial — revolution, nation, bureaucracy, the museum
   [
     N('Revolution', 'settle', 'Creates a :melee:, a :ranged: and a :cavalry: unit in the New World. New World units produce +3 :progress:.', { sub: ['new_world'] }),
     N('Empire', 'palace', 'Increases palace yields by 50%.', { sub: ['palace'] }),
-    N('Atheism', 'building', 'Temple output becomes :production:, and is doubled.', { sub: ['temple'] }),
-    N('Evangelism', 'building', 'At the end of every other combat, receive a temple.', { sub: ['temple'] }),
-    N('Civil Service', 'city', 'Increases total city output by 5% and grants a :utility: command unit.', { sub: ['city', 'command_unit'] }),
+    N('Federalism', 'city', 'Building output rises 30%, reduced by 10% for each tile away from the nearest city.', { sub: ['city'] }),
+    N('Nationalism', 'cavalry', 'Grants a :cavalry: unit. All units gain +60 :attack:, less 6 for every tile they stand from the palace — it goes negative.', { sub: ['palace'] }),
     N('Jeffersonian Ideal', 'progress', 'Increases the base :progress: output of every tile by 1.', { sub: ['base_yield'] }),
     N('Hamiltonian Ideal', 'progress', 'Doubles the :progress: output of all cities.', { sub: ['city'] }),
     N('Transcendentalism', 'progress', 'Increases the :progress: of every rural tile by 1.', { sub: ['rural'] }),
-    N('Nationalism', 'cavalry', 'Grants a :cavalry: unit. All units gain +60 :attack:, less 6 for every tile they stand from the palace — it goes negative.', { sub: ['palace'] }),
+    N('Civil Service', 'city', 'Increases total city output by 5% and grants a :utility: command unit.', { sub: ['city', 'command_unit'] }),
+    N('Census', 'progress', 'At the end of combat, gain +1 :progress: for every citizen in your civilization.', { sub: ['citizen'] }),
     N('Military Tribunals', 'policy', 'Whenever a unit dies it permanently gains +5 :defense:.'),
     N('Natural History', 'building', 'Unlocks the museum building.', { sub: ['museum'] }),
-    N('Census', 'progress', 'At the end of combat, gain +1 :progress: for every citizen in your civilization.', { sub: ['citizen'] }),
+    N('Atheism', 'building', 'Temple output becomes :production:, and is doubled.', { sub: ['temple'] }),
+    N('Evangelism', 'building', 'At the end of every other combat, receive a temple.', { sub: ['temple'] }),
   ],
-  // — Modern —
+  // — Modern — the ideological century, and the music that came with it
   [
     N('Democracy', 'policy', 'Increases all :progress: and :gold: outputs by 15%.'),
     N('Communism', 'policy', 'Increases all :production: and :food: outputs by 15%.'),
     N('Fascism', 'policy', 'Increases all unit :attack: and :defense: by 15%.'),
-    N('Federalism', 'city', 'Building output rises 30%, reduced by 10% for each tile away from the nearest city.', { sub: ['city'] }),
     N('Isolationism', 'city', 'Old World cities produce 15% more.', { sub: ['city', 'old_world'] }),
     N('Autarky', 'palace', 'The palace receives +30 :progress:, :gold: and :production:.', { sub: ['palace'] }),
     N('Propaganda', 'palace', 'Whenever a unit dies, the palace permanently gains +1 :gold: and +1 :production:.', { sub: ['palace'] }),
     N('Pacifism', 'policy', 'All unit :attack: is halved, but all :food: thresholds drop 30%.'),
     N('Total War', 'policy', 'All unit :attack: rises 50%, but all :progress: thresholds rise 20%.'),
-    N('Rock and Roll', 'gold', 'All citizens gain +3 :gold: yield.', { sub: ['citizen'] }),
+    N('Avant-Garde', 'palace', 'The palace produces +50 :progress:.', { sub: ['palace'] }),
     N('Jazz', 'progress', 'All citizens gain +1 :progress: yield.', { sub: ['citizen'] }),
     N('Country', 'settle', 'Outpost tiles gain +1 base yield for each surrounding rural tile.', { sub: ['outpost', 'rural'] }),
+    N('Rock and Roll', 'gold', 'All citizens gain +3 :gold: yield.', { sub: ['citizen'] }),
+    N('Folk', 'settle', 'Rural tiles gain +1 to their base yields.', { sub: ['rural', 'base_yield'] }),
     N('Funk', 'food', 'All citizens gain +1 :food: yield.', { sub: ['citizen'] }),
     N('Techno', 'production', 'All citizens gain +1 :production: yield.', { sub: ['citizen'] }),
-    N('Folk', 'settle', 'Rural tiles gain +1 to their base yields.', { sub: ['rural', 'base_yield'] }),
   ],
-  // — Information —
-  [
-    N('Avant-Garde', 'palace', 'The palace produces +50 :progress:.', { sub: ['palace'] }),
-    N('Fireworks', 'gold', 'At the end of each era, gain +10 :gold: for every citizen in your empire.', { sub: ['citizen'] }),
-  ],
+  // — Information — EMPTY. The design has no culture or government material for
+  //   the internet century yet; the TBD slots are the honest way to say so.
+  [],
   // — Solar System —
   [
     N('Earth Dominance', 'palace', 'The palace produces +1 :gold: and gains +1 :attack: for every non-Earth tile you control.', { sub: ['palace'] }),
@@ -545,7 +576,8 @@ const TREE = { economy: ECONOMY, society: SOCIETY, military: MILITARY, technolog
 
 // ---------------------------------------------------------------------------
 // EXCLUSIVITY — hand-listed, and only where the choice is a real fork.
-// Members must share a quadrant AND a ring; taking one kills the rest.
+// Members must share a quadrant AND a ring; taking one kills the rest. Four
+// techs are placed off their date to keep a group together — see the header.
 // ---------------------------------------------------------------------------
 const EXCLUSIVE = {
   economy: [
@@ -554,6 +586,7 @@ const EXCLUSIVE = {
     ['Yakhchals', 'Sewing'],
     ['Capitalism', 'Protectionism'],
     ['Marshall Plan', 'Rearmament'],
+    ['Spice Harvesting', 'Cold Quantum'],
   ],
   society: [
     ['Professional Army', 'Mercenary Army'],
@@ -667,8 +700,8 @@ for (const n of PROGRESS_NODES) {
  * How many nodes of ring `r` must be taken before ring `r+1` appears.
  *
  * Derived from what the ring actually holds — rings are ages, so they are
- * deliberately unequal (17 nodes in Ancient, 39 in Modern) and a fixed number
- * would be a stroll through one and a wall in another.
+ * deliberately unequal and a fixed number would be a stroll through one and a
+ * wall in another.
  */
 export const ringUnlock = (ring) => Math.max(4, Math.round((ringRealCount[ring] ?? 0) * 0.4))
 
@@ -695,10 +728,10 @@ export const MAX_RING = RING_AGES.length - 1
 
 // RING0/RING_STEP are sized by the FULLEST ring, not by taste: a quadrant-ring
 // of k nodes spreads them over 90°, so the arc between two of them is
-// R·(π/2)/(k+1) and must clear NODE_SIZE. Society's Classical ring (13 nodes +
-// TBDs) is the binding constraint on the inside; `validateStructure` checks all
-// of them, so shrink these only if the sim still passes.
-export const RING0 = 460
+// R·(π/2)/(k+1) and must clear NODE_SIZE. Economy's Ancient ring (8 techs + a
+// TBD, at the smallest radius) is the binding constraint; `validateStructure`
+// checks every ring, so shrink these only if the sim still passes.
+export const RING0 = 520
 export const RING_STEP = 215
 export const NODE_SIZE = 72 // hexagon width in content px
 
