@@ -1,11 +1,12 @@
 import { useRef, useEffect, useLayoutEffect } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import {
-  LAID_OUT, LAID_OUT_BY_ID, QUADRANT_LIST, RING_UNLOCK, MAX_RING,
-  NODE_SIZE, extentFor, ringRadius,
+  LAID_OUT, LAID_OUT_BY_ID, QUADRANT_LIST, ringUnlock, MAX_RING,
+  NODE_SIZE, extentFor, ringRadius, edgePath,
 } from '../../game/data/progress.js'
 import InfoTip from '../common/InfoTip.jsx'
 import IconText from '../common/IconText.jsx'
+import DefChips from './DefChips.jsx'
 import './ProgressTree.css'
 
 const FIT_PADDING = 0.9
@@ -19,12 +20,12 @@ const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2
 /**
  * The progress web: a radial tree that grows outward.
  *
- * Rings unlock by count (RING_UNLOCK nodes taken from the ring inside), and a
- * ring that has not unlocked is not drawn at all — so the web literally expands
- * as the civ develops. The four quadrants each own a 90° sector.
+ * Rings unlock by count (`ringUnlock(r)` nodes taken from the ring inside), and
+ * a ring that has not unlocked is not drawn at all — so the web literally
+ * expands as the civ develops. The four quadrants each own a 90° sector.
  *
  * Camera is the same pattern as HexMap: it lives in a ref and is applied
- * imperatively, so pan/zoom never re-render the 72 nodes. Opening a new ring
+ * imperatively, so pan/zoom never re-render the ~300 nodes. Opening a new ring
  * animates a zoom-out to the new fit.
  *
  * State colours: green = taken, blue = available, grey = locked. A locked node
@@ -41,8 +42,9 @@ export default function ProgressTree({ onClose }) {
   const dragRef = useRef(null)
   const didMountRef = useRef(false)
 
-  // Not memoised: 72 nodes, and useGame() already re-renders on every emit, so a
-  // memo would only add a way to go stale.
+  // Not memoised: useGame() already re-renders on every emit, so a memo would
+  // only add a way to go stale. `progressState` is cheap because `chosenInRing`
+  // is cached in the manager — without that this filter would be O(nodes²).
   const shown = LAID_OUT.filter((n) => game.progressState(n) !== 'hidden')
   const extent = extentFor(visibleRing)
   const size = extent * 2
@@ -191,6 +193,8 @@ export default function ProgressTree({ onClose }) {
   }
 
   // --- edges ----------------------------------------------------------------
+  // Curves, not chords: an edge interpolates radius AND angle, so it stays in
+  // its own annulus and can never cross another (see `edgePoints`).
   const edges = []
   for (const n of shown) {
     for (const pid of n.prereqs) {
@@ -198,7 +202,7 @@ export default function ProgressTree({ onClose }) {
       if (!p) continue
       edges.push({
         id: `${pid}->${n.id}`,
-        x1: p.x, y1: p.y, x2: n.x, y2: n.y,
+        d: edgePath(p, n),
         live: game.progress.has(pid),
         dead: game.progressState(n) === 'locked' && !game.progress.has(pid),
       })
@@ -214,7 +218,7 @@ export default function ProgressTree({ onClose }) {
           <h2>Progress</h2>
           <span className="tree-sub">
             {game.progress.size} taken
-            {visibleRing < MAX_RING && <> · ring {visibleRing + 2} opens at {towardNext}/{RING_UNLOCK}</>}
+            {visibleRing < MAX_RING && <> · ring {visibleRing + 2} opens at {towardNext}/{ringUnlock(visibleRing)}</>}
           </span>
         </div>
         <div className="tree-head-actions">
@@ -238,9 +242,9 @@ export default function ProgressTree({ onClose }) {
               <circle key={r} className="tree-ring" cx={0} cy={0} r={ringRadius(r)} />
             ))}
             {edges.map((e) => (
-              <line key={e.id}
+              <path key={e.id}
                 className={`tree-edge${e.live ? ' live' : ''}${e.dead ? ' dead' : ''}`}
-                x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} />
+                d={e.d} />
             ))}
           </svg>
 
@@ -258,8 +262,9 @@ export default function ProgressTree({ onClose }) {
             )
           })}
 
-          {/* Fire: where civilization starts, so the web grows out of it. */}
-          <div className="tree-hub" style={{ left: extent, top: extent }}><span>Fire</span></div>
+          {/* The palace: where the civilization starts, so the web grows out of it.
+              (Fire itself is now a node — the Economy tech that permits cities.) */}
+          <div className="tree-hub" style={{ left: extent, top: extent }}><span>Palace</span></div>
 
           {shown.map((n) => {
             const state = game.progressState(n)
@@ -269,11 +274,15 @@ export default function ProgressTree({ onClose }) {
                 className={`tree-node-anchor q-${n.quadrant}`}
                 style={{ left: extent + n.x, top: extent + n.y }}
                 title={n.name}
+                // Interactive so the definition chips inside can be hovered —
+                // a plain tooltip has pointer-events: none and would vanish.
+                interactive
                 text={
                   <div className="tree-tip">
                     <div className="tree-tip-kind">{n.kind}</div>
-                    <div className="tree-tip-unlocks">Unlocks <b>{n.unlocks}</b></div>
+                    <div className="tree-tip-unlocks">Unlocks <IconText>{n.unlocks}</IconText></div>
                     <div className="tree-tip-effect"><IconText>{n.effect}</IconText></div>
+                    <DefChips keys={n.sub} />
                     {n.excludes.length > 0 && (
                       <div className="tree-tip-fork">
                         Taking this rules out {n.excludes.map((id) => LAID_OUT_BY_ID.get(id)?.name).join(', ')}

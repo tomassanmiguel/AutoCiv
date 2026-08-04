@@ -75,17 +75,21 @@
 .tree-divider { stroke: rgba(255, 255, 255, 0.05); stroke-width: 1; }
 .tree-ring { fill: none; stroke: rgba(255, 255, 255, 0.045); stroke-width: 1; }
 
+/* Edges are <path> curves, not <line>s — `fill: none` or each one paints a
+   filled wedge back to the origin. */
 .tree-edge {
+  fill: none;
   stroke: rgba(150, 160, 185, 0.28);
   stroke-width: 2;
+  stroke-linecap: round;
   transition: stroke 0.25s ease;
 }
 .tree-edge.live { stroke: rgba(126, 200, 120, 0.6); stroke-width: 2.5; }
 .tree-edge.dead { stroke: rgba(120, 128, 150, 0.14); stroke-dasharray: 4 5; }
 
 /* --- hub + labels --------------------------------------------------------- */
-/* The hub is Fire — a green hexagon matching the node shape, since every branch
-   of the web grows out of it. */
+/* The hub is the palace — a green hexagon matching the node shape, since every
+   branch of the web grows out of it. */
 .tree-hub {
   position: absolute;
   transform: translate(-50%, -50%);

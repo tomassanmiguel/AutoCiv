@@ -1,5 +1,6 @@
 import { useGame } from '../../game/react/GameProvider.jsx'
 import IconText from '../common/IconText.jsx'
+import DefChips from './DefChips.jsx'
 import './ProgressOffer.css'
 
 /**
@@ -33,8 +34,10 @@ export default function ProgressOffer() {
               <img className="offer-icon" src={n.icon} alt={n.kind} />
               <div className="offer-name">{n.name}</div>
               <div className="offer-kind">{n.quadrant} · {n.kind}</div>
-              <div className="offer-unlocks">Unlocks <b>{n.unlocks}</b></div>
+              <div className="offer-unlocks">Unlocks <IconText>{n.unlocks}</IconText></div>
               <div className="offer-effect"><IconText>{n.effect}</IconText></div>
+              {/* The card is not itself a tooltip, so its chips just work. */}
+              <DefChips keys={n.sub} className="offer-defs" />
             </button>
           ))}
         </div>

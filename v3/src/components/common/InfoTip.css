@@ -11,6 +11,9 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
   pointer-events: none;
 }
+/* An interactive tooltip can be hovered — that is the whole point of it, since
+   it holds its own hover targets (see InfoTip's `interactive` prop). */
+.infotip.interactive { pointer-events: auto; }
 /* `left`/`top` are set to the anchor's edge; the transform tucks the box just
    beside it (vertically centered) so it never covers the anchor. */
 .infotip.open-left { transform: translate(-100%, -50%); }

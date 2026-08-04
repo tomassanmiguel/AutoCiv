@@ -20,7 +20,7 @@ import { generateWorld } from './world/worldgen.js'
 import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { terrainOf, isLand, isPassable } from './world/terrain.js'
 import { key, neighbors, lengthOf, disc } from './hex/coords.js'
-import { PROGRESS_NODES, RING_UNLOCK, MAX_RING, progressById } from './data/progress.js'
+import { PROGRESS_NODES, ringUnlock, MAX_RING, progressById } from './data/progress.js'
 import { initialResources, accrue } from './data/resources.js'
 import { ERAS, TICKS_PER_ERA, ERA_COUNT, stageForEra, unlocksForEra, EXPANSION_UNLOCKS } from './data/eras.js'
 import {
@@ -655,14 +655,25 @@ export class GameManager {
 
   // --- Progress web ---------------------------------------------------------
 
+  /**
+   * How many nodes of `ring` are taken. CACHED against the size of the taken
+   * set: the tree asks this once per node per render (through `progressState`),
+   * and with ~300 nodes a fresh scan each time is quadratic for no reason.
+   */
   chosenInRing(ring) {
-    let n = 0
-    for (const node of PROGRESS_NODES) if (node.ring === ring && this.progress.has(node.id)) n++
-    return n
+    if (this._ringCountsAt !== this.progress.size) {
+      const counts = new Array(MAX_RING + 1).fill(0)
+      for (const node of PROGRESS_NODES) if (this.progress.has(node.id)) counts[node.ring]++
+      this._ringCounts = counts
+      this._ringCountsAt = this.progress.size
+    }
+    return this._ringCounts[ring] ?? 0
   }
 
   ringVisible(ring) {
-    return ring === 0 || this.chosenInRing(ring - 1) >= RING_UNLOCK
+    // The bar rises with the ring, because the rings do: 12 nodes at the centre,
+    // 68 at the rim. A flat 6 would have opened the whole web in a handful of eras.
+    return ring === 0 || this.chosenInRing(ring - 1) >= ringUnlock(ring - 1)
   }
 
   get visibleRing() {
