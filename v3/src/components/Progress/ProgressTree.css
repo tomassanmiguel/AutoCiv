@@ -42,6 +42,12 @@
   transition: background 0.15s ease, color 0.15s ease;
 }
 .tree-btn:hover { background: rgba(201, 154, 46, 0.22); color: #fff3d6; }
+/* A toggle that is currently ON — filled rather than outlined. */
+.tree-btn.on {
+  background: rgba(201, 154, 46, 0.42);
+  border-color: rgba(201, 154, 46, 0.85);
+  color: #fff6de;
+}
 
 /* --- canvas --------------------------------------------------------------- */
 .tree-viewport {

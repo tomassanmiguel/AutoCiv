@@ -349,6 +349,11 @@ parents one ring inside and in-quadrant, unique names, exclusivity within one ri
 - **Rings unlock by count**: `ringUnlock(r)` = `6 + 2r` nodes taken from ring `r` opens ring
   `r+1`. The bar rises because the rings do; a flat 6 opened the whole web in a few eras. An
   unopened ring is **not rendered at all**, and the camera animates out to the new fit.
+- **"Show all"** (header toggle) draws every ring regardless of what is open — the design view
+  of the whole web. It is **presentation only**: nodes in unopened rings read `locked` and
+  cannot be taken, so inspecting the far rings never skips the progression that reaches them.
+  Edges are left neutral rather than dashed in that mode, or the entire outer web greys out and
+  the shape — the one thing the view is for — stops reading.
 - **Camera is the HexMap pattern** — ref-based, applied imperatively, so pan/zoom never
   re-render the ~300 nodes. Wheel zooms at the cursor; left **or middle** drag pans; a drag that
   moved suppresses the click so panning never takes a node by accident. "Recentre" re-fits.
@@ -428,7 +433,11 @@ that no unit is unlocked twice.
 ## Gotchas
 
 - `React.StrictMode` is on — effects run twice in dev.
-- **v3 has its own `node_modules`.** Run npm commands from `v3/`, not the repo root.
+- ⚠️ **v3 has NO `node_modules` of its own.** It runs on the ROOT install (React 19 + Vite 8),
+  found by Node walking up from `v3/`, and npm adds every ancestor `node_modules/.bin` to PATH
+  — which is why `npm run dev|build|lint` works from `v3/` with nothing installed there. Run
+  npm commands from `v3/` so the right `package.json` is used. The preview config therefore
+  launches the **root's** vite with `v3` as its root dir.
 - Set `localStorage['autociv.mute'] = '1'` to disable music (keeps automated screenshots
   from hanging on a looping media stream).
 - **The `sprites/ui/` set are BLACK SILHOUETTES** drawn for v2's parchment panel. v3's

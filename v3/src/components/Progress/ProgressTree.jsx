@@ -1,4 +1,4 @@
-import { useRef, useEffect, useLayoutEffect } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import {
   LAID_OUT, LAID_OUT_BY_ID, QUADRANT_LIST, ringUnlock, MAX_RING,
@@ -33,7 +33,12 @@ const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2
  */
 export default function ProgressTree({ onClose }) {
   const game = useGame()
-  const visibleRing = game.visibleRing
+  // SHOW ALL draws every ring whether or not it has been opened — a design view
+  // of the whole web. It is presentation only: a node in an unopened ring reads
+  // `locked` and cannot be taken, so looking at the far rings never skips the
+  // progression that reaches them.
+  const [showAll, setShowAll] = useState(false)
+  const visibleRing = showAll ? MAX_RING : game.visibleRing
 
   const viewportRef = useRef(null)
   const contentRef = useRef(null)
@@ -45,7 +50,11 @@ export default function ProgressTree({ onClose }) {
   // Not memoised: useGame() already re-renders on every emit, so a memo would
   // only add a way to go stale. `progressState` is cheap because `chosenInRing`
   // is cached in the manager — without that this filter would be O(nodes²).
-  const shown = LAID_OUT.filter((n) => game.progressState(n) !== 'hidden')
+  const stateOf = (n) => {
+    const s = game.progressState(n)
+    return s === 'hidden' ? 'locked' : s
+  }
+  const shown = showAll ? LAID_OUT : LAID_OUT.filter((n) => game.progressState(n) !== 'hidden')
   const extent = extentFor(visibleRing)
   const size = extent * 2
 
@@ -204,7 +213,10 @@ export default function ProgressTree({ onClose }) {
         id: `${pid}->${n.id}`,
         d: edgePath(p, n),
         live: game.progress.has(pid),
-        dead: game.progressState(n) === 'locked' && !game.progress.has(pid),
+        // In SHOW ALL every unopened node is "locked", which would dash out the
+        // entire outer web and make the shape unreadable — the one thing that
+        // view exists to show. Keep those edges neutral.
+        dead: !showAll && stateOf(n) === 'locked' && !game.progress.has(pid),
       })
     }
   }
@@ -218,10 +230,15 @@ export default function ProgressTree({ onClose }) {
           <h2>Progress</h2>
           <span className="tree-sub">
             {game.progress.size} taken
-            {visibleRing < MAX_RING && <> · ring {visibleRing + 2} opens at {towardNext}/{ringUnlock(visibleRing)}</>}
+            {showAll
+              ? <> · showing all {MAX_RING + 1} rings — unopened ones stay locked</>
+              : visibleRing < MAX_RING && <> · ring {visibleRing + 2} opens at {towardNext}/{ringUnlock(visibleRing)}</>}
           </span>
         </div>
         <div className="tree-head-actions">
+          <button className={`tree-btn${showAll ? ' on' : ''}`} onClick={() => setShowAll((v) => !v)}>
+            {showAll ? 'Show unlocked' : 'Show all'}
+          </button>
           <button className="tree-btn" onClick={() => animateTo(fitCamera(), 400)}>Recentre</button>
           <button className="tree-btn" onClick={() => game.resetProgress()}>Reset</button>
           <button className="tree-btn" onClick={onClose}>Close</button>
@@ -267,7 +284,7 @@ export default function ProgressTree({ onClose }) {
           <div className="tree-hub" style={{ left: extent, top: extent }}><span>Palace</span></div>
 
           {shown.map((n) => {
-            const state = game.progressState(n)
+            const state = stateOf(n)
             return (
               <InfoTip
                 key={n.id}
