@@ -81,6 +81,21 @@
 .tree-divider { stroke: rgba(255, 255, 255, 0.05); stroke-width: 1; }
 .tree-ring { fill: none; stroke: rgba(255, 255, 255, 0.045); stroke-width: 1; }
 
+/* Age names sit ON the ring circle, along the Society/Technology divider where
+   no node ever is. Rotated back upright so they read at any zoom. */
+.tree-age {
+  fill: rgba(190, 200, 220, 0.4);
+  font-size: 30px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: rgba(8, 10, 16, 0.85);
+  stroke-width: 5px;
+  pointer-events: none;
+}
+
 /* Edges are <path> curves, not <line>s — `fill: none` or each one paints a
    filled wedge back to the origin. */
 .tree-edge {
@@ -199,6 +214,27 @@
   pointer-events: none;
 }
 .tree-node-anchor:hover .tree-node-name { color: #f0f3fa; }
+
+/* A TBD slot: drawn so the room to grow is visible, but obviously not a tech —
+   dashed, hollow, and a question mark instead of a category icon. */
+.tree-node.tbd {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: transparent;
+  opacity: 0.5;
+}
+.tree-node.tbd::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: inherit;
+  border: 2px dashed rgba(160, 172, 196, 0.55);
+}
+.tree-node-tbd {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(190, 200, 220, 0.7);
+}
+.tree-node-name.tbd { color: #6d7692; letter-spacing: 0.12em; }
 
 /* --- tooltip body --------------------------------------------------------- */
 .tree-tip-kind {

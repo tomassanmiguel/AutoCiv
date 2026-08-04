@@ -685,6 +685,9 @@ export class GameManager {
   progressState(node) {
     if (this.progress.has(node.id)) return 'unlocked'
     if (!this.ringVisible(node.ring)) return 'hidden'
+    // A TBD slot is drawn so the web's room to grow is visible, but it is not a
+    // tech: never takeable, and never offered.
+    if (node.tbd) return 'locked'
     if (node.excludes.some((id) => this.progress.has(id))) return 'locked'
     if (node.prereqs.length && !node.prereqs.some((id) => this.progress.has(id))) return 'locked'
     return 'available'

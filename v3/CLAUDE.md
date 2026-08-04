@@ -306,13 +306,23 @@ era clock; v3 has no eras yet, so both are **dropped rather than faked**.
 ### Progress web (`game/data/progress.js`, `components/Progress/ProgressTree`)
 A radial tree that **grows outward**, opened from the HUD's Progress button.
 
-**297 nodes in 320 slots, 8 rings, four quadrants** — Society / Technology / Economy /
-Military — each owning a 90° sector and each growing by **two nodes per ring**:
-`3 · 5 · 7 · 9 · 11 · 13 · 15 · 17`, so the rings hold 12 / 20 / 28 / 36 / 44 / 52 / 60 / 68.
-Rings read as ages: 0 stone · 1 bronze · 2 classical · 3 medieval · 4 renaissance ·
-5 industrial · 6 modern/space · 7 far future. The **23 spare slots are deliberate `GAP`s**
-(two or three a ring) — room to add techs without re-shaping anything; a gap keeps its slot so
-the ring still spaces evenly around the hole.
+**297 techs + 84 TBD slots, ELEVEN rings, four quadrants** — Society / Technology / Economy /
+Military, each owning a 90° sector. **A ring is an AGE**, and `RING_AGES` names them:
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Ancient | Bronze | Classical | Medieval | Renaissance | Industrial | Modern | Information | Solar System | Extrasolar | Galactic |
+
+**Rings are deliberately UNEQUAL** — a tech sits in the ring its age belongs to, full stop.
+Society's Modern ring holds 15 nodes and its Extrasolar ring holds 1, because that is where the
+design's culture and government material actually lives. **Do not pad a ring to match its
+neighbours**; add a tech that belongs there, or leave the TBDs. Totals per ring run
+17 / 20 / 32 / 31 / 29 / 37 / 39 / 24 / 27 / 20 / 21.
+
+Every quadrant-ring also carries `TBD_PER_RING` placeholder nodes (1 in ring 0, 2 elsewhere):
+drawn as dashed hollow hexes with a `?`, **never takeable and never offered**
+(`GameManager.progressState` short-circuits on `node.tbd`), there to show where the web has
+room. They are generated in the build loop, not authored — change the constant, not 84 entries.
 
 > ⚠️ **The nodes are DESIGN TEXT, not wiring.** They carry no `effects`, so taking one grants
 > nothing — the web is a readable plan. The effect vocabulary lives on in `data/effects.js`,
@@ -321,34 +331,41 @@ the ring still spaces evenly around the hole.
 > node's description can never drift — **never hand-write text for a wired node.** Until nodes
 > are wired, `campaign.mjs` shows an army of city levies only and no buildings at all.
 
-**Shape is hand-authored, not templated.** A node names its parent BY NAME (`from`), which must
-sit one ring inside it in the same quadrant. **A node may have no parent at all** — it then
-opens with its ring. That is what carries small self-contained subtrees (the fortification
-line, the vision ladder, the religion stack) instead of one lattice where everything descends
-from everything; ~40% of nodes are rootless, mostly in the outer rings.
+> ⚠️ **NOTHING HAS A PREREQUISITE right now.** A node opens when its ring opens. The `from:`
+> option, the edge drawing, and the planarity rule below are all **kept and simply unused**, so
+> dependencies can come back without a rewrite — and the validator still enforces them, so the
+> first `from:` you add is checked the moment you add it.
 
 **Exclusivity is explicit and rare** (`EXCLUSIVE`, 17 groups) — only real either/ors: Longbow
 vs Crossbow, Monotheism vs Polytheism, Democracy vs Communism vs Fascism, the six music
-genres. Siblings are **not** exclusive by default; branching is just branching. Taking one side
-kills the rest permanently, and with it anything downstream with no other route in — a greedy
-playthrough takes **267 of 297**.
+genres. Members must share a ring, which is **why some techs sit an age off their strictest
+placement**: Polytheism rides up to Classical to stand beside Monotheism, Democracy down to
+Modern to stand beside Communism and Fascism. A greedy playthrough takes **274 of 297**.
 
-**`validateStructure()` asserts the structure** (`node sims/progress.mjs`): exact ring sizes,
-parents one ring inside and in-quadrant, unique names, exclusivity within one ring, every
-`sub:` term defined, and **no crossed edges**.
+**`validateStructure()` asserts the structure** (`node sims/progress.mjs`): one ring per age,
+**every ring legible at its radius**, unique names, exclusivity within one ring, every `sub:`
+term defined, enough attainable nodes per ring to open the next, and (vacuously, for now) no
+crossed edges.
 
-- **Edges are polar CURVES, not chords** (`edgePoints`) — this is what keeps the drawing planar
-  by construction. A straight chord between two rings dips *inside* the inner ring whenever its
-  endpoints are far apart in angle (a parent with six children fans that wide), so it wanders
-  into the band below and crosses edges living there. A curve that interpolates radius **and**
-  angle stays in its own annulus and has exactly one point per radius, at
+- **Ring radii are sized by the FULLEST ring, not by taste.** A quadrant-ring of `k` nodes
+  spreads them over 90°, so the arc between neighbours is `R·(π/2)/(k+1)` and must clear
+  `NODE_SIZE`. Society's Classical ring (13 techs + 2 TBD) is the binding constraint at
+  `RING0 = 460`; the sim prints the tightest gap per ring, so shrink these only if it still
+  passes.
+- **Edges are polar CURVES, not chords** (`edgePoints`) — unused while there are no
+  dependencies, kept because it is what keeps the drawing planar when they return. A straight
+  chord between two rings dips *inside* the inner ring whenever its endpoints are far apart in
+  angle (a parent with six children fans that wide), so it wanders into the band below and
+  crosses edges living there. A curve that interpolates radius **and** angle stays in its own
+  annulus and has exactly one point per radius, at
   `angle(t) = parentAngle + (childAngle − parentAngle)·t`. Linear interpolation preserves order,
   so two edges of one band whose parent angles and child angles are both non-decreasing can
-  never swap sides. The authoring rule is therefore: **read a ring in order and parent indices
-  must never go backwards** — which is exactly what the validator checks.
-- **Rings unlock by count**: `ringUnlock(r)` = `6 + 2r` nodes taken from ring `r` opens ring
-  `r+1`. The bar rises because the rings do; a flat 6 opened the whole web in a few eras. An
-  unopened ring is **not rendered at all**, and the camera animates out to the new fit.
+  never swap sides. The authoring rule: **read a ring in order and parent indices must never go
+  backwards**.
+- **Rings unlock by count**, and the count is DERIVED: `ringUnlock(r)` is 40% of what ring `r`
+  actually holds (min 4), because the rings are unequal — a fixed number would be a stroll
+  through Ancient (17 nodes) and a wall at Modern (39). Reaching Galactic takes **112 picks**.
+  An unopened ring is **not rendered at all**, and the camera animates out to the new fit.
 - **"Show all"** (header toggle) draws every ring regardless of what is open — the design view
   of the whole web. It is **presentation only**: nodes in unopened rings read `locked` and
   cannot be taken, so inspecting the far rings never skips the progression that reaches them.
@@ -359,8 +376,8 @@ parents one ring inside and in-quadrant, unique names, exclusivity within one ri
   moved suppresses the click so panning never takes a node by accident. "Recentre" re-fits.
 - **States**: green = taken, blue = available (pulsing), grey = locked. Each node is a
   `clip-path` hexagon with an icon picked from its `tag` — the one non-free-text field on a
-  node, driving both the icon and the "unlocks" line. Edges light green once their prerequisite
-  is taken and go dashed when the route is dead.
+  node, driving both the icon and the "unlocks" line. Age names are drawn on each ring circle
+  along the **Society/Technology divider**, where no node ever sits.
 
 #### Sub-definitions (`data/definitions.js`, `components/Progress/DefChips`)
 A node says "unlocks the guildhall" or "outposts get +2 :gold:" with no room to say what a
@@ -371,8 +388,18 @@ temple, mercenary, taunt, bleed, blast radius). They render as hoverable chips, 
 
 ⚠️ That nesting only works because the node tooltip is `<InfoTip interactive>`: a plain tooltip
 has `pointer-events: none` and vanishes the moment the cursor leaves the anchor. `interactive`
-turns pointer events on and adds a 160 ms grace timer, so crossing the 16px gap into the
-tooltip doesn't close it.
+turns pointer events on and adds a 90 ms grace timer, so crossing the 16px gap into the tooltip
+doesn't close it.
+
+Two things keep that from feeling sticky, both in `InfoTip`:
+- **One open tooltip per nesting DEPTH** (a module-level `openAt` registry plus a `TipDepth`
+  context). Opening at depth `d` immediately closes anything open at `d` or deeper, so moving
+  between anchors *swaps* instead of leaving the old one up for the whole grace period. Depth
+  is what preserves nesting: a chip opens at depth 1 and leaves its parent at depth 0 alone.
+- ⚠️ **A portal still bubbles events through the REACT tree.** Mousemove over anything inside a
+  tooltip reaches the anchor's `onMouseMove` and re-runs `place()` — which then closed the
+  nested tooltip that very move had just opened. The tooltip container therefore
+  `stopPropagation()`s mousemove.
 
 A building named in `definitions.js` is **design text**; `data/buildings.js` holds the ones
 actually placeable. The two are deliberately separate — the design can name fifty buildings

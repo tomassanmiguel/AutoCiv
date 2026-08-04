@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import {
-  LAID_OUT, LAID_OUT_BY_ID, QUADRANT_LIST, ringUnlock, MAX_RING,
+  LAID_OUT, LAID_OUT_BY_ID, QUADRANT_LIST, ringUnlock, MAX_RING, RING_AGES,
   NODE_SIZE, extentFor, ringRadius, edgePath,
 } from '../../game/data/progress.js'
 import InfoTip from '../common/InfoTip.jsx'
@@ -258,6 +258,17 @@ export default function ProgressTree({ onClose }) {
             {Array.from({ length: visibleRing + 1 }, (_, r) => (
               <circle key={r} className="tree-ring" cx={0} cy={0} r={ringRadius(r)} />
             ))}
+            {/* Age names, on the Society/Technology divider so they never sit
+                on top of a node — the sectors are open along the dividers. */}
+            {Array.from({ length: visibleRing + 1 }, (_, r) => {
+              const a = (-45 * Math.PI) / 180
+              return (
+                <text key={`age-${r}`} className="tree-age"
+                  x={Math.cos(a) * ringRadius(r)} y={Math.sin(a) * ringRadius(r)}>
+                  {RING_AGES[r]}
+                </text>
+              )
+            })}
             {edges.map((e) => (
               <path key={e.id}
                 className={`tree-edge${e.live ? ' live' : ''}${e.dead ? ' dead' : ''}`}
@@ -296,8 +307,8 @@ export default function ProgressTree({ onClose }) {
                 interactive
                 text={
                   <div className="tree-tip">
-                    <div className="tree-tip-kind">{n.kind}</div>
-                    <div className="tree-tip-unlocks">Unlocks <IconText>{n.unlocks}</IconText></div>
+                    <div className="tree-tip-kind">{n.age}{n.tbd ? '' : ` · ${n.kind}`}</div>
+                    {!n.tbd && <div className="tree-tip-unlocks">Unlocks <IconText>{n.unlocks}</IconText></div>}
                     <div className="tree-tip-effect"><IconText>{n.effect}</IconText></div>
                     <DefChips keys={n.sub} />
                     {n.excludes.length > 0 && (
@@ -305,22 +316,24 @@ export default function ProgressTree({ onClose }) {
                         Taking this rules out {n.excludes.map((id) => LAID_OUT_BY_ID.get(id)?.name).join(', ')}
                       </div>
                     )}
-                    <div className={`tree-tip-state s-${state}`}>
-                      {state === 'unlocked' ? 'Already taken'
-                        : state === 'available' ? 'Click to take' : 'Locked'}
-                    </div>
+                    {!n.tbd && (
+                      <div className={`tree-tip-state s-${state}`}>
+                        {state === 'unlocked' ? 'Already taken'
+                          : state === 'available' ? 'Click to take' : 'Locked'}
+                      </div>
+                    )}
                   </div>
                 }
               >
                 <button
-                  className={`tree-node s-${state}`}
+                  className={`tree-node s-${state}${n.tbd ? ' tbd' : ''}`}
                   style={{ width: NODE_SIZE, height: NODE_SIZE * 0.866 }}
                   onClick={() => takeNode(n)}
                   disabled={state !== 'available'}
                 >
-                  <img src={n.icon} alt={n.kind} draggable={false} />
+                  {n.tbd ? <span className="tree-node-tbd">?</span> : <img src={n.icon} alt={n.kind} draggable={false} />}
                 </button>
-                <span className="tree-node-name">{n.name}</span>
+                <span className={`tree-node-name${n.tbd ? ' tbd' : ''}`}>{n.name}</span>
               </InfoTip>
             )
           })}
