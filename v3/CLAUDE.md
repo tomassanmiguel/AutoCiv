@@ -68,6 +68,9 @@ as built.**
 
 ## Running
 
+Double-click **`AutoCiv.cmd`** in the repo root: it frees the port, starts the
+dev server and opens the game. Or by hand:
+
 ```bash
 cd v3
 npm run dev                  # Vite dev server (5174) — the game
@@ -342,9 +345,10 @@ era clock; v3 has no eras yet, so both are **dropped rather than faked**.
 The draft mechanic it encodes — **[`docs/design.md`](docs/design.md) is the full statement**;
 this is the implementer's summary:
 
-- **Four independent tracks.** Each quadrant carries its OWN era, and advances the moment it has
-  taken `ADVANCE_THRESHOLDS[era]` techs of that era — `[2,2,3,3,4,4,5,5,6,6,7,7,7,7]`. Military
-  can be drafting Medieval while Economy is still in Iron.
+- **Three independent branches** — Military · Economy · Society. (Technology was folded in:
+  knowledge and pacing to Society, buildings and yields to Economy, weapons to Military.) Each
+  carries its OWN era and advances the moment it has taken `ADVANCE_THRESHOLDS[era]` techs of
+  that era — `[2,2,3,3,4,4,5,5,6,6,7,7,7,7]`.
 - **The draft pool is CURRENT TIER ONLY.** Skipped techs are gone when the quadrant moves on.
   ⚠️ This is the constraint that shapes everything: a quadrant × era cell must hold at least its
   threshold or the run **dead-ends there**, and it needs *slack* on top or the "draft" is just
@@ -367,46 +371,28 @@ this is the implementer's summary:
 - **One unit per class, nine classes.** No named-unit ladder: techs raise the class's stat line
   and every unit of it already on the board improves. `UNIT_CLASS_BASE` holds placeholder stats.
 
-#### The effect schema — structured, with no prose fallback
-`schema.js` is the whole contract: `OPS`, `TARGETS`, `STATS`, `MODES`, `SCALES`, `FILTERS`,
-`TRIGGERS`, `DURATIONS`, `RULE_KEYS`. Every editor dropdown and every validator is built from
-it. An effect is 14 fields; a tech holds an **array** of them, because "builds a temple AND
-temples produce 1 gold" is two effects.
+#### There is NO effect system — a tech is described in writing
+A tech carries a **`description`**: prose with `:token:` markup for icons ("+2 :food:", "grants
+a :melee: unit"). `schema.js` holds the eras, branches, thresholds, unit-class base stats,
+placements, icon tokens and the validators — and nothing else.
 
-The three dimensions a flat `{type, target, magnitude}` would have lost, and which about a third
-of the design needs:
-- **`scale`** — "+3 gold per unique building", "progress equal to that unit's attack"
-- **`filter`** — "while on a rural tile", "in the New World", "below half health"
-- **`trigger`** — "every 20 ticks", "at the end of combat", "whenever a unit dies"
+> ⚠️ An earlier version carried a full structured-effect vocabulary — ~16 ops, targets, scales,
+> filters, triggers, durations and 50 named rule keys — and all 654 effects in the game were
+> encoded against it. **It was removed on purpose**: expensive to author, hard to hold in your
+> head, and it forced a decision about every mechanic long before any of them were built.
+> Mechanics get wired **one at a time**, as each is actually implemented, against whatever the
+> engine needs at that moment. **Do not reintroduce a general effect language ahead of the code
+> that would consume it.** The old vocabulary is in git (`schema.js` / `describe-effect.js`
+> before commit `4192d9f`) if it is ever wanted.
 
-Distinctions the schema makes **that are easy to collapse and wrong when collapsed** — each one
-was found by converting all 297 techs and hitting the wall:
-- **`heal`/`damage` are not `stat`.** A stat change moves the ceiling; these move the current
-  value against it. "Recover 5% defence each turn" as a stat bonus raises max health instead.
-- **`command_radius`/`effect_radius` are not `range`.** Widening every aura must not also let
-  command units shoot further.
-- **`triggering_unit` is not `all_units`.** "Whenever a unit dies IT gains +5" buffs the
-  casualty, not the army.
-- **`scaleFilter` is not `filter`.** One narrows what is COUNTED, the other who RECEIVES —
-  "+1 attack per non-Earth tile you control" needs both, and the palace is on Earth.
-- **`add_multiplier` is not `multiply`.** "Increases the outpost multiplier by 1" is not ×1.
-- **`on_city_founded` is not `on_city_growth`.** One fires once; the other every population tick.
-- **`op: 'vision'` targets a REVEAL STAGE, not a region** (`REVEAL_STAGES` mirrors
-  `regions.js` STAGES). Only `tierUnlocks` uses it now — vision is not draftable.
-- ⚠️ **`within_radius` is not `in_range_of`, and mixing them up is the commonest authoring
-  error.** `within_radius` means *things around THIS building* and reads its distance from the
-  effect's `radius` field; `in_range_of` means *the subject is near something else*. Thirty
-  building effects were written the wrong way round, which silently threw the radius away —
-  "all tiles in range 3" became "any tile near any building".
+**Exclusivity is a `group`**: techs sharing a group name are mutually exclusive, and the
+validator rejects a group that spans branches or eras (the choice could never be offered) or one
+with a single member (not a choice).
 
-⚠️ **`op: 'rule'` is not an escape hatch into prose.** Its `ruleKey` comes from a closed enum,
-and every key names a behaviour the engine must implement — so `RULE_KEYS` doubles as the work
-queue for the combat/economy code. If a design needs something not in the list, add a key and
-implement it; do not write a sentence.
-
-**`describe-effect.js` reads a structured effect back as a sentence**, and the editor shows that
-line under every effect row. That round trip is the test: if the generated sentence no longer
-says what the design text said, the conversion dropped something.
+**Intrinsic class behaviour is never a tech.** Fortifications taunt, never move and never attack;
+command units never attack. Those live in `UNIT_CLASS_BASE`, not in a tech. Relatedly, **classes
+are granted, not unlocked** — "Mud Brick" hands you a fortification rather than switching
+fortifications on.
 
 #### The editor (`/editor.html`, `src/editor/`)
 A second Vite entry on the same dev server. Filters by era and quadrant, **sortable columns**

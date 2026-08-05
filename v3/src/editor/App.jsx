@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  ERAS, QUADRANTS, ADVANCE_THRESHOLDS, ICONS, PLACEMENT_KEYS, PLACEMENTS,
+  ERAS, QUADRANTS, ADVANCE_THRESHOLDS, ICONS,
   WONDER_TIERS, validateContent, feasibility,
-  blankTech, blankBuilding, blankWonder,
+  blankTech, blankBuilding, blankWonder, blankTierUnlock,
 } from '../game/data/schema.js'
 import DataTable from './DataTable.jsx'
 import Feasibility from './Feasibility.jsx'
@@ -109,13 +109,27 @@ export default function App() {
     mutate(key, (rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   }, [mutate])
 
+  const BLANK = { techs: blankTech, buildings: blankBuilding, wonders: blankWonder, tierUnlocks: blankTierUnlock }
+
+  /**
+   * ⚠️ `backlog` is an OBJECT of four lists, not a list — adding there used to
+   * call the same array path and break. A new backlog row goes into
+   * `backlog.techs`, since that is what you are almost always parking.
+   */
   const addRow = useCallback((key) => {
-    const make = key === 'techs' ? blankTech : key === 'buildings' ? blankBuilding : blankWonder
-    const row = make()
-    row.id = `new_${(content[key]?.length ?? 0) + 1}`
+    const isBacklog = key === 'backlog'
+    const listKey = isBacklog ? 'techs' : key
+    const row = (BLANK[listKey] ?? blankTech)()
     row.name = 'New entry'
+    row.id = `new_${Date.now().toString(36)}`
+    if (isBacklog) {
+      setContent((c) => ({ ...c, backlog: { ...c.backlog, techs: [row, ...(c.backlog?.techs ?? [])] } }))
+      setDirty(true)
+      return
+    }
     mutate(key, (rows) => [row, ...rows])
-  }, [content, mutate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mutate])
 
   const deleteRow = useCallback((key, id) => {
     mutate(key, (rows) => rows.filter((r) => r.id !== id))
@@ -210,8 +224,8 @@ export default function App() {
       if (filters.eras.length && !filters.eras.includes(r.era)) return false
       if (filters.quadrants.length && !filters.quadrants.includes(r.quadrant)) return false
       if (filters.issues && !problemsById.has(r.id)) return false
-      if (filters.rules && !(r.effects ?? []).some((f) => f.op === 'rule')) return false
-      if (q && !(`${r.name} ${r.id}`.toLowerCase().includes(q))) return false
+      if (filters.rules && r.description?.trim()) return false // "needs writing"
+      if (q && !(`${r.name} ${r.id} ${r.description ?? ''}`.toLowerCase().includes(q))) return false
       return true
     })
   }, [rows, filters, problemsById])
@@ -221,6 +235,11 @@ export default function App() {
     () => (content.techs ?? []).map((t) => ({ value: t.id, label: `${t.name} · ${ERAS[t.era] ?? '?'}` })),
     [content.techs],
   )
+  const groupOptions = useMemo(() => {
+    const s = new Set()
+    for (const t of [...(content.techs ?? []), ...(content.wonders ?? [])]) if (t.group) s.add(t.group)
+    return [...s].sort()
+  }, [content.techs, content.wonders])
 
   return (
     <div className="ed">
@@ -273,6 +292,7 @@ export default function App() {
             columns={columns}
             problemsById={problemsById}
             techOptions={techOptions}
+            groupOptions={groupOptions}
             readOnly={tab === 'backlog'}
             onRestore={tab === 'backlog' ? restore : null}
             onPatch={(id, patch) => patchRow(tab, id, patch)}
@@ -292,44 +312,46 @@ export default function App() {
 const COLUMNS = {
   techs: [
     { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
-    { key: 'name', label: 'Name', kind: 'name', width: 200 },
-    { key: 'quadrant', label: 'Quadrant', kind: 'select', width: 110, options: QUADRANTS },
-    { key: 'era', label: 'Era', kind: 'era', width: 120 },
-    { key: 'requires', label: 'Requires', kind: 'techs', width: 190 },
-    { key: 'effects', label: 'Effect', kind: 'effects' },
+    { key: 'name', label: 'Name', kind: 'name', width: 180 },
+    { key: 'quadrant', label: 'Branch', kind: 'select', width: 100, options: QUADRANTS },
+    { key: 'era', label: 'Era', kind: 'era', width: 115 },
+    { key: 'requires', label: 'Requires', kind: 'techs', width: 160 },
+    // A shared group name makes a set mutually exclusive.
+    { key: 'group', label: 'Exclusive group', kind: 'group', width: 130 },
+    { key: 'description', label: 'Description', kind: 'description' },
   ],
   buildings: [
     { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
-    { key: 'name', label: 'Name', kind: 'name', width: 200 },
-    { key: 'era', label: 'Era', kind: 'era', width: 120 },
-    { key: 'placement', label: 'Placement', kind: 'placements', width: 230 },
-    { key: 'unlockedBy', label: 'Unlocked by', kind: 'tech', width: 190 },
-    { key: 'effects', label: 'Effect', kind: 'effects' },
+    { key: 'name', label: 'Name', kind: 'name', width: 180 },
+    { key: 'era', label: 'Era', kind: 'era', width: 115 },
+    { key: 'placement', label: 'Placement', kind: 'placements', width: 220 },
+    { key: 'unlockedBy', label: 'Unlocked by', kind: 'tech', width: 170 },
+    { key: 'description', label: 'Description', kind: 'description' },
   ],
   wonders: [
     { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
-    { key: 'name', label: 'Name', kind: 'name', width: 200 },
-    { key: 'tier', label: 'Tier', kind: 'select', width: 70, options: WONDER_TIERS },
+    { key: 'name', label: 'Name', kind: 'name', width: 180 },
+    { key: 'tier', label: 'Tier', kind: 'select', width: 66, options: WONDER_TIERS },
     // A wonder is drafted like a tech, so it needs a pool to be drafted from.
-    { key: 'quadrant', label: 'Quadrant', kind: 'select', width: 110, options: QUADRANTS },
-    { key: 'era', label: 'Era', kind: 'era', width: 120 },
-    { key: 'placement', label: 'Placement', kind: 'placements', width: 230 },
-    { key: 'requires', label: 'Requires', kind: 'techs', width: 170 },
-    { key: 'effects', label: 'Effect', kind: 'effects' },
+    { key: 'quadrant', label: 'Branch', kind: 'select', width: 100, options: QUADRANTS },
+    { key: 'era', label: 'Era', kind: 'era', width: 115 },
+    { key: 'placement', label: 'Placement', kind: 'placements', width: 200 },
+    { key: 'group', label: 'Exclusive group', kind: 'group', width: 120 },
+    { key: 'description', label: 'Description', kind: 'description' },
   ],
-  // No quadrant column: a tier unlock fires when ANY quadrant reaches its era.
+  // No branch column: a tier unlock fires when ANY branch reaches its era.
   tierUnlocks: [
     { key: 'name', label: 'Name', kind: 'name', width: 220 },
     { key: 'era', label: 'Era', kind: 'era', width: 140 },
-    { key: 'effects', label: 'Revealed when any quadrant reaches this era', kind: 'effects' },
+    { key: 'description', label: 'Revealed when any branch reaches this era', kind: 'description' },
   ],
   // Parked ideas. Read-only: edit them after restoring, not before.
   backlog: [
     { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
-    { key: 'name', label: 'Name', kind: 'name', width: 220 },
-    { key: 'quadrant', label: 'Quadrant', kind: 'select', width: 110, options: QUADRANTS },
-    { key: 'era', label: 'Era', kind: 'era', width: 120 },
-    { key: 'effects', label: 'Effect', kind: 'effects' },
+    { key: 'name', label: 'Name', kind: 'name', width: 200 },
+    { key: 'quadrant', label: 'Branch', kind: 'select', width: 100, options: QUADRANTS },
+    { key: 'era', label: 'Era', kind: 'era', width: 115 },
+    { key: 'description', label: 'Description', kind: 'description' },
   ],
 }
 
@@ -375,7 +397,7 @@ function FilterBar({ filters, setFilters, showQuadrant, showEra, shown, total, o
       <label className="ed-toggle">
         <input type="checkbox" checked={filters.rules}
           onChange={(e) => setFilters((f) => ({ ...f, rules: e.target.checked }))} />
-        only named rules
+        needs a description
       </label>
 
       <span className="ed-shown">{shown} of {total}</span>

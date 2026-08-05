@@ -221,7 +221,54 @@ body {
   color: var(--e-dim); cursor: pointer; padding: 0 0.35rem;
 }
 
-/* --- effect editor -------------------------------------------------------- */
+/* --- descriptions --------------------------------------------------------- */
+.tok {
+  height: 1em;
+  width: auto;
+  vertical-align: -0.15em;
+  margin: 0 0.1em;
+  /* The ui/ sprites are black silhouettes drawn for a parchment panel; the
+     editor is dark, so they have to be inverted to be visible at all. */
+  filter: invert(1) opacity(0.85);
+}
+.tok-bad { color: var(--e-bad); font-weight: 700; }
+
+.ed-desc { display: flex; flex-direction: column; gap: 0.35rem; max-width: 900px; }
+.ed-desc-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7385;
+}
+.ed-desc-input {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  background: #0b0e13;
+  border: 1px solid var(--e-line);
+  border-radius: 5px;
+  color: var(--e-text);
+  font: inherit;
+  resize: vertical;
+}
+.ed-desc-input:focus { border-color: var(--e-accent); outline: none; }
+.ed-desc-preview {
+  padding: 0.4rem 0.55rem;
+  background: #151a23;
+  border-left: 2px solid var(--e-accent);
+  border-radius: 3px;
+  color: #cfd6e4;
+  min-height: 1.9em;
+}
+.ed-desc-bad { color: var(--e-bad); font-size: 11px; }
+.ed-desc-tokens { display: flex; flex-wrap: wrap; gap: 0.15rem; }
+.ed-desc-tokens button {
+  background: #0d1015;
+  border: 1px solid var(--e-line);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.ed-desc-tokens button:hover { border-color: var(--e-accent); background: #1a1f28; }
+
+/* --- effect editor (removed — kept for the shared row styles) -------------- */
 .fx { display: flex; flex-direction: column; gap: 0.5rem; }
 .fx-row {
   background: #151a23; border: 1px solid var(--e-line); border-radius: 6px;

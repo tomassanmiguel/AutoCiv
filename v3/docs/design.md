@@ -28,6 +28,9 @@ content is scaled up.
 
 **Scope: the first three eras (Stone · Bronze · Iron) and six waves.**
 
+Run it by double-clicking **`AutoCiv.cmd`** in the repo root — it frees the port,
+starts the dev server and opens the game. The editor is at `/editor.html`.
+
 - `content.activeEras = 3`. The other twelve eras are designed but their content
   is **parked in `content.backlog`** — nothing is deleted, and the editor's
   Backlog tab restores a row into scope one at a time.
@@ -52,11 +55,15 @@ a wave.** Combat difficulty scales on its own schedule, independent of how far
 any tech track has advanced — outrunning the enemy on tech is a legitimate way to
 win, and falling behind is a legitimate way to lose.
 
-## 2. Four independent tracks
+## 2. Three independent branches
 
-Society, Technology, Economy and Military each carry **their own era**, and each
-advances on its own clock. You may be drafting Medieval military while your
-economy is still in Iron.
+**Military, Economy and Society** each carry **their own era**, and each advances
+on its own clock. You may be drafting Medieval military while your economy is
+still in Iron.
+
+*(There was a fourth, Technology. It was folded in: its knowledge and pacing
+techs went to Society, its buildings and yields to Economy, its weapons to
+Military.)*
 
 A quadrant advances to era *E+1* once it has taken this many techs of era *E*:
 
@@ -77,9 +84,10 @@ A tech may `require` others — it is then only offered once its requirement is
 held. Because the pool is current-tier-only, **a requirement in a later era can
 never be met**, and the validator rejects it.
 
-A tech may `exclude` others: taking one bars the rest for the run. Both halves of
-an exclusive choice **must sit in the same quadrant and the same era**, or the
-choice is never actually offered.
+Techs sharing a **`group`** are mutually exclusive: take one and the rest are
+barred for the run. Every member **must sit in the same branch and the same
+era**, or the choice is never actually offered — the validator rejects a group
+that spans pools, and a group of one.
 
 ## 3. What each resource threshold does
 
@@ -202,6 +210,24 @@ authoring error.
 at `/editor.html` (dev server only) and validated against
 [`schema.js`](../src/game/data/schema.js).
 
-Effects are **fully structured — no prose fallback.** Effects that are genuinely
-bespoke behaviour use `op: 'rule'` with a key from a closed enum; that enum is
-also the engine's work queue.
+**A tech is described in WRITING**, with `:token:` markup for icons — "+2
+:food:", "grants a :melee: unit". There is no structured effect system.
+
+> An earlier version carried a full effect vocabulary — ~16 ops, targets,
+> scales, filters, triggers and 50 named rule keys — and all 654 effects were
+> encoded against it. It was **removed on purpose**: expensive to author, hard to
+> hold in your head, and it forced a decision about every mechanic long before
+> any of them were built. Mechanics get wired **one at a time**, as each is
+> actually implemented. Do not reintroduce a general effect language ahead of the
+> code that would consume it. (The old vocabulary is in git if it is ever wanted.)
+
+## 11. Intrinsic class behaviour is never a tech
+
+Some behaviour belongs to a unit class and is not granted by anything:
+fortifications **taunt, never move and never attack**; command units **never
+attack** and carry a radius. A tech that appeared to "unlock" that was a
+mis-encoding.
+
+Relatedly, **classes are granted, not unlocked**. "Mud Brick" hands you a
+fortification; it does not switch fortifications on. Every tech that reads
+"unlocks X units" means "grants an X unit".
