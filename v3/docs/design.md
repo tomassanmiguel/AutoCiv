@@ -20,6 +20,27 @@
 
 ---
 
+## 0. What is actually being built right now
+
+The design below describes the whole game. **The current build is a microcosm of
+it** — deliberately small, so the systems can be finished and played before the
+content is scaled up.
+
+**Scope: the first three eras (Stone · Bronze · Iron) and six waves.**
+
+- `content.activeEras = 3`. The other twelve eras are designed but their content
+  is **parked in `content.backlog`** — nothing is deleted, and the editor's
+  Backlog tab restores a row into scope one at a time.
+- In scope: **43 techs · 10 buildings · 5 wonders · 3 tier unlocks.**
+  Parked: 244 techs · 37 buildings · 39 wonders · 12 tier unlocks.
+- Iron is the terminal era for now, so nothing advances out of it and it carries
+  no threshold.
+
+The goal for this slice is a **small playable game**: six waves of combat against
+the first three eras of techs, with the draft, the thresholds and the wonder loop
+all working. Widening the era range afterwards should be a data change, not a
+code change — that is the point of the content layer.
+
 ## 1. Two clocks, and they are not connected
 
 **Eras are a term defined purely for tech pools.** An era says which techs you

@@ -12,7 +12,7 @@ import EffectEditor from './EffectEditor.jsx'
  * of fourteen fields each; that never fits in a cell, and pretending otherwise
  * is how editors become unusable.
  */
-export default function DataTable({ rows, columns, problemsById, techOptions, onPatch, onRename, onDelete, onDuplicate }) {
+export default function DataTable({ rows, columns, problemsById, techOptions, readOnly, onRestore, onPatch, onRename, onDelete, onDuplicate }) {
   const [open, setOpen] = useState(null)
   // Default: era outward, then alphabetical inside an era — which is how you
   // read a draft pool, one tier at a time.
@@ -63,6 +63,7 @@ export default function DataTable({ rows, columns, problemsById, techOptions, on
                       col={c}
                       row={row}
                       techOptions={techOptions}
+                      readOnly={readOnly}
                       onPatch={onPatch}
                       onRename={onRename}
                       onToggle={() => setOpen(isOpen ? null : row.id)}
@@ -71,10 +72,17 @@ export default function DataTable({ rows, columns, problemsById, techOptions, on
                   </td>
                 ))}
                 <td className="ed-actions">
-                  <button title="Duplicate" onClick={() => onDuplicate(row.id)}>⧉</button>
-                  <button title="Delete" className="danger" onClick={() => {
-                    if (confirm(`Delete "${row.name}"? This cannot be undone from here.`)) onDelete(row.id)
-                  }}>✕</button>
+                  {onRestore ? (
+                    <button className="ed-restore" title="Bring this back into scope"
+                      onClick={() => onRestore(row.id)}>↩ restore</button>
+                  ) : (
+                    <>
+                      <button title="Duplicate" onClick={() => onDuplicate(row.id)}>⧉</button>
+                      <button title="Delete" className="danger" onClick={() => {
+                        if (confirm(`Delete "${row.name}"? This cannot be undone from here.`)) onDelete(row.id)
+                      }}>✕</button>
+                    </>
+                  )}
                 </td>
               </tr>,
               isOpen && (
@@ -111,8 +119,16 @@ function sortValue(row, key) {
   return typeof v === 'number' ? v : String(v).toLowerCase()
 }
 
-function Cell({ col, row, techOptions, onPatch, onRename, onToggle, isOpen }) {
+function Cell({ col, row, techOptions, readOnly, onPatch, onRename, onToggle, isOpen }) {
   const v = row[col.key]
+
+  // A parked row is shown, not edited — restore it first, so an edit can never
+  // land on something that is not in the build.
+  if (readOnly && col.kind !== 'effects') {
+    if (col.kind === 'icon') return <span className="ed-icon-cell"><img src={v} alt="" /></span>
+    if (col.kind === 'era') return <span className="ed-ro">{ERAS[v] ?? '—'}</span>
+    return <span className="ed-ro">{Array.isArray(v) ? v.join(', ') : String(v ?? '—')}</span>
+  }
 
   switch (col.kind) {
     case 'placements':

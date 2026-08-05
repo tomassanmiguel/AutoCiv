@@ -146,6 +146,14 @@ body {
 .ed-table th.sortable:hover { color: var(--e-text); }
 .ed-sort { margin-left: 0.3rem; color: var(--e-accent); }
 .ed-anywhere { color: #5d6575; font-size: 11px; font-style: italic; }
+.ed-ro { color: var(--e-dim); }
+.ed-restore {
+  background: rgba(201, 154, 46, 0.14) !important;
+  border-color: rgba(201, 154, 46, 0.5) !important;
+  color: #e6d6a8 !important;
+  white-space: nowrap;
+}
+.ed-restore:hover { background: rgba(201, 154, 46, 0.3) !important; }
 .ed-table td { padding: 0.2rem 0.5rem; border-bottom: 1px solid #1b202a; vertical-align: middle; }
 .ed-table tbody tr:nth-child(4n+1) { background: var(--e-row); }
 .ed-table tbody tr:nth-child(4n+3) { background: var(--e-row-alt); }

@@ -16,6 +16,9 @@ export default function Feasibility({ content, feas, problems }) {
   const cell = (q, era) => feas.rows.find((r) => r.quadrant === q && r.era === era)
   const totalTechs = content.techs?.length ?? 0
   const missing = feas.blocked.reduce((s, r) => s + (r.need - r.have), 0)
+  // The terminal era demands nothing today, but it will the moment another era
+  // is added — worth showing so the shortfall is not a surprise later.
+  const terminalMissing = (feas.terminalShort ?? []).reduce((s, r) => s + (r.willNeed - r.have), 0)
 
   return (
     <div className="fe">
@@ -25,6 +28,7 @@ export default function Feasibility({ content, feas, problems }) {
         <Stat n={feas.blocked.length} label="cells that dead-end" bad={feas.blocked.length > 0} />
         <Stat n={missing} label="techs still to write" bad={missing > 0} />
         <Stat n={feas.tight.length} label="cells with no real choice" warn={feas.tight.length > 0} />
+        <Stat n={terminalMissing} label={`techs before ${ERAS[feas.active]} can open`} warn={terminalMissing > 0} />
         <Stat n={problems.length} label="schema problems" bad={problems.length > 0} />
       </div>
 
@@ -34,6 +38,10 @@ export default function Feasibility({ content, feas, problems }) {
         threshold is not a choice — you take everything in it — so <b>slack</b> is what makes the
         draft a decision. With {OFFER_SIZE} cards offered at a time, a cell wants roughly
         threshold + 3 to feel like a draft.
+        {feas.active < ERAS.length && (
+          <> Showing the <b>{feas.active} eras currently in scope</b>; the remaining{' '}
+          {ERAS.length - feas.active} are designed but parked in the backlog.</>
+        )}
       </p>
 
       <div className="fe-grid-wrap">
@@ -47,8 +55,8 @@ export default function Feasibility({ content, feas, problems }) {
             </tr>
           </thead>
           <tbody>
-            {ERAS.map((name, era) => {
-              const need = thresholdFor(era)
+            {ERAS.slice(0, feas.active).map((name, era) => {
+              const need = cell(QUADRANTS[0], era)?.need ?? thresholdFor(era)
               const total = QUADRANTS.reduce((s, q) => s + (cell(q, era)?.have ?? 0), 0)
               return (
                 <tr key={name}>
@@ -83,6 +91,20 @@ export default function Feasibility({ content, feas, problems }) {
               <li key={`${r.quadrant}-${r.era}`}>
                 <b className={`q-${r.quadrant}`}>{r.quadrant}</b> · {r.eraName} —
                 has {r.have}, needs {r.need}: <b>write {r.need - r.have} more</b>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {(feas.terminalShort ?? []).length > 0 && (
+        <>
+          <h3 className="fe-h">Not blocking — needed only when a fourth era is added</h3>
+          <ul className="fe-list">
+            {feas.terminalShort.map((r) => (
+              <li key={`t-${r.quadrant}-${r.era}`}>
+                <b className={`q-${r.quadrant}`}>{r.quadrant}</b> · {r.eraName} —
+                has {r.have}, will need {r.willNeed}: {r.willNeed - r.have} more
               </li>
             ))}
           </ul>

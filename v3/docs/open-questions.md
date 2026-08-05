@@ -3,6 +3,34 @@
 Decisions still owed for content that **already exists**. Nothing here is about
 techs yet to be invented.
 
+> ⚠️ **SCOPE: the build is now Stone · Bronze · Iron only** (see
+> [`design.md`](design.md) §0). Most of what follows describes content that is
+> **parked in the backlog** and does not block the current slice. The section
+> marked *"In the microcosm"* is what actually matters this week.
+
+## In the microcosm — the only gaps that block the playable slice
+
+| pool | has | needs | gap |
+|---|---|---|---|
+| Iron · military | 2 | 3 | **1** |
+| Iron · technology | 1 | 3 | **2** |
+| Iron · economy | 2 | 3 | **1** |
+| Iron · society | 2 | 3 | **1** |
+
+Everything else in scope clears its threshold. **Iron is short by 5 techs
+across the four quadrants** — and since Iron is currently terminal, that only
+matters once a fourth era is added, so it is not urgent.
+
+Thin but passable (no real choice — you take the whole cell):
+Stone military (3 for 2), Stone technology (2 for 2), Bronze technology (2 for 2).
+
+The Stone technology pool is the one to watch: it lost Scouting and Surveying
+when vision stopped being draftable, leaving only Mathematics and Calendar.
+
+---
+
+## The rest — parked content
+
 Every item in `content.json` validates against the schema. **That means the
 structure is legal, not that the intent is captured.**
 

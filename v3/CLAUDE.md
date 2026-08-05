@@ -16,6 +16,12 @@
 > [`docs/open-questions.md`](docs/open-questions.md) tracks what is still undecided.
 > **This file (CLAUDE.md) describes what is BUILT**, which is a different thing
 > and currently lags the design considerably.
+>
+> ### 🔬 Current scope: Stone · Bronze · Iron, six waves
+> The content layer is pruned to a **microcosm** — `content.activeEras = 3`, with
+> 43 techs / 10 buildings / 5 wonders in play and everything else **parked in
+> `content.backlog`** (nothing deleted; the editor's Backlog tab restores rows).
+> Widening the era range later should be a **data** change, not a code change.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, era cycle,
 > territory economy, city growth, a **297-node progress web**, unit/building placement, an
@@ -406,8 +412,14 @@ says what the design text said, the conversion dropped something.
 A second Vite entry on the same dev server. Filters by era and quadrant, **sortable columns**
 (era then alphabetical by default), one table for techs/buildings/wonders/tier-unlocks driven by
 a column spec, row expansion for the effect editor, and a Feasibility tab that computes which
-cells dead-end a run. Building and wonder **placement is multi-select** — the rules compose, so
-"coastal AND not adjacent to ocean" is two entries rather than a bespoke enum member.
+cells dead-end a run — bounded to `activeEras`, so the twelve unbuilt eras don't drown the
+signal. Building and wonder **placement is multi-select** — the rules compose, so "coastal AND
+not adjacent to ocean" is two entries rather than a bespoke enum member.
+
+**The Backlog tab is out-of-scope content, not a graveyard.** Rows there are read-only until
+restored (edit after bringing something back, never before), they are excluded from validation
+(a parked tech's `requires` legitimately points at another parked tech), and `↩ restore` puts a
+row back into whichever live list it came from.
 
 ⚠️ **Save writes the real file.** `vite.config.js` adds a **dev-only** `/api/content`
 middleware that writes `src/game/data/content.json` (temp file + rename, so an interrupted save

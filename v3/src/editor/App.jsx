@@ -13,6 +13,7 @@ const TABS = [
   { key: 'buildings', label: 'Buildings' },
   { key: 'wonders', label: 'Wonders' },
   { key: 'tierUnlocks', label: 'Tier unlocks' },
+  { key: 'backlog', label: 'Backlog' },
   { key: 'feasibility', label: 'Feasibility' },
 ]
 
@@ -21,11 +22,17 @@ const EMPTY = {
   eras: ERAS,
   quadrants: QUADRANTS,
   advanceThresholds: ADVANCE_THRESHOLDS,
+  activeEras: ERAS.length,
   techs: [],
   buildings: [],
   wonders: [],
   tierUnlocks: [],
+  // Designed but out of the current build's scope. Same shape, restorable.
+  backlog: { techs: [], buildings: [], wonders: [], tierUnlocks: [] },
 }
+
+/** Which live list a backlog row belongs back in. */
+const HOME_OF = (row) => (row.tier ? 'wonders' : row.quadrant ? (row.id?.startsWith('tier_') ? 'tierUnlocks' : 'techs') : 'buildings')
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 
@@ -142,6 +149,9 @@ export default function App() {
   }, [])
 
   // --- derived --------------------------------------------------------------
+  // The backlog is deliberately NOT validated: parked rows point at techs that
+  // are no longer in scope, and reporting that as breakage would bury the real
+  // problems in the live set.
   const problems = useMemo(() => validateContent(content), [content])
   const problemsById = useMemo(() => {
     const m = new Map()
@@ -154,7 +164,32 @@ export default function App() {
 
   const feas = useMemo(() => feasibility(content), [content])
 
-  const rows = useMemo(() => content[tab] ?? [], [content, tab])
+  /** Move a parked row back into play, into whichever list it came from. */
+  const restore = useCallback((id) => {
+    setContent((c) => {
+      const b = c.backlog ?? {}
+      const all = [...(b.techs ?? []), ...(b.buildings ?? []), ...(b.wonders ?? []), ...(b.tierUnlocks ?? [])]
+      const row = all.find((r) => r.id === id)
+      if (!row) return c
+      const home = HOME_OF(row)
+      const strip = (arr) => (arr ?? []).filter((r) => r.id !== id)
+      return {
+        ...c,
+        [home]: [row, ...(c[home] ?? [])],
+        backlog: { techs: strip(b.techs), buildings: strip(b.buildings), wonders: strip(b.wonders), tierUnlocks: strip(b.tierUnlocks) },
+      }
+    })
+    setDirty(true)
+  }, [])
+
+  // The backlog is one flat list across all four kinds — you are browsing ideas,
+  // not editing a table, so the distinction does not earn four more tabs.
+  const backlogRows = useMemo(() => {
+    const b = content.backlog ?? {}
+    return [...(b.techs ?? []), ...(b.wonders ?? []), ...(b.tierUnlocks ?? []), ...(b.buildings ?? [])]
+  }, [content.backlog])
+
+  const rows = useMemo(() => (tab === 'backlog' ? backlogRows : content[tab] ?? []), [content, tab, backlogRows])
   const filtered = useMemo(() => {
     const q = filters.search.trim().toLowerCase()
     return rows.filter((r) => {
@@ -183,7 +218,12 @@ export default function App() {
           {TABS.map((t) => (
             <button key={t.key} className={`ed-tab${tab === t.key ? ' on' : ''}`} onClick={() => setTab(t.key)}>
               {t.label}
-              {t.key !== 'feasibility' && <span className="ed-count">{content[t.key]?.length ?? 0}</span>}
+              {t.key !== 'feasibility' && (
+                // The backlog is four lists under one key, so it counts differently.
+                <span className="ed-count">
+                  {t.key === 'backlog' ? backlogRows.length : content[t.key]?.length ?? 0}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -219,6 +259,8 @@ export default function App() {
             columns={columns}
             problemsById={problemsById}
             techOptions={techOptions}
+            readOnly={tab === 'backlog'}
+            onRestore={tab === 'backlog' ? restore : null}
             onPatch={(id, patch) => patchRow(tab, id, patch)}
             onRename={(id, name) => renameRow(tab, id, name)}
             onDelete={(id) => deleteRow(tab, id)}
@@ -266,6 +308,14 @@ const COLUMNS = {
     { key: 'quadrant', label: 'Quadrant', kind: 'select', width: 110, options: QUADRANTS },
     { key: 'era', label: 'Era', kind: 'era', width: 120 },
     { key: 'effects', label: 'Granted automatically on reaching this tier', kind: 'effects' },
+  ],
+  // Parked ideas. Read-only: edit them after restoring, not before.
+  backlog: [
+    { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
+    { key: 'name', label: 'Name', kind: 'name', width: 220 },
+    { key: 'quadrant', label: 'Quadrant', kind: 'select', width: 110, options: QUADRANTS },
+    { key: 'era', label: 'Era', kind: 'era', width: 120 },
+    { key: 'effects', label: 'Effect', kind: 'effects' },
   ],
 }
 

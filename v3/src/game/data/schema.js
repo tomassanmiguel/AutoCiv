@@ -682,14 +682,29 @@ export function validateContent(content) {
  */
 export function feasibility(content) {
   const rows = []
+  // Only the eras actually being built. The other twelve are designed but
+  // unpopulated, and reporting them as "blocked" would drown the real signal.
+  const active = content.activeEras ?? ERAS.length
   for (const q of QUADRANTS) {
-    for (let era = 0; era < ERAS.length; era++) {
+    for (let era = 0; era < active; era++) {
       const have = (content.techs ?? []).filter((t) => t.quadrant === q && t.era === era).length
-      const need = thresholdFor(era)
-      rows.push({ quadrant: q, era, eraName: ERAS[era], have, need, slack: have - need, ok: have >= need })
+      // The LAST active era is terminal while the rest are unbuilt: there is
+      // nothing to advance into, so it demands nothing. It still reports what it
+      // WILL need once another era is added — as `willNeed`, not as a blocker.
+      const terminal = era === active - 1
+      const willNeed = thresholdFor(era)
+      const need = terminal ? 0 : willNeed
+      rows.push({
+        quadrant: q, era, eraName: ERAS[era], have, need, willNeed, terminal,
+        slack: have - need, ok: have >= need, shortWhenExtended: have < willNeed,
+      })
     }
   }
   const blocked = rows.filter((r) => !r.ok && r.need > 0)
+  const terminalShort = rows.filter((r) => r.terminal && r.shortWhenExtended)
   const tight = rows.filter((r) => r.ok && r.need > 0 && r.slack < 2)
-  return { rows, blocked, tight, totalNeeded: QUADRANTS.length * ADVANCE_THRESHOLDS.reduce((a, b) => a + b, 0) }
+  // The last active era is terminal for now — you cannot advance out of what
+  // has not been built — so its threshold does not count toward the run's cost.
+  const cost = ADVANCE_THRESHOLDS.slice(0, Math.max(0, active - 1)).reduce((a, b) => a + b, 0)
+  return { rows, blocked, tight, terminalShort, active, totalNeeded: QUADRANTS.length * cost }
 }
