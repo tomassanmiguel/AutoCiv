@@ -153,13 +153,7 @@ function Cell({ col, row, techOptions, readOnly, onPatch, onRename, onToggle, is
       )
 
     case 'name':
-      return (
-        <input
-          className="ed-name"
-          value={v ?? ''}
-          onChange={(e) => onRename(row.id, e.target.value)}
-        />
-      )
+      return <NameCell row={row} onRename={onRename} />
 
     case 'era':
       return (
@@ -204,6 +198,35 @@ function Cell({ col, row, techOptions, readOnly, onPatch, onRename, onToggle, is
     default:
       return <span>{String(v ?? '')}</span>
   }
+}
+
+/**
+ * The name field, which COMMITS ON BLUR rather than on every keystroke.
+ *
+ * ⚠️ Renaming rewrites the row's id, and the id is the React key. Committing per
+ * keystroke therefore changed the key on every character, which unmounted and
+ * remounted the row — so the input lost focus and you could only type one letter
+ * at a time. Holding a local draft keeps the key stable while you type; the id
+ * moves once, when you leave the field.
+ */
+function NameCell({ row, onRename }) {
+  // Seeded once per mount, and the row is keyed by id — so committing a rename
+  // remounts this and re-seeds it from the new name. No syncing effect needed.
+  const [draft, setDraft] = useState(row.name ?? '')
+
+  const commit = () => { if (draft !== row.name) onRename(row.id, draft) }
+  return (
+    <input
+      className="ed-name"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') { setDraft(row.name ?? ''); e.currentTarget.blur() }
+      }}
+    />
+  )
 }
 
 /**

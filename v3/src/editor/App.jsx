@@ -132,18 +132,32 @@ export default function App() {
     })
   }, [mutate])
 
-  // Renaming rewrites the id too, and repoints anything that depended on it —
-  // a dangling `requires` is the one edit that silently breaks the dataset.
+  /**
+   * Renaming rewrites the id too, and repoints everything that referenced it —
+   * a dangling `requires` is the one edit that silently breaks the dataset.
+   *
+   * ⚠️ This used to spread `[key]` and then `buildings`/`wonders` explicitly, so
+   * for those two tabs the later literal key overwrote the renamed list and the
+   * edit vanished. Every list now goes through one path.
+   */
   const renameRow = useCallback((key, id, name) => {
-    const next = slug(name)
+    const next = slug(name) || id
     setContent((c) => {
-      const rows = (c[key] ?? []).map((r) => (r.id === id ? { ...r, name, id: next || r.id } : r))
+      const renamed = (arr) => (arr ?? []).map((r) => (r.id === id ? { ...r, name, id: next } : r))
       const repoint = (arr) => (arr ?? []).map((r) => ({
         ...r,
-        requires: (r.requires ?? []).map((x) => (x === id ? next : x)),
-        unlockedBy: r.unlockedBy === id ? next : r.unlockedBy,
+        ...(r.requires ? { requires: r.requires.map((x) => (x === id ? next : x)) } : {}),
+        ...(r.excludes ? { excludes: r.excludes.map((x) => (x === id ? next : x)) } : {}),
+        ...(r.unlockedBy !== undefined ? { unlockedBy: r.unlockedBy === id ? next : r.unlockedBy } : {}),
       }))
-      return { ...c, [key]: repoint(rows), techs: key === 'techs' ? repoint(rows) : c.techs, buildings: repoint(c.buildings), wonders: repoint(c.wonders) }
+      const apply = (k) => repoint(k === key ? renamed(c[k]) : c[k])
+      return {
+        ...c,
+        techs: apply('techs'),
+        buildings: apply('buildings'),
+        wonders: apply('wonders'),
+        tierUnlocks: apply('tierUnlocks'),
+      }
     })
     setDirty(true)
   }, [])
