@@ -3,6 +3,8 @@ import {
   REGIONS, STATS, STAT_KEYS, MODES, MODE_KEYS, SCALES, SCALE_KEYS, COUNTABLES,
   ANCHORS, TRIGGERS, TRIGGER_KEYS, FILTERS, FILTER_KEYS, DURATIONS,
   DURATION_KEYS, RULE_KEYS, RULE_KEY_LIST, blankEffect, validateEffect,
+  REVEAL_STAGES, PERMISSIONS, PERMISSION_KEYS, COST_KINDS, COST_KIND_KEYS,
+  PLACEMENTS, PLACEMENT_KEYS,
 } from '../game/data/schema.js'
 import { describeEffect, fieldsFor } from '../game/data/describe-effect.js'
 
@@ -74,10 +76,46 @@ export default function EffectEditor({ effects, onChange }) {
                 </>
               )}
 
+              {show.permission && (
+                <Field label="May">
+                  <select value={fx.permission ?? ''} onChange={(e) => set(i, { permission: e.target.value })}>
+                    <option value="">— pick a permission —</option>
+                    {PERMISSION_KEYS.map((k) => <option key={k} value={k}>{PERMISSIONS[k]}</option>)}
+                  </select>
+                </Field>
+              )}
+
+              {show.costKind && (
+                <Field label="Which price" wide>
+                  <select value={fx.costKind ?? ''} onChange={(e) => set(i, { costKind: e.target.value })}>
+                    <option value="">— pick a price —</option>
+                    {COST_KIND_KEYS.map((k) => <option key={k} value={k}>{COST_KINDS[k]}</option>)}
+                  </select>
+                </Field>
+              )}
+
+              {show.placement && (
+                <Field label="Placed" wide>
+                  <select value={fx.placement ?? ''} onChange={(e) => set(i, { placement: e.target.value })}>
+                    <option value="">— anywhere you control —</option>
+                    {PLACEMENT_KEYS.map((k) => <option key={k} value={k}>{PLACEMENTS[k]}</option>)}
+                  </select>
+                </Field>
+              )}
+
               {show.stat && (
                 <Field label="Stat">
                   <select value={fx.stat} onChange={(e) => set(i, { stat: e.target.value })}>
                     {STAT_KEYS.map((k) => <option key={k} value={k}>{STATS[k].label} ({STATS[k].group})</option>)}
+                  </select>
+                </Field>
+              )}
+
+              {show.statTo && (
+                <Field label="Produced as">
+                  <select value={fx.statTo ?? ''} onChange={(e) => set(i, { statTo: e.target.value })}>
+                    <option value="">— itself —</option>
+                    {STAT_KEYS.map((k) => <option key={k} value={k}>{STATS[k].label}</option>)}
                   </select>
                 </Field>
               )}
@@ -110,6 +148,27 @@ export default function EffectEditor({ effects, onChange }) {
                         onChange={(v) => set(i, { scaleKey: v })} />
                     </Field>
                   )}
+                  {fx.scale !== 'none' && fx.scale !== 'equal_to_stat' && (
+                    <>
+                      <Field label="Per how many" narrow>
+                        <input type="number" min="1" value={fx.scaleN ?? 1}
+                          onChange={(e) => set(i, { scaleN: Number(e.target.value) })} />
+                      </Field>
+                      {/* Narrows what is COUNTED, not who receives — "per non-Earth tile". */}
+                      <Field label="Counting only">
+                        <select value={fx.scaleFilter ?? 'none'}
+                          onChange={(e) => set(i, { scaleFilter: e.target.value, scaleFilterKey: '' })}>
+                          {FILTER_KEYS.map((k) => <option key={k} value={k}>{FILTERS[k].label}</option>)}
+                        </select>
+                      </Field>
+                      {FILTERS[fx.scaleFilter]?.needsKey && (
+                        <Field label="Of">
+                          <KeyPicker kind={FILTERS[fx.scaleFilter].needsKey} value={fx.scaleFilterKey}
+                            onChange={(v) => set(i, { scaleFilterKey: v })} />
+                        </Field>
+                      )}
+                    </>
+                  )}
                 </>
               )}
 
@@ -125,6 +184,23 @@ export default function EffectEditor({ effects, onChange }) {
                       <KeyPicker kind={FILTERS[fx.filter].needsKey} value={fx.filterKey}
                         onChange={(v) => set(i, { filterKey: v })} />
                     </Field>
+                  )}
+                  {/* A second condition, for "on ocean AND carrying an outpost". */}
+                  {fx.filter !== 'none' && (
+                    <>
+                      <Field label="And also">
+                        <select value={fx.filter2 ?? 'none'}
+                          onChange={(e) => set(i, { filter2: e.target.value, filter2Key: '' })}>
+                          {FILTER_KEYS.map((k) => <option key={k} value={k}>{FILTERS[k].label}</option>)}
+                        </select>
+                      </Field>
+                      {FILTERS[fx.filter2]?.needsKey && (
+                        <Field label="Of">
+                          <KeyPicker kind={FILTERS[fx.filter2].needsKey} value={fx.filter2Key}
+                            onChange={(v) => set(i, { filter2Key: v })} />
+                        </Field>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -151,6 +227,14 @@ export default function EffectEditor({ effects, onChange }) {
                     {DURATION_KEYS.map((k) => <option key={k} value={k}>{DURATIONS[k].label}</option>)}
                   </select>
                 </Field>
+              )}
+
+              {show.stacks && (
+                <label className="fx-field narrow fx-check">
+                  <span>Stacks</span>
+                  <input type="checkbox" checked={!!fx.stacks}
+                    onChange={(e) => set(i, { stacks: e.target.checked })} />
+                </label>
               )}
 
               <div className="fx-row-actions">
@@ -197,6 +281,7 @@ const KEY_SOURCES = {
   adjacency: COUNTABLES,
   anchor: ANCHORS,
   stat: STAT_KEYS,
+  revealStage: REVEAL_STAGES,
   building: null, // free-form id: buildings are content, not a fixed enum
 }
 

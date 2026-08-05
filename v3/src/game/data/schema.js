@@ -82,6 +82,11 @@ export const OFFER_SIZE = 3
 export const OPS = {
   yield: { label: 'Yield', help: 'Change how much of a resource something produces.' },
   stat: { label: 'Unit/building stat', help: 'Change attack, defence, speed, range…' },
+  // `heal` and `damage` are NOT `stat`. A stat change moves the ceiling; these
+  // move the current value against it. Encoding "recover 5% defence each turn"
+  // as a stat bonus would raise max health instead of restoring it.
+  heal: { label: 'Heal', help: 'Restore current health toward maximum.' },
+  damage: { label: 'Damage', help: 'Deal damage now — not a modifier to a stat.' },
   grant: { label: 'Grant', help: 'Hand over units, buildings, temples, outposts — now or on a trigger.' },
   unlock: { label: 'Unlock', help: 'Make a unit class, building or wonder available to build.' },
   permit: { label: 'Permission', help: 'Allow settling, founding or moving somewhere previously barred.' },
@@ -120,6 +125,12 @@ export const TARGETS = {
   enemies: { label: 'Enemy units', needsKey: false },
   self: { label: 'This building itself', needsKey: false },
   run: { label: 'The run', needsKey: false },
+  // The subject that FIRED the trigger — the unit that died, the thing that was
+  // hit. Without it, "whenever a unit dies IT gains +5 defence" has to be
+  // written as "all units gain +5", which buffs the army instead of the corpse.
+  triggering_unit: { label: 'The unit that triggered this', needsKey: false },
+  expansion_events: { label: 'Expansion events', needsKey: false },
+  reveal_stage: { label: 'A map reveal stage', needsKey: 'revealStage' },
 }
 export const TARGET_KEYS = Object.keys(TARGETS)
 
@@ -130,7 +141,47 @@ export const UNIT_CLASSES = [
 ]
 
 /** Tile classes — how a tile is being used, as opposed to what it is made of. */
-export const TILE_CLASSES = ['rural', 'outpost', 'city', 'improved', 'controlled', 'empty', 'water', 'land']
+export const TILE_CLASSES = ['rural', 'outpost', 'city', 'improved', 'controlled', 'empty', 'water', 'land', 'road']
+
+/**
+ * The 15 notches of the map reveal ladder, mirroring `world/regions.js` STAGES.
+ *
+ * Vision techs reveal NAMED PARTIAL steps — "the coast of the New World", "the
+ * first ring of space" — which a whole-region enum cannot express. `op: 'vision'`
+ * therefore targets a stage, not a region, and "+N rings" is the exception
+ * rather than the rule.
+ */
+export const REVEAL_STAGES = [
+  'local', 'nearby', 'distant', 'old_world', 'islands', 'new_world_coast',
+  'full_earth', 'earth_and_space', 'moon', 'mars', 'deeper_space',
+  'exo_coastline', 'full_exo', 'outer_galaxy', 'full_map',
+]
+
+/**
+ * What `op: 'permit'` actually permits. Without this the permission itself was
+ * only implied by the filter, so "may be stationed on mountains" and "may settle
+ * mountains" were indistinguishable.
+ */
+export const PERMISSIONS = {
+  settle: 'May place an outpost there',
+  found_city: 'May found a city there',
+  station: 'May be stationed / placed there',
+  traverse: 'May move through there',
+  build: 'May construct buildings there',
+}
+export const PERMISSION_KEYS = Object.keys(PERMISSIONS)
+
+/** Which price `op: 'cost'` moves. `stat: gold` alone collapsed these into one. */
+export const COST_KINDS = {
+  unit_repair: 'Repairing a unit',
+  unit_upgrade: 'Upgrading a unit',
+  building_repair: 'Repairing a building',
+  building_upgrade: 'Upgrading a building',
+  mercenary: 'Hiring a mercenary',
+  reroll: 'Rerolling an offer',
+  settle: 'Settling a tile',
+}
+export const COST_KIND_KEYS = Object.keys(COST_KINDS)
 
 /** Terrain types, matching `world/terrain.js`. */
 export const TERRAINS = [
@@ -139,8 +190,16 @@ export const TERRAINS = [
   'exoplains', 'exohills', 'exosea', 'exomountain', 'space', 'deep_space',
 ]
 
-/** Regions — the big geographic divisions a bonus can be scoped to. */
-export const REGIONS = ['old_world', 'new_world', 'earth', 'moon', 'mars', 'space', 'exoplanet', 'galaxy', 'off_earth']
+/**
+ * Regions — the big geographic divisions a bonus can be scoped to.
+ * `islands` is the channel belt, not the terrain type. `celestial_bodies` means
+ * solid ground off Earth (moon/mars/asteroid/planet/exo) but NOT open space,
+ * which is what "neither on Earth nor open space" actually asks for.
+ */
+export const REGIONS = [
+  'old_world', 'new_world', 'earth', 'islands', 'moon', 'mars', 'moon_or_mars',
+  'space', 'exoplanet', 'galaxy', 'off_earth', 'celestial_bodies',
+]
 
 /** Resources and combat stats — the quantity an effect moves. */
 export const STATS = {
@@ -154,6 +213,10 @@ export const STATS = {
   range: { label: 'Range', group: 'combat' },
   blast: { label: 'Blast radius', group: 'combat' },
   cooldown: { label: 'Cooldown', group: 'combat' },
+  // A command/aura radius is NOT a unit's attack range. Widening "every ranged
+  // effect" must not also let command units shoot further.
+  command_radius: { label: 'Command radius', group: 'combat' },
+  effect_radius: { label: 'Every aura / building radius', group: 'combat' },
   population: { label: 'Population', group: 'city' },
   base_yield: { label: 'All base yields', group: 'resource' },
 }
@@ -164,7 +227,11 @@ export const MODES = {
   flat: { label: 'Flat (+N)' },
   percent: { label: 'Percent (+N%)' },
   multiply: { label: 'Multiply (×N)' },
+  // "Increases the outpost multiplier by 1 — a doubling becomes a tripling" is
+  // not ×1 (a no-op). It adds to the factor.
+  add_multiplier: { label: 'Add N to the existing multiplier' },
   set: { label: 'Set to N' },
+  full: { label: 'Completely (all of it)' },
 }
 export const MODE_KEYS = Object.keys(MODES)
 
@@ -189,12 +256,17 @@ export const SCALE_KEYS = Object.keys(SCALES)
 export const COUNTABLES = [
   'city', 'outpost', 'citizen', 'building', 'unique_building', 'temple', 'wonder',
   'unit', 'melee', 'ranged', 'cavalry', 'siege', 'naval', 'aerial', 'astral',
-  'fortification', 'asteroid', 'mountain', 'water_tile', 'empty_space',
-  'rural_tile', 'controlled_tile', 'enemy_defeated', 'road_tile',
+  'command_unit', 'fortification', 'asteroid', 'mountain', 'planet_tile',
+  'water_tile', 'empty_space', 'rural_tile', 'controlled_tile', 'any_tile',
+  'enemy_defeated', 'road_tile',
 ]
 
-/** Anchors for `per_distance`. */
-export const ANCHORS = ['palace', 'nearest_city', 'nearest_temple', 'this_building']
+/**
+ * Anchors for `per_distance`. `combat_start_tile` is what makes "gains +1 attack
+ * for every tile it has moved this combat" expressible — measured from where the
+ * unit stood when the battle began, not from the palace.
+ */
+export const ANCHORS = ['palace', 'nearest_city', 'nearest_temple', 'this_building', 'combat_start_tile']
 
 /** When an effect fires. */
 export const TRIGGERS = {
@@ -218,6 +290,9 @@ export const TRIGGERS = {
   on_raze: { label: 'When an enemy razes a tile', needsN: false },
   on_upgrade: { label: 'When you upgrade something', needsN: false },
   on_combat_loss: { label: 'When you lose a combat', needsN: false },
+  // Founding is a one-off; growth happens every time a city gains a citizen.
+  // Conflating them turns "founding also builds a factory" into a factory spam.
+  on_city_founded: { label: 'When you found a city', needsN: false },
 }
 export const TRIGGER_KEYS = Object.keys(TRIGGERS)
 
@@ -235,6 +310,14 @@ export const FILTERS = {
   level_2_plus: { label: 'Only for level 2 and above', needsKey: false },
   first_each_combat: { label: 'Only the first each combat', needsKey: false },
   not_adjacent_to: { label: 'Only when NOT adjacent to…', needsKey: 'countable' },
+  // Negation: "everywhere EXCEPT the Old World" is common in the design and was
+  // previously only approximable by naming a narrower region.
+  not_in_region: { label: 'Only OUTSIDE region…', needsKey: 'region' },
+  // `adjacent_to` counts things; this one counts GROUND. "Enemies moving beside
+  // a singularity" is a terrain adjacency, not a countable one.
+  adjacent_to_terrain: { label: 'Only when adjacent to terrain…', needsKey: 'terrain' },
+  produces_stat: { label: 'Only things that produce…', needsKey: 'stat' },
+  once_per_subject: { label: 'Only once for each subject', needsKey: false },
 }
 export const FILTER_KEYS = Object.keys(FILTERS)
 
@@ -282,7 +365,17 @@ export const RULE_KEYS = {
   decoy_pathing: 'Enemies within range path here before resuming their route.',
   free_reposition: 'May be repositioned without paying gold.',
   place_anywhere: 'May be placed on any tile, ignoring terrain rules.',
-  traverse: 'May cross a terrain class it otherwise could not.',
+  traverse: 'May cross a terrain class it otherwise could not — read from filterKey.',
+  no_traverse: 'May NOT cross a terrain class — read from filterKey.',
+  command_aura: 'Never attacks; every friendly unit inside its radius takes its buff.',
+  never_moves: 'Never moves from where it is placed.',
+  never_attacks: 'Never strikes, whatever is in reach.',
+  count_as_unit_class: 'Also counts as another unit class for every bonus that class gets.',
+  knockback_every_n: 'Every Nth attack shoves the target back a tile.',
+  splash_falloff: 'Splash damage falls off by a percentage per tile of distance.',
+  upgrade_potency: 'Each upgrade level is worth a percentage more than normal.',
+  requires_pair: 'Only takes effect once a second copy exists.',
+  lay_road_between_cities: 'Connects your cities by the cheapest route; mountains cost triple.',
 
   // — economy and meta —
   replay_combat: 'On a loss, the run may rewind to before the battle.',
@@ -358,16 +451,36 @@ export const blankEffect = () => ({
   target: 'global',
   targetKey: '',
   stat: 'gold',
+  // The DESTINATION resource, for conversions ("all food output becomes gold").
+  // One `stat` field forced the destination to be smuggled into targetKey.
+  statTo: '',
   mode: 'flat',
   value: 1,
   scale: 'none',
   scaleKey: '',
+  // The divisor in "for every N you own". Without it, "for every 2 enemies
+  // defeated, +1 gold" had to be written as value 0.5.
+  scaleN: 1,
+  // Narrows what is COUNTED, as opposed to `filter`, which narrows who RECEIVES.
+  // "+1 attack per non-Earth tile you control" needs both.
+  scaleFilter: 'none',
+  scaleFilterKey: '',
   filter: 'none',
   filterKey: '',
+  // A second condition. "An island tile, on ocean, with an outpost" is two
+  // requirements; one filter pair silently dropped one of them.
+  filter2: 'none',
+  filter2Key: '',
   trigger: 'passive',
   triggerN: 0,
   duration: 'permanent',
+  // Whether a permanent gain STACKS every time it fires ("after every combat,
+  // permanently +1") or is applied once.
+  stacks: false,
   ruleKey: '',
+  permission: '',
+  costKind: '',
+  placement: '',
 })
 
 export const blankTech = () => ({
@@ -405,6 +518,21 @@ export function validateEffect(fx, where) {
   else if (fx.scale && SCALES[fx.scale].needsKey && !fx.scaleKey) out.push(at(`scale "${fx.scale}" needs a key`))
   if (fx.filter && !FILTERS[fx.filter]) out.push(at(`unknown filter "${fx.filter}"`))
   else if (fx.filter && FILTERS[fx.filter].needsKey && !fx.filterKey) out.push(at(`filter "${fx.filter}" needs a key`))
+  if (fx.filter2 && fx.filter2 !== 'none') {
+    if (!FILTERS[fx.filter2]) out.push(at(`unknown second filter "${fx.filter2}"`))
+    else if (FILTERS[fx.filter2].needsKey && !fx.filter2Key) out.push(at(`second filter "${fx.filter2}" needs a key`))
+  }
+  if (fx.scaleFilter && fx.scaleFilter !== 'none') {
+    if (!FILTERS[fx.scaleFilter]) out.push(at(`unknown scale filter "${fx.scaleFilter}"`))
+    else if (FILTERS[fx.scaleFilter].needsKey && !fx.scaleFilterKey) out.push(at(`scale filter "${fx.scaleFilter}" needs a key`))
+  }
+  if (fx.op === 'permit' && !PERMISSIONS[fx.permission]) out.push(at(`op "permit" needs a permission (got "${fx.permission}")`))
+  if (fx.op === 'cost' && !COST_KINDS[fx.costKind]) out.push(at(`op "cost" needs a costKind (got "${fx.costKind}")`))
+  if (fx.op === 'vision' && fx.target === 'reveal_stage' && !REVEAL_STAGES.includes(fx.targetKey)) {
+    out.push(at(`op "vision" targets an unknown reveal stage "${fx.targetKey}"`))
+  }
+  if (fx.statTo && !STATS[fx.statTo]) out.push(at(`unknown destination stat "${fx.statTo}"`))
+  if (fx.placement && !PLACEMENTS[fx.placement]) out.push(at(`unknown placement "${fx.placement}"`))
   if (fx.trigger && !TRIGGERS[fx.trigger]) out.push(at(`unknown trigger "${fx.trigger}"`))
   else if (fx.trigger && TRIGGERS[fx.trigger].needsN && !fx.triggerN) out.push(at(`trigger "${fx.trigger}" needs an N`))
   return out

@@ -48,10 +48,14 @@ function subject(fx) {
 }
 
 function scaleText(fx) {
+  const n = fx.scaleN > 1 ? `${fx.scaleN} ` : ''
+  const where = fx.scaleFilter && fx.scaleFilter !== 'none'
+    ? filterText({ filter: fx.scaleFilter, filterKey: fx.scaleFilterKey }).replace(/^, /, ' ')
+    : ''
   switch (fx.scale) {
-    case 'per_adjacent': return ` per adjacent ${pretty(fx.scaleKey)}`
-    case 'per_owned': return ` per ${pretty(fx.scaleKey)} you own`
-    case 'per_in_range': return ` per ${pretty(fx.scaleKey)} in range`
+    case 'per_adjacent': return ` per ${n}adjacent ${pretty(fx.scaleKey)}${where}`
+    case 'per_owned': return ` per ${n}${pretty(fx.scaleKey)}${where} you own`
+    case 'per_in_range': return ` per ${n}${pretty(fx.scaleKey)}${where} in range`
     case 'per_distance': return ` per tile of distance from the ${pretty(fx.scaleKey)}`
     case 'equal_to_stat': return `, equal to its ${TOKEN[fx.scaleKey] ?? pretty(fx.scaleKey)}`
     case 'per_level': return ' per upgrade level'
@@ -73,9 +77,19 @@ function filterText(fx) {
     case 'vs_unit_class': return `, against ${pretty(fx.filterKey)} units`
     case 'level_2_plus': return ', at level 2 and above'
     case 'first_each_combat': return ', the first each combat'
+    case 'not_in_region': return `, outside the ${pretty(fx.filterKey)}`
+    case 'adjacent_to_terrain': return `, when beside ${pretty(fx.filterKey)}`
+    case 'produces_stat': return `, if it produces ${TOKEN[fx.filterKey] ?? pretty(fx.filterKey)}`
+    case 'once_per_subject': return ', once each'
     default: return ''
   }
 }
+
+/** Both conditions, when a second one is set. */
+const allFilters = (fx) =>
+  filterText(fx) + (fx.filter2 && fx.filter2 !== 'none'
+    ? filterText({ filter: fx.filter2, filterKey: fx.filter2Key })
+    : '')
 
 function triggerText(fx) {
   switch (fx.trigger) {
@@ -108,27 +122,36 @@ const durationText = (fx) => (fx.duration && fx.duration !== 'permanent' ? ` (${
 /** One effect as a sentence. */
 export function describeEffect(fx) {
   if (!fx || !OPS[fx.op]) return '(malformed effect)'
-  const tail = `${scaleText(fx)}${filterText(fx)}${triggerText(fx)}${durationText(fx)}`
+  const stacking = fx.stacks ? ', stacking' : ''
+  const tail = `${scaleText(fx)}${allFilters(fx)}${triggerText(fx)}${durationText(fx)}${stacking}`
 
   switch (fx.op) {
+    case 'heal':
+      return `${subject(fx)} recover ${amount(fx)} ${TOKEN[fx.stat] ?? 'health'}${tail}`
+    case 'damage':
+      return `${subject(fx)} take ${amount(fx)} damage${tail}`
     case 'rule':
       return `${RULE_KEYS[fx.ruleKey] ?? `Unknown rule "${fx.ruleKey}"`}${fx.value ? ` (${fx.value})` : ''}${tail}`
     case 'yield':
-      return `${subject(fx)} produce ${amount(fx)} ${TOKEN[fx.stat] ?? pretty(fx.stat)}${tail}`
+      return fx.statTo
+        ? `${subject(fx)}'s ${TOKEN[fx.stat] ?? pretty(fx.stat)} is produced as ${TOKEN[fx.statTo] ?? pretty(fx.statTo)} instead${tail}`
+        : `${subject(fx)} produce ${amount(fx)} ${TOKEN[fx.stat] ?? pretty(fx.stat)}${tail}`
     case 'stat':
       return `${subject(fx)} gain ${amount(fx)} ${TOKEN[fx.stat] ?? pretty(fx.stat)}${tail}`
     case 'grant':
       return `Grants ${fx.value} ${subject(fx)}${tail}`
     case 'unlock':
-      return `Unlocks ${subject(fx)}`
+      return `Unlocks ${subject(fx)}${fx.placement ? `, placed ${pretty(fx.placement)}` : ''}`
     case 'permit':
-      return `Permits ${pretty(fx.targetKey) || subject(fx)}${filterText(fx)}`
+      return `${subject(fx)} may ${pretty(fx.permission) || 'act'}${allFilters(fx)}`
     case 'vision':
-      return `Extends vision to ${pretty(fx.targetKey) || 'more of the map'}`
+      return fx.mode === 'full'
+        ? `Reveals ${pretty(fx.targetKey) || 'more of the map'} completely`
+        : `Extends vision to ${pretty(fx.targetKey) || 'more of the map'}`
     case 'threshold':
       return `${TOKEN[fx.stat] ?? pretty(fx.stat)} thresholds ${amount(fx)}`
     case 'cost':
-      return `${pretty(fx.targetKey)} costs ${amount(fx)}`
+      return `${pretty(fx.costKind) || pretty(fx.targetKey)} costs ${amount(fx)}`
     case 'upgrade_level':
       return `${subject(fx)} gain ${amount(fx)} upgrade levels${tail}`
     case 'growth':
@@ -154,17 +177,23 @@ export const describeEffects = (effects) =>
 
 /** Which schema fields are meaningful for a given op — drives the editor UI. */
 export function fieldsFor(op) {
-  const base = { target: true, stat: false, mode: false, value: false, scale: false, filter: true, trigger: true, duration: false, ruleKey: false }
+  const base = {
+    target: true, stat: false, statTo: false, mode: false, value: false,
+    scale: false, filter: true, trigger: true, duration: false, stacks: false,
+    ruleKey: false, permission: false, costKind: false, placement: false,
+  }
   switch (op) {
-    case 'rule': return { ...base, ruleKey: true, value: true, duration: true }
-    case 'yield': return { ...base, stat: true, mode: true, value: true, scale: true, duration: true }
-    case 'stat': return { ...base, stat: true, mode: true, value: true, scale: true, duration: true }
+    case 'rule': return { ...base, ruleKey: true, value: true, mode: true, duration: true }
+    case 'yield': return { ...base, stat: true, statTo: true, mode: true, value: true, scale: true, duration: true, stacks: true }
+    case 'stat': return { ...base, stat: true, mode: true, value: true, scale: true, duration: true, stacks: true }
+    case 'heal': return { ...base, stat: true, mode: true, value: true }
+    case 'damage': return { ...base, stat: true, mode: true, value: true }
     case 'grant': return { ...base, value: true, scale: true }
-    case 'unlock': return { ...base, filter: false, trigger: false }
-    case 'permit': return { ...base, trigger: false }
-    case 'vision': return { ...base, filter: false, trigger: false }
+    case 'unlock': return { ...base, filter: false, trigger: false, placement: true }
+    case 'permit': return { ...base, trigger: false, permission: true }
+    case 'vision': return { ...base, mode: true, value: true, filter: false, trigger: false }
     case 'threshold': return { ...base, stat: true, mode: true, value: true, filter: false, trigger: false }
-    case 'cost': return { ...base, mode: true, value: true, filter: false, trigger: false }
+    case 'cost': return { ...base, costKind: true, mode: true, value: true, target: false, filter: false, trigger: false }
     case 'upgrade_level': return { ...base, value: true, scale: true }
     case 'growth': return { ...base, mode: true, value: true }
     case 'trigger_count': return { ...base, value: true, filter: false, trigger: false }

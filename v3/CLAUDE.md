@@ -344,6 +344,22 @@ of the design needs:
 - **`filter`** — "while on a rural tile", "in the New World", "below half health"
 - **`trigger`** — "every 20 ticks", "at the end of combat", "whenever a unit dies"
 
+Distinctions the schema makes **that are easy to collapse and wrong when collapsed** — each one
+was found by converting all 297 techs and hitting the wall:
+- **`heal`/`damage` are not `stat`.** A stat change moves the ceiling; these move the current
+  value against it. "Recover 5% defence each turn" as a stat bonus raises max health instead.
+- **`command_radius`/`effect_radius` are not `range`.** Widening every aura must not also let
+  command units shoot further.
+- **`triggering_unit` is not `all_units`.** "Whenever a unit dies IT gains +5" buffs the
+  casualty, not the army.
+- **`scaleFilter` is not `filter`.** One narrows what is COUNTED, the other who RECEIVES —
+  "+1 attack per non-Earth tile you control" needs both, and the palace is on Earth.
+- **`add_multiplier` is not `multiply`.** "Increases the outpost multiplier by 1" is not ×1.
+- **`on_city_founded` is not `on_city_growth`.** One fires once; the other every population tick.
+- **`op: 'vision'` targets a REVEAL STAGE, not a region** (`REVEAL_STAGES` mirrors
+  `regions.js` STAGES). Scouting, Surveying and Silk Road all say "the Old World" but are three
+  different notches of the same ladder.
+
 ⚠️ **`op: 'rule'` is not an escape hatch into prose.** Its `ruleKey` comes from a closed enum,
 and every key names a behaviour the engine must implement — so `RULE_KEYS` doubles as the work
 queue for the combat/economy code. If a design needs something not in the list, add a key and

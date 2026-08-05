@@ -231,6 +231,8 @@ body {
 }
 .fx-field select:focus, .fx-field input:focus { border-color: var(--e-accent); outline: none; }
 
+.fx-check { align-items: flex-start; }
+.fx-check input { width: 16px; height: 16px; margin-top: 0.3rem; }
 .fx-row-actions { margin-left: auto; display: flex; gap: 0.2rem; }
 .fx-row-actions button {
   background: transparent; border: 1px solid var(--e-line); border-radius: 4px;
