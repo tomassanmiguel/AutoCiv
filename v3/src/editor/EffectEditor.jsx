@@ -4,7 +4,7 @@ import {
   ANCHORS, TRIGGERS, TRIGGER_KEYS, FILTERS, FILTER_KEYS, DURATIONS,
   DURATION_KEYS, RULE_KEYS, RULE_KEY_LIST, blankEffect, validateEffect,
   REVEAL_STAGES, PERMISSIONS, PERMISSION_KEYS, COST_KINDS, COST_KIND_KEYS,
-  PLACEMENTS, PLACEMENT_KEYS,
+  PLACEMENTS, PLACEMENT_KEYS, REPEATING_TRIGGERS,
 } from '../game/data/schema.js'
 import { describeEffect, fieldsFor } from '../game/data/describe-effect.js'
 
@@ -241,11 +241,15 @@ export default function EffectEditor({ effects, onChange }) {
                 </Field>
               )}
 
-              {show.stacks && (
-                <label className="fx-field narrow fx-check">
-                  <span>Stacks</span>
-                  <input type="checkbox" checked={!!fx.stacks}
-                    onChange={(e) => set(i, { stacks: e.target.checked })} />
+              {/* Stacking is the default and two different techs ALWAYS stack.
+                  This asks only whether a REPEATING trigger accumulates, so it
+                  is pointless on `immediate` and `passive` — and it is phrased
+                  as the exception, since that is the only thing worth setting. */}
+              {show.stacks && REPEATING_TRIGGERS.has(fx.trigger) && (
+                <label className="fx-field fx-check" title="By default a repeating trigger accumulates: +1, +2, +3…">
+                  <span>Once only</span>
+                  <input type="checkbox" checked={fx.stacks === false}
+                    onChange={(e) => set(i, { stacks: !e.target.checked })} />
                 </label>
               )}
 

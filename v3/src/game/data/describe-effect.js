@@ -10,7 +10,7 @@
 // wired, so a node's description can never drift from what it does.
 
 import {
-  OPS, TARGETS, STATS, SCALES, FILTERS, TRIGGERS, RULE_KEYS,
+  OPS, TARGETS, STATS, SCALES, FILTERS, TRIGGERS, RULE_KEYS, REPEATING_TRIGGERS,
 } from './schema.js'
 
 const TOKEN = {
@@ -123,7 +123,9 @@ const durationText = (fx) => (fx.duration && fx.duration !== 'permanent' ? ` (${
 /** One effect as a sentence. */
 export function describeEffect(fx) {
   if (!fx || !OPS[fx.op]) return '(malformed effect)'
-  const stacking = fx.stacks ? ', stacking' : ''
+  // Stacking is the default, so the sentence only mentions it when it is OFF —
+  // and only where a repeating trigger makes the distinction real.
+  const stacking = fx.stacks === false && REPEATING_TRIGGERS.has(fx.trigger) ? ', once only' : ''
   const tail = `${scaleText(fx)}${allFilters(fx)}${triggerText(fx)}${durationText(fx)}${stacking}`
 
   switch (fx.op) {
@@ -189,7 +191,7 @@ export function fieldsFor(op) {
     case 'stat': return { ...base, stat: true, mode: true, value: true, scale: true, duration: true, stacks: true }
     case 'heal': return { ...base, stat: true, mode: true, value: true }
     case 'damage': return { ...base, stat: true, mode: true, value: true }
-    case 'grant': return { ...base, value: true, scale: true }
+    case 'grant': return { ...base, value: true, scale: true, stacks: true }
     case 'unlock': return { ...base, filter: false, trigger: false, placement: true }
     case 'permit': return { ...base, trigger: false, permission: true }
     case 'vision': return { ...base, mode: true, value: true, filter: false, trigger: false }

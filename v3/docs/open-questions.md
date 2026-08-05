@@ -60,6 +60,8 @@ Two passes produced this list:
 | Manhattan Project razing | Ordinary raze — a ruin gold can rebuild |
 | Building placement | Multi-select list |
 | Duplicate techs | Acknowledged; the designer will adjust |
+| Do same-stat bonuses stack or replace? | **Everything stacks.** Bronze+Iron+Steel is +21, not +12. No tier system anywhere |
+| What `stacks` means | Only whether a *repeating trigger* accumulates. **Defaults to true**; the exception is what gets written down |
 
 ---
 
@@ -79,27 +81,21 @@ Full list in `scratchpad/unofferable-vs.json`. Examples:
 Each needs either a move so both halves share a pool, or a decision that the
 pairing is abandoned.
 
-### 2. Do flat bonuses to the same stat stack, or replace?
-Bronze Working +3, Iron Working +6, Steel +12 are currently **additive (+21)**.
-The old progress web modelled weapons as *tiers that replace*. Same question for
-the fortification line (Masonry +5, Castles +10, Star Forts +20, Magnetic
-Deflectors +40 — additive would be +75).
-
-### 3. Where does a granted unit appear?
+### 2. Where does a granted unit appear?
 "Create a melee unit" appears ~40 times and nothing says where it is placed, or
 what happens when there is no legal tile — Levee en Masse grants five at once.
 
-### 4. Does a repaired casualty keep its accumulated bonuses?
+### 3. Does a repaired casualty keep its accumulated bonuses?
 Professional Army, Military Tribunals, Taj Mahal and Armory all grant *permanent*
 per-unit bonuses. When a unit dies and gold rebuilds it, does it return with them
 or at base? This is the single largest unanswered rule in combat.
 
-### 5. Class membership for "ranged" bonuses
+### 4. Class membership for "ranged" bonuses
 The brief's Concepts section calls **siege** and **astral** "ranged", and
 **naval** "ranged or melee depending on selection". So every "ranged units get
 +X" tech has an undecided membership question — does Ballistics buff siege?
 
-### 6. Do class-wide drawbacks apply retroactively?
+### 5. Do class-wide drawbacks apply retroactively?
 Kamikaze gives aerial units +20 attack **and** "die immediately after their first
 attack". Encoded class-wide, it would cripple every aerial unit already on the
 board. Intended?

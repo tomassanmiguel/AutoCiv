@@ -112,6 +112,22 @@ final = base × (1 + Σ percentage bonuses)
 base; they do not quadruple it. A flat "+N to base yield" raises `base` *before*
 the multiplier, which is what makes flat bonuses worth more than they look.
 
+### Everything stacks. Nothing replaces.
+
+Two techs that touch the same quantity **both apply**. Bronze Working (+3), Iron
+Working (+6) and Steel (+12) leave a unit at **+21 attack**, not +12. Masonry,
+Castles, Star Forts and Magnetic Deflectors leave a fortification at **+75
+defence**. There is no tier system anywhere.
+
+The brief's own wording is the tell: it says *"increases all unit atk by 3"*,
+which is additive language. A tech that overwrote an earlier one would have had
+to say *"sets"*.
+
+The one narrow exception is per-effect: `stacks: false` stops a **repeating
+trigger** from accumulating — "after every combat, permanently +1" would grant
++1 once instead of +1, +2, +3. It defaults to **true**, and it has nothing to do
+with the rule above.
+
 - **Rural tile** — controlled, with no outpost and no city.
 - **Outpost** — a settled tile. Its yield is multiplied (×2 to start; Feudalism
   and Quantum Logistics add to that factor). **Outposts have no citizens.**

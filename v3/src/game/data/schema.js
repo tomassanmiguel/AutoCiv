@@ -511,6 +511,34 @@ export const blankPlacement = () => []
  */
 export const YIELD_MODEL = 'base × (1 + Σ percentages); percentages are additive'
 
+/**
+ * BONUSES STACK. THEY DO NOT REPLACE.
+ *
+ * Two techs that touch the same quantity both apply. Bronze Working (+3),
+ * Iron Working (+6) and Steel (+12) leave every unit at **+21 attack**, not at
+ * +12; Masonry, Castles, Star Forts and Magnetic Deflectors leave a
+ * fortification at **+75 defence**. The design's own wording is the tell — it
+ * says "increases all unit atk by 3", which is additive language. A tech that
+ * genuinely overwrote a previous one would have to say "sets".
+ *
+ * There is no tier system anywhere in the content layer. (The old
+ * `progress.js` web modelled weapons and armour as tiers that REPLACED each
+ * other; that model is dead and does not apply here.)
+ *
+ * The one narrow exception lives on the effect itself: `stacks: false` stops a
+ * REPEATING TRIGGER from accumulating. It has nothing to do with this rule.
+ */
+export const EVERYTHING_STACKS = true
+
+/** Triggers that can fire more than once — the only place `stacks` matters. */
+export const REPEATING_TRIGGERS = new Set([
+  'per_tick', 'every_n_ticks', 'every_n_turns', 'every_n_combats',
+  'start_of_combat', 'end_of_combat', 'end_of_era', 'on_attack', 'on_kill',
+  'on_unit_death', 'on_take_damage', 'on_build', 'on_city_growth',
+  'on_city_founded', 'on_reroll', 'on_hire', 'on_raze', 'on_upgrade',
+  'on_combat_loss',
+])
+
 // ---------------------------------------------------------------------------
 // A blank effect, and the empty rows the editor creates
 // ---------------------------------------------------------------------------
@@ -547,9 +575,14 @@ export const blankEffect = () => ({
   trigger: 'passive',
   triggerN: 0,
   duration: 'permanent',
-  // Whether a permanent gain STACKS every time it fires ("after every combat,
-  // permanently +1") or is applied once.
-  stacks: false,
+  // Does a REPEATING trigger accumulate? "After every combat, permanently +1"
+  // is +1, +2, +3 as combats pass. TRUE BY DEFAULT — the exception is what gets
+  // written down. Only meaningful when the trigger can fire more than once;
+  // `immediate` and `passive` apply once whatever this says.
+  //
+  // ⚠️ This is NOT about two different techs touching the same stat. Those
+  // ALWAYS stack — see EVERYTHING_STACKS.
+  stacks: true,
   ruleKey: '',
   permission: '',
   costKind: '',
