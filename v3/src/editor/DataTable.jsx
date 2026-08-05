@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ERAS, thresholdFor, PLACEMENTS, PLACEMENT_KEYS, WONDER_TIERS } from '../game/data/schema.js'
+import { ERAS, QUADRANTS, thresholdFor, PLACEMENTS, PLACEMENT_KEYS, WONDER_TIERS } from '../game/data/schema.js'
 import { describeEffects } from '../game/data/describe-effect.js'
 import EffectEditor from './EffectEditor.jsx'
 
@@ -24,7 +24,13 @@ export default function DataTable({ rows, columns, problemsById, techOptions, re
       const vb = sortValue(b, sort.key)
       if (va < vb) return -sort.dir
       if (va > vb) return sort.dir
-      // Name is the tiebreak for every other column, so equal rows never shuffle.
+      // Era then QUADRANT then name: within one era you want the four pools
+      // side by side, since a pool is what you actually draft from.
+      if (sort.key !== 'quadrant') {
+        const qa = QUADRANTS.indexOf(a.quadrant)
+        const qb = QUADRANTS.indexOf(b.quadrant)
+        if (qa !== qb) return qa - qb
+      }
       return String(a.name).localeCompare(String(b.name))
     }
     return [...rows].sort(cmp)
@@ -114,6 +120,8 @@ export default function DataTable({ rows, columns, problemsById, techOptions, re
 function sortValue(row, key) {
   const v = row[key]
   if (key === 'tier') return WONDER_TIERS.indexOf(v)
+  // Declared order, not alphabetical — "economy" before "military" reads wrong.
+  if (key === 'quadrant') return QUADRANTS.indexOf(v)
   if (Array.isArray(v)) return v.length ? v.join(',') : '￿' // empties last
   if (v === undefined || v === null || v === '') return '￿'
   return typeof v === 'number' ? v : String(v).toLowerCase()
