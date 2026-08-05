@@ -47,9 +47,10 @@ as built.**
 
 ```bash
 cd v3
-npm install
-npm run dev                  # Vite dev server (5174 via .claude/launch.json)
-npm run build
+npm run dev                  # Vite dev server (5174) — the game
+                             #   http://localhost:5174/           the game
+                             #   http://localhost:5174/editor.html the content editor
+npm run build                # builds BOTH entries
 npm run lint
 node sims/worldgen.mjs 200   # headless worldgen regression + map dump
 node sims/progress.mjs       # progress-web structure check (no crossed edges, forks, reach)
@@ -75,8 +76,10 @@ v3/
 ├── sims/worldgen.mjs           # headless generation sweep + invariant report + ASCII map
 ├── sims/progress.mjs           # progress-web structure assertions + greedy playthrough
 ├── sims/campaign.mjs           # plays the WHOLE loop headlessly: waves, gold, survival
+├── editor.html                 # second Vite entry — the content editor
 └── src/
     ├── App.jsx                 # screen router: loading → title → pregame → game
+    ├── editor/                 # the content editor (a TOOL, not part of the game)
     ├── screens/                # LoadingScreen · TitleScreen · PreGameScreen (civ select)
     ├── game/                   # framework-free model (no React imports)
     │   ├── GameManager.js      # world + known-world stage + subscribe/version bridge
@@ -88,7 +91,10 @@ v3/
     │   │   ├── worldgen.js     # generateWorld(seed) — pure, deterministic
     │   │   └── invariants.js   # validate(world) -> violations[]
     │   ├── data/civilizations.js  # placeholder civ + difficulty for the pre-game screen
-    │   ├── data/progress.js    # the progress web: 297 nodes, 8 rings, 4 quadrants
+    │   ├── data/content.json   # THE CONTENT LAYER: techs, buildings, wonders (editor-owned)
+    │   ├── data/schema.js      # what content.json may contain — every enum, + feasibility()
+    │   ├── data/describe-effect.js # structured effect -> sentence (the round-trip check)
+    │   ├── data/progress.js    # the OLD in-game web: 297 nodes, 11 rings (superseded content)
     │   ├── data/effects.js     # the effect VOCABULARY (wiring), split out of progress.js
     │   ├── data/definitions.js # sub-tooltip definitions: buildings + rules terms
     │   ├── data/resources.js   # threshold model (food/production/progress) + accrual
@@ -303,7 +309,69 @@ era clock; v3 has no eras yet, so both are **dropped rather than faked**.
 > bars actually move — output is still just the revealed map's total yield, and **nothing is
 > wired to crossing a level**. Rip it out when the real era/phase loop lands.
 
+### The content layer (`game/data/content.json`, `game/data/schema.js`, `/editor.html`)
+
+> **This is where techs, buildings and wonders now live**, and it is the source of truth going
+> forward. It is **not wired to the game yet** — `progress.js` below still drives the in-game
+> web. Two datasets exist on purpose during the migration; do not "fix" the duplication by
+> deleting either until the engine reads `content.json`.
+
+The draft mechanic it encodes (agreed, not yet built):
+
+- **Four independent tracks.** Each quadrant carries its OWN era, and advances the moment it has
+  taken `ADVANCE_THRESHOLDS[era]` techs of that era — `[2,2,3,3,4,4,5,5,6,6,7,7,7,7]`. Military
+  can be drafting Medieval while Economy is still in Iron.
+- **The draft pool is CURRENT TIER ONLY.** Skipped techs are gone when the quadrant moves on.
+  ⚠️ This is the constraint that shapes everything: a quadrant × era cell must hold at least its
+  threshold or the run **dead-ends there**, and it needs *slack* on top or the "draft" is just
+  taking everything in the cell. `feasibility()` computes this and the editor's Feasibility tab
+  draws it.
+- **15 eras** (`schema.js` `ERAS`): Stone · Bronze · Iron · Classical · Medieval · Renaissance ·
+  Exploration · Steam · Modern · Information · Solar · Exodus · Liminite · Galactic · Ascension.
+  **Deliberately decoupled from the enemy wave ladder** (30 waves) — they are two clocks now.
+- **Automatic tier unlocks** on reaching a new era in a quadrant (a unit class, a settlement
+  permission, terrain base yields) live in `tierUnlocks`, using the same effect schema.
+
+#### The effect schema — structured, with no prose fallback
+`schema.js` is the whole contract: `OPS`, `TARGETS`, `STATS`, `MODES`, `SCALES`, `FILTERS`,
+`TRIGGERS`, `DURATIONS`, `RULE_KEYS`. Every editor dropdown and every validator is built from
+it. An effect is 14 fields; a tech holds an **array** of them, because "builds a temple AND
+temples produce 1 gold" is two effects.
+
+The three dimensions a flat `{type, target, magnitude}` would have lost, and which about a third
+of the design needs:
+- **`scale`** — "+3 gold per unique building", "progress equal to that unit's attack"
+- **`filter`** — "while on a rural tile", "in the New World", "below half health"
+- **`trigger`** — "every 20 ticks", "at the end of combat", "whenever a unit dies"
+
+⚠️ **`op: 'rule'` is not an escape hatch into prose.** Its `ruleKey` comes from a closed enum,
+and every key names a behaviour the engine must implement — so `RULE_KEYS` doubles as the work
+queue for the combat/economy code. If a design needs something not in the list, add a key and
+implement it; do not write a sentence.
+
+**`describe-effect.js` reads a structured effect back as a sentence**, and the editor shows that
+line under every effect row. That round trip is the test: if the generated sentence no longer
+says what the design text said, the conversion dropped something.
+
+#### The editor (`/editor.html`, `src/editor/`)
+A second Vite entry on the same dev server. Filters by era and quadrant, one table for
+techs/buildings/wonders/tier-unlocks driven by a column spec, row expansion for the effect
+editor, and a Feasibility tab that computes which cells dead-end a run.
+
+⚠️ **Save writes the real file.** `vite.config.js` adds a **dev-only** `/api/content`
+middleware that writes `src/game/data/content.json` (temp file + rename, so an interrupted save
+cannot corrupt it). A production build can read the dataset but not save it — authoring needs
+`npm run dev` running. Ctrl/Cmd+S works; the tab warns on unload while dirty.
+
+The game's **"no scrollbars anywhere" rule does not apply here** — it is a tool, and a
+three-hundred-row table scrolls.
+
 ### Progress web (`game/data/progress.js`, `components/Progress/ProgressTree`)
+
+> ⚠️ **SUPERSEDED as a content source by `content.json`** (above), but still what the game
+> actually runs on: the 11-ring web, its rings, and its `ringUnlock` gating are live until the
+> engine is migrated to the 15-era draft. Its *content* is frozen — author in the editor.
+
 A radial tree that **grows outward**, opened from the HUD's Progress button.
 
 **297 techs + 84 TBD slots, ELEVEN rings, four quadrants** — Society / Technology / Economy /
