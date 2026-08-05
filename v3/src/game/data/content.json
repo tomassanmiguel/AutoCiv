@@ -110,6 +110,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "agriculture"
       ]
     },
     {
@@ -146,6 +149,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "foraging"
       ]
     },
     {
@@ -208,6 +214,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "timbering"
       ]
     },
     {
@@ -244,6 +253,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "mining"
       ]
     },
     {
@@ -316,6 +328,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "yakhchals"
       ]
     },
     {
@@ -352,6 +367,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "sewing"
       ]
     },
     {
@@ -1094,6 +1112,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "coffee"
       ]
     },
     {
@@ -1130,6 +1151,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "potatoes"
       ]
     },
     {
@@ -1430,6 +1454,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "naturalism"
       ]
     },
     {
@@ -1502,6 +1529,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "protectionism"
       ]
     },
     {
@@ -1538,6 +1568,9 @@
           "costKind": "building_upgrade",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "capitalism"
       ]
     },
     {
@@ -1636,6 +1669,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "germ_theory"
       ]
     },
     {
@@ -1816,6 +1852,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "laissez_faire"
       ]
     },
     {
@@ -1986,6 +2025,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "industrialization"
       ]
     },
     {
@@ -2110,6 +2152,9 @@
           "costKind": "building_upgrade",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "rearmament"
       ]
     },
     {
@@ -2172,6 +2217,9 @@
           "costKind": "unit_upgrade",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "marshall_plan"
       ]
     },
     {
@@ -2352,6 +2400,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "hydroponics"
       ]
     },
     {
@@ -2388,6 +2439,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "gmos"
       ]
     },
     {
@@ -3240,6 +3294,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "cold_quantum"
       ]
     },
     {
@@ -3276,6 +3333,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "spice_harvesting"
       ]
     },
     {
@@ -3492,6 +3552,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "slavery"
       ]
     },
     {
@@ -3600,6 +3663,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "burial_rites"
       ]
     },
     {
@@ -3706,7 +3772,10 @@
       "quadrant": "society",
       "era": 1,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -3831,7 +3900,7 @@
           "mode": "flat",
           "value": 1,
           "scale": "per_adjacent",
-          "scaleKey": "citizen",
+          "scaleKey": "city_population",
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
@@ -3848,6 +3917,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "monotheism"
       ]
     },
     {
@@ -3910,6 +3982,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "polytheism"
       ]
     },
     {
@@ -4196,7 +4271,10 @@
       "quadrant": "society",
       "era": 3,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -4250,6 +4328,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "daoism"
       ]
     },
     {
@@ -4258,7 +4339,10 @@
       "quadrant": "society",
       "era": 3,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -4312,6 +4396,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "organized_religion"
       ]
     },
     {
@@ -4374,6 +4461,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "mercenary_army"
       ]
     },
     {
@@ -4436,6 +4526,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "professional_army"
       ]
     },
     {
@@ -4568,7 +4661,10 @@
       "quadrant": "society",
       "era": 4,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -4604,7 +4700,10 @@
       "quadrant": "society",
       "era": 4,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -4666,7 +4765,10 @@
       "quadrant": "society",
       "era": 4,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -5074,7 +5176,10 @@
       "quadrant": "society",
       "era": 5,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -5128,6 +5233,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "schism"
       ]
     },
     {
@@ -5136,7 +5244,10 @@
       "quadrant": "society",
       "era": 5,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -5190,6 +5301,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "reformation"
       ]
     },
     {
@@ -5198,7 +5312,10 @@
       "quadrant": "society",
       "era": 6,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -5918,6 +6035,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "hamiltonian_ideal"
       ]
     },
     {
@@ -5954,6 +6074,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "jeffersonian_ideal"
       ]
     },
     {
@@ -6168,7 +6291,10 @@
       "quadrant": "society",
       "era": 7,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "rule",
@@ -6222,6 +6348,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "evangelism"
       ]
     },
     {
@@ -6230,7 +6359,10 @@
       "quadrant": "society",
       "era": 7,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -6258,6 +6390,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "atheism"
       ]
     },
     {
@@ -6320,6 +6455,10 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "communism",
+        "fascism"
       ]
     },
     {
@@ -6382,6 +6521,10 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "democracy",
+        "fascism"
       ]
     },
     {
@@ -6444,6 +6587,10 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "democracy",
+        "communism"
       ]
     },
     {
@@ -6692,6 +6839,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "total_war"
       ]
     },
     {
@@ -6754,6 +6904,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "pacifism"
       ]
     },
     {
@@ -6826,6 +6979,13 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "rock_and_roll",
+        "country",
+        "funk",
+        "techno",
+        "folk"
       ]
     },
     {
@@ -6862,6 +7022,13 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "rock_and_roll",
+        "jazz",
+        "funk",
+        "techno",
+        "folk"
       ]
     },
     {
@@ -6898,6 +7065,13 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "jazz",
+        "country",
+        "funk",
+        "techno",
+        "folk"
       ]
     },
     {
@@ -6934,6 +7108,13 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "rock_and_roll",
+        "jazz",
+        "country",
+        "funk",
+        "techno"
       ]
     },
     {
@@ -6970,6 +7151,13 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "rock_and_roll",
+        "jazz",
+        "country",
+        "techno",
+        "folk"
       ]
     },
     {
@@ -7006,6 +7194,13 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "rock_and_roll",
+        "jazz",
+        "country",
+        "funk",
+        "folk"
       ]
     },
     {
@@ -7076,7 +7271,10 @@
       "quadrant": "society",
       "era": 11,
       "icon": "/sprites/ui/building.png",
-      "requires": [],
+      "requires": [
+        "monotheism",
+        "polytheism"
+      ],
       "effects": [
         {
           "op": "grant",
@@ -7904,6 +8102,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "dressage"
       ]
     },
     {
@@ -8068,7 +8269,7 @@
           "op": "rule",
           "target": "unit_class",
           "targetKey": "melee",
-          "stat": "",
+          "stat": "defense",
           "statTo": "",
           "mode": "flat",
           "value": 0,
@@ -8196,8 +8397,8 @@
           "statTo": "",
           "mode": "flat",
           "value": 1,
-          "scale": "none",
-          "scaleKey": "",
+          "scale": "per_distance",
+          "scaleKey": "combat_start_tile",
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
@@ -8205,8 +8406,8 @@
           "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
-          "trigger": "every_n_turns",
-          "triggerN": 1,
+          "trigger": "passive",
+          "triggerN": 0,
           "duration": "combat",
           "stacks": false,
           "ruleKey": "",
@@ -8214,6 +8415,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "legionnaires"
       ]
     },
     {
@@ -8338,6 +8542,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "counterweights"
       ]
     },
     {
@@ -8528,7 +8735,7 @@
           "op": "rule",
           "target": "unit_class",
           "targetKey": "fortification",
-          "stat": "",
+          "stat": "defense",
           "statTo": "",
           "mode": "flat",
           "value": 0,
@@ -8648,6 +8855,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "crossbow"
       ]
     },
     {
@@ -8710,6 +8920,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "longbow"
       ]
     },
     {
@@ -8798,6 +9011,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "stirrups"
       ]
     },
     {
@@ -9558,6 +9774,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "triage"
       ]
     },
     {
@@ -9682,6 +9901,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "foreign_legion"
       ]
     },
     {
@@ -9806,6 +10028,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "bayonets"
       ]
     },
     {
@@ -9842,6 +10067,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "levee_en_masse"
       ]
     },
     {
@@ -9916,7 +10144,7 @@
       "effects": [
         {
           "op": "damage",
-          "target": "enemies",
+          "target": "triggering_unit",
           "targetKey": "",
           "stat": "defense",
           "statTo": "",
@@ -10064,6 +10292,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "mortars"
       ]
     },
     {
@@ -10126,6 +10357,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "tanks"
       ]
     },
     {
@@ -10338,6 +10572,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "aircraft_carriers"
       ]
     },
     {
@@ -10426,6 +10663,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "submarines"
       ]
     },
     {
@@ -11342,6 +11582,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "shield_arrays"
       ]
     },
     {
@@ -11430,6 +11673,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "radiation_occlusion"
       ]
     },
     {
@@ -11694,6 +11940,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "ion_shields"
       ]
     },
     {
@@ -11756,6 +12005,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "ion_torpedoes"
       ]
     },
     {
@@ -12274,6 +12526,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "liminite_reflection"
       ]
     },
     {
@@ -12314,7 +12569,7 @@
           "op": "rule",
           "target": "all_units",
           "targetKey": "",
-          "stat": "",
+          "stat": "attack",
           "statTo": "",
           "mode": "flat",
           "value": 0,
@@ -12362,6 +12617,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "liminite_weaponry"
       ]
     },
     {
@@ -12450,6 +12708,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "plasma_beams"
       ]
     },
     {
@@ -12538,42 +12799,9 @@
           "costKind": "",
           "placement": ""
         }
-      ]
-    },
-    {
-      "id": "scouting",
-      "name": "Scouting",
-      "quadrant": "technology",
-      "era": 0,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "nearby",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
+      ],
+      "excludes": [
+        "kyber_crystals"
       ]
     },
     {
@@ -12638,42 +12866,6 @@
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
-      ]
-    },
-    {
-      "id": "surveying",
-      "name": "Surveying",
-      "quadrant": "technology",
-      "era": 1,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "distant",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
           "triggerN": 0,
           "duration": "permanent",
           "stacks": false,
@@ -12757,78 +12949,6 @@
       ]
     },
     {
-      "id": "silk_road",
-      "name": "Silk Road",
-      "quadrant": "technology",
-      "era": 3,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "old_world",
-          "stat": "",
-          "statTo": "",
-          "mode": "full",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
-      ]
-    },
-    {
-      "id": "celestial_navigation",
-      "name": "Celestial Navigation",
-      "quadrant": "technology",
-      "era": 2,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "islands",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
-      ]
-    },
-    {
       "id": "arches",
       "name": "Arches",
       "quadrant": "technology",
@@ -12862,6 +12982,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "glassblowing"
       ]
     },
     {
@@ -12898,6 +13021,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "arches"
       ]
     },
     {
@@ -13061,42 +13187,6 @@
       ]
     },
     {
-      "id": "compass",
-      "name": "Compass",
-      "quadrant": "technology",
-      "era": 4,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "new_world_coast",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
-      ]
-    },
-    {
       "id": "clocks",
       "name": "Clocks",
       "quadrant": "technology",
@@ -13130,6 +13220,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "flying_buttress"
       ]
     },
     {
@@ -13192,42 +13285,9 @@
           "costKind": "",
           "placement": ""
         }
-      ]
-    },
-    {
-      "id": "cartography",
-      "name": "Cartography",
-      "quadrant": "technology",
-      "era": 6,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "full_earth",
-          "stat": "",
-          "statTo": "",
-          "mode": "full",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
+      ],
+      "excludes": [
+        "clocks"
       ]
     },
     {
@@ -13264,6 +13324,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "chemistry"
       ]
     },
     {
@@ -13388,6 +13451,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "scientific_method"
       ]
     },
     {
@@ -14053,68 +14119,6 @@
           "permission": "",
           "costKind": "",
           "placement": ""
-        },
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "earth_and_space",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
-      ]
-    },
-    {
-      "id": "space_race",
-      "name": "Space Race",
-      "quadrant": "technology",
-      "era": 8,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "moon",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
         }
       ]
     },
@@ -14152,6 +14156,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "semaglutides"
       ]
     },
     {
@@ -14250,6 +14257,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "butlerian_jihad"
       ]
     },
     {
@@ -14312,6 +14322,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "artificial_general_intelligence"
       ]
     },
     {
@@ -14436,6 +14449,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "3d_printing"
       ]
     },
     {
@@ -14544,6 +14560,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "microprocessors"
       ]
     },
     {
@@ -14580,6 +14599,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "railguns"
       ]
     },
     {
@@ -14642,6 +14664,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "renewable_energy"
       ]
     },
     {
@@ -14730,78 +14755,9 @@
           "costKind": "",
           "placement": ""
         }
-      ]
-    },
-    {
-      "id": "advanced_propulsion",
-      "name": "Advanced Propulsion",
-      "quadrant": "technology",
-      "era": 9,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "mars",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
-      ]
-    },
-    {
-      "id": "reusable_rockets",
-      "name": "Reusable Rockets",
-      "quadrant": "technology",
-      "era": 9,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "deeper_space",
-          "stat": "",
-          "statTo": "",
-          "mode": "full",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
+      ],
+      "excludes": [
+        "fracking"
       ]
     },
     {
@@ -14962,6 +14918,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "bimodal_starcraft"
       ]
     },
     {
@@ -15024,6 +14983,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "orbital_bombardment"
       ]
     },
     {
@@ -15060,6 +15022,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "gravity_boots"
       ]
     },
     {
@@ -15096,6 +15061,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "deep_space_industry"
       ]
     },
     {
@@ -15200,42 +15168,6 @@
           "duration": "permanent",
           "stacks": false,
           "ruleKey": "no_raze",
-          "permission": "",
-          "costKind": "",
-          "placement": ""
-        }
-      ]
-    },
-    {
-      "id": "lightspeed_acceleration",
-      "name": "Lightspeed Acceleration",
-      "quadrant": "technology",
-      "era": 11,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "effects": [
-        {
-          "op": "vision",
-          "target": "reveal_stage",
-          "targetKey": "exo_coastline",
-          "stat": "",
-          "statTo": "",
-          "mode": "flat",
-          "value": 1,
-          "scale": "none",
-          "scaleKey": "",
-          "scaleN": 1,
-          "scaleFilter": "none",
-          "scaleFilterKey": "",
-          "filter": "none",
-          "filterKey": "",
-          "filter2": "none",
-          "filter2Key": "",
-          "trigger": "immediate",
-          "triggerN": 0,
-          "duration": "permanent",
-          "stacks": false,
-          "ruleKey": "",
           "permission": "",
           "costKind": "",
           "placement": ""
@@ -15514,6 +15446,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "cortical_stacks"
       ]
     },
     {
@@ -15602,6 +15537,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "biological_immortality"
       ]
     },
     {
@@ -15664,6 +15602,10 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "biological_ascendancy",
+        "human_purity"
       ]
     },
     {
@@ -15752,6 +15694,10 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "consciousness_upload",
+        "human_purity"
       ]
     },
     {
@@ -15814,6 +15760,10 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "consciousness_upload",
+        "biological_ascendancy"
       ]
     },
     {
@@ -15876,6 +15826,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "artificial_singularity"
       ]
     },
     {
@@ -15964,6 +15917,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "planetogenesis"
       ]
     },
     {
@@ -16062,6 +16018,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "chronomancy"
       ]
     },
     {
@@ -16160,6 +16119,9 @@
           "costKind": "",
           "placement": ""
         }
+      ],
+      "excludes": [
+        "time_travel"
       ]
     },
     {
@@ -16276,7 +16238,7 @@
       "id": "temple",
       "name": "Temple",
       "era": 1,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16312,7 +16274,7 @@
       "id": "library",
       "name": "Library",
       "era": 3,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16374,7 +16336,7 @@
       "id": "theater",
       "name": "Theater",
       "era": 3,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16410,7 +16372,9 @@
       "id": "aqueduct",
       "name": "Aqueduct",
       "era": 3,
-      "placement": "between_mountain_city",
+      "placement": [
+        "between_mountain_city"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16446,7 +16410,7 @@
       "id": "glassworks",
       "name": "Glassworks",
       "era": 4,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16463,8 +16427,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -16474,7 +16438,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -16482,7 +16447,9 @@
       "id": "hacienda",
       "name": "Hacienda",
       "era": 6,
-      "placement": "new_world",
+      "placement": [
+        "new_world"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16518,7 +16485,7 @@
       "id": "courthouse",
       "name": "Courthouse",
       "era": 3,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16535,8 +16502,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -16546,7 +16513,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -16554,7 +16522,7 @@
       "id": "market",
       "name": "Market",
       "era": 1,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16571,8 +16539,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -16582,7 +16550,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         }
       ]
     },
@@ -16590,7 +16559,7 @@
       "id": "bank",
       "name": "Bank",
       "era": 5,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16626,7 +16595,7 @@
       "id": "opera_house",
       "name": "Opera House",
       "era": 5,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16643,8 +16612,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -16654,7 +16623,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -16662,7 +16632,9 @@
       "id": "observatory",
       "name": "Observatory",
       "era": 5,
-      "placement": "mountain",
+      "placement": [
+        "mountain"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16724,7 +16696,7 @@
       "id": "laboratory",
       "name": "Laboratory",
       "era": 8,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16741,8 +16713,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -16752,7 +16724,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         }
       ]
     },
@@ -16760,7 +16733,7 @@
       "id": "granary",
       "name": "Granary",
       "era": 0,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16777,8 +16750,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -16788,7 +16761,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -16796,7 +16770,7 @@
       "id": "workshop",
       "name": "Workshop",
       "era": 2,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16832,7 +16806,9 @@
       "id": "wharf",
       "name": "Wharf",
       "era": 4,
-      "placement": "coast",
+      "placement": [
+        "coast"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16868,7 +16844,9 @@
       "id": "colonial_office",
       "name": "Colonial Office",
       "era": 6,
-      "placement": "new_world",
+      "placement": [
+        "new_world"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16904,7 +16882,7 @@
       "id": "megafarm",
       "name": "Megafarm",
       "era": 9,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -16940,7 +16918,7 @@
       "id": "skunkworks",
       "name": "Skunkworks",
       "era": 8,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17002,7 +16980,7 @@
       "id": "casino",
       "name": "Casino",
       "era": 5,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17064,7 +17042,7 @@
       "id": "monument",
       "name": "Monument",
       "era": 0,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17100,7 +17078,7 @@
       "id": "beacon",
       "name": "Interplanetary Beacon",
       "era": 10,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17136,7 +17114,9 @@
       "id": "helium3_mine",
       "name": "Helium-3 Mine",
       "era": 10,
-      "placement": "moon_or_mars",
+      "placement": [
+        "moon_or_mars"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17172,7 +17152,7 @@
       "id": "data_center",
       "name": "Data Center",
       "era": 9,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17189,8 +17169,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -17200,7 +17180,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         }
       ]
     },
@@ -17208,7 +17189,7 @@
       "id": "fusion_plant",
       "name": "Fusion Plant",
       "era": 10,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17225,8 +17206,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -17236,7 +17217,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         },
         {
           "op": "upgrade_level",
@@ -17251,8 +17233,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -17262,7 +17244,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -17270,7 +17253,9 @@
       "id": "zerograv_fab",
       "name": "Zero-G Fabricator",
       "era": 10,
-      "placement": "space",
+      "placement": [
+        "space"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17298,7 +17283,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 2
         }
       ]
     },
@@ -17306,7 +17292,9 @@
       "id": "zerograv_lab",
       "name": "Zero-G Laboratory",
       "era": 10,
-      "placement": "space",
+      "placement": [
+        "space"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17334,7 +17322,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 2
         }
       ]
     },
@@ -17342,7 +17331,7 @@
       "id": "stock_exchange",
       "name": "Stock Exchange",
       "era": 6,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17378,7 +17367,7 @@
       "id": "hospital",
       "name": "Hospital",
       "era": 7,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17395,8 +17384,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "city",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -17406,7 +17395,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 5
         }
       ]
     },
@@ -17414,7 +17404,7 @@
       "id": "museum",
       "name": "Museum",
       "era": 5,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17431,8 +17421,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -17442,7 +17432,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         },
         {
           "op": "yield",
@@ -17457,8 +17448,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -17468,7 +17459,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         }
       ]
     },
@@ -17476,7 +17468,7 @@
       "id": "decoy",
       "name": "Decoy",
       "era": 2,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17493,8 +17485,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -17504,7 +17496,8 @@
           "ruleKey": "decoy_pathing",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 5
         }
       ]
     },
@@ -17512,7 +17505,9 @@
       "id": "spaceport",
       "name": "Spaceport",
       "era": 10,
-      "placement": "adjacent_planet",
+      "placement": [
+        "adjacent_planet"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17574,7 +17569,7 @@
       "id": "replicator",
       "name": "Replicator",
       "era": 12,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17610,7 +17605,7 @@
       "id": "guildhall",
       "name": "Guildhall",
       "era": 4,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17646,7 +17641,7 @@
       "id": "armory",
       "name": "Armory",
       "era": 2,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17663,8 +17658,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "end_of_combat",
@@ -17674,7 +17669,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -17682,7 +17678,9 @@
       "id": "harbor",
       "name": "Harbor",
       "era": 1,
-      "placement": "coast",
+      "placement": [
+        "coast"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17718,7 +17716,7 @@
       "id": "windmill",
       "name": "Windmill",
       "era": 4,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17735,8 +17733,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "adjacent_to",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -17746,7 +17744,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -17754,7 +17753,7 @@
       "id": "university",
       "name": "University",
       "era": 4,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17782,7 +17781,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -17790,7 +17790,7 @@
       "id": "arena",
       "name": "Arena",
       "era": 3,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17852,7 +17852,7 @@
       "id": "factory",
       "name": "Factory",
       "era": 7,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17888,7 +17888,7 @@
       "id": "plantation",
       "name": "Plantation",
       "era": 6,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17950,7 +17950,7 @@
       "id": "tourism_office",
       "name": "Tourism Office",
       "era": 8,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -17978,7 +17978,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -17986,7 +17987,7 @@
       "id": "airport",
       "name": "Airport",
       "era": 8,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -18014,7 +18015,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         },
         {
           "op": "yield",
@@ -18040,7 +18042,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         }
       ]
     },
@@ -18048,7 +18051,7 @@
       "id": "hangar",
       "name": "Hangar",
       "era": 8,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -18065,8 +18068,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "on_unit_death",
@@ -18076,7 +18079,8 @@
           "ruleKey": "respawn_after_n_turns",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 10
         }
       ]
     },
@@ -18084,7 +18088,7 @@
       "id": "printer3d",
       "name": "3D Printer",
       "era": 9,
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -18112,7 +18116,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         },
         {
           "op": "yield",
@@ -18127,8 +18132,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "per_tick",
@@ -18138,7 +18143,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 3
         }
       ]
     },
@@ -18146,7 +18152,10 @@
       "id": "hydro_dam",
       "name": "Hydroelectric Dam",
       "era": 8,
-      "placement": "coast_no_ocean",
+      "placement": [
+        "coast",
+        "coast_no_ocean"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -18163,8 +18172,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -18174,7 +18183,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         },
         {
           "op": "upgrade_level",
@@ -18189,8 +18199,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -18200,7 +18210,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -18208,7 +18219,9 @@
       "id": "solar_farm",
       "name": "Solar Panel Farm",
       "era": 9,
-      "placement": "desert",
+      "placement": [
+        "desert"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -18225,8 +18238,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -18236,7 +18249,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         },
         {
           "op": "upgrade_level",
@@ -18251,8 +18265,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -18262,7 +18276,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     },
@@ -18270,7 +18285,9 @@
       "id": "geothermal",
       "name": "Geothermal Plant",
       "era": 9,
-      "placement": "tundra",
+      "placement": [
+        "tundra"
+      ],
       "icon": "/sprites/ui/building.png",
       "unlockedBy": "",
       "effects": [
@@ -18287,8 +18304,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -18298,7 +18315,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         },
         {
           "op": "upgrade_level",
@@ -18313,8 +18331,8 @@
           "scaleN": 1,
           "scaleFilter": "none",
           "scaleFilterKey": "",
-          "filter": "in_range_of",
-          "filterKey": "building",
+          "filter": "within_radius",
+          "filterKey": "",
           "filter2": "none",
           "filter2Key": "",
           "trigger": "passive",
@@ -18324,7 +18342,8 @@
           "ruleKey": "",
           "permission": "",
           "costKind": "",
-          "placement": ""
+          "placement": "",
+          "radius": 1
         }
       ]
     }
@@ -18334,7 +18353,7 @@
       "id": "stonehenge",
       "name": "Stonehenge",
       "tier": "I",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18364,13 +18383,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 1,
+      "quadrant": "technology",
+      "excludes": []
     },
     {
       "id": "pyramids",
       "name": "Pyramids",
       "tier": "I",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18426,13 +18448,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 1,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "hanging_gardens",
       "name": "Hanging Gardens",
       "tier": "I",
-      "placement": "adjacent_city",
+      "placement": [
+        "adjacent_city"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18462,13 +18489,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 1,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "great_lighthouse",
       "name": "Great Lighthouse",
       "tier": "I",
-      "placement": "coast",
+      "placement": [
+        "coast"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18550,13 +18582,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 1,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "library_of_alexandria",
       "name": "Library of Alexandria",
       "tier": "I",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18612,13 +18647,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 1,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "parthenon",
       "name": "Parthenon",
       "tier": "II",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [
         "monotheism",
@@ -18677,13 +18715,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 3,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "terracotta_army",
       "name": "Terracotta Army",
       "tier": "II",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18817,13 +18858,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 3,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "colossus_of_rhodes",
       "name": "Colossus of Rhodes",
       "tier": "II",
-      "placement": "coast",
+      "placement": [
+        "coast"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18879,13 +18925,16 @@
           "costKind": "unit_upgrade",
           "placement": ""
         }
-      ]
+      ],
+      "era": 3,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "colosseum",
       "name": "Colosseum",
       "tier": "II",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18915,13 +18964,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 3,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "mausoleum_of_halicarnassus",
       "name": "Mausoleum of Halicarnassus",
       "tier": "II",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18951,13 +19003,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 3,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "forbidden_palace",
       "name": "Forbidden Palace",
       "tier": "III",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -18987,13 +19042,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 4,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "hagia_sophia",
       "name": "Hagia Sophia",
       "tier": "III",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [
         "monotheism",
@@ -19052,13 +19110,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 4,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "great_wall",
       "name": "Great Wall",
       "tier": "III",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19114,13 +19175,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 4,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "duomo",
       "name": "Duomo",
       "tier": "III",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19150,13 +19214,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 4,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "venetian_arsenal",
       "name": "Venetian Arsenal",
       "tier": "III",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19212,13 +19279,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 4,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "statue_of_liberty",
       "name": "Statue of Liberty",
       "tier": "IV",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19248,13 +19318,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 7,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "taj_mahal",
       "name": "Taj Mahal",
       "tier": "IV",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19310,13 +19383,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 7,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "eiffel_tower",
       "name": "Eiffel Tower",
       "tier": "IV",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19372,13 +19448,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 7,
+      "quadrant": "technology",
+      "excludes": []
     },
     {
       "id": "manhattan_project",
       "name": "Manhattan Project",
       "tier": "IV",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19507,18 +19586,21 @@
           "triggerN": 0,
           "duration": "permanent",
           "stacks": false,
-          "ruleKey": "remove_tiles",
+          "ruleKey": "raze_target",
           "permission": "",
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 7,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "big_ben",
       "name": "Big Ben",
       "tier": "IV",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19548,13 +19630,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 7,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "sagrada_familia",
       "name": "Sagrada Familia",
       "tier": "V",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19610,13 +19695,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 8,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "burj_khalifa",
       "name": "Burj Khalifa",
       "tier": "V",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19698,13 +19786,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 8,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "sydney_opera_house",
       "name": "Sydney Opera House",
       "tier": "V",
-      "placement": "coast",
+      "placement": [
+        "coast"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19734,13 +19827,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 8,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "international_space_station",
       "name": "International Space Station",
       "tier": "V",
-      "placement": "space",
+      "placement": [
+        "space"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19770,13 +19868,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 8,
+      "quadrant": "technology",
+      "excludes": []
     },
     {
       "id": "united_nations",
       "name": "United Nations",
       "tier": "V",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19806,13 +19907,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 8,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "space_elevator",
       "name": "Space Elevator",
       "tier": "VI",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19868,13 +19972,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 9,
+      "quadrant": "technology",
+      "excludes": []
     },
     {
       "id": "skynet",
       "name": "Skynet",
       "tier": "VI",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19956,13 +20063,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 9,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "great_desalinator",
       "name": "Great Desalinator",
       "tier": "VI",
-      "placement": "coast",
+      "placement": [
+        "coast"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -19992,13 +20104,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 9,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "lunar_defense_station",
       "name": "Lunar Defense Station",
       "tier": "VI",
-      "placement": "moon_or_mars",
+      "placement": [
+        "moon_or_mars"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20054,13 +20171,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 9,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "happy_valley",
       "name": "Happy Valley",
       "tier": "VII",
-      "placement": "moon_or_mars",
+      "placement": [
+        "moon_or_mars"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20090,13 +20212,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 10,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "generation_ship",
       "name": "Generation Ship",
       "tier": "VII",
-      "placement": "space",
+      "placement": [
+        "space"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20152,13 +20279,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 10,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "elysium",
       "name": "Elysium",
       "tier": "VII",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20214,13 +20344,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 10,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "ceres_station",
       "name": "Ceres Station",
       "tier": "VII",
-      "placement": "space",
+      "placement": [
+        "space"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20302,13 +20437,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 10,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "planetary_shield",
       "name": "Planetary Shield",
       "tier": "VII",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20338,13 +20476,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 10,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "panopticon",
       "name": "Panopticon",
       "tier": "VIII",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20374,13 +20515,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 11,
+      "quadrant": "technology",
+      "excludes": []
     },
     {
       "id": "the_ansible",
       "name": "The Ansible",
       "tier": "VIII",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20436,13 +20580,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 11,
+      "quadrant": "technology",
+      "excludes": []
     },
     {
       "id": "stargate",
       "name": "Stargate",
       "tier": "VIII",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20472,13 +20619,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 11,
+      "quadrant": "technology",
+      "excludes": []
     },
     {
       "id": "museum_of_humanity",
       "name": "Museum of Humanity",
       "tier": "VIII",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20508,13 +20658,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 11,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "golden_lion_throne",
       "name": "Golden Lion Throne",
       "tier": "VIII",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20544,13 +20697,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 11,
+      "quadrant": "economy",
+      "excludes": []
     },
     {
       "id": "death_star",
       "name": "Death Star",
       "tier": "IX",
-      "placement": "space",
+      "placement": [
+        "space"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20580,13 +20738,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 13,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "galactic_senate",
       "name": "Galactic Senate",
       "tier": "IX",
-      "placement": "space",
+      "placement": [
+        "space"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20668,13 +20831,18 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 13,
+      "quadrant": "society",
+      "excludes": []
     },
     {
       "id": "white_hole_station",
       "name": "White Hole Station",
       "tier": "IX",
-      "placement": "singularity",
+      "placement": [
+        "singularity"
+      ],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20834,13 +21002,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 13,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "dimensional_rift",
       "name": "Dimensional Rift",
       "tier": "IX",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20870,13 +21041,16 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 13,
+      "quadrant": "military",
+      "excludes": []
     },
     {
       "id": "monument_of_ozymandias",
       "name": "Monument of Ozymandias",
       "tier": "IX",
-      "placement": "any_controlled",
+      "placement": [],
       "icon": "/sprites/ui/wonder.png",
       "requires": [],
       "effects": [
@@ -20932,8 +21106,582 @@
           "costKind": "",
           "placement": ""
         }
-      ]
+      ],
+      "era": 13,
+      "quadrant": "economy",
+      "excludes": []
     }
   ],
-  "tierUnlocks": []
+  "tierUnlocks": [
+    {
+      "id": "tier_technology_0",
+      "name": "Stone — charting",
+      "quadrant": "technology",
+      "era": 0,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "local",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_1",
+      "name": "Bronze — charting",
+      "quadrant": "technology",
+      "era": 1,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "nearby",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_2",
+      "name": "Iron — charting",
+      "quadrant": "technology",
+      "era": 2,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "distant",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_3",
+      "name": "Classical — charting",
+      "quadrant": "technology",
+      "era": 3,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "old_world",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_4",
+      "name": "Medieval — charting",
+      "quadrant": "technology",
+      "era": 4,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "islands",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_5",
+      "name": "Renaissance — charting",
+      "quadrant": "technology",
+      "era": 5,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "new_world_coast",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_6",
+      "name": "Exploration — charting",
+      "quadrant": "technology",
+      "era": 6,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "full_earth",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_7",
+      "name": "Steam — charting",
+      "quadrant": "technology",
+      "era": 7,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "earth_and_space",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_8",
+      "name": "Modern — charting",
+      "quadrant": "technology",
+      "era": 8,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "moon",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_9",
+      "name": "Information — charting",
+      "quadrant": "technology",
+      "era": 9,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "mars",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_10",
+      "name": "Solar — charting",
+      "quadrant": "technology",
+      "era": 10,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "deeper_space",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_11",
+      "name": "Exodus — charting",
+      "quadrant": "technology",
+      "era": 11,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "exo_coastline",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_12",
+      "name": "Liminite — charting",
+      "quadrant": "technology",
+      "era": 12,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "full_exo",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_13",
+      "name": "Galactic — charting",
+      "quadrant": "technology",
+      "era": 13,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "outer_galaxy",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    },
+    {
+      "id": "tier_technology_14",
+      "name": "Ascension — charting",
+      "quadrant": "technology",
+      "era": 14,
+      "icon": "/sprites/ui/utility.png",
+      "requires": [],
+      "excludes": [],
+      "effects": [
+        {
+          "op": "vision",
+          "target": "reveal_stage",
+          "targetKey": "full_map",
+          "stat": "gold",
+          "statTo": "",
+          "mode": "full",
+          "value": 1,
+          "scale": "none",
+          "scaleKey": "",
+          "radius": 0,
+          "scaleN": 1,
+          "scaleFilter": "none",
+          "scaleFilterKey": "",
+          "filter": "none",
+          "filterKey": "",
+          "filter2": "none",
+          "filter2Key": "",
+          "trigger": "immediate",
+          "triggerN": 0,
+          "duration": "permanent",
+          "stacks": false,
+          "ruleKey": "",
+          "permission": "",
+          "costKind": "",
+          "placement": ""
+        }
+      ]
+    }
+  ]
 }

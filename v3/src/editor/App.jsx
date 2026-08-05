@@ -208,8 +208,8 @@ export default function App() {
           <FilterBar
             filters={filters}
             setFilters={setFilters}
-            showQuadrant={tab === 'techs' || tab === 'tierUnlocks'}
-            showEra={tab !== 'wonders'}
+            showQuadrant={tab !== 'buildings'}
+            showEra
             shown={filtered.length}
             total={rows.length}
             onAdd={() => addRow(tab)}
@@ -246,15 +246,18 @@ const COLUMNS = {
     { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
     { key: 'name', label: 'Name', kind: 'name', width: 200 },
     { key: 'era', label: 'Era', kind: 'era', width: 120 },
-    { key: 'placement', label: 'Placement', kind: 'select', width: 190, options: PLACEMENT_KEYS, labels: PLACEMENTS },
+    { key: 'placement', label: 'Placement', kind: 'placements', width: 230 },
     { key: 'unlockedBy', label: 'Unlocked by', kind: 'tech', width: 190 },
     { key: 'effects', label: 'Effect', kind: 'effects' },
   ],
   wonders: [
     { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
     { key: 'name', label: 'Name', kind: 'name', width: 200 },
-    { key: 'tier', label: 'Tier', kind: 'select', width: 80, options: WONDER_TIERS },
-    { key: 'placement', label: 'Placement', kind: 'select', width: 190, options: PLACEMENT_KEYS, labels: PLACEMENTS },
+    { key: 'tier', label: 'Tier', kind: 'select', width: 70, options: WONDER_TIERS },
+    // A wonder is drafted like a tech, so it needs a pool to be drafted from.
+    { key: 'quadrant', label: 'Quadrant', kind: 'select', width: 110, options: QUADRANTS },
+    { key: 'era', label: 'Era', kind: 'era', width: 120 },
+    { key: 'placement', label: 'Placement', kind: 'placements', width: 230 },
     { key: 'requires', label: 'Requires', kind: 'techs', width: 170 },
     { key: 'effects', label: 'Effect', kind: 'effects' },
   ],

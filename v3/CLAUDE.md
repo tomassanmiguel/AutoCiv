@@ -1,5 +1,22 @@
 # AutoCiv v3 — Project Guide (WIP)
 
+> ## 📐 THE DESIGN DOCS ARE THE SOURCE OF TRUTH — NOT THE CODE
+>
+> [`docs/design.md`](docs/design.md) describes how AutoCiv is *meant* to work.
+> **Where the code disagrees with it, the code is wrong** — behind, or a bug.
+> Never edit the design doc to match an implementation.
+>
+> Precedence, highest first:
+> 1. [`docs/design.md`](docs/design.md) — the current design
+> 2. [`docs/design-brief.md`](docs/design-brief.md) — the designer's verbatim
+>    original; still authoritative for what an individual tech does
+> 3. [`src/game/data/content.json`](src/game/data/content.json) — the content layer
+> 4. the code
+>
+> [`docs/open-questions.md`](docs/open-questions.md) tracks what is still undecided.
+> **This file (CLAUDE.md) describes what is BUILT**, which is a different thing
+> and currently lags the design considerably.
+
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, era cycle,
 > territory economy, city growth, a **297-node progress web**, unit/building placement, an
 > **era-closing wave** with razing and permanent casualties, and a **gold economy**
@@ -316,7 +333,8 @@ era clock; v3 has no eras yet, so both are **dropped rather than faked**.
 > web. Two datasets exist on purpose during the migration; do not "fix" the duplication by
 > deleting either until the engine reads `content.json`.
 
-The draft mechanic it encodes (agreed, not yet built):
+The draft mechanic it encodes — **[`docs/design.md`](docs/design.md) is the full statement**;
+this is the implementer's summary:
 
 - **Four independent tracks.** Each quadrant carries its OWN era, and advances the moment it has
   taken `ADVANCE_THRESHOLDS[era]` techs of that era — `[2,2,3,3,4,4,5,5,6,6,7,7,7,7]`. Military
@@ -328,9 +346,20 @@ The draft mechanic it encodes (agreed, not yet built):
   draws it.
 - **15 eras** (`schema.js` `ERAS`): Stone · Bronze · Iron · Classical · Medieval · Renaissance ·
   Exploration · Steam · Modern · Information · Solar · Exodus · Liminite · Galactic · Ascension.
-  **Deliberately decoupled from the enemy wave ladder** (30 waves) — they are two clocks now.
-- **Automatic tier unlocks** on reaching a new era in a quadrant (a unit class, a settlement
-  permission, terrain base yields) live in `tierUnlocks`, using the same effect schema.
+  ⚠️ **An era is a TECH POOL and nothing else.** It does not pace the map, gate combat, or scale
+  difficulty. Combat is the **wave** ladder — 30 waves, one combat each, scaling on its own.
+  The two clocks never touch.
+- **:food: expands automatically** (highest-yield outpost, no prompt); **:production: founds a
+  city** — or builds a **wonder** if you hold an undrafted one; **:progress: offers 3 techs**.
+- **Wonders are drafted like techs** — era, quadrant, and an entry in the offer. Taking one does
+  not build it; the next :production: threshold does. You are never offered a second while one
+  is unbuilt.
+- **Automatic tier unlocks** on reaching a new era in a quadrant live in `tierUnlocks`, using the
+  same effect schema. **The map reveal is one of these**: the Technology track opens the next
+  notch of the 15-step ladder per era, so vision can never be missed — which is why there are no
+  vision techs.
+- **One unit per class, nine classes.** No named-unit ladder: techs raise the class's stat line
+  and every unit of it already on the board improves. `UNIT_CLASS_BASE` holds placeholder stats.
 
 #### The effect schema — structured, with no prose fallback
 `schema.js` is the whole contract: `OPS`, `TARGETS`, `STATS`, `MODES`, `SCALES`, `FILTERS`,
@@ -357,8 +386,12 @@ was found by converting all 297 techs and hitting the wall:
 - **`add_multiplier` is not `multiply`.** "Increases the outpost multiplier by 1" is not ×1.
 - **`on_city_founded` is not `on_city_growth`.** One fires once; the other every population tick.
 - **`op: 'vision'` targets a REVEAL STAGE, not a region** (`REVEAL_STAGES` mirrors
-  `regions.js` STAGES). Scouting, Surveying and Silk Road all say "the Old World" but are three
-  different notches of the same ladder.
+  `regions.js` STAGES). Only `tierUnlocks` uses it now — vision is not draftable.
+- ⚠️ **`within_radius` is not `in_range_of`, and mixing them up is the commonest authoring
+  error.** `within_radius` means *things around THIS building* and reads its distance from the
+  effect's `radius` field; `in_range_of` means *the subject is near something else*. Thirty
+  building effects were written the wrong way round, which silently threw the radius away —
+  "all tiles in range 3" became "any tile near any building".
 
 ⚠️ **`op: 'rule'` is not an escape hatch into prose.** Its `ruleKey` comes from a closed enum,
 and every key names a behaviour the engine must implement — so `RULE_KEYS` doubles as the work
@@ -370,9 +403,11 @@ line under every effect row. That round trip is the test: if the generated sente
 says what the design text said, the conversion dropped something.
 
 #### The editor (`/editor.html`, `src/editor/`)
-A second Vite entry on the same dev server. Filters by era and quadrant, one table for
-techs/buildings/wonders/tier-unlocks driven by a column spec, row expansion for the effect
-editor, and a Feasibility tab that computes which cells dead-end a run.
+A second Vite entry on the same dev server. Filters by era and quadrant, **sortable columns**
+(era then alphabetical by default), one table for techs/buildings/wonders/tier-unlocks driven by
+a column spec, row expansion for the effect editor, and a Feasibility tab that computes which
+cells dead-end a run. Building and wonder **placement is multi-select** — the rules compose, so
+"coastal AND not adjacent to ocean" is two entries rather than a bespoke enum member.
 
 ⚠️ **Save writes the real file.** `vite.config.js` adds a **dev-only** `/api/content`
 middleware that writes `src/game/data/content.json` (temp file + rename, so an interrupted save

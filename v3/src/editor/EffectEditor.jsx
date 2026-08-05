@@ -150,6 +150,12 @@ export default function EffectEditor({ effects, onChange }) {
                   )}
                   {fx.scale !== 'none' && fx.scale !== 'equal_to_stat' && (
                     <>
+                      {(fx.scale === 'per_in_range' || fx.scale === 'per_adjacent') && (
+                        <Field label="Within N tiles" narrow>
+                          <input type="number" min="0" value={fx.radius ?? 0}
+                            onChange={(e) => set(i, { radius: Number(e.target.value) })} />
+                        </Field>
+                      )}
                       <Field label="Per how many" narrow>
                         <input type="number" min="1" value={fx.scaleN ?? 1}
                           onChange={(e) => set(i, { scaleN: Number(e.target.value) })} />
@@ -183,6 +189,12 @@ export default function EffectEditor({ effects, onChange }) {
                     <Field label="Of">
                       <KeyPicker kind={FILTERS[fx.filter].needsKey} value={fx.filterKey}
                         onChange={(v) => set(i, { filterKey: v })} />
+                    </Field>
+                  )}
+                  {fx.filter === 'within_radius' && (
+                    <Field label="Radius" narrow>
+                      <input type="number" min="0" value={fx.radius ?? 0}
+                        onChange={(e) => set(i, { radius: Number(e.target.value) })} />
                     </Field>
                   )}
                   {/* A second condition, for "on ocean AND carrying an outpost". */}

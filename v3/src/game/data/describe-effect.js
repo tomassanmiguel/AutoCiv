@@ -55,7 +55,7 @@ function scaleText(fx) {
   switch (fx.scale) {
     case 'per_adjacent': return ` per ${n}adjacent ${pretty(fx.scaleKey)}${where}`
     case 'per_owned': return ` per ${n}${pretty(fx.scaleKey)}${where} you own`
-    case 'per_in_range': return ` per ${n}${pretty(fx.scaleKey)}${where} in range`
+    case 'per_in_range': return ` per ${n}${pretty(fx.scaleKey)}${where} within ${fx.radius ?? 0} tiles`
     case 'per_distance': return ` per tile of distance from the ${pretty(fx.scaleKey)}`
     case 'equal_to_stat': return `, equal to its ${TOKEN[fx.scaleKey] ?? pretty(fx.scaleKey)}`
     case 'per_level': return ' per upgrade level'
@@ -70,6 +70,7 @@ function filterText(fx) {
     case 'on_terrain': return `, on ${pretty(fx.filterKey)}`
     case 'on_tile_class': return `, on ${pretty(fx.filterKey)} tiles`
     case 'adjacent_to': return `, when adjacent to a ${pretty(fx.filterKey)}`
+    case 'within_radius': return `, within ${fx.radius ?? 0} tiles of it`
     case 'in_range_of': return `, when in range of a ${pretty(fx.filterKey)}`
     case 'not_adjacent_to': return `, when NOT adjacent to a ${pretty(fx.filterKey)}`
     case 'below_half_health': return ', while below half :defense:'

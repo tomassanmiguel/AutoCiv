@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ERAS, thresholdFor } from '../game/data/schema.js'
+import { useState, useMemo } from 'react'
+import { ERAS, thresholdFor, PLACEMENTS, PLACEMENT_KEYS, WONDER_TIERS } from '../game/data/schema.js'
 import { describeEffects } from '../game/data/describe-effect.js'
 import EffectEditor from './EffectEditor.jsx'
 
@@ -14,6 +14,23 @@ import EffectEditor from './EffectEditor.jsx'
  */
 export default function DataTable({ rows, columns, problemsById, techOptions, onPatch, onRename, onDelete, onDuplicate }) {
   const [open, setOpen] = useState(null)
+  // Default: era outward, then alphabetical inside an era — which is how you
+  // read a draft pool, one tier at a time.
+  const [sort, setSort] = useState({ key: 'era', dir: 1 })
+
+  const sorted = useMemo(() => {
+    const cmp = (a, b) => {
+      const va = sortValue(a, sort.key)
+      const vb = sortValue(b, sort.key)
+      if (va < vb) return -sort.dir
+      if (va > vb) return sort.dir
+      // Name is the tiebreak for every other column, so equal rows never shuffle.
+      return String(a.name).localeCompare(String(b.name))
+    }
+    return [...rows].sort(cmp)
+  }, [rows, sort])
+
+  const toggleSort = (key) => setSort((s) => (s.key === key ? { key, dir: -s.dir } : { key, dir: 1 }))
 
   return (
     <div className="ed-table-wrap">
@@ -21,13 +38,21 @@ export default function DataTable({ rows, columns, problemsById, techOptions, on
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} style={c.width ? { width: c.width } : undefined}>{c.label}</th>
+              <th
+                key={c.key}
+                style={c.width ? { width: c.width } : undefined}
+                className={c.kind === 'effects' || c.kind === 'icon' ? '' : 'sortable'}
+                onClick={c.kind === 'effects' || c.kind === 'icon' ? undefined : () => toggleSort(c.key)}
+              >
+                {c.label}
+                {sort.key === c.key && <span className="ed-sort">{sort.dir > 0 ? '▲' : '▼'}</span>}
+              </th>
             ))}
             <th style={{ width: 96 }} />
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {sorted.map((row) => {
             const problems = problemsById.get(row.id) ?? []
             const isOpen = open === row.id
             return [
@@ -77,10 +102,22 @@ export default function DataTable({ rows, columns, problemsById, techOptions, on
   )
 }
 
+/** Sort keys that are not just the raw field. */
+function sortValue(row, key) {
+  const v = row[key]
+  if (key === 'tier') return WONDER_TIERS.indexOf(v)
+  if (Array.isArray(v)) return v.length ? v.join(',') : '￿' // empties last
+  if (v === undefined || v === null || v === '') return '￿'
+  return typeof v === 'number' ? v : String(v).toLowerCase()
+}
+
 function Cell({ col, row, techOptions, onPatch, onRename, onToggle, isOpen }) {
   const v = row[col.key]
 
   switch (col.kind) {
+    case 'placements':
+      return <PlacementPicker value={v ?? []} onChange={(next) => onPatch(row.id, { placement: next })} />
+
     case 'icon':
       return (
         <label className="ed-icon-cell" title={v}>
@@ -143,6 +180,38 @@ function Cell({ col, row, techOptions, onPatch, onRename, onToggle, isOpen }) {
     default:
       return <span>{String(v ?? '')}</span>
   }
+}
+
+/**
+ * Where a building may go. MULTI-SELECT, because the rules compose: the
+ * hydroelectric dam is coastal AND not adjacent to ocean, which a single enum
+ * value could only express by inventing a member for every combination.
+ * An empty list means anywhere you control.
+ */
+function PlacementPicker({ value, onChange }) {
+  const [adding, setAdding] = useState(false)
+  return (
+    <div className="ed-requires">
+      {value.length === 0 && !adding && <span className="ed-anywhere">anywhere</span>}
+      {value.map((k) => (
+        <span key={k} className={`ed-req${PLACEMENTS[k] ? '' : ' missing'}`} title={PLACEMENTS[k]}>
+          {PLACEMENTS[k] ?? k}
+          <button onClick={() => onChange(value.filter((x) => x !== k))}>✕</button>
+        </span>
+      ))}
+      {adding ? (
+        <select className="ed-sel" autoFocus defaultValue="" onBlur={() => setAdding(false)}
+          onChange={(e) => { if (e.target.value) onChange([...value, e.target.value]); setAdding(false) }}>
+          <option value="">add a rule…</option>
+          {PLACEMENT_KEYS.filter((k) => !value.includes(k)).map((k) => (
+            <option key={k} value={k}>{PLACEMENTS[k]}</option>
+          ))}
+        </select>
+      ) : (
+        <button className="ed-req-add" onClick={() => setAdding(true)}>+</button>
+      )}
+    </div>
+  )
 }
 
 /**

@@ -140,6 +140,32 @@ export const UNIT_CLASSES = [
   'command', 'fortification',
 ]
 
+/**
+ * ONE UNIT PER CLASS.
+ *
+ * There is no ladder of named units. A class has a single stat line, and the
+ * techs you take raise it — every unit of that class on the board improves
+ * together. "Create a melee unit" therefore means *place one more of the melee
+ * unit on the map*, at whatever the class currently is.
+ *
+ * ⚠️ THESE NUMBERS ARE PLACEHOLDERS. melee/ranged/cavalry/fortification are
+ * carried over from the existing `units.js` base units; the other five are
+ * invented to unblock the content layer, with the two values the design does
+ * fix: siege has a blast radius of 1, and command has a radius of 2.
+ * Balance passes replace all of it.
+ */
+export const UNIT_CLASS_BASE = {
+  melee: { atk: 7, def: 22, range: 1, speed: 1, cooldown: 1, blast: 0, radius: 0, note: 'Slow, but strong.' },
+  ranged: { atk: 6, def: 12, range: 2, speed: 0, cooldown: 1, blast: 0, radius: 0, note: 'Least defence and damage; strikes from behind the line.' },
+  cavalry: { atk: 8, def: 16, range: 1, speed: 2, cooldown: 1, blast: 0, radius: 0, note: 'Fast, not as strong.' },
+  fortification: { atk: 0, def: 60, range: 0, speed: 0, cooldown: 0, blast: 0, radius: 0, note: 'No attack. Taunts enemies.' },
+  siege: { atk: 20, def: 18, range: 3, speed: 0, cooldown: 2, blast: 1, radius: 0, note: 'Heavy hitter, slow attacks, splash damage.' },
+  naval: { atk: 10, def: 28, range: 2, speed: 2, cooldown: 1, blast: 0, radius: 0, note: 'Water access; ranged or melee depending on what you take.' },
+  aerial: { atk: 12, def: 22, range: 1, speed: 4, cooldown: 1, blast: 0, radius: 0, note: 'Very fast, melee. Planet-bound until a tech grants space.' },
+  astral: { atk: 14, def: 26, range: 3, speed: 2, cooldown: 1, blast: 0, radius: 0, note: 'Space only, ranged, various speed.' },
+  command: { atk: 0, def: 24, range: 0, speed: 1, cooldown: 0, blast: 0, radius: 2, note: 'No attack. Buffs every friendly unit inside its radius.' },
+}
+
 /** Tile classes — how a tile is being used, as opposed to what it is made of. */
 export const TILE_CLASSES = ['rural', 'outpost', 'city', 'improved', 'controlled', 'empty', 'water', 'land', 'road']
 
@@ -254,7 +280,11 @@ export const SCALE_KEYS = Object.keys(SCALES)
 
 /** Things that can be counted for `per_owned` / `per_adjacent` / `per_in_range`. */
 export const COUNTABLES = [
-  'city', 'outpost', 'citizen', 'building', 'unique_building', 'temple', 'wonder',
+  // `citizen` counts population; OUTPOSTS HAVE NONE — only cities do. So
+  // "each adjacent outpost or citizen" is `outpost` + `city_population`, which
+  // is why both exist as separate countables.
+  'city', 'outpost', 'citizen', 'city_population',
+  'building', 'unique_building', 'temple', 'wonder',
   'unit', 'melee', 'ranged', 'cavalry', 'siege', 'naval', 'aerial', 'astral',
   'command_unit', 'fortification', 'asteroid', 'mountain', 'planet_tile',
   'water_tile', 'empty_space', 'rural_tile', 'controlled_tile', 'any_tile',
@@ -299,6 +329,14 @@ export const TRIGGER_KEYS = Object.keys(TRIGGERS)
 /** Extra conditions narrowing WHICH subjects an effect applies to. */
 export const FILTERS = {
   none: { label: 'No condition', needsKey: false },
+  // ⚠️ THE DIRECTION MATTERS AND IS EASY TO GET BACKWARDS.
+  //   within_radius  — things around THIS building/unit are affected
+  //                    ("all tiles in range 3 of the laboratory")
+  //   in_range_of    — the subject is affected because it is near SOMETHING ELSE
+  //                    ("melee units near a city")
+  // Almost every building wants the first. `within_radius` reads its distance
+  // from the effect's `radius` field, which is why the radius stops being lost.
+  within_radius: { label: 'Only within N tiles of this (uses radius)', needsKey: false },
   in_region: { label: 'Only in region…', needsKey: 'region' },
   on_terrain: { label: 'Only on terrain…', needsKey: 'terrain' },
   on_tile_class: { label: 'Only on tile class…', needsKey: 'tileClass' },
@@ -348,8 +386,11 @@ export const RULE_KEYS = {
   splash: 'Damage spreads to tiles around the target, falling off with distance.',
   pierce_line: 'Damages everything between the attacker and its target.',
   knockback: 'Shoves the target a tile; a collision doubles damage and hits what it struck.',
-  reflect: 'Returns an attacker\'s damage for the defender\'s :attack:.',
-  thorns: 'Attackers take damage equal to the defender\'s :defense:.',
+  // The ATTACKER's attack is what comes back at it.
+  reflect: 'Returns damage to an attacker equal to the ATTACKER\'s :attack:.',
+  // The DEFENDER's defence, not the attacker's — using the attacker's own
+  // defence would mean every attacker one-shots itself.
+  thorns: 'Attackers take damage equal to the DEFENDER\'s :defense:.',
   retreat_after_attack: 'Falls back to a safe tile after striking, given the :speed:.',
   move_attack_again: 'After attacking, moves and attacks a second time.',
   extra_attack_every_n: 'Attacks an additional time every Nth attack.',
@@ -362,6 +403,8 @@ export const RULE_KEYS = {
   infinite_speed: 'May move any distance in a turn.',
   respawn_after_n_turns: 'Comes back N turns after dying.',
   no_raze: 'Enemies cannot raze your buildings.',
+  // The ordinary raze: leaves a ruin that gold rebuilds, not a deleted tile.
+  raze_target: 'Razes the tile it hits, leaving a ruin that can be repaired.',
   decoy_pathing: 'Enemies within range path here before resuming their route.',
   free_reposition: 'May be repositioned without paying gold.',
   place_anywhere: 'May be placed on any tile, ignoring terrain rules.',
@@ -440,8 +483,33 @@ export const PLACEMENTS = {
 }
 export const PLACEMENT_KEYS = Object.keys(PLACEMENTS)
 
-/** Wonders come in tiers, which are their own ladder — not the era ladder. */
+/**
+ * Wonder tiers. Kept as a grouping, but a wonder is now DRAFTED like a tech —
+ * it has an era and a quadrant and appears in the offer. Taking one does not
+ * build it: the next :production: threshold does, instead of a city. You are
+ * never offered a second wonder while one is still unbuilt.
+ */
 export const WONDER_TIERS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX']
+
+/**
+ * PLACEMENT IS MULTI-SELECT. A building lists every rule that must hold, so
+ * "coast, and not adjacent to ocean" is two entries rather than one bespoke
+ * enum member. An empty list means anywhere you control.
+ */
+export const blankPlacement = () => []
+
+/**
+ * How a tile's yield is computed. Stated here because half the design's
+ * language ("base yield", "total yields", "output") depends on it:
+ *
+ *     final = base × (1 + Σ percentage bonuses)
+ *
+ * PERCENTAGES ARE ADDITIVE, never compounded — two +100% bonuses triple the
+ * base, they do not quadruple it. Flat "+N to base yield" effects raise `base`
+ * before the multiplier applies, which is what makes them worth more than they
+ * look next to a percentage.
+ */
+export const YIELD_MODEL = 'base × (1 + Σ percentages); percentages are additive'
 
 // ---------------------------------------------------------------------------
 // A blank effect, and the empty rows the editor creates
@@ -458,6 +526,11 @@ export const blankEffect = () => ({
   value: 1,
   scale: 'none',
   scaleKey: '',
+  // How far the effect reaches from the thing that has it. Used by
+  // `filter: within_radius` ("all tiles in range 3") and by
+  // `scale: per_in_range` ("+10 per empty space tile in range 2"). 0 means the
+  // thing itself; 1 means it and its neighbours.
+  radius: 0,
   // The divisor in "for every N you own". Without it, "for every 2 enemies
   // defeated, +1 gold" had to be written as value 0.5.
   scaleN: 1,
@@ -485,17 +558,18 @@ export const blankEffect = () => ({
 
 export const blankTech = () => ({
   id: '', name: '', quadrant: 'military', era: 0,
-  icon: '/sprites/ui/policy.png', requires: [], effects: [],
+  icon: '/sprites/ui/policy.png', requires: [], excludes: [], effects: [],
 })
 
 export const blankBuilding = () => ({
-  id: '', name: '', era: 0, placement: 'any_controlled',
+  id: '', name: '', era: 0, placement: [],
   icon: '/sprites/ui/building.png', unlockedBy: '', effects: [],
 })
 
+/** A wonder is a tech that a :production: threshold builds — so it has both. */
 export const blankWonder = () => ({
-  id: '', name: '', tier: 'I', placement: 'any_controlled',
-  icon: '/sprites/ui/wonder.png', requires: [], effects: [],
+  id: '', name: '', tier: 'I', quadrant: 'economy', era: 0, placement: [],
+  icon: '/sprites/ui/wonder.png', requires: [], excludes: [], effects: [],
 })
 
 // ---------------------------------------------------------------------------
@@ -561,12 +635,35 @@ export function validateContent(content) {
       if (dep.era > t.era) out.push(`${t.id}: requires "${r}" from a LATER era (${ERAS[dep.era]} > ${ERAS[t.era]}) — unreachable`)
     }
   }
+  // Exclusivity must be answerable: both halves have to be offerable together,
+  // which means the same quadrant AND the same era. A "vs" pair split across
+  // tracks is a choice the player is never actually given.
+  const draftable = [...(content.techs ?? []), ...(content.wonders ?? [])]
+  const draftById = new Map(draftable.map((t) => [t.id, t]))
+  for (const t of draftable) {
+    for (const x of t.excludes ?? []) {
+      const other = draftById.get(x)
+      if (!other) { out.push(`${t.id}: excludes unknown "${x}"`); continue }
+      if (other.quadrant !== t.quadrant || other.era !== t.era) {
+        out.push(`${t.id} excludes ${x}, but they sit in different pools (${t.quadrant}/${ERAS[t.era]} vs ${other.quadrant}/${ERAS[other.era]}) — the choice can never be offered`)
+      }
+      if (!(other.excludes ?? []).includes(t.id)) out.push(`${t.id} excludes ${x} but not the other way round`)
+    }
+  }
+
+  const badPlacement = (p, where) => {
+    if (!Array.isArray(p)) { out.push(`${where}: placement must be a list`); return }
+    for (const k of p) if (!PLACEMENTS[k]) out.push(`${where}: unknown placement "${k}"`)
+  }
   for (const b of content.buildings ?? []) {
-    if (!PLACEMENTS[b.placement]) out.push(`building ${b.id}: unknown placement "${b.placement}"`)
+    badPlacement(b.placement, `building ${b.id}`)
     for (const [i, fx] of (b.effects ?? []).entries()) out.push(...validateEffect(fx, `building ${b.id} effect ${i + 1}`))
   }
   for (const w of content.wonders ?? []) {
     if (!WONDER_TIERS.includes(w.tier)) out.push(`wonder ${w.id}: unknown tier "${w.tier}"`)
+    if (!QUADRANTS.includes(w.quadrant)) out.push(`wonder ${w.id}: unknown quadrant "${w.quadrant}"`)
+    if (!(w.era >= 0 && w.era < ERAS.length)) out.push(`wonder ${w.id}: era ${w.era} out of range`)
+    badPlacement(w.placement, `wonder ${w.id}`)
     for (const [i, fx] of (w.effects ?? []).entries()) out.push(...validateEffect(fx, `wonder ${w.id} effect ${i + 1}`))
   }
   return out
