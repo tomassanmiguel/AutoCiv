@@ -262,7 +262,7 @@ export default function App() {
           <FilterBar
             filters={filters}
             setFilters={setFilters}
-            showQuadrant={tab !== 'buildings'}
+            showQuadrant={tab !== 'buildings' && tab !== 'tierUnlocks'}
             showEra
             shown={filtered.length}
             total={rows.length}
@@ -317,11 +317,11 @@ const COLUMNS = {
     { key: 'requires', label: 'Requires', kind: 'techs', width: 170 },
     { key: 'effects', label: 'Effect', kind: 'effects' },
   ],
+  // No quadrant column: a tier unlock fires when ANY quadrant reaches its era.
   tierUnlocks: [
     { key: 'name', label: 'Name', kind: 'name', width: 220 },
-    { key: 'quadrant', label: 'Quadrant', kind: 'select', width: 110, options: QUADRANTS },
-    { key: 'era', label: 'Era', kind: 'era', width: 120 },
-    { key: 'effects', label: 'Granted automatically on reaching this tier', kind: 'effects' },
+    { key: 'era', label: 'Era', kind: 'era', width: 140 },
+    { key: 'effects', label: 'Revealed when any quadrant reaches this era', kind: 'effects' },
   ],
   // Parked ideas. Read-only: edit them after restoring, not before.
   backlog: [

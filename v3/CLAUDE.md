@@ -360,10 +360,10 @@ this is the implementer's summary:
 - **Wonders are drafted like techs** — era, quadrant, and an entry in the offer. Taking one does
   not build it; the next :production: threshold does. You are never offered a second while one
   is unbuilt.
-- **Automatic tier unlocks** on reaching a new era in a quadrant live in `tierUnlocks`, using the
-  same effect schema. **The map reveal is one of these**: the Technology track opens the next
-  notch of the 15-step ladder per era, so vision can never be missed — which is why there are no
-  vision techs.
+- **`tierUnlocks` are VISIBILITY ONLY**, one per era, and are **not per-quadrant**: a notch fires
+  when **any** quadrant reaches its era (`revealEra = max(quadrant eras)`), so the map follows
+  your furthest track. This is why there are no vision techs. The validator rejects any
+  non-`vision` effect here — anything else would be a draft pick you didn't spend.
 - **One unit per class, nine classes.** No named-unit ladder: techs raise the class's stat line
   and every unit of it already on the board improves. `UNIT_CLASS_BASE` holds placeholder stats.
 

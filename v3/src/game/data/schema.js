@@ -74,6 +74,21 @@ export const thresholdFor = (era) => ADVANCE_THRESHOLDS[era] ?? 0
 /** How many advancements are offered at once. */
 export const OFFER_SIZE = 3
 
+/**
+ * TIER UNLOCKS ARE VISIBILITY ONLY.
+ *
+ * One entry per era, granting the next notch of the map reveal ladder. They are
+ * NOT per-quadrant: an entry fires when **any** quadrant reaches its era, so the
+ * reveal follows your furthest track rather than one nominated one — a player
+ * who pushes Military hard still sees the map open up.
+ *
+ *     revealEra = max(era of each of the four quadrants)
+ *
+ * Nothing else belongs here. A tier unlock that granted a unit or a permission
+ * would be a free draft pick, which is what the draft is for.
+ */
+export const tierUnlockEra = (quadrantEras) => Math.max(0, ...quadrantEras)
+
 // ---------------------------------------------------------------------------
 // The effect vocabulary
 // ---------------------------------------------------------------------------
@@ -681,6 +696,15 @@ export function validateContent(content) {
         out.push(`${t.id} excludes ${x}, but they sit in different pools (${t.quadrant}/${ERAS[t.era]} vs ${other.quadrant}/${ERAS[other.era]}) — the choice can never be offered`)
       }
       if (!(other.excludes ?? []).includes(t.id)) out.push(`${t.id} excludes ${x} but not the other way round`)
+    }
+  }
+
+  // Tier unlocks are visibility and nothing else — see `tierUnlockEra`.
+  for (const t of content.tierUnlocks ?? []) {
+    if (!(t.era >= 0 && t.era < ERAS.length)) out.push(`tier unlock ${t.id}: era ${t.era} out of range`)
+    for (const [i, fx] of (t.effects ?? []).entries()) {
+      if (fx.op !== 'vision') out.push(`tier unlock ${t.id} effect ${i + 1}: op "${fx.op}" — tier unlocks may only grant vision`)
+      out.push(...validateEffect(fx, `tier unlock ${t.id} effect ${i + 1}`))
     }
   }
 

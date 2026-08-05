@@ -159,13 +159,23 @@ The nine classes, with **placeholder** starting values (balance replaces these):
 
 ## 7. Vision is not a tech
 
-**The map reveals as the Technology track advances.** Each technology era opens
-the next notch of the 15-step reveal ladder, automatically and unconditionally,
-so vision is never something you can fail to draft. The ten vision techs that
-used to exist have been removed.
+**The map reveals as you advance, whichever track you advance on.** Each era
+opens the next notch of the 15-step reveal ladder, automatically and
+unconditionally, so vision is never something you can fail to draft. The ten
+vision techs that used to exist have been removed.
 
-This is the model for **tier unlocks** generally: reaching an era in a quadrant
-grants something automatically, without spending a draft pick.
+A notch fires when **any** quadrant reaches its era — the reveal follows your
+furthest track, not a nominated one, so a player who pushes Military hard still
+sees the map open up:
+
+```
+revealEra = max(era of each of the four quadrants)
+```
+
+**Tier unlocks are visibility and nothing else.** They are not a general
+"free stuff per era" mechanism: anything that granted a unit or a permission
+would be a draft pick you didn't have to spend, which is what the draft is for.
+The validator enforces it.
 
 ## 8. Temples
 
