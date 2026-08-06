@@ -111,14 +111,17 @@ export const PALACE = {
 export function unitStats(def, wave, mods, level = 1, extra = null) {
   const s = Math.pow(1.18, wave) * (1 + 0.25 * (level - 1))
 
-  // `extra` carries PER-UNIT flats (Formations) — a unit next to three friends
-  // gains 3× the formation bonus. It joins the civ-wide flat inside the base,
-  // before the multipliers, so a tight formation is worth more than it looks.
+  // `extra` carries PER-UNIT modifiers — Formations (`atkFlat`/`defFlat`) and the
+  // EARNED-FLAT slot (`earnedAtk`, e.g. Marksmanship, permanent across combats).
+  //
+  // Attack has THREE tiers now:
+  //   atk = ((base + flat) × (1 + basePct) + EARNED) × (1 + ordinaryPct)
+  // The flat (tech-wide + formation) folds into the base before the base-%; the
+  // earned flat sits AFTER it, before the ordinary-%. See docs/design.md.
   const atkFlat = (mods?.unitAtkFlat ?? 0) + (extra?.atkFlat ?? 0)
   const defFlat = (mods?.unitDefFlat ?? 0) + (extra?.defFlat ?? 0)
 
-  const baseAtk = (def.atk + atkFlat) *
-    (1 + (mods?.unitAtkBasePct ?? 0)) *
+  const baseAtk = ((def.atk + atkFlat) * (1 + (mods?.unitAtkBasePct ?? 0)) + (extra?.earnedAtk ?? 0)) *
     (1 + (mods?.unitAtkPct ?? 0))
 
   // Defence IS hit points, and runs the identical formula. Unlike attack there

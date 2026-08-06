@@ -325,6 +325,160 @@ export const EFFECT_KINDS = {
       `Connection tiles earn +${e.gold ?? 0} base :gold:` +
       (e.prodFromGold ? ', and :production: equal to their :gold:.' : '.'),
   },
+
+  // --- ranged theme: poison --------------------------------------------------
+  // Poison is a per-unit stack counter on the poisoned unit; on its own beat,
+  // before it acts, it takes 1 damage per stack. Stacks add across sources.
+  ranged_poison_apply: {
+    label: 'Ranged — apply poison',
+    hint: 'A :ranged: unit\'s attack applies this many :poison: stacks to its target. Stacks add up; a poisoned unit takes 1 damage per stack at the start of its own turn.',
+    params: [{ key: 'amount', label: 'Stacks', min: 0, default: 1 }],
+    describe: (e) => `:ranged: attacks apply +${e.amount ?? 0} :poison:.`,
+  },
+  ranged_poison_slow: {
+    label: 'Ranged — poison slows',
+    hint: 'A :ranged: attack also cuts the target\'s :speed:, down to a floor.',
+    params: [
+      { key: 'amount', label: 'Speed −', min: 0, default: 1 },
+      { key: 'min', label: 'Floor', min: 0, default: 1 },
+    ],
+    describe: (e) => `:ranged: attacks reduce target :speed: by ${e.amount ?? 0} (floor ${e.min ?? 0}).`,
+  },
+  poison_spread_on_apply: {
+    label: 'Poison spreads on apply',
+    hint: 'When :poison: is applied, a random enemy adjacent to the target also gains stacks.',
+    params: [{ key: 'amount', label: 'Stacks', min: 0, default: 1 }],
+    describe: (e) => `On :poison: applying, a random adjacent enemy gains +${e.amount ?? 0} :poison:.`,
+  },
+  poison_damage_mult: {
+    label: 'Poison damage ×',
+    hint: 'Multiplies the damage each :poison: stack deals per tick. Multiple techs multiply.',
+    params: [{ key: 'amount', label: 'Multiplier', min: 1, default: 2 }],
+    describe: (e) => `:poison: tick damage ×${e.amount ?? 1}.`,
+  },
+  poison_bonus_stacks_on_apply: {
+    label: 'Poison escalates on apply',
+    hint: 'Each time a unit applies :poison:, the amount IT applies grows by this much for the rest of the combat — 5, then 10, then 15, and so on.',
+    params: [{ key: 'amount', label: 'Growth', min: 0, default: 5 }],
+    describe: (e) => `Each :poison: application grows the applied amount by ${e.amount ?? 0}.`,
+  },
+
+  // --- ranged theme: fortification synergy -----------------------------------
+  fort_def_pct_per_adjacent_ranged: {
+    label: 'Fort +def per adjacent ranged',
+    hint: 'A :fort: fortification gains a % of :defense: for each adjacent :ranged: unit, measured at combat start.',
+    params: [{ key: 'amount', label: 'Percent', min: 0, default: 10 }],
+    describe: (e) => `:fort: gains +${e.amount ?? 0}% :defense: per adjacent :ranged: unit.`,
+  },
+  ranged_range_bonus_adjacent_fort: {
+    label: 'Ranged +range near a fort',
+    hint: 'A :ranged: unit adjacent to a :fort: fortification gains range.',
+    params: [{ key: 'amount', label: 'Range', min: 0, default: 1 }],
+    describe: (e) => `:ranged: units adjacent to a :fort: gain +${e.amount ?? 0} :range:.`,
+  },
+
+  // --- ranged theme: preloaded shots -----------------------------------------
+  // A per-unit banked-shot counter. A ranged unit discharges all banked shots as
+  // extra hits when it attacks.
+  ranged_preload_start: {
+    label: 'Ranged — preload at start',
+    hint: 'Each :ranged: unit begins combat with this many banked shots, fired as extra hits on its first attack.',
+    params: [{ key: 'amount', label: 'Shots', min: 0, default: 1 }],
+    describe: (e) => `:ranged: units start combat with +${e.amount ?? 0} preloaded shots.`,
+  },
+  ranged_preload_start_per_adjacent_ranged: {
+    label: 'Ranged — preload per adjacent ranged',
+    hint: 'Banked shots at combat start, one lot per OTHER adjacent :ranged: unit.',
+    params: [{ key: 'amount', label: 'Shots each', min: 0, default: 1 }],
+    describe: (e) => `:ranged: units start with +${e.amount ?? 0} preloaded shots per adjacent :ranged: unit.`,
+  },
+  ranged_preload_on_crit: {
+    label: 'Ranged — preload on crit',
+    hint: 'A :ranged: unit banks a shot whenever it crits (preloaded shots do not themselves trigger this).',
+    params: [{ key: 'amount', label: 'Shots', min: 0, default: 1 }],
+    describe: (e) => `:ranged: units bank +${e.amount ?? 0} shot on a :crit:.`,
+  },
+  ranged_preload_per_idle_turn: {
+    label: 'Ranged — preload when idle',
+    hint: 'A :ranged: unit banks a shot on any turn it has no enemy in range.',
+    params: [{ key: 'amount', label: 'Shots', min: 0, default: 1 }],
+    describe: (e) => `:ranged: units bank +${e.amount ?? 0} shot on a turn with nothing in range.`,
+  },
+
+  // --- ranged theme: range & placement ---------------------------------------
+  ranged_range_flat: {
+    label: 'Ranged +range',
+    hint: 'Flat :range: on every :ranged: unit. Stacks.',
+    params: [{ key: 'amount', label: 'Range', min: 0, default: 1 }],
+    describe: (e) => `:ranged: units gain +${e.amount ?? 0} :range:.`,
+  },
+  ranged_range_per_stationary_combats: {
+    label: 'Ranged +range while dug in',
+    hint: 'A :ranged: unit gains range for every N combats it goes without being repositioned. Repositioning resets the count.',
+    params: [
+      { key: 'amount', label: 'Range', min: 0, default: 1 },
+      { key: 'combats', label: 'Per N combats', min: 1, default: 4 },
+    ],
+    describe: (e) => `:ranged: units gain +${e.amount ?? 0} :range: every ${e.combats ?? 1} combats not repositioned.`,
+  },
+  ranged_range_infinite_on_terrain: {
+    label: 'Ranged — infinite range on terrain',
+    hint: 'A :ranged: unit standing on the chosen terrain has unlimited range.',
+    params: [{ key: 'terrain', label: 'Terrain', options: TERRAIN_KEYS, default: 'star' }],
+    describe: (e) => `:ranged: units on ${terrainLabel(e?.terrain)} have infinite :range:.`,
+  },
+  class_placement_terrain_add: {
+    label: 'Class may stand on terrain',
+    hint: 'Adds a terrain to a class\'s placement set, so a unit of that class may be created there.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'ranged' },
+      { key: 'terrain', label: 'Terrain', options: TERRAIN_KEYS, default: 'star' },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units may be placed on ${terrainLabel(e?.terrain)}.`,
+  },
+
+  // --- ranged theme: shot chaining -------------------------------------------
+  ranged_chain_flat: {
+    label: 'Ranged +shot chains',
+    hint: 'After its primary hit, a :ranged: unit chains to the lowest-HP enemy still in range this many extra times (each at half the previous hit\'s damage, unless falloff is removed).',
+    params: [{ key: 'amount', label: 'Chains', min: 0, default: 1 }],
+    describe: (e) => `:ranged: attacks chain +${e.amount ?? 0} more times.`,
+  },
+  ranged_chain_remove_falloff: {
+    label: 'Ranged — chains keep full damage',
+    hint: 'Removes the 50%-per-chain damage falloff: every chained hit deals full damage.',
+    params: [],
+    describe: () => ':ranged: shot chains no longer lose damage.',
+  },
+
+  // --- ranged theme: class-scoped crit & earned stats ------------------------
+  class_crit_chance_pct: {
+    label: 'Class — crit chance %',
+    hint: 'Like the universal crit-chance dial, but scoped to one unit class. Adds flat, capped at 100% with the base and any universal chance.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'ranged' },
+      { key: 'amount', label: 'Percent', min: 0, default: 5 },
+    ],
+    describe: (e) => `+${e.amount ?? 0}% :crit: chance to :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units.`,
+  },
+  gold_on_class_crit_pct: {
+    label: 'Class — gold on crit',
+    hint: 'When a unit of the class crits, gain :gold: equal to a % of the damage that crit dealt.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'ranged' },
+      { key: 'amount', label: 'Percent of dmg', min: 0, default: 100 },
+    ],
+    describe: (e) => `On a :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: :crit:, gain :gold: = ${e.amount ?? 0}% of the damage.`,
+  },
+  unit_atk_earned_on_class_crit: {
+    label: 'Class — permanent atk on crit',
+    hint: 'When a unit of the class crits, it PERMANENTLY gains flat :attack: (kept across combats). Sits in the earned-flat stat slot, between the base-% and ordinary-% layers.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'ranged' },
+      { key: 'amount', label: 'Attack', min: 0, default: 1 },
+    ],
+    describe: (e) => `A :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: unit permanently gains +${e.amount ?? 0} :attack: on a :crit:.`,
+  },
 }
 export const EFFECT_KEYS = Object.keys(EFFECT_KINDS)
 
@@ -357,6 +511,7 @@ export const ICON_TOKENS = {
   speed: '/sprites/icons/speed.png',
   range: '/sprites/icons/range.png',
   crit: '/sprites/icons/attack.png', // placeholder — no dedicated crit icon yet
+  poison: '/sprites/ui/trap.png',    // placeholder — no dedicated poison icon yet
   melee: '/sprites/ui/melee.png',
   ranged: '/sprites/ui/ranged.png',
   cavalry: '/sprites/ui/cavalry.png',

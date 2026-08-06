@@ -154,6 +154,8 @@
 }
 .combat-float.damage { color: #ff9a8a; }
 .combat-float.palace { color: #ffd76a; }
+/* Poison ticks read as a sickly green, distinct from a normal hit. */
+.combat-float.poison { color: #a6e05a; font-size: 0.85em; }
 /* A crit hits harder and says so — brighter, with a glow. */
 .combat-float.crit {
   color: #ffe08a;

@@ -747,6 +747,511 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "blowguns",
+      "name": "Blowguns",
+      "era": 1,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units apply +1 :poison:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_poison_apply",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "curare",
+      "name": "Curare",
+      "era": 3,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units apply +1 :poison:. Targets lose 1 :speed: (minimum 1). Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_poison_apply",
+          "amount": 1
+        },
+        {
+          "kind": "ranged_poison_slow",
+          "amount": 1,
+          "min": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "toxicology",
+      "name": "Toxicology",
+      "era": 5,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units apply +2 :poison:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_poison_apply",
+          "amount": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "chemical_warfare",
+      "name": "Chemical Warfare",
+      "era": 8,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units apply +1 :poison:. Whenever :poison: applies, a random adjacent enemy also gains 1 :poison:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_poison_apply",
+          "amount": 1
+        },
+        {
+          "kind": "poison_spread_on_apply",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "nanite_blight",
+      "name": "Nanite Blight",
+      "era": 11,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units apply +2 :poison:. :poison: damage is doubled. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_poison_apply",
+          "amount": 2
+        },
+        {
+          "kind": "poison_damage_mult",
+          "amount": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "omniphage",
+      "name": "Omniphage",
+      "era": 13,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units apply +5 :poison:. Whenever :poison: applies, the amount applied grows by 5. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_poison_apply",
+          "amount": 5
+        },
+        {
+          "kind": "poison_bonus_stacks_on_apply",
+          "amount": 5
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "crenellations",
+      "name": "Crenellations",
+      "era": 2,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications gain +10% :defense: for each adjacent :ranged: unit. Grants 1 :fort: fortification and 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "fort_def_pct_per_adjacent_ranged",
+          "amount": 10
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "turrets",
+      "name": "Turrets",
+      "era": 4,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units adjacent to a fortification gain +1 :range:. Grants 1 :fort: fortification and 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_range_bonus_adjacent_fort",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "quivers",
+      "name": "Quivers",
+      "era": 1,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units start combat with +1 preloaded shot. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_preload_start",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "volley_fire",
+      "name": "Volley Fire",
+      "era": 4,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units start combat with +1 preloaded shot for each other adjacent :ranged: unit. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_preload_start_per_adjacent_ranged",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "repeaters",
+      "name": "Repeaters",
+      "era": 7,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units gain +1 preloaded shot whenever they :crit: (does not trigger from preloaded shots). Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_preload_on_crit",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "charge_coils",
+      "name": "Charge Coils",
+      "era": 12,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units gain +1 preloaded shot on every turn with no enemy in range. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_preload_per_idle_turn",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "longbow",
+      "name": "Longbow",
+      "era": 4,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units get +1 :range:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_range_flat",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "snipers",
+      "name": "Snipers",
+      "era": 7,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units get +1 :range:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_range_flat",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "advanced_targeting",
+      "name": "Advanced Targeting",
+      "era": 10,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units get +2 :range:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_range_flat",
+          "amount": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "solar_battery",
+      "name": "Solar Battery",
+      "era": 14,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units may be stationed on stars. :ranged: units on a star have infinite :range:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "class_placement_terrain_add",
+          "unitClass": "ranged",
+          "terrain": "star"
+        },
+        {
+          "kind": "ranged_range_infinite_on_terrain",
+          "terrain": "star"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "shrapnel",
+      "name": "Shrapnel",
+      "era": 6,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units get +1 shot chain. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_chain_flat",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "piercing_rounds",
+      "name": "Piercing Rounds",
+      "era": 9,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units get +1 shot chain and no longer lose damage per chain. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_chain_flat",
+          "amount": 1
+        },
+        {
+          "kind": "ranged_chain_remove_falloff"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "arc_throwers",
+      "name": "Arc Throwers",
+      "era": 11,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units get +2 shot chains. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_chain_flat",
+          "amount": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "bounty_hunting",
+      "name": "Bounty Hunting",
+      "era": 5,
+      "icon": "/sprites/icons/gold.png",
+      "description": "Whenever a :ranged: unit scores a critical hit, gain :gold: equal to the damage dealt. :ranged: units gain +5% :crit: chance. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "gold_on_class_crit_pct",
+          "unitClass": "ranged",
+          "amount": 100
+        },
+        {
+          "kind": "class_crit_chance_pct",
+          "unitClass": "ranged",
+          "amount": 5
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "entrenchment",
+      "name": "Entrenchment",
+      "era": 2,
+      "icon": "/sprites/icons/ranged.png",
+      "description": ":ranged: units gain +1 :range: for every 4 combats they aren't repositioned. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "ranged_range_per_stationary_combats",
+          "amount": 1,
+          "combats": 4
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "marksmanship",
+      "name": "Marksmanship",
+      "era": 6,
+      "icon": "/sprites/icons/attack.png",
+      "description": "Whenever a :ranged: unit scores a critical hit, it permanently gains +1 :attack:. Grants 1 :ranged: unit.",
+      "effects": [
+        {
+          "kind": "unit_atk_earned_on_class_crit",
+          "unitClass": "ranged",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "ranged",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [],

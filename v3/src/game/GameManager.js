@@ -123,6 +123,32 @@ function freshMods() {
     // the multiplier is a fixed engine constant (`CRIT_MULT` in combat). Read
     // live at attack resolution; capped at 100% there.
     unitCritChancePct: 0,
+    // Per-CLASS crit chance (like the universal dial, scoped) + the class riders.
+    classCritChance: {},              // class -> fraction added to crit chance
+    goldOnClassCrit: {},              // class -> fraction of damage gained as gold
+    unitAtkEarnedOnClassCrit: {},     // class -> permanent +atk per crit (earned-flat)
+    classPlacementAdd: {},            // class -> Set of extra placement terrain
+
+    // --- ranged theme: poison ---
+    rangedPoisonApply: 0,             // stacks a ranged hit applies
+    rangedPoisonSlow: { amount: 0, min: 0 },
+    poisonSpreadOnApply: 0,
+    poisonDamageMult: 1,              // multiplies per-stack tick damage
+    poisonBonusStacksOnApply: 0,      // Omniphage: the applied amount escalates by this
+    // --- ranged theme: range / fortification synergy ---
+    rangedRangeFlat: 0,
+    rangedRangeBonusAdjacentFort: 0,
+    rangedRangeInfiniteTerrain: new Set(),
+    rangedRangePer: null,             // { amount, combats } — +range per N stationary combats
+    fortDefPctPerAdjacentRanged: 0,
+    // --- ranged theme: preloaded shots ---
+    rangedPreloadStart: 0,
+    rangedPreloadStartPerAdjacentRanged: 0,
+    rangedPreloadOnCrit: 0,
+    rangedPreloadPerIdleTurn: 0,
+    // --- ranged theme: shot chaining ---
+    rangedChainFlat: 0,
+    rangedChainRemoveFalloff: false,
     // Combat movement (+acts). Zero-movement classes ignore it.
     unitSpeed: 0,
     // Per-unit FORMATION flat: +atk / +def for each other friendly unit inside
@@ -718,7 +744,7 @@ export class GameManager {
   repositionTargets(from) {
     const u = from?.unit
     if (!u || u.destroyed || !this.canReposition) return []
-    const def = UNIT_DEFS[u.key]
+    const def = this._placeDef(UNIT_DEFS[u.key])
     if (!def) return []
 
     const range = this.mods.repositionRange
@@ -752,6 +778,8 @@ export class GameManager {
     if (info.cost > 0 && !this._spend(info.cost)) return false
     to.unit = from.unit
     from.unit = null
+    // Moving resets the "dug in" counter (Entrenchment's range bonus).
+    to.unit.stationaryCombats = 0
     this.world.terr.version++
     this._knownCache = null
     this.log.push({ wave: this.wave, text: `Repositioned ${UNIT_NAME(to.unit.key)}${info.cost ? ` (${info.cost} gold)` : ''}.` })
@@ -856,8 +884,8 @@ export class GameManager {
       return out
     }
     // A unit's own class decides its ground — that is what keeps naval units at
-    // sea and everything else off it.
-    const def = this.grantDef(item)
+    // sea and everything else off it (widened by placement-grant techs).
+    const def = this._placeDef(this.grantDef(item))
     for (const t of this.world.terr.controlled) if (canPlaceUnit(this.world, t, def)) out.push(t)
     return out
   }
@@ -890,6 +918,17 @@ export class GameManager {
     return UNIT_DEFS[item.key ?? item.type] ?? null
   }
 
+  /**
+   * A class's placement terrain, WIDENED by any `class_placement_terrain_add`
+   * tech (Solar Battery lets a ranged unit stand on a star). Returns the def
+   * unchanged when nothing was added, so the common path allocates nothing.
+   */
+  _placeDef(def) {
+    const add = def && this.mods.classPlacementAdd[def.key]
+    if (!add || !add.size) return def
+    return { ...def, placement: new Set([...def.placement, ...add]) }
+  }
+
   /** Put the granted unit/building down. */
   placeGrant(tile) {
     const sel = this.selection
@@ -898,7 +937,7 @@ export class GameManager {
     if (!def) return false
     const ok = sel.item.kind === 'building'
       ? placeBuilding(this.world, tile, def.key)
-      : placeUnit(this.world, tile, def.key, def)
+      : placeUnit(this.world, tile, def.key, this._placeDef(def))
     if (!ok) return false
     this.grants.shift()
     this.selection = null
@@ -956,6 +995,81 @@ export class GameManager {
       // the combat engine and no tech touches it.
       case 'unit_crit_chance_pct':
         this.mods.unitCritChancePct += (f.amount ?? 0) / 100
+        break
+
+      // --- class-scoped crit & earned stats ---
+      case 'class_crit_chance_pct':
+        this.mods.classCritChance[f.unitClass] = (this.mods.classCritChance[f.unitClass] ?? 0) + (f.amount ?? 0) / 100
+        break
+      case 'gold_on_class_crit_pct':
+        this.mods.goldOnClassCrit[f.unitClass] = (this.mods.goldOnClassCrit[f.unitClass] ?? 0) + (f.amount ?? 0) / 100
+        break
+      case 'unit_atk_earned_on_class_crit':
+        this.mods.unitAtkEarnedOnClassCrit[f.unitClass] = (this.mods.unitAtkEarnedOnClassCrit[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_placement_terrain_add':
+        (this.mods.classPlacementAdd[f.unitClass] ??= new Set()).add(f.terrain)
+        break
+
+      // --- ranged: poison ---
+      case 'ranged_poison_apply':
+        this.mods.rangedPoisonApply += f.amount ?? 0
+        break
+      case 'ranged_poison_slow':
+        this.mods.rangedPoisonSlow = {
+          amount: this.mods.rangedPoisonSlow.amount + (f.amount ?? 0),
+          min: Math.max(this.mods.rangedPoisonSlow.min, f.min ?? 0),
+        }
+        break
+      case 'poison_spread_on_apply':
+        this.mods.poisonSpreadOnApply += f.amount ?? 0
+        break
+      case 'poison_damage_mult':
+        this.mods.poisonDamageMult *= f.amount ?? 1
+        break
+      case 'poison_bonus_stacks_on_apply':
+        this.mods.poisonBonusStacksOnApply += f.amount ?? 0
+        break
+
+      // --- ranged: range / fort synergy ---
+      case 'ranged_range_flat':
+        this.mods.rangedRangeFlat += f.amount ?? 0
+        break
+      case 'ranged_range_bonus_adjacent_fort':
+        this.mods.rangedRangeBonusAdjacentFort += f.amount ?? 0
+        break
+      case 'ranged_range_infinite_on_terrain':
+        this.mods.rangedRangeInfiniteTerrain.add(f.terrain)
+        break
+      case 'ranged_range_per_stationary_combats':
+        this.mods.rangedRangePer = this.mods.rangedRangePer
+          ? { amount: this.mods.rangedRangePer.amount + (f.amount ?? 0), combats: Math.min(this.mods.rangedRangePer.combats, f.combats ?? 1) }
+          : { amount: f.amount ?? 0, combats: f.combats ?? 1 }
+        break
+      case 'fort_def_pct_per_adjacent_ranged':
+        this.mods.fortDefPctPerAdjacentRanged += f.amount ?? 0
+        break
+
+      // --- ranged: preloaded shots ---
+      case 'ranged_preload_start':
+        this.mods.rangedPreloadStart += f.amount ?? 0
+        break
+      case 'ranged_preload_start_per_adjacent_ranged':
+        this.mods.rangedPreloadStartPerAdjacentRanged += f.amount ?? 0
+        break
+      case 'ranged_preload_on_crit':
+        this.mods.rangedPreloadOnCrit += f.amount ?? 0
+        break
+      case 'ranged_preload_per_idle_turn':
+        this.mods.rangedPreloadPerIdleTurn += f.amount ?? 0
+        break
+
+      // --- ranged: shot chaining ---
+      case 'ranged_chain_flat':
+        this.mods.rangedChainFlat += f.amount ?? 0
+        break
+      case 'ranged_chain_remove_falloff':
+        this.mods.rangedChainRemoveFalloff = true
         break
       // A CLASS grant, never a named unit: which unit it becomes is resolved by
       // `grantDef` at placement time from the best one unlocked, so a grant

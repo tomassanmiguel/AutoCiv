@@ -159,21 +159,71 @@ class CombatMixin {
       if (def) placed.push({ t, def })
     }
     const formation = this._formationFlats(placed)
+    const m = this.mods
 
     const units = []
     let id = 0
     for (let i = 0; i < placed.length; i++) {
       const { t, def } = placed[i]
-      const s = unitStats(def, this.wave, this.mods, t.unit.level ?? 1, formation[i])
-      units.push({
+      const level = t.unit.level ?? 1
+      // `extra` = per-unit formation flat + the persistent EARNED-flat (Marksmanship).
+      const extra = { ...formation[i], earnedAtk: t.unit.earnedAtk ?? 0 }
+      const s = unitStats(def, this.wave, this.mods, level, extra)
+
+      // A fortification gains a % of hit points per adjacent ranged unit.
+      let hp = s.def
+      if (def.key === 'fortification' && m.fortDefPctPerAdjacentRanged) {
+        const adj = this._countAdjacent(placed, i, 'ranged')
+        if (adj) hp = Math.max(1, Math.round(hp * (1 + (m.fortDefPctPerAdjacentRanged / 100) * adj)))
+      }
+
+      const range = def.key === 'ranged' ? this._rangedRange(t, placed, i, s.range) : s.range
+
+      const piece = {
         id: id++, side: 'player', key: def.key, name: s.name, type: s.type,
         q: t.q, r: t.r, home: t,
-        hp: s.def, maxHp: s.def, atk: s.atk,
-        range: s.range, acts: s.acts,
+        hp, maxHp: hp, atk: s.atk, range, acts: s.acts,
         dead: false, lastAttackSeq: null, lastAttackDir: null,
-      })
+        // Ranged-theme per-unit combat state.
+        preload: 0, poisonEscalator: 0,
+        // Kept so a mid-combat earned-atk gain can be recomputed exactly.
+        _extra: extra, _level: level,
+      }
+
+      // Banked shots at combat start (Quivers / Volley Fire).
+      if (def.key === 'ranged') {
+        piece.preload = m.rangedPreloadStart +
+          (m.rangedPreloadStartPerAdjacentRanged ? m.rangedPreloadStartPerAdjacentRanged * this._countAdjacent(placed, i, 'ranged') : 0)
+      }
+      units.push(piece)
     }
     return units
+  }
+
+  /** Count OTHER `placed` units of `cls` adjacent to `placed[i]`. */
+  _countAdjacent(placed, i, cls) {
+    const { t } = placed[i]
+    let n = 0
+    for (let j = 0; j < placed.length; j++) {
+      if (j === i || placed[j].def.key !== cls) continue
+      if (distance(t.q, t.r, placed[j].t.q, placed[j].t.r) === 1) n++
+    }
+    return n
+  }
+
+  /** A ranged unit's effective range, with every range tech folded in. */
+  _rangedRange(t, placed, i, baseRange) {
+    const m = this.mods
+    if (m.rangedRangeInfiniteTerrain.has(t.terrain)) return Infinity
+    let r = baseRange + m.rangedRangeFlat
+    if (m.rangedRangeBonusAdjacentFort) {
+      const nearFort = placed.some((p, j) => j !== i && p.def.key === 'fortification' && distance(t.q, t.r, p.t.q, p.t.r) === 1)
+      if (nearFort) r += m.rangedRangeBonusAdjacentFort
+    }
+    if (m.rangedRangePer) {
+      r += Math.floor((t.unit.stationaryCombats ?? 0) / m.rangedRangePer.combats) * m.rangedRangePer.amount
+    }
+    return r
   }
 
   /**
@@ -255,6 +305,9 @@ class CombatMixin {
       for (const u of [...c.fallen, ...c.units]) {
         if (!u.home?.unit) continue
         if (u.dead || u.hp <= 0) { u.home.unit.destroyed = true; losses++ }
+        // A survivor that was not repositioned digs in one more combat
+        // (Entrenchment reads this for its range bonus; reposition resets it).
+        else u.home.unit.stationaryCombats = (u.home.unit.stationaryCombats ?? 0) + 1
       }
       c.losses = losses
       this.palaceHp = Math.max(0, c.palace?.hp ?? this.palaceHp)
@@ -413,9 +466,12 @@ class CombatMixin {
       case 'enemy-move': visible = this._enemyMove(piece); break
       case 'player-move': visible = this._playerMove(piece); break
       // A defensive construction has atk 0: it never strikes, it only soaks.
+      // Ranged units run the whole poison/chain/preload flow; everyone else lands
+      // a single blow on the lowest-HP enemy in reach.
       case 'player-attack':
-        visible = piece.atk > 0 &&
-          this._strike(piece, this._lowestHpWithin(c.enemies, piece, piece.range))
+        visible = piece.type === 'ranged'
+          ? this._rangedAttack(piece)
+          : piece.atk > 0 && this._strike(piece, this._lowestHpWithin(c.enemies, piece, piece.range))
         break
       case 'enemy-attack': visible = this._enemyAttack(piece); break
       default: break
@@ -457,6 +513,10 @@ class CombatMixin {
 
   // 1 — ONE enemy flows inward. Returns whether it actually moved.
   _enemyMove(e) {
+    // POISON ticks at the start of the enemy's turn, before it acts. This is the
+    // enemy's first beat each turn, so it fires exactly once.
+    let visible = false
+    if (e.poison > 0) { this._poisonTick(e); visible = true; if (e.dead) return true }
     const occ = this._occupancy()
     const field = this._fields[e.domain]
     let moved = false
@@ -480,7 +540,7 @@ class CombatMixin {
       occ.set(key(e.q, e.r), e)
       moved = true
     }
-    return moved
+    return visible || moved
   }
 
   // 2 — ONE melee/cavalry closes on the nearest enemy; ranged never move.
@@ -592,38 +652,148 @@ class CombatMixin {
 
   /** @returns true if a blow landed (so the caller knows the beat was visible). */
   _strike(attacker, target) {
-    if (!target) return false
+    return this._dealBlow(attacker, target).landed
+  }
+
+  /**
+   * The single-blow primitive. Rolls crit, applies damage, pushes the float, and
+   * fires a player unit's crit RIDERS. Returns `{ landed, dealt, crit }` so the
+   * ranged flow can chain off the dealt damage.
+   *
+   *   dmg        — override the base damage (chains pass a reduced number)
+   *   allowCrit  — chains do not crit; primary and preloaded shots do
+   *   isPreload  — a discharged banked shot: still crits, but must not itself
+   *                bank another (Repeaters), or preload would feed itself
+   */
+  _dealBlow(attacker, target, { dmg = null, allowCrit = true, isPreload = false } = {}) {
+    if (!target) return { landed: false, dealt: 0, crit: false }
     const c = this.combat
     // CRIT: any unit's blow may double. Every unit — player OR enemy — has a base
-    // chance; a player unit's crit techs add on top (read LIVE, like atk/def).
-    // Capped at 100%; the multiplier is fixed. The PALACE is not a unit — it
-    // carries no `side`, so it never crits.
-    let dmg = attacker.atk
+    // chance; a player unit adds its universal AND its class crit techs (read
+    // LIVE). Capped at 100%; the multiplier is fixed. The PALACE carries no
+    // `side` and never crits.
+    let base = dmg == null ? attacker.atk : dmg
     let crit = false
-    if ((attacker.side === 'player' || attacker.side === 'enemy') && dmg > 0) {
+    if (allowCrit && base > 0 && (attacker.side === 'player' || attacker.side === 'enemy')) {
       let chance = BASE_CRIT_CHANCE
-      if (attacker.side === 'player') chance += this.mods?.unitCritChancePct ?? 0
+      if (attacker.side === 'player') {
+        chance += (this.mods?.unitCritChancePct ?? 0) + (this.mods?.classCritChance?.[attacker.type] ?? 0)
+      }
       chance = Math.min(1, chance)
-      if (this._critRng() < chance) { dmg *= CRIT_MULT; crit = true }
+      if (this._critRng() < chance) { base *= CRIT_MULT; crit = true }
     }
-    target.hp -= dmg
-    // Its own monotonic counter, bumped HERE rather than reusing `beat`: the
-    // beat counter only advances after the action resolves, which left the card
-    // comparing against a stale value and the lunge never played.
+    const dealt = base
+    target.hp -= dealt
+    // Its own monotonic counter, bumped HERE rather than reusing `beat`: the beat
+    // counter only advances after the action resolves.
     c.actionSeq = (c.actionSeq ?? 0) + 1
     attacker.lastAttackSeq = c.actionSeq
     attacker.lastAttackDir = this._dirTo(attacker, target)
     c.events.push({
       id: `${c.actionSeq}-${target.id ?? 'palace'}`,
-      q: target.q, r: target.r, amount: dmg, crit,
+      q: target.q, r: target.r, amount: dealt, crit,
       kind: target === c.palace ? 'palace' : 'damage',
     })
-    if (target.hp <= 0 && target !== c.palace) {
-      target.hp = 0
-      target.dead = true
-    }
+    if (target.hp <= 0 && target !== c.palace) { target.hp = 0; target.dead = true }
     if (target === c.palace) c.palace.hp = Math.max(0, c.palace.hp)
+    if (crit && attacker.side === 'player') this._onPlayerCrit(attacker, dealt, isPreload)
+    return { landed: true, dealt, crit }
+  }
+
+  /**
+   * A player unit's crit rewards: gold (Bounty Hunting), a permanent earned-flat
+   * :attack: (Marksmanship), and a banked shot (Repeaters). Preloaded shots pay
+   * gold and earn atk like any hit, but must NOT bank more preload or the effect
+   * would feed itself.
+   */
+  _onPlayerCrit(attacker, dealt, isPreload) {
+    const m = this.mods
+    const cls = attacker.type
+    const goldPct = m.goldOnClassCrit[cls]
+    if (goldPct) this.resources.gold.value += dealt * goldPct
+    const earn = m.unitAtkEarnedOnClassCrit[cls]
+    if (earn && attacker.home?.unit) {
+      attacker.home.unit.earnedAtk = (attacker.home.unit.earnedAtk ?? 0) + earn
+      // Reflect it live: recompute the piece's atk with the new earned flat.
+      attacker.atk = unitStats(UNIT_DEFS[attacker.key], this.wave, m, attacker._level ?? 1,
+        { ...attacker._extra, earnedAtk: attacker.home.unit.earnedAtk }).atk
+    }
+    if (!isPreload && cls === 'ranged' && m.rangedPreloadOnCrit) {
+      attacker.preload = (attacker.preload ?? 0) + m.rangedPreloadOnCrit
+    }
+  }
+
+  /**
+   * A ranged unit's attack: the primary hit, then poison, then shot chains, then
+   * a discharge of any banked shots. See docs/design.md § Ranged.
+   */
+  _rangedAttack(u) {
+    const c = this.combat
+    const pick = () => this._lowestHpWithin(c.enemies, u, u.range)
+    const first = pick()
+    if (!first) {
+      // Nothing in range: Charge Coils banks a shot instead of firing.
+      if (this.mods.rangedPreloadPerIdleTurn) u.preload = (u.preload ?? 0) + this.mods.rangedPreloadPerIdleTurn
+      return false
+    }
+    if (u.atk <= 0) return false
+
+    const banked = u.preload ?? 0
+    u.preload = 0
+
+    // 1. primary hit + poison
+    const primary = this._dealBlow(u, first)
+    this._applyRangedPoison(u, first)
+
+    // 2. shot chains — lowest-HP still in range, each at half the previous hit's
+    //    damage unless falloff is removed. Chains do not crit.
+    let prev = primary.dealt
+    for (let i = 0; i < this.mods.rangedChainFlat; i++) {
+      const t = pick()
+      if (!t) break
+      const raw = this.mods.rangedChainRemoveFalloff ? prev : prev / 2
+      if (raw < 1) break
+      prev = this._dealBlow(u, t, { dmg: Math.max(1, Math.round(raw)), allowCrit: false }).dealt
+    }
+
+    // 3. discharge banked shots — full hits, may crit, but do not bank more.
+    for (let i = 0; i < banked; i++) {
+      const t = pick()
+      if (!t) break
+      this._dealBlow(u, t, { isPreload: true })
+    }
     return true
+  }
+
+  /** Apply this civilization's :poison: (and its riders) to a ranged hit's target. */
+  _applyRangedPoison(attacker, target) {
+    const m = this.mods
+    const amt = m.rangedPoisonApply + (attacker.poisonEscalator ?? 0)
+    if (amt <= 0) return
+    target.poison = (target.poison ?? 0) + amt
+    if (m.rangedPoisonSlow.amount > 0) {
+      target.acts = Math.max(m.rangedPoisonSlow.min, (target.acts ?? 0) - m.rangedPoisonSlow.amount)
+    }
+    // Omniphage: this attacker's applied amount escalates for the rest of combat.
+    if (m.poisonBonusStacksOnApply > 0) attacker.poisonEscalator = (attacker.poisonEscalator ?? 0) + m.poisonBonusStacksOnApply
+    // Chemical Warfare: a random adjacent enemy also catches some.
+    if (m.poisonSpreadOnApply > 0) {
+      const adj = this.combat.enemies.filter((e) => !e.dead && e !== target && distance(target.q, target.r, e.q, e.r) === 1)
+      if (adj.length) {
+        const pick = adj[Math.floor(this._critRng() * adj.length)]
+        pick.poison = (pick.poison ?? 0) + m.poisonSpreadOnApply
+      }
+    }
+  }
+
+  /** A poisoned enemy takes damage at the start of its turn, before it acts. */
+  _poisonTick(e) {
+    const dmg = Math.max(1, Math.round((e.poison ?? 0) * (this.mods.poisonDamageMult ?? 1)))
+    e.hp -= dmg
+    const c = this.combat
+    c.actionSeq = (c.actionSeq ?? 0) + 1
+    c.events.push({ id: `poison-${c.actionSeq}-${e.id}`, q: e.q, r: e.r, amount: dmg, kind: 'poison' })
+    if (e.hp <= 0) { e.hp = 0; e.dead = true }
   }
 
   /** Screen-space unit vector from attacker to target, for the lunge animation. */

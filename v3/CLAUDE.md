@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **34 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **56 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -474,11 +474,15 @@ Implemented today:
   on every unit, **stacking**. Nothing is stored on the unit; `unitStats` reads `mods` at call
   time, so a tech improves units placed long before it was taken.
 
-  ⚠️ **BOTH STATS ARE TWO LAYERS**, and mixing them up is the easy mistake:
+  ⚠️ **BOTH STATS ARE TWO LAYERS** (atk is now THREE — see the earned slot), and mixing them
+  up is the easy mistake:
   ```
-  atk = (base + unitAtkFlat) × (1 + unitAtkBasePct) × (1 + unitAtkPct)
-  def = (base + unitDefFlat) × (1 + unitDefBasePct) × (1 + unitDefPct)   // def IS hit points
+  atk = ((base + unitAtkFlat) × (1 + unitAtkBasePct) + EARNED) × (1 + unitAtkPct)
+  def =  (base + unitDefFlat) × (1 + unitDefBasePct)          × (1 + unitDefPct)   // def IS hit points
   ```
+  `EARNED` is the per-unit permanent earned-flat (Marksmanship), passed into `unitStats` via
+  `extra.earnedAtk`, kept on the unit INSTANCE (`t.unit.earnedAtk`) across combats — sits after
+  the base-% and before the ordinary-%.
   Additive within a layer, multiplicative between. A **base modifier** raises the base itself,
   so Siege (base 20) gains 3.3× what Ranged (base 6) does from the same tech — with a FLAT
   line every class converged on ~285 attack and the classes stopped meaning anything. The
@@ -503,6 +507,8 @@ Implemented today:
   `reposition_teleport`) and **`formation`** — see § Repositioning above.
 - **`road_network`** — raises `mods.connectionGold`; its bool `prodFromGold` param sets
   `connectionProd` (Maglev). See § City connections.
+- **ranged theme (20 kinds)** — poison, preloaded shots, shot chaining, range/placement
+  grants, class-scoped crit, and the earned-flat atk slot. See § Ranged combat below.
 
 An effect param is a **number**, a **choice** (`options`), or a **bool** (`type:'bool'`, a
 checkbox — used by `road_network`'s Maglev rider). An effect may also have **no params** at all
@@ -591,6 +597,18 @@ generate, then watch it play out at 2/6/12/30 beats per second (or Step / Resolv
 - The scratch **garrison** is bought against the same budget curve at `DEFENCE_RATIO`, always
   at strength 1 — so the strength slider genuinely raises difficulty instead of scaling both
   sides. Balance is **not** tuned; it is placeholder until the full game is assembled.
+- **`_strike` is now a thin wrapper over `_dealBlow`** — the single-blow primitive that rolls
+  crit (base + universal + **class** chance), applies damage, pushes the float, and fires a
+  player unit's crit RIDERS (`_onPlayerCrit`: gold, earned-flat atk, banked shot). Callers that
+  want the number back (chaining) read `{ landed, dealt, crit }`.
+- **RANGED units run `_rangedAttack`, not `_strike`** (routed in `_runOneBeat`'s player-attack
+  case): primary hit → poison (`_applyRangedPoison`) → shot chains (half-damage each unless
+  falloff removed, no crit) → discharge banked shots (`preload`). Idle turns bank a shot
+  instead. **Poison** is a per-unit stack counter (`piece.poison`, enemies too); `_poisonTick`
+  runs at the start of the enemy's turn inside `_enemyMove`, before it acts. Per-unit combat
+  state lives on the piece (`preload`, `poisonEscalator`); permanent per-unit state lives on the
+  tile instance (`t.unit.earnedAtk`, `t.unit.stationaryCombats` — the latter reset by
+  repositioning). See § Ranged theme in design.md for the full behaviour.
 
 
 ---

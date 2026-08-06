@@ -15,7 +15,9 @@ const ICON_TOKENS = {
   speed: '/sprites/icons/speed.png',
   attack: '/sprites/icons/attack.png',
   defense: '/sprites/icons/defense.png',
+  range: '/sprites/icons/range.png',
   crit: '/sprites/icons/attack.png', // placeholder — no dedicated crit icon yet
+  poison: '/sprites/ui/trap.png',    // placeholder — no dedicated poison icon yet
   // unit type categories
   melee: '/sprites/ui/melee.png',
   ranged: '/sprites/ui/ranged.png',

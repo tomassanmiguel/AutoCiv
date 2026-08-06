@@ -37,7 +37,7 @@ starts the dev server and opens the game. The editor is at `/editor.html`.
 - The tech and building pools were **cleared to empty on purpose** and are being
   rebuilt **one wired tech at a time**: a tech goes in only when the effect it
   needs exists in the engine. The backlog holds the 385 parked rows.
-- In play right now: **34 techs · 0 buildings ·
+- In play right now: **56 techs · 0 buildings ·
   5 wonders · 3 tier unlocks.**
 - Iron is the terminal era for now, so nothing advances out of it and it carries
   no threshold.
@@ -324,6 +324,7 @@ Currently implemented:
 | **`reposition_teleport`** | reposition distance ignores terrain (straight-line) |
 | **`formation`** | +atk/+def per friendly unit in reposition range, at combat start |
 | **`road_network`** | raises the gold every connection-route tile earns (see § Road network) |
+| **ranged theme (20 kinds)** | poison, preloaded shots, shot chaining, range/placement grants, class-scoped crit, earned-flat atk — see § Ranged |
 
 **Crit is one dial on purpose.** Every unit — player AND enemy — has a base
 crit chance (`BASE_CRIT_CHANCE` = 5%); `unit_crit_chance_pct` adds *chance* on top
@@ -384,6 +385,50 @@ unit gains flat :attack:/:defense: for every *other* friendly unit inside its
 reposition range. It is the reward for how you *arranged* the board, fixed at
 combat start rather than chasing units as they move. The flat is folded into the
 base before the percentage lines, so a tight cluster is worth more than it looks.
+
+## 12b. Ranged theme
+
+A cluster of :ranged:-focused mechanics, all combat-time. The engine subsystems:
+
+- **Poison** — a per-unit stack counter on the poisoned unit. On its **own** turn,
+  **before it acts**, it takes 1 damage per stack (× `poison_damage_mult`). Stacks
+  add across sources and never decay. A ranged hit applies stacks
+  (`ranged_poison_apply`); riders slow the target (`ranged_poison_slow`), spread to
+  a random adjacent enemy (`poison_spread_on_apply`), or **escalate** — Omniphage
+  grows the amount that attacker applies by 5 each time it applies, so a single
+  target eats 5, then 10, then 15 on successive hits (`poison_bonus_stacks_on_apply`).
+- **Preloaded shots** — a per-unit banked-shot counter, seeded at combat start
+  (`ranged_preload_start`, `…_per_adjacent_ranged`) and topped up on a crit
+  (`…_on_crit`, but never by a preloaded shot itself) or on an idle turn with
+  nothing in range (`…_per_idle_turn`). When the unit fires, it **discharges every
+  banked shot as an extra hit** in the same beat.
+- **Shot chaining** — after the primary hit, chain to the lowest-HP enemy still in
+  range (may repeat) for N more hits (`ranged_chain_flat`), each at **half the
+  previous hit's damage** unless `ranged_chain_remove_falloff` is taken. Chains do
+  not crit.
+- **Range & placement** — flat range (`ranged_range_flat`), +range next to a
+  fortification (`ranged_range_bonus_adjacent_fort`), +range per N combats dug in
+  (`ranged_range_per_stationary_combats`, reset by repositioning), **infinite** range
+  on a terrain (`ranged_range_infinite_on_terrain`), and widening a class's
+  placement terrain (`class_placement_terrain_add` — e.g. ranged onto stars). A
+  fortification also gains `fort_def_pct_per_adjacent_ranged`.
+- **Class-scoped crit & earned stats** — `class_crit_chance_pct` is the universal
+  crit dial scoped to one class; `gold_on_class_crit_pct` pays gold on a class crit;
+  `unit_atk_earned_on_class_crit` grants **permanent** +atk via the earned-flat slot
+  (below).
+
+### The earned-flat attack slot
+
+Attack now has **three tiers** (extending §5's model):
+
+```
+atk = ((base + flat) × (1 + base%) + earned) × (1 + ordinary%)
+```
+
+`flat` (tech-wide + Formations) folds into the base before the base-% line; the
+**earned** flat sits *after* it, before the ordinary-%. It is a per-unit permanent
+accumulator kept on the unit instance across combats — distinct from the tech-wide
+flat — and is what Marksmanship feeds.
 
 ## 13. Road network
 

@@ -44,7 +44,73 @@ eras, opening with a two-part Stone→Bronze arc.*
 
 ## 2. Ranged Units
 
-_Not yet discussed._
+*Decided: every tech in this theme also grants 1 :ranged: unit, in addition to its listed
+effect — not repeated per line below. Decided: no exclusivity groups in this theme — these
+doctrines are meant to be mixed and matched (spread + poison is a deliberate synergy),
+unlike a typical branching tech tree.*
+
+*Poison: each stack of poison deals 1 damage to the poisoned unit on **that unit's own
+turn** (not the attacker's).*
+
+*Shot Chaining: after the first target, each additional chain hits the lowest-health enemy
+still in range (a target may be re-hit). Each chain deals 50% less damage than the last,
+unless that falloff is removed.*
+
+### Poison
+- [ ] **Blowguns** *(Bronze)* — ranged units apply +1 poison.
+- [ ] **Curare** *(Classical)* — ranged units apply +1 poison. Targets lose 1 :speed:
+  (minimum 1).
+- [ ] **Toxicology** *(Renaissance)* — ranged units apply +2 poison.
+- [ ] **Chemical Warfare** *(Modern)* — ranged units apply +1 poison. Whenever poison
+  applies, a random adjacent enemy also gains 1 poison.
+- [ ] **Nanite Blight** *(Exodus)* — ranged units apply +2 poison. Whenever poison applies,
+  it deals double damage.
+- [ ] **Omniphage** *(Galactic)* — ranged units apply +5 poison. Whenever poison applies,
+  gain an additional 5 poison.
+
+### Fortification synergy
+- [ ] **Crenellations** *(Iron)* — fortifications gain +10% defense for each adjacent
+  ranged unit. Also grants a fortification.
+- [ ] **Turrets** *(Medieval)* — ranged units adjacent to a fortification gain +1 range.
+  Also grants a fortification.
+
+### Preloading
+- [ ] **Quivers** *(Bronze)* — ranged units start combat with +1 preloaded shot.
+- [ ] **Volley Fire** *(Medieval)* — ranged units start combat with +1 preloaded shot for
+  each other adjacent ranged unit.
+- [ ] **Repeaters** *(Steam)* — ranged units gain +1 preloaded shot whenever they crit
+  (does not proc on preloaded shots).
+- [ ] **Charge Coils** *(Liminite)* — ranged units gain +1 preloaded shot every turn with no
+  enemy in range.
+
+### Range
+- [ ] **Longbow** *(Medieval)* — +1 range.
+- [ ] **Snipers** *(Steam)* — +1 range.
+- [ ] **Advanced Targeting** *(Solar)* — +2 range.
+- [ ] **Solar Battery** *(Ascension)* — ranged units may be stationed on stars; ranged
+  units on a star have infinite range.
+
+### Shot Chaining
+- [ ] **Shrapnel** *(Exploration)* — +1 chain.
+- [ ] **Piercing Rounds** *(Information)* — +1 chain, and removes the per-chain damage
+  falloff.
+- [ ] **Arc Throwers** *(Exodus)* — +2 chain.
+
+### Econ
+- [ ] **Bounty Hunting** *(Renaissance)* — whenever a ranged unit crits, gain gold equal to
+  the damage dealt. Ranged units gain +5% crit chance. *[Uses a class-scoped version of the
+  Critical Hits theme's crit-chance effect — that effect is universal-only today, so this
+  needs a `unitClass` filter added to it, or a sibling effect kind.]*
+
+### Scaling
+- [ ] **Entrenchment** *(Iron)* — ranged units gain +1 range for every 4 combats they
+  aren't repositioned.
+- [ ] **Marksmanship** *(Exploration)* — whenever a ranged unit crits, it permanently gains
+  +1 atk. *[This earned +1 is NOT amplified by base-% attack modifiers, but IS amplified by
+  ordinary-% attack modifiers — it does not fit the existing `unitAtkFlat` term (which sits
+  before the base-% multiply and would pick up both layers). It needs its own per-unit
+  accumulator inserted between the two layers:
+  `atk = ((base + unitAtkFlat) × (1 + basePct) + earnedFlat) × (1 + ordinaryPct)`.]*
 
 ## 3. Cavalry Units
 
