@@ -57,6 +57,15 @@ function contentApi() {
 
 export default defineConfig({
   plugins: [react(), contentApi()],
+  server: {
+    watch: {
+      // ⚠️ Visual Studio keeps `.vs/**/FileContentIndex/*.vsidx` LOCKED. Vite's
+      // file watcher throws an unhandled `EBUSY` when it tries to watch one and
+      // the dev server dies seconds after starting — which looked like "the
+      // launcher doesn't work". Never watch editor scratch/metadata dirs.
+      ignored: ['**/.vs/**', '**/.git/**', '**/node_modules/**'],
+    },
+  },
   build: {
     rollupOptions: {
       input: {
