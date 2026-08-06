@@ -327,9 +327,10 @@ Currently implemented:
 
 **Crit is one dial on purpose.** Every unit — player AND enemy — has a base
 crit chance (`BASE_CRIT_CHANCE` = 5%); `unit_crit_chance_pct` adds *chance* on top
-for player units, summed flat and capped at 100%. The crit *multiplier* is a
-fixed engine constant (`CRIT_MULT` = 2×), untouched by any tech. The palace is
-not a unit and never crits.
+for player units, summed flat and capped at 100%. The full crit tech line sums to
+**95%**, so a player who takes all of it reaches exactly **100%** with the base.
+The crit *multiplier* is a fixed engine constant (`CRIT_MULT` = 2×), untouched by
+any tech. The palace is not a unit and never crits.
 
 `grant_unit` names a **class**, never a named unit — there is only one unit per
 class, and its stat line is read live, so a grant queued before an upgrade still

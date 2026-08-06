@@ -235,11 +235,16 @@
       "quadrant": "military",
       "era": 0,
       "icon": "/sprites/icons/defense.png",
-      "description": "+25% base :defense: to all units.",
+      "description": "+25% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 25
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -251,11 +256,16 @@
       "quadrant": "military",
       "era": 2,
       "icon": "/sprites/icons/defense.png",
-      "description": "+40% base :defense: to all units.",
+      "description": "+40% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 40
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -267,11 +277,16 @@
       "quadrant": "military",
       "era": 4,
       "icon": "/sprites/icons/defense.png",
-      "description": "+70% base :defense: to all units.",
+      "description": "+70% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 70
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -283,11 +298,16 @@
       "quadrant": "military",
       "era": 8,
       "icon": "/sprites/icons/defense.png",
-      "description": "+120% base :defense: to all units.",
+      "description": "+120% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 120
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -299,11 +319,16 @@
       "quadrant": "military",
       "era": 9,
       "icon": "/sprites/icons/defense.png",
-      "description": "+200% base :defense: to all units.",
+      "description": "+200% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 200
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -315,11 +340,16 @@
       "quadrant": "military",
       "era": 11,
       "icon": "/sprites/icons/defense.png",
-      "description": "+350% base :defense: to all units.",
+      "description": "+350% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 350
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -331,11 +361,16 @@
       "quadrant": "military",
       "era": 12,
       "icon": "/sprites/icons/defense.png",
-      "description": "+600% base :defense: to all units.",
+      "description": "+600% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 600
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -347,11 +382,16 @@
       "quadrant": "military",
       "era": 14,
       "icon": "/sprites/icons/defense.png",
-      "description": "+1000% base :defense: to all units.",
+      "description": "+1000% base :defense: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_def_base_pct",
           "amount": 1000
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -567,11 +607,16 @@
       "quadrant": "military",
       "era": 1,
       "icon": "/sprites/icons/attack.png",
-      "description": "+10% :crit: chance to all units.",
+      "description": "+5% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_crit_chance_pct",
-          "amount": 10
+          "amount": 5
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -583,11 +628,16 @@
       "quadrant": "military",
       "era": 3,
       "icon": "/sprites/icons/attack.png",
-      "description": "+10% :crit: chance to all units.",
+      "description": "+9% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_crit_chance_pct",
-          "amount": 10
+          "amount": 9
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -599,11 +649,16 @@
       "quadrant": "military",
       "era": 5,
       "icon": "/sprites/icons/attack.png",
-      "description": "+10% :crit: chance to all units.",
+      "description": "+12% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_crit_chance_pct",
-          "amount": 10
+          "amount": 12
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -615,11 +670,16 @@
       "quadrant": "military",
       "era": 7,
       "icon": "/sprites/icons/attack.png",
-      "description": "+10% :crit: chance to all units.",
+      "description": "+14% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_crit_chance_pct",
-          "amount": 10
+          "amount": 14
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -631,11 +691,16 @@
       "quadrant": "military",
       "era": 10,
       "icon": "/sprites/icons/attack.png",
-      "description": "+10% :crit: chance to all units.",
+      "description": "+16% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_crit_chance_pct",
-          "amount": 10
+          "amount": 16
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -647,11 +712,16 @@
       "quadrant": "military",
       "era": 12,
       "icon": "/sprites/icons/attack.png",
-      "description": "+10% :crit: chance to all units.",
+      "description": "+19% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_crit_chance_pct",
-          "amount": 10
+          "amount": 19
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
@@ -663,11 +733,16 @@
       "quadrant": "military",
       "era": 14,
       "icon": "/sprites/icons/attack.png",
-      "description": "+10% :crit: chance to all units.",
+      "description": "+20% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
           "kind": "unit_crit_chance_pct",
-          "amount": 10
+          "amount": 20
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
         }
       ],
       "requires": [],
