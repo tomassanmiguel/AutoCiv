@@ -28,6 +28,16 @@
   justify-content: center;
   transition: filter 0.1s ease;
 }
+/* OVERVIEW tiles (zoomed out): a flat-colour rect with NO clip-path and NO
+   texture. clip-path + a background image is what makes thousands of hexes slow
+   to re-rasterise on every zoom frame; a solid rect paints almost for free, and
+   at a few px per hex the shape and texture are invisible anyway. */
+.hex.overview {
+  clip-path: none;
+  transition: none;
+  background-size: auto;
+}
+
 /* The hover cue is a separate lightweight overlay (one node), not a class on the
    memoised terrain hex — see HexMap.jsx PERFORMANCE note. */
 .hex-hover-cue {
