@@ -1,13 +1,17 @@
-/* eslint-disable react-hooks/refs --
+/* eslint-disable react-hooks/preserve-manual-memoization --
    This map view is built on imperative refs by design: the camera
    (`cameraRef`/`viewRef`) is applied to the DOM without re-rendering, and the
-   memoised terrain layer reads its event handlers from `handlers.current` so it
-   never rebuilds on a state change. Every `.current` access here happens in an
-   event handler or effect, at event time — not during render — which the rule
-   cannot prove but is the whole point of the pattern. */
+   terrain canvas is redrawn from `drawStateRef` (its inputs, refreshed each
+   render) so a combat beat never rebuilds the draw path. Every `.current` access
+   here happens in an event handler, an effect, or the imperative draw — not as a
+   value the render output depends on — which the rule cannot prove but is the
+   whole point of the pattern. Feeding those memoised inputs (`layout`, `known`)
+   into `drawStateRef` reads to the compiler as a possible later mutation, so it
+   cannot auto-optimise this component; the hand-written useMemos are the whole
+   performance strategy here and stand on their own, so opting out is correct. */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
-import { SQRT3, DIRS } from '../../game/hex/coords.js'
+import { SQRT3, DIRS, fromPixel } from '../../game/hex/coords.js'
 import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
 
 import PieceCard from './PieceCard.jsx'
@@ -28,11 +32,9 @@ const SEAM = 1.5 // shrink each hex slightly so the dark backdrop reads as a gri
 const FIT_PADDING = 0.94
 const MIN_TILES_ACROSS = 2.5 // most zoomed-in view (smaller = closer)
 const CULL_MARGIN = HEX_W * 1.5
-// Below this ON-SCREEN hex width, drop the per-tile `clip-path` (square textured
-// tiles instead of clipped hexes). clip-path is the single most expensive paint
-// op per tile, and at a small on-screen size the hexagon corners are invisible —
-// so this keeps the terrain TEXTURE while making a full-map zoom far cheaper to
-// re-rasterise. Toggled as a class on the content div (imperative, no re-render).
+// Below this ON-SCREEN hex width the canvas draws SQUARE textures instead of
+// clipping each tile to a hexagon: the corners are invisible at a few px per hex,
+// and skipping the per-tile clip path makes a full-map redraw far cheaper.
 const DETAIL_HEX_PX = 20
 
 /** The six corners of a flat-top hex, as an SVG `points` string. */
@@ -41,6 +43,20 @@ const hexPoints = (cx, cy, R) => Array.from({ length: 6 }, (_, i) => {
   return `${cx + R * Math.cos(a)},${cy + R * Math.sin(a)}`
 }).join(' ')
 
+// The same flat-top hexagon as the CSS `clip-path`, traced as a canvas path over
+// the tile's [left, top, w, h] box: polygon(25% 0, 75% 0, 100% 50%, 75% 100%,
+// 25% 100%, 0 50%).
+const hexPath = (ctx, l, t, w, h) => {
+  ctx.beginPath()
+  ctx.moveTo(l + 0.25 * w, t)
+  ctx.lineTo(l + 0.75 * w, t)
+  ctx.lineTo(l + w, t + 0.5 * h)
+  ctx.lineTo(l + 0.75 * w, t + h)
+  ctx.lineTo(l + 0.25 * w, t + h)
+  ctx.lineTo(l, t + 0.5 * h)
+  ctx.closePath()
+}
+
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const lerp = (a, b, t) => a + (b - a) * t
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
@@ -48,12 +64,23 @@ const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2
 /**
  * The map viewer: a pan/zoom camera over the KNOWN slice of the hex world.
  *
- * Two things keep this smooth at ~4000 tiles:
+ * Three things keep this smooth at ~5000 tiles:
  *   - the camera lives in a ref and is applied imperatively, so pan/zoom never
  *     re-renders React (ported from v2's Tableau)
- *   - tiles are CULLED to the visible rect, and the cull rect only updates when
- *     it has moved by more than a hex — so a drag triggers a handful of renders,
- *     not one per frame
+ *   - the TERRAIN is a single <canvas>, redrawn imperatively on every camera
+ *     frame. Thousands of clipped, textured hex DIVs were the map lag — one
+ *     canvas draws only the visible tiles as a handful of ms of drawImage. The
+ *     canvas is screen-space (a viewport-sized sibling BEHIND the content div),
+ *     so it never scales a bitmap; it re-renders at the new camera each frame.
+ *   - everything else (markers, highlights, cards, pieces) is CULLED DOM in the
+ *     camera-transformed content layer, and the cull rect only updates when it
+ *     has moved by more than a hex
+ *
+ * Because the terrain is no longer per-tile DOM, hover/click/reposition are
+ * hit-tested GEOMETRICALLY (pixel -> hex via `fromPixel`) on the viewport. The
+ * cards are `pointer-events: none` (only their gold buttons opt back in), so a
+ * mouse event over bare terrain lands on the viewport itself — which is exactly
+ * the check that tells terrain apart from a card/button/piece.
  */
 export default function HexMap() {
   const game = useGame()
@@ -85,6 +112,7 @@ export default function HexMap() {
 
   const viewportRef = useRef(null)
   const contentRef = useRef(null)
+  const canvasRef = useRef(null)
   const cameraRef = useRef({ scale: 1, tx: 0, ty: 0 })
   const viewRef = useRef(null)
   const rafRef = useRef(null)
@@ -92,6 +120,10 @@ export default function HexMap() {
   const prevLayoutRef = useRef(null)
   const dragRef = useRef(null)
   const repoDragRef = useRef(null) // an in-progress reposition drag
+  const suppressClickRef = useRef(false) // a pan that moved must not also aim
+  const spriteCache = useRef(new Map()) // terrain sprite <img>s, keyed by url
+  const drawStateRef = useRef(null) // latest terrain inputs, read by drawTerrain
+  const drawSigRef = useRef('') // last terrain-relevant signature (skip redundant redraws)
 
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
@@ -146,17 +178,33 @@ export default function HexMap() {
     if (expSet?.has(k)) aimAt(t)
   }
 
+  // Pixel -> the world tile under the cursor. `null` for anything unknown (off
+  // the revealed slice), so hover/click/reposition all agree on what is real.
+  // Content space carries the layout's -min offset, which `fromPixel` must not
+  // see — add it back before inverting.
+  const tileAt = (clientX, clientY) => {
+    const vp = viewportRef.current
+    if (!vp) return null
+    const rect = vp.getBoundingClientRect()
+    const { scale, tx, ty } = cameraRef.current
+    const cx = (clientX - rect.left - tx) / scale + layout.minX
+    const cy = (clientY - rect.top - ty) / scale + layout.minY
+    const { q, r } = fromPixel(cx, cy, HEX_SIZE)
+    const t = game.world.at(q, r)
+    if (!t) return null
+    if (known.bfSet.has(`${q},${r}`)) return t
+    return t.revealStage <= stage ? t : null
+  }
+
   /**
    * DRAG-TO-REPOSITION. Press on one of your units during prep and the legal
    * destinations light — green free, amber with the gold cost printed on the
    * tile — following the same `repoMap` the highlight layer draws. Drop on a
    * destination to move (paying if it is beyond free range); drop anywhere else
-   * to cancel. Pressing a non-unit tile falls through to panning.
+   * to cancel. Started from the viewport mousedown once the pressed tile is
+   * hit-tested to one of your units; a non-unit press falls through to panning.
    */
-  const onHexMouseDown = (e, t) => {
-    if (!(canReposition && t.unit && !t.unit.destroyed)) return // let the viewport pan
-    e.stopPropagation()
-    e.preventDefault()
+  const startReposition = (t) => {
     setRepo(t)
     repoDragRef.current = { from: t, over: t, moved: false }
     const onUp = () => {
@@ -167,6 +215,27 @@ export default function HexMap() {
       setRepo(null)
     }
     window.addEventListener('mouseup', onUp)
+  }
+
+  // Hover / click on bare terrain. A mouse event whose target is the viewport
+  // itself is over terrain (the canvas, content layer and cards are all
+  // pointer-events:none — only the gold buttons and pieces opt back in), so that
+  // check cleanly excludes buttons/pieces without hunting for their classes.
+  const onHexHover = (e) => {
+    if (dragRef.current || e.target !== viewportRef.current) return
+    const t = tileAt(e.clientX, e.clientY)
+    if (t) hexEnter(t)
+    else hoverOff(hover)
+  }
+  const onHexClick = (e) => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return }
+    if (e.target !== viewportRef.current) return
+    const t = tileAt(e.clientX, e.clientY)
+    if (t) onTileClick(t, `${t.q},${t.r}`)
+  }
+  const onViewportLeave = () => {
+    clearTimeout(hoverTimer.current)
+    hoverTimer.current = setTimeout(() => setHover(null), 160)
   }
 
   // --- Content layout (origin + size of the known world in content px) -------
@@ -216,15 +285,88 @@ export default function HexMap() {
     setView(next)
   }
 
+  // A terrain sprite <img>, cached by url. A miss kicks off the load and redraws
+  // when it arrives — a tile pops in the first time its terrain is seen, then is
+  // instant forever after.
+  const getSprite = (key) => {
+    const url = spriteUrl(key)
+    let img = spriteCache.current.get(url)
+    if (!img) {
+      img = new Image()
+      img.src = url
+      img.onload = () => drawTerrain()
+      spriteCache.current.set(url, img)
+    }
+    return img
+  }
+
+  // Redraw the terrain canvas for the CURRENT camera. Screen-space: the canvas is
+  // the viewport size, and the camera (translate+scale) is baked into the 2D
+  // context transform, so tiles land exactly where the CSS-transformed content
+  // layer draws its cards. Only visible tiles are drawn; below DETAIL_HEX_PX the
+  // per-tile hexagon clip is skipped (invisible corners) for a cheap zoomed-out
+  // redraw.
+  const drawTerrain = () => {
+    const cv = canvasRef.current
+    const vp = viewportRef.current
+    const st = drawStateRef.current
+    if (!cv || !vp || !st) return
+    const dpr = window.devicePixelRatio || 1
+    const W = vp.clientWidth
+    const H = vp.clientHeight
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) {
+      cv.width = Math.round(W * dpr)
+      cv.height = Math.round(H * dpr)
+    }
+    const ctx = cv.getContext('2d')
+    const { scale, tx, ty } = cameraRef.current
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, cv.width, cv.height)
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, tx * dpr, ty * dpr)
+
+    // Visible rect in CONTENT space (what the camera maps onto the viewport).
+    const x0 = -tx / scale, y0 = -ty / scale
+    const x1 = (W - tx) / scale, y1 = (H - ty) / scale
+    const cellW = HEX_W - SEAM, cellH = HEX_H - SEAM
+    const square = scale * HEX_W < DETAIL_HEX_PX
+    const { minX, minY } = st.layout
+
+    for (const t of st.knownAll) {
+      const left = t.x * HEX_SIZE - minX - HEX_W / 2 + SEAM / 2
+      const top = t.y * HEX_SIZE - minY - HEX_H / 2 + SEAM / 2
+      if (left > x1 || left + cellW < x0 || top > y1 || top + cellH < y0) continue
+      const isBf = st.bfSet.has(`${t.q},${t.r}`)
+      const img = getSprite(isBf ? 'battlefield' : t.terrain)
+      const ready = img.complete && img.naturalWidth > 0
+      if (square || !ready) {
+        if (ready) ctx.drawImage(img, left, top, cellW, cellH)
+      } else {
+        ctx.save()
+        hexPath(ctx, left, top, cellW, cellH)
+        ctx.clip()
+        ctx.drawImage(img, left, top, cellW, cellH)
+        ctx.restore()
+      }
+      // Controlled ground takes a faint warm wash (not while a unit's reach is up
+      // — then the whole board dims instead, so the reach is the only lit thing).
+      if (!isBf && !st.reachActive && t.controlled && t.revealStage <= st.stage) {
+        ctx.fillStyle = 'rgba(255, 206, 110, 0.16)'
+        if (square) ctx.fillRect(left, top, cellW, cellH)
+        else { ctx.save(); hexPath(ctx, left, top, cellW, cellH); ctx.fill(); ctx.restore() }
+      }
+    }
+    if (st.reachActive) {
+      ctx.fillStyle = 'rgba(3, 5, 12, 0.62)'
+      ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+    }
+  }
+
   const applyTransform = () => {
     const { scale, tx, ty } = cameraRef.current
     if (contentRef.current) {
       contentRef.current.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
-      // Drop clip-path on all tiles when zoomed out — a class toggle, so no React
-      // re-render; the browser repaints once at the threshold, then zoom frames
-      // paint cheap square textures instead of thousands of clipped hexes.
-      contentRef.current.classList.toggle('overview', HEX_W * scale < DETAIL_HEX_PX)
     }
+    drawTerrain()
     updateView()
   }
 
@@ -349,18 +491,35 @@ export default function HexMap() {
 
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }, [])
 
-  // --- Drag to pan ----------------------------------------------------------
+  // --- Press: reposition a unit, else pan -----------------------------------
   const onMouseDown = (e) => {
-    // Left OR middle button pans. preventDefault on middle stops the browser's
+    // Left OR middle button. preventDefault on middle stops the browser's
     // autoscroll widget from hijacking the drag.
     if (e.button !== 0 && e.button !== 1) return
+    // A press on a gold action button is not ours — let it click (it stops its
+    // own propagation). Everything else — bare terrain, a card body, a piece —
+    // pans or repositions.
+    if (e.target.closest('button')) return
     if (e.button === 1) e.preventDefault()
+
+    // Left-press on one of your units during prep starts a reposition drag
+    // instead of panning.
+    if (e.button === 0 && canReposition) {
+      const t = tileAt(e.clientX, e.clientY)
+      if (t && t.unit && !t.unit.destroyed) {
+        e.preventDefault()
+        startReposition(t)
+        return
+      }
+    }
+
     clearTimeout(hoverTimer.current)
     setHover(null)
-    dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...cameraRef.current } }
+    dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...cameraRef.current }, moved: false }
     const onMove = (ev) => {
       const d = dragRef.current
       if (!d) return
+      if (Math.abs(ev.clientX - d.x) > 3 || Math.abs(ev.clientY - d.y) > 3) d.moved = true
       cameraRef.current = clampPan({
         scale: d.cam.scale,
         tx: d.cam.tx + (ev.clientX - d.x),
@@ -369,6 +528,8 @@ export default function HexMap() {
       applyTransform()
     }
     const onUp = () => {
+      // A pan that actually moved must not also fire the click as an aim.
+      if (dragRef.current?.moved) suppressClickRef.current = true
       dragRef.current = null
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
@@ -394,45 +555,32 @@ export default function HexMap() {
 
   // ⚠️ PERFORMANCE. A wave fires ~10 combat beats/second, each bumping the game
   // version and re-rendering this component. At late-era map sizes `shown` is
-  // thousands of tiles, so recomputing the border/road geometry and re-diffing
-  // every hex div EACH BEAT was the map lag. The terrain layer and the two edge
-  // sets depend only on the SHOWN set and the TERRITORY (which changes on
-  // expansion/raze, not on a combat beat), so they are memoised against
-  // `terrVersion` and skip the churn entirely. `hexEls` reads its click/hover
-  // handlers from a ref so the frozen elements still run current logic.
+  // thousands of tiles, so recomputing the border/road geometry EACH BEAT was
+  // half the map lag; the terrain DIVs were the other half. The terrain is now a
+  // canvas (see drawTerrain) and the marker/edge layers depend only on the SHOWN
+  // set and the TERRITORY (which change on expansion/raze, not on a combat beat),
+  // so they are memoised against `terrVersion` and skip the churn.
   const terrVersion = game.world.terr.version
-  // The memoised hex layer reads its handlers from this ref, so frozen elements
-  // always run the CURRENT logic. Updated in an effect (not during render).
-  const handlers = useRef({})
-  useEffect(() => {
-    handlers.current = { click: onTileClick, enter: hexEnter, leave: hoverOff, down: onHexMouseDown }
-  })
 
-  const hexEls = useMemo(() => shown.map((t) => {
+  // The small on-tile markers (improvement dot / city pip / camp level) — the one
+  // thing the terrain DIVs still carried. Kept as DOM in the camera-scaled content
+  // layer so their CSS (and `rem` sizing, which scales under the transform) is
+  // unchanged; only tiles that actually bear a marker make a node.
+  const markerEls = useMemo(() => shown.map((t) => {
     const k = `${t.q},${t.r}`
-    const { left, top } = posOf(t)
-    const isBf = known.bfSet.has(k)
+    if (known.bfSet.has(k)) return null
+    const dot = t.improved && !t.city && !t.building
+    if (!dot && !t.city && !t.encampment) return null
+    const c = centerOf(t.q, t.r)
     return (
-      <div
-        key={k}
-        className={`hex${isBf ? ' battlefield' : ''}` +
-          `${t.controlled && !isBf && t.revealStage <= game.stage ? ' controlled' : ''}`}
-        style={{
-          left, top, width: HEX_W - SEAM, height: HEX_H - SEAM,
-          backgroundImage: `url(${spriteUrl(isBf ? 'battlefield' : t.terrain)})`,
-        }}
-        onMouseDown={(e) => handlers.current.down(e, t)}
-        onMouseEnter={() => handlers.current.enter(t)}
-        onMouseLeave={() => handlers.current.leave(t)}
-        onClick={() => handlers.current.click(t, k)}
-      >
-        {!isBf && t.improved && !t.city && !t.building && <span className="hex-improved" />}
-        {!isBf && t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>}
-        {!isBf && t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
+      <div key={`m${k}`} className="hex-marker-anchor" style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H }}>
+        {dot && <span className="hex-improved" />}
+        {t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>}
+        {t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [shown, known, terrVersion, game.stage])
+  }).filter(Boolean), [shown, known, terrVersion, game.stage])
 
   // The territory border, drawn as real hex EDGES where controlled meets
   // uncontrolled — one clean outline around the whole country.
@@ -478,16 +626,46 @@ export default function HexMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, known, terrVersion])
 
+  // The terrain canvas reads its inputs from a ref so a combat-beat re-render
+  // never rebuilds the draw path. Refresh the ref every render (cheap), and
+  // REDRAW only when something TERRAIN-relevant changed — a new stage/known set,
+  // territory (control wash), the reach dim, or a layout shift. Camera moves
+  // redraw through `applyTransform` instead, so a combat beat (whose signature is
+  // unchanged) triggers no redraw here.
+  const drawSig = `${terrVersion}|${game.stage}|${known.all.length}|${!!reach}|${layout.minX},${layout.minY}`
+  useLayoutEffect(() => {
+    drawStateRef.current = {
+      knownAll: known.all,
+      bfSet: known.bfSet,
+      layout,
+      stage: game.stage,
+      reachActive: !!reach,
+    }
+    if (drawSigRef.current !== drawSig) {
+      drawSigRef.current = drawSig
+      drawTerrain()
+    }
+  })
+
   return (
-    <div className="hexmap-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
+    <div
+      className="hexmap-viewport"
+      ref={viewportRef}
+      onMouseDown={onMouseDown}
+      onMouseMove={onHexHover}
+      onMouseLeave={onViewportLeave}
+      onClick={onHexClick}
+    >
+      <canvas className="hexmap-canvas" ref={canvasRef} />
       <div
         className={`hexmap-content${reach ? ' reaching' : ''}`}
         ref={contentRef}
         style={{ width: layout.w, height: layout.h }}
       >
-        {/* The static terrain layer — memoised, so combat beats and hovers do not
-            re-diff thousands of nodes. */}
-        {hexEls}
+        {/* Terrain itself is the canvas above. This layer holds only the small
+            on-tile markers (improvement / city / camp), memoised so combat beats
+            do not re-diff them. */}
+        {markerEls}
 
         {/* Hover cue, kept OUT of the memoised layer: a single brightening tile
             drawn over the hovered hex. */}

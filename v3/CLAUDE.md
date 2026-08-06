@@ -308,25 +308,38 @@ tech; for now the menu slider drives it directly.
   drags** (middle calls `preventDefault` so the browser's autoscroll widget can't hijack it).
 - Renders `known.all` — the revealed tiles **plus the derived battlefield ring**, which is
   drawn with the battlefield sprite regardless of the terrain underneath it.
-- **Culling** is what makes ~4000 tiles cheap: only tiles inside the visible rect render,
-  and the cull rect only updates once it has moved by more than a hex. Zoomed in, DOM drops
-  to ~180 nodes; zoomed out to fit, everything renders but each hex is tiny.
-- ⚠️ **The terrain hex layer is MEMOISED** (`hexEls`), as are `borderEdges`/`roadEdges`, keyed on
-  `[shown, known, terrVersion]` — NOT on the game version. A wave fires ~10 beats/second, each
-  bumping the version; without this, every beat re-diffed thousands of hex divs and recomputed
-  the edge geometry, which was the large-map lag. The frozen hexes read their click/hover/down
-  handlers from `handlers.current` (a ref updated in an effect) so they still run current logic.
-  The hover brightness was moved OUT of the hex class to a single `.hex-hover-cue` overlay for the
-  same reason. (`react-hooks/refs` is disabled file-wide: the imperative camera + handler refs are
-  the deliberate perf pattern and are all read at event time.)
+- ⚠️ **The TERRAIN is a single `<canvas>`, NOT per-tile DOM.** Thousands of clipped, textured
+  hex `div`s were the large-map lag — clip-path is the priciest per-tile paint op, and a pan
+  re-diffed the whole `shown` set while zooming re-rasterised every hex. `drawTerrain` (in
+  `HexMap.jsx`) redraws only the VISIBLE tiles onto a **screen-space** canvas (a viewport-sized
+  sibling BEHIND the content div) with the camera baked into the 2D-context transform, so it
+  never scales a bitmap — it re-renders at the new camera each frame. Below `DETAIL_HEX_PX`
+  (on-screen hex width) it skips the per-tile hexagon clip (invisible corners) and draws
+  squares. `applyTransform` redraws on every camera frame; a `drawStateRef` (its inputs, plus a
+  signature guard) means a combat beat's re-render triggers **no** redraw. The **control wash**
+  and the reach-dim **veil** are painted in the canvas too (not CSS `::before` any more).
+- **Everything else is CULLED DOM** in the camera-scaled content layer — the on-tile markers
+  (`markerEls`: improvement dot / city pip / camp level), the `borderEdges`/`roadEdges` SVG,
+  the hover cue, the tile cards and the combat pieces. These memoise on `[shown, known,
+  terrVersion]` so they skip the ~10-beats/second churn. Culling keeps DOM at ~180 nodes zoomed
+  in; the terrain canvas carries the zoomed-out case.
+- ⚠️ **Hit-testing is GEOMETRIC** (`tileAt`: pixel → hex via `fromPixel`) on the viewport,
+  because terrain is no longer per-tile DOM. The cards are `pointer-events: none` (only their
+  gold buttons and the combat pieces opt back in), and `.hexmap-content`/canvas are `none` too,
+  so a mouse event over bare terrain lands on **the viewport itself** — `e.target === viewport`
+  is exactly the check that tells terrain apart from a button/piece for hover and aim. A press
+  hit-tests to a unit → reposition drag, else pans; a pan that moved suppresses the click.
+  (`react-hooks/preserve-manual-memoization` is disabled file-wide: feeding the memoised
+  `layout`/`known` into `drawStateRef` reads as a possible mutation, so the compiler skips this
+  hand-tuned component — the manual memos are the whole perf strategy and stand alone.)
 - **Stage changes** counter-translate the camera by the content-origin shift *first* (so the
   view holds still), then animate the zoom-out reveal — same trick v2 used for era growth.
 - **`requestAnimationFrame` does not fire on a hidden tab**, which would strand the camera at
   the previous stage's zoom. `revealFullMap` **snaps instead of animating** when
   `document.hidden` or `prefers-reduced-motion`. Don't remove that guard.
-- Hexes are square sprites clipped with `clip-path: polygon(25% 0, 75% 0, 100% 50%, 75%
-  100%, 25% 100%, 0 50%)`. The terrain art is full-bleed isotropic texture, so losing the
-  corners costs nothing. A ~1.5px inset gives the dark backdrop a grid-seam read.
+- The canvas traces the same flat-top hexagon the old `clip-path` did (`hexPath`), shrunk
+  ~1.5px so the dark backdrop reads as a grid seam. The terrain art is full-bleed isotropic
+  texture, so losing the corners (square mode) costs nothing.
 - The hover card is anchored **bottom-left of the map**, never to the cursor, so it can't
   cover the tile being inspected.
 

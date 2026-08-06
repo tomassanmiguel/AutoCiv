@@ -8,35 +8,45 @@
 }
 .hexmap-viewport.dragging { cursor: grabbing; }
 
+/* The TERRAIN canvas: a screen-space layer behind everything, redrawn
+   imperatively on each camera frame (see HexMap.jsx drawTerrain). It never takes
+   the pointer — hit-testing is geometric on the viewport. */
+.hexmap-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Everything except terrain: markers, highlights, cards, pieces. Camera-scaled.
+   pointer-events:none so a mouse event over bare terrain lands on the viewport
+   (which is how the geometric hit-test tells terrain from a card/button); the
+   gold buttons and combat pieces opt back in individually. */
 .hexmap-content {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 1;
   transform-origin: 0 0;
   will-change: transform;
+  pointer-events: none;
 }
 
-/* Flat-top hexagon. The square sprite is clipped to the hex — the terrain art is
-   full-bleed isotropic texture, so losing the corners costs nothing. */
-.hex {
+/* One anchor per tile that bears a marker (improvement / city / camp), sized to
+   the hex so the markers' percentage widths still resolve, and centred on it. */
+.hex-marker-anchor {
   position: absolute;
-  background-size: cover;
-  background-position: center;
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: filter 0.1s ease;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
 }
-/* OVERVIEW (zoomed out): drop the per-tile clip-path — the most expensive paint
-   op — but KEEP the terrain texture. Tiles become squares, invisible at a few px
-   per hex, and a full-map zoom re-rasterises far cheaper. Toggled by a class on
-   the content div (see HexMap.jsx applyTransform), so it costs no re-render. */
-.hexmap-content.overview .hex,
-.hexmap-content.overview .hex::before { clip-path: none; }
 
-/* The hover cue is a separate lightweight overlay (one node), not a class on the
-   memoised terrain hex — see HexMap.jsx PERFORMANCE note. */
+/* The hover cue is a separate lightweight overlay (one node) drawn over the
+   hovered hex. */
 .hex-hover-cue {
   position: absolute;
   clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
@@ -141,17 +151,9 @@
 }
 
 /* --- territory ------------------------------------------------------------ */
-/* Controlled ground gets a faint warm WASH, not a brightness filter — filtering
-   the sprite washed the terrain out and fought the expandable animation. */
-.hex::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  pointer-events: none;
-  transition: background 0.25s ease;
-}
-.hex.controlled::before { background: rgba(255, 206, 110, 0.16); }
+/* Controlled ground gets a faint warm WASH — drawn on the terrain CANVAS per
+   controlled tile (see HexMap.jsx drawTerrain), and suppressed there while a
+   unit's reach dims the whole board. */
 
 /* One continuous outline around the whole territory, drawn as hex edges. */
 .territory-outline {
@@ -204,14 +206,10 @@
 .hex-tip-note.unit { color: #e3d3a0; }
 
 /* --- unit reach ------------------------------------------------------------
-   While a unit's reach is shown the whole board DIMS, including the territory
-   wash — otherwise the warm control tint, the expansion pulse and the reach
-   colours all mix on one surface and none of them reads. Reach is the only lit
-   thing on screen, so it cannot be mistaken for control. */
-.hexmap-content.reaching .hex::before,
-.hexmap-content.reaching .hex.controlled::before {
-  background: rgba(3, 5, 12, 0.62);
-}
+   While a unit's reach is shown the whole board DIMS (a dark veil drawn over the
+   terrain canvas) so the warm control tint, the expansion pulse and the reach
+   colours don't mix on one surface. Reach is the only lit thing on screen, so it
+   cannot be mistaken for control. The gold territory outline fades below. */
 
 /* Highlights are POLYGONS, so the border actually follows the hexagon. A CSS
    inset ring is painted on the rectangle and clipped afterwards, which leaves
@@ -259,10 +257,6 @@
   0%, 100% { fill-opacity: 0.5; stroke-opacity: 0.7; }
   50% { fill-opacity: 1; stroke-opacity: 1; }
 }
-
-/* The pulsing target ring itself is drawn in `.hex-overlay` as a polygon; the
-   hex only needs to say it is clickable. */
-.hex.expandable { cursor: pointer; }
 
 /* --- unit equipment, in the hover card ------------------------------------ */
 .hex-tip-gear {
@@ -330,4 +324,3 @@
   stroke: rgba(0, 0, 0, 0.75);
   stroke-width: 3;
 }
-.hex.repo-pickable { cursor: pointer; }
