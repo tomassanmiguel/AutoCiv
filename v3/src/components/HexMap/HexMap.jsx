@@ -8,7 +8,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { SQRT3, DIRS } from '../../game/hex/coords.js'
-import { spriteUrl, terrainOf, terrainColor } from '../../game/world/terrain.js'
+import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
 
 import PieceCard from './PieceCard.jsx'
 import TileCard from './TileCard.jsx'
@@ -28,11 +28,6 @@ const SEAM = 1.5 // shrink each hex slightly so the dark backdrop reads as a gri
 const FIT_PADDING = 0.94
 const MIN_TILES_ACROSS = 6 // most zoomed-in view
 const CULL_MARGIN = HEX_W * 1.5
-// Below this on-screen hex width, switch to OVERVIEW tiles: flat-colour rects,
-// no clip-path and no texture. At a few px per hex the shape/texture is
-// invisible anyway, and it is what keeps zooming the full map smooth — thousands
-// of clip-path + image nodes re-rasterise far too slowly per zoom frame.
-const DETAIL_HEX_PX = 30
 
 /** The six corners of a flat-top hex, as an SVG `points` string. */
 const hexPoints = (cx, cy, R) => Array.from({ length: 6 }, (_, i) => {
@@ -94,8 +89,6 @@ export default function HexMap() {
 
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
-  // Level of detail: false once zoomed out far enough that hexes are tiny.
-  const [detail, setDetail] = useState(true)
 
   // Hover is cleared on a GRACE TIMER, not immediately. A tile's gold buttons
   // hang below its hex, so reaching them means leaving the hex — and an instant
@@ -201,9 +194,6 @@ export default function HexMap() {
     const vp = viewportRef.current
     if (!vp) return
     const { scale, tx, ty } = cameraRef.current
-    // Flip detail/overview at the scale threshold (state, so the layer rebuilds).
-    const wantDetail = HEX_W * scale >= DETAIL_HEX_PX
-    setDetail((d) => (d === wantDetail ? d : wantDetail))
     const next = {
       x0: -tx / scale - CULL_MARGIN,
       y0: -ty / scale - CULL_MARGIN,
@@ -412,31 +402,11 @@ export default function HexMap() {
     const k = `${t.q},${t.r}`
     const { left, top } = posOf(t)
     const isBf = known.bfSet.has(k)
-    const controlled = t.controlled && !isBf && t.revealStage <= game.stage
-    // OVERVIEW: a flat-colour rect, no clip-path, no image, no markers — cheap to
-    // paint by the thousand. DETAIL: the full textured, clipped hex.
-    if (!detail) {
-      return (
-        <div
-          key={k}
-          className="hex overview"
-          style={{
-            left, top, width: HEX_W - SEAM, height: HEX_H - SEAM,
-            background: isBf ? terrainColor('battlefield') : terrainColor(t.terrain),
-          }}
-          onMouseDown={(e) => handlers.current.down(e, t)}
-          onMouseEnter={() => handlers.current.enter(t)}
-          onMouseLeave={() => handlers.current.leave(t)}
-          onClick={() => handlers.current.click(t, k)}
-        >
-          {!isBf && t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>}
-        </div>
-      )
-    }
     return (
       <div
         key={k}
-        className={`hex${isBf ? ' battlefield' : ''}${controlled ? ' controlled' : ''}`}
+        className={`hex${isBf ? ' battlefield' : ''}` +
+          `${t.controlled && !isBf && t.revealStage <= game.stage ? ' controlled' : ''}`}
         style={{
           left, top, width: HEX_W - SEAM, height: HEX_H - SEAM,
           backgroundImage: `url(${spriteUrl(isBf ? 'battlefield' : t.terrain)})`,
@@ -452,7 +422,7 @@ export default function HexMap() {
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [shown, known, terrVersion, game.stage, detail])
+  }), [shown, known, terrVersion, game.stage])
 
   // The territory border, drawn as real hex EDGES where controlled meets
   // uncontrolled — one clean outline around the whole country.

@@ -72,25 +72,6 @@ export const TERRAIN = Object.fromEntries([
   T('fallout', 'Fallout', 'fallout', 'land', true, Y(), { note: 'Poisoned ground.' }),
 ])
 
-/**
- * A representative solid colour per terrain, for the map's OVERVIEW zoom level:
- * far out, the hex sprites are a few pixels each and re-rasterising thousands of
- * clip-path + textured divs on every zoom frame is the lag. At that scale a flat
- * colour is indistinguishable from the texture and paints almost for free.
- */
-export const TERRAIN_COLOR = {
-  plains: '#7ea653', forest: '#3f6b3a', hills: '#9c8a52', desert: '#d9b36b',
-  tundra: '#c3ccd4', mountain: '#6f6f6f', island: '#86ad5c', fallout: '#6a7a3a',
-  coast: '#4a90c2', ocean: '#2f5f97', river: '#4a90c2',
-  space: '#0b0c1a', deep_space: '#070710', battlefield: '#5a2f2f',
-  asteroid: '#5a5148', moon: '#9a9a9a', lunar_crater: '#8a8a9a',
-  mars: '#b5623b', mars_mountain: '#7a4028', mars_ice: '#cfe0e6',
-  exoplains: '#6fa84f', exohills: '#8f9a4f', exomountain: '#5a5a4a',
-  exosea: '#2f7f97', exodesert: '#d9b36b', exotundra: '#c3ccd4', exomoon: '#9a9a9a',
-  planet: '#6a7fb0', star: '#e0c24a', singularity: '#4a2f6a',
-}
-export const terrainColor = (k) => TERRAIN_COLOR[k] ?? '#555'
-
 export const terrainOf = (k) => TERRAIN[k] ?? TERRAIN.plains
 export const spriteUrl = (k) => {
   const d = terrainOf(k)

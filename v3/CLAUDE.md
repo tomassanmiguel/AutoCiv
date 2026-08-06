@@ -319,13 +319,6 @@ tech; for now the menu slider drives it directly.
   The hover brightness was moved OUT of the hex class to a single `.hex-hover-cue` overlay for the
   same reason. (`react-hooks/refs` is disabled file-wide: the imperative camera + handler refs are
   the deliberate perf pattern and are all read at event time.)
-- ⚠️ **LEVEL OF DETAIL.** Below `DETAIL_HEX_PX` on-screen hex width (the `detail` flag, flipped in
-  `updateView` from the camera scale), tiles render as **flat-colour rects** (`terrainColor`, class
-  `.hex.overview`) with **no clip-path and no background image** — the two things that make a
-  full-map zoom (~5700 tiles) re-rasterise slowly every frame. At a few px per hex the shape and
-  texture are invisible, so it looks the same and zooms/pans smoothly; detail returns as you zoom
-  in. This is the fix for "show full map" lag; combat-beat churn is handled by the memoisation
-  above.
 - **Stage changes** counter-translate the camera by the content-origin shift *first* (so the
   view holds still), then animate the zoom-out reveal — same trick v2 used for era growth.
 - **`requestAnimationFrame` does not fire on a hidden tab**, which would strand the camera at
