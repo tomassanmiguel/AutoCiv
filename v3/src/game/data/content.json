@@ -606,7 +606,7 @@
       "name": "Sharpening",
       "quadrant": "military",
       "era": 1,
-      "icon": "/sprites/icons/attack.png",
+      "icon": "/sprites/icons/crit.png",
       "description": "+5% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
@@ -627,7 +627,7 @@
       "name": "Anatomy",
       "quadrant": "military",
       "era": 3,
-      "icon": "/sprites/icons/attack.png",
+      "icon": "/sprites/icons/crit.png",
       "description": "+9% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
@@ -648,7 +648,7 @@
       "name": "Fencing",
       "quadrant": "military",
       "era": 5,
-      "icon": "/sprites/icons/attack.png",
+      "icon": "/sprites/icons/crit.png",
       "description": "+12% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
@@ -669,7 +669,7 @@
       "name": "Rifling",
       "quadrant": "military",
       "era": 7,
-      "icon": "/sprites/icons/attack.png",
+      "icon": "/sprites/icons/crit.png",
       "description": "+14% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
@@ -690,7 +690,7 @@
       "name": "Smart Munitions",
       "quadrant": "military",
       "era": 10,
-      "icon": "/sprites/icons/attack.png",
+      "icon": "/sprites/icons/crit.png",
       "description": "+16% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
@@ -711,7 +711,7 @@
       "name": "Atomic Precision",
       "quadrant": "military",
       "era": 12,
-      "icon": "/sprites/icons/attack.png",
+      "icon": "/sprites/icons/crit.png",
       "description": "+19% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
@@ -732,7 +732,7 @@
       "name": "Precognition",
       "quadrant": "military",
       "era": 14,
-      "icon": "/sprites/icons/attack.png",
+      "icon": "/sprites/icons/crit.png",
       "description": "+20% :crit: chance to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {

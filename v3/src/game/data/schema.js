@@ -211,6 +211,7 @@ export const ICONS = [
   '/sprites/ui/food.png', '/sprites/ui/gold.png', '/sprites/ui/production.png',
   '/sprites/ui/progress.png', '/sprites/icons/attack.png',
   '/sprites/icons/defense.png', '/sprites/icons/range.png', '/sprites/icons/speed.png',
+  '/sprites/icons/crit.png',
 ]
 
 // ---------------------------------------------------------------------------
@@ -510,7 +511,7 @@ export const ICON_TOKENS = {
   defense: '/sprites/icons/defense.png',
   speed: '/sprites/icons/speed.png',
   range: '/sprites/icons/range.png',
-  crit: '/sprites/icons/attack.png', // placeholder — no dedicated crit icon yet
+  crit: '/sprites/icons/crit.png',
   poison: '/sprites/ui/trap.png',    // placeholder — no dedicated poison icon yet
   melee: '/sprites/ui/melee.png',
   ranged: '/sprites/ui/ranged.png',
