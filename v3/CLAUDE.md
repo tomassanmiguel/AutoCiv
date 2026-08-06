@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **96 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **101 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -577,6 +577,10 @@ Implemented today:
   counter); `class_placement_unrestricted` (Admiralty) drops the terrain rule; and
   `class_gains_pct_of_zoc_upgrade_level` (Beaconing) gives a fortification a floored % of the bonus.
   See § Commanders below.
+- **`signal_range_bonus`** (Communications) — a single civ-wide `mods.signalRangeBonus`, summed. It
+  widens ONLY commander ZOC radii (`_inClassZoc`) and building radii (`evalBuildingEffects`'s `disc_`
+  + Hybridism's reach) — each reads `radius + signalRangeBonus`. Fortification taunt and ranged range
+  deliberately do NOT read it.
 
 An effect param is a **number**, a **choice** (`options`), or a **bool** (`type:'bool'`, a
 checkbox — used by `road_network`'s Maglev rider). An effect may also have **no params** at all

@@ -345,6 +345,7 @@ Currently implemented:
 | **`class_zoc_upgrade_level_applies_to_buildings`** | the ZOC upgrade level also raises building effect level |
 | **`class_placement_unrestricted`** | the class may be placed on any controlled tile |
 | **`class_gains_pct_of_zoc_upgrade_level`** | a class gains a floored % of another's ZOC upgrade bonus (Beaconing) |
+| **`signal_range_bonus`** | +civ-wide signal range — every commander ZOC and building radius reaches further |
 | **`palimpsest`** | at each combat end, recover a random unchosen tech from an earlier era |
 | **`grant_building`** | grants a BUILDING (by id) to place on the map (see § Buildings) |
 | **`self_tile_yield_bonus`** | +resource on the building's own tile |
@@ -528,6 +529,15 @@ costs to actually upgrade) is untouched.
 
 A quarter of an integer level is usually fractional; **Beaconing floors it** (`floor(pct/100 ×
 bonus)`), the safe default.
+
+## 12e. Communications (signal range)
+
+A single civ-wide accumulator, **`signalRangeBonus`** (`signal_range_bonus` techs, summed).
+It widens **exactly two things**: every **commander ZOC** radius, and every **building
+radius** effect (`radius_tile_yield_bonus`, `radius_city_yield_bonus_per_citizen`,
+`radius_yield_bonus_per_building_age`, `radius_yield_from_other_base_yields`, and Hybridism's
+ZOC-to-buildings reach). Each of those reads `radius + signalRangeBonus` at resolution time.
+**Fortification taunt and any future ranged range deliberately do NOT read it.**
 
 ### Effect level — a general building lever
 

@@ -515,9 +515,10 @@ function bonusEffectLevels(world, t, mods) {
   if (zocToBuildings) {
     for (const cls in zocToBuildings) {
       if (!zocToBuildings[cls]) continue
-      const radius = UNIT_DEFS[cls]?.zoc ?? 0
+      const base = UNIT_DEFS[cls]?.zoc ?? 0
+      const radius = base + (mods.signalRangeBonus ?? 0) // Communications widens the ZOC
       const bonus = (UNIT_DEFS[cls]?.zocBonus ?? 0) + (mods.classZocUpgradeBonus?.[cls] ?? 0)
-      if (radius <= 0 || bonus <= 0) continue
+      if (base <= 0 || bonus <= 0) continue
       for (const c of world.terr.controlled) {
         if (c.unit?.key === cls && !c.unit.destroyed && lengthOf(t.q - c.q, t.r - c.r) <= radius) { lv += bonus; break }
       }
@@ -547,9 +548,11 @@ function evalBuildingEffects(world, mods, era, t, buildings, add) {
   const effLevel = (t.building.level ?? 1) + bonusEffectLevels(world, t, mods)
   const mult = 1 + 0.25 * (effLevel - 1)
   const put = (tile, res, amt) => { if (amt && res) add(tile, res, amt * mult) }
+  // COMMUNICATIONS: every building RADIUS reaches `signalRangeBonus` further.
+  const sig = mods?.signalRangeBonus ?? 0
   const disc_ = (tt, radius) => {
     const out = []
-    for (const c of disc(tt.q, tt.r, radius)) { const o = world.tiles.get(hkey(c.q, c.r)); if (o) out.push(o) }
+    for (const c of disc(tt.q, tt.r, radius + sig)) { const o = world.tiles.get(hkey(c.q, c.r)); if (o) out.push(o) }
     return out
   }
   for (const f of def.effects) {

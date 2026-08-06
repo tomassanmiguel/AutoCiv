@@ -2000,6 +2000,86 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "printing_press",
+      "name": "Printing Press",
+      "quadrant": "society",
+      "era": 5,
+      "icon": "/sprites/ui/utility.png",
+      "description": "+1 signal range.",
+      "effects": [
+        {
+          "kind": "signal_range_bonus",
+          "amount": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "telegraph",
+      "name": "Telegraph",
+      "quadrant": "society",
+      "era": 7,
+      "icon": "/sprites/ui/utility.png",
+      "description": "+1 signal range.",
+      "effects": [
+        {
+          "kind": "signal_range_bonus",
+          "amount": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "internet",
+      "name": "Internet",
+      "quadrant": "society",
+      "era": 9,
+      "icon": "/sprites/ui/utility.png",
+      "description": "+1 signal range.",
+      "effects": [
+        {
+          "kind": "signal_range_bonus",
+          "amount": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "tightbeams",
+      "name": "Tightbeams",
+      "quadrant": "society",
+      "era": 11,
+      "icon": "/sprites/ui/utility.png",
+      "description": "+1 signal range.",
+      "effects": [
+        {
+          "kind": "signal_range_bonus",
+          "amount": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "instant_exchange",
+      "name": "Instant Exchange",
+      "quadrant": "society",
+      "era": 14,
+      "icon": "/sprites/ui/utility.png",
+      "description": "+2 signal range.",
+      "effects": [
+        {
+          "kind": "signal_range_bonus",
+          "amount": 2
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [

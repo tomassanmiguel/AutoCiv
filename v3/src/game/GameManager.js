@@ -128,6 +128,9 @@ function freshMods() {
     classPlacementUnrestricted: new Set(), // classes with no placement-terrain restriction
     classGainsZocUpgrade: {},         // class -> { sourceClass, pct } (Beaconing: share of a ZOC bonus)
 
+    // --- communications ---
+    signalRangeBonus: 0,              // civ-wide: added to every commander ZOC radius AND building radius
+
     // --- unique ---
     palimpsest: 0,                    // # of random prior-era techs to recover at each combat end
 
@@ -1064,6 +1067,9 @@ export class GameManager {
         break
       case 'class_gains_pct_of_zoc_upgrade_level':
         this.mods.classGainsZocUpgrade[f.unitClass] = { sourceClass: f.sourceClass, pct: f.pct ?? 0 }
+        break
+      case 'signal_range_bonus':
+        this.mods.signalRangeBonus += f.amount ?? 0
         break
       case 'palimpsest':
         this.mods.palimpsest += 1

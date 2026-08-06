@@ -620,6 +620,14 @@ export const EFFECT_KINDS = {
     describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain ${e.pct ?? 0}% of :${e?.sourceClass === 'commander' ? 'commander' : e?.sourceClass}: ZOC upgrade level.`,
   },
 
+  // --- communications ---------------------------------------------------------
+  signal_range_bonus: {
+    label: 'Signal range — global',
+    hint: 'Adds to a single civ-wide SIGNAL RANGE bonus. Every commander ZOC and every building RADIUS reads its radius + this bonus (fortification taunt and ranged range do NOT).',
+    params: [{ key: 'amount', label: 'Range', min: 0, default: 1 }],
+    describe: (e) => `+${e.amount ?? 0} signal :range: (commander ZOCs and building radii reach further).`,
+  },
+
   // --- unique -----------------------------------------------------------------
   palimpsest: {
     label: 'Palimpsest — recover a lost advancement',

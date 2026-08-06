@@ -239,10 +239,11 @@ class CombatMixin {
     return out
   }
 
-  /** Is (q,r) inside any living `cls` unit's ZOC? */
+  /** Is (q,r) inside any living `cls` unit's ZOC? (radius widened by signal range) */
   _inClassZoc(cls, q, r) {
-    const radius = UNIT_DEFS[cls]?.zoc ?? 0
-    if (radius <= 0) return false
+    const base = UNIT_DEFS[cls]?.zoc ?? 0
+    if (base <= 0) return false
+    const radius = base + (this.mods.signalRangeBonus ?? 0)
     for (const s of this._zocSources(cls)) if (distance(q, r, s.q, s.r) <= radius) return true
     return false
   }
