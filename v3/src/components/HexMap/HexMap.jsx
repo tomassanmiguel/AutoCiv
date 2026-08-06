@@ -6,7 +6,7 @@ import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
 import PieceCard from './PieceCard.jsx'
 import TileCard from './TileCard.jsx'
 import { UNIT_DEFS, equipmentOf } from '../../game/data/units.js'
-import { BUILDING_DEFS, buildingYield, buildingEffectText } from '../../game/data/buildings.js'
+import { buildingDef, buildingYield, buildingEffectText } from '../../game/data/buildings.js'
 import { tileYield } from '../../game/world/territory.js'
 import IconText from '../common/IconText.jsx'
 import './HexMap.css'
@@ -48,15 +48,16 @@ export default function HexMap() {
   const known = game.known
   const combat = game.combat
   const sel = game.selection
-  // While an expansion or a placement is being aimed, the legal tiles glow and
-  // become clickable. Both use the same affordance — one aiming state, one look.
-  const expMode = sel?.type === 'expansion' ? sel.mode : null
+  // AIMING. Three selections put something on the map — founding a city,
+  // building a held wonder, placing a granted unit/building — and all three use
+  // the same affordance: legal tiles glow and become clickable. One aiming
+  // state, one look. (:food: expansion is NOT here: it is automatic and silent.)
   const placing = sel?.type === 'placement' ? sel.item : null
   const expSet = (() => {
     if (placing) return new Set(game.placementTargets.map((x) => `${x.q},${x.r}`))
-    if (!expMode) return null
-    const t = game.expansionTargets
-    return new Set((expMode === 'city' ? t.city : t.improve).map((x) => `${x.q},${x.r}`))
+    if (sel?.type === 'city') return new Set(game.cityTargets.map((x) => `${x.q},${x.r}`))
+    if (sel?.type === 'wonder') return new Set(game.wonderTargets.map((x) => `${x.q},${x.r}`))
+    return null
   })()
   // Ground you own that is full — marked so "one per tile" is a visible rule
   // rather than a tile that mysteriously fails to light up.
@@ -65,7 +66,8 @@ export default function HexMap() {
     : null
   const aimAt = (t) => {
     if (placing) game.placeGrant(t)
-    else if (expMode) game.expandOnto(t, expMode)
+    else if (sel?.type === 'city') game.foundCityAt(t)
+    else if (sel?.type === 'wonder') game.buildWonderAt(t)
   }
 
   const viewportRef = useRef(null)
@@ -545,7 +547,7 @@ function TileTip({ game, tile, battlefield }) {
   const shownYield = live && Object.values(live).some((v) => v > 0)
     ? live
     : def.yields
-  const bDef = tile.building && BUILDING_DEFS[tile.building.key]
+  const bDef = tile.building && buildingDef(tile.building.key)
   const uDef = tile.unit && UNIT_DEFS[tile.unit.key]
   return (
     <div className="hex-tip">

@@ -4,9 +4,11 @@
 // unit that never moves and never attacks — it is a wall with hit points, meant
 // to soak a lane while your ranged units work.
 //
-// Units are granted by progress nodes, which also apply global modifiers:
-// WEAPONS raise every unit's attack, ARMOR raises every unit's HP, and per-type
-// mods (Horseback Riding) touch one flavour.
+// Units are granted by advancements, which also apply CIVILIZATION-WIDE
+// modifiers. Those modifiers STACK and never replace: Obsidian (+3), Bronze
+// (+5) and Iron (+7) leave every unit at +15 attack. There is deliberately no
+// weapon or armour tier — an earlier version had one, and it contradicted the
+// design's central rule that everything stacks.
 
 export const UNIT_TYPES = ['melee', 'ranged', 'cavalry', 'defense']
 
@@ -63,42 +65,28 @@ const OWN_GEAR = {
 }
 
 /**
- * A unit's kit, for the hover card: what it fights with, what it wears, and
- * what it rides. Weapon and armour tiers are civilization-wide (the progress
- * web re-arms everyone at once); the rest is the unit's own.
+ * A unit's kit, for the hover card: what it carries of its own, then what your
+ * research has added on top.
+ *
+ * The research rows are the STACKED civilization-wide bonuses, so this is where
+ * you watch a `unit_atk` tech land on a unit that was placed twenty ticks ago.
+ * Rows worth nothing are omitted rather than shown as zero.
  */
 export function equipmentOf(def, mods) {
   const own = OWN_GEAR[def.key] ?? {}
   const rows = []
 
-  if (WEAPON_TYPES.has(def.type)) {
-    const w = weaponTier(mods?.weapon)
-    rows.push({ slot: 'Weapon', name: w.name, bonus: w.atk ? `+${w.atk} :attack:` : null })
-  } else if (own.weapon !== undefined && own.weapon !== null) {
-    rows.push({ slot: 'Weapon', name: own.weapon, bonus: null })
-  } else if (own.weapon === null) {
-    rows.push({ slot: 'Weapon', name: 'None — it does not strike', bonus: null })
-  }
+  if (own.weapon) rows.push({ slot: 'Weapon', name: own.weapon, bonus: null })
+  else if (own.weapon === null) rows.push({ slot: 'Weapon', name: 'None — it does not strike', bonus: null })
+  if (def.type === 'cavalry' && own.steed) rows.push({ slot: 'Steed', name: own.steed, bonus: null })
 
-  const a = armorTier(mods?.armor)
-  rows.push({ slot: 'Armour', name: a.name, bonus: a.hp ? `+${a.hp} :defense:` : null })
-
-  if (def.type === 'cavalry' && own.steed) {
-    const extra = mods?.unitMod?.cavalry?.acts ?? 0
-    rows.push({ slot: 'Steed', name: own.steed, bonus: extra ? `+${extra} :speed:` : null })
-  }
-
-  // Anything the web trained into this class specifically.
-  const m = mods?.unitMod?.[def.type] ?? {}
-  const drills = Object.entries(m)
-    .filter(([k, v]) => v && !(def.type === 'cavalry' && k === 'acts'))
-    .map(([k, v]) => `+${v} ${DRILL_LABEL[k] ?? k}`)
-  if (drills.length) rows.push({ slot: 'Training', name: drills.join(', '), bonus: null })
+  const atk = mods?.unitAtk ?? 0
+  if (atk && def.atk > 0) rows.push({ slot: 'Research', name: 'Weaponry', bonus: `+${atk} :attack:` })
+  const hp = mods?.unitDef ?? 0
+  if (hp) rows.push({ slot: 'Research', name: 'Armour', bonus: `+${hp} :defense:` })
 
   return rows
 }
-
-const DRILL_LABEL = { atk: ':attack:', hp: ':defense:', range: 'range', acts: ':speed:' }
 
 export const UNIT_LIST = Object.values(UNIT_DEFS)
 
@@ -124,56 +112,27 @@ export const PALACE = {
   icon: '/sprites/ui/wonder.png',
 }
 
-// ---------------------------------------------------------------------------
-// WEAPONS and ARMOR — tiers, not stacks
-// ---------------------------------------------------------------------------
-// You start with Clubs and a progress node UPGRADES you to Bronze, then Iron,
-// then Steel. Taking a higher tier REPLACES the lower one rather than adding to
-// it, so "Bronze Weapons" reads as re-arming the whole civilization — which is
-// the story — instead of as a stacking trinket.
-//
-// Weapons arm the units that swing them: MELEE and CAVALRY. Ranged units get
-// their own line through per-type mods (Archery, Ballistics), so bows and blades
-// improve separately.
-
-export const WEAPON_TIERS = [
-  { key: 'clubs', name: 'Clubs', atk: 0 },
-  { key: 'bronze', name: 'Bronze Weapons', atk: 6 },
-  { key: 'iron', name: 'Iron Weapons', atk: 14 },
-  { key: 'steel', name: 'Steel Weapons', atk: 26 },
-]
-export const ARMOR_TIERS = [
-  { key: 'hides', name: 'Hides', hp: 0 },
-  { key: 'leather', name: 'Leatherwork', hp: 10 },
-  { key: 'bronzemail', name: 'Bronze Mail', hp: 24 },
-  { key: 'ironmail', name: 'Iron Mail', hp: 44 },
-]
-
-const tierIndex = (tiers, key) => Math.max(0, tiers.findIndex((t) => t.key === key))
-export const weaponTier = (key) => WEAPON_TIERS[tierIndex(WEAPON_TIERS, key)]
-export const armorTier = (key) => ARMOR_TIERS[tierIndex(ARMOR_TIERS, key)]
-/** Only ever move FORWARD along a tier chain. */
-export const bestTier = (tiers, a, b) =>
-  tiers[Math.max(tierIndex(tiers, a), tierIndex(tiers, b))].key
-
-/** Which unit types a weapon upgrade actually arms. */
-export const WEAPON_TYPES = new Set(['melee', 'cavalry'])
-
 /**
- * A unit's live stats: its base, scaled by era and by its own upgrade LEVEL,
- * plus the civilization-wide weapon/armour tiers and per-type mods.
+ * A unit's live stats: its base, scaled by the WAVE it is fighting in and by its
+ * own gold upgrade LEVEL, plus the flat civilization-wide bonuses your research
+ * has stacked up (`mods.unitAtk` / `mods.unitDef`).
+ *
+ * Stats are computed fresh every time, never stored on the tile — that is what
+ * makes a +:attack: tech improve a unit placed long before it.
+ *
+ * A unit with no attack (a wall) stays at zero: a flat bonus must never turn a
+ * construction into something that strikes back.
  */
-export function unitStats(def, era, mods, level = 1) {
-  const s = Math.pow(1.18, era) * (1 + 0.25 * (level - 1))
-  const typeMod = mods?.unitMod?.[def.type] ?? {}
-  const weap = WEAPON_TYPES.has(def.type) ? weaponTier(mods?.weapon).atk : 0
-  const arm = armorTier(mods?.armor).hp
+export function unitStats(def, wave, mods, level = 1) {
+  const s = Math.pow(1.18, wave) * (1 + 0.25 * (level - 1))
+  const atkBonus = mods?.unitAtk ?? 0
+  const defBonus = mods?.unitDef ?? 0
   return {
     ...def,
     level,
-    def: Math.max(1, Math.round(def.def * s) + arm + (typeMod.hp ?? 0)),
-    atk: def.atk === 0 ? 0 : Math.max(1, Math.round(def.atk * s) + weap + (typeMod.atk ?? 0)),
-    range: def.range + (typeMod.range ?? 0),
-    acts: def.acts === 0 ? 0 : def.acts + (typeMod.acts ?? 0),
+    def: Math.max(1, Math.round(def.def * s) + defBonus),
+    atk: def.atk === 0 ? 0 : Math.max(1, Math.round(def.atk * s) + atkBonus),
+    range: def.range,
+    acts: def.acts,
   }
 }

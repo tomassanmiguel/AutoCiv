@@ -24,6 +24,12 @@
   --radius:      8px;
   --max-w:       1100px;
 
+  /* The three branches. One colour each, used by the offer cards and the
+     progress panel — a branch must read the same everywhere it appears. */
+  --branch-military: #e07a5f;
+  --branch-economy:  #d8ad4e;
+  --branch-society:  #a98bd8;
+
   /* Fonts */
   --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
   --font-body:    'Inter', 'Segoe UI', system-ui, sans-serif;

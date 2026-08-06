@@ -22,7 +22,7 @@ export default function PlacementPrompt() {
   const def = game.grantDef(sel.item)
   if (!def) return null
 
-  const stats = kind === 'unit' ? unitStats(def, game.era, game.mods) : null
+  const stats = kind === 'unit' ? unitStats(def, game.wave, game.mods) : null
   const queued = game.grants.length - 1
   const blocked = game.placementBlocked.length
 

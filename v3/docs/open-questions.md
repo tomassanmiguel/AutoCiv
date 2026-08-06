@@ -8,24 +8,38 @@ techs yet to be invented.
 > **parked in the backlog** and does not block the current slice. The section
 > marked *"In the microcosm"* is what actually matters this week.
 
-## In the microcosm — the only gaps that block the playable slice
+## DECIDED: auto-expansion prefers buildable ground
 
-| pool | has | needs | gap |
+**Q:** ":food: creates the highest-yield available outpost" — highest yield by
+what measure?
+
+**Decided while implementing it, because the literal reading does not work.**
+Coast yields 3, every early land terrain yields 2, so "highest total yield"
+settles the whole coastline first — and a city cannot be founded on water. A
+measured run reached wave 4 with six outposts, no city site, and no route to one.
+
+The rule as built: **land you could build on wins first**, then highest yield,
+ties breaking outward. Water is settled once the land in reach is used up.
+Recorded in [`design.md`](design.md) §3. **Overturn it if the intent was
+different** — it is one comparator in `GameManager._autoExpand`.
+
+## In the microcosm — the gaps that block the playable slice
+
+The tech pool was **cleared to empty** and is being rebuilt one wired tech at a
+time. Against `ADVANCE_THRESHOLDS` of 2/2/3 for Stone/Bronze/Iron:
+
+| branch | Stone | Bronze | Iron |
 |---|---|---|---|
-| Iron · military | 2 | 3 | **1** |
-| Iron · technology | 1 | 3 | **2** |
-| Iron · economy | 2 | 3 | **1** |
-| Iron · society | 2 | 3 | **1** |
+| military | 1 of 2 | 1 of 2 | 1 of 3 |
+| economy | **0 of 2** | 0 of 2 | 0 of 3 |
+| society | **0 of 2** | 0 of 2 | 0 of 3 |
 
-Everything else in scope clears its threshold. **Iron is short by 5 techs
-across the four quadrants** — and since Iron is currently terminal, that only
-matters once a fourth era is added, so it is not urgent.
+**Nothing advances yet.** Military is one Stone tech short, and the other two
+branches are empty, so the reveal ladder never moves and no wonder is ever
+offered (they are Bronze). `node sims/campaign.mjs 6` prints this as `STALLED`
+per branch — that report is the thing to watch while the pool is refilled.
 
-Thin but passable (no real choice — you take the whole cell):
-Stone military (3 for 2), Stone technology (2 for 2), Bronze technology (2 for 2).
-
-The Stone technology pool is the one to watch: it lost Scouting and Surveying
-when vision stopped being draftable, leaving only Mathematics and Calendar.
+385 designed rows sit in the backlog to draw from.
 
 ---
 

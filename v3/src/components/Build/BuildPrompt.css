@@ -1,0 +1,69 @@
+/* Bottom-left of the map, same slot and shape as PlacementPrompt — the two are
+   mutually exclusive by construction (one `selection` at a time) and they ask
+   the same thing of you, so they should look the same asking it. */
+.build-prompt {
+  position: absolute;
+  left: 1rem;
+  bottom: 4.6rem;
+  z-index: 18;
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  max-width: 430px;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(12, 15, 26, 0.94);
+  border: 1px solid rgba(120, 160, 220, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+.build-prompt.is-wonder { border-color: rgba(216, 173, 78, 0.6); }
+
+.build-icon {
+  width: 46px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+}
+
+.build-body { min-width: 0; }
+
+.build-head { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
+.build-head b {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: #a8c6f0;
+}
+.build-prompt.is-wonder .build-head b { color: #e8d5a0; }
+
+.build-kind {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #7f879b;
+}
+
+.build-effect {
+  margin-top: 0.3rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #c3cbdc;
+}
+
+.build-hint {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: #8b93a8;
+}
+
+.build-skip {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: #99a1b5;
+  cursor: pointer;
+}
+.build-skip:hover { color: #e2e7f2; border-color: rgba(255, 255, 255, 0.3); }

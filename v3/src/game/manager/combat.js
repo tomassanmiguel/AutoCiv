@@ -25,12 +25,14 @@ import {
   generateHost, domainCanTraverse, ENEMY_DOMAINS, ENEMY_TYPES,
   waveBudget, makeEnemy, rollTier,
 } from '../data/enemies.js'
-import { UNIT_DEFS, PALACE, unitStats, weaponTier } from '../data/units.js'
+import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
 import { isPassable, isLand } from '../world/terrain.js'
 import { razeTile } from '../world/territory.js'
 import { makeRng, shuffle } from '../world/noise.js'
 
-export const MAX_WAVES = 30
+// The wave ladder lives in `data/cycle.js` — it is the game's clock, not a
+// combat-local constant. Re-exported here because the combat UI reads it.
+export { WAVE_COUNT as MAX_WAVES } from '../data/cycle.js'
 
 export const PHASE_LABEL = {
   'enemy-move': 'Enemies move',
@@ -89,7 +91,7 @@ class CombatMixin {
 
   /** Muster the era's wave so it can be seen during development. */
   prepareWave() {
-    const wave = this.era + 1
+    const wave = this.wave + 1
     this.pendingWave = { wave, enemies: this.buildHost(wave, 1) }
     this._emit()
   }
@@ -117,7 +119,8 @@ class CombatMixin {
         : this._playerArmy(),
       palace: {
         ...PALACE, hp: this.palaceHp, maxHp, q: 0, r: 0,
-        atk: PALACE.atk + weaponTier(this.mods?.weapon).atk,
+        // The palace is armed by the same stacking research every unit is.
+        atk: PALACE.atk + (this.mods?.unitAtk ?? 0),
         lastAttackSeq: null, lastAttackDir: null,
       },
       events: [],
@@ -140,7 +143,7 @@ class CombatMixin {
       if (!t.unit || t.unit.destroyed) continue
       const def = UNIT_DEFS[t.unit.key]
       if (!def) continue
-      const s = unitStats(def, this.era, this.mods, t.unit.level ?? 1)
+      const s = unitStats(def, this.wave, this.mods, t.unit.level ?? 1)
       units.push({
         id: id++, side: 'player', key: def.key, name: s.name, type: s.type,
         q: t.q, r: t.r, home: t,

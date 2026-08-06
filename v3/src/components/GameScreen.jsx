@@ -5,10 +5,11 @@ import HexMap from './HexMap/HexMap.jsx'
 import MenuOverlay from './Menu/MenuOverlay.jsx'
 import SpeedControl from './Hud/SpeedControl.jsx'
 import OutputReadout from './Hud/OutputReadout.jsx'
-import ProgressTree from './Progress/ProgressTree.jsx'
+import WonderBadge from './Hud/WonderBadge.jsx'
+import ProgressPanel from './Progress/ProgressPanel.jsx'
 import CombatPanel from './Combat/CombatPanel.jsx'
 import ProgressOffer from './Progress/ProgressOffer.jsx'
-import ExpansionPrompt from './Expansion/ExpansionPrompt.jsx'
+import BuildPrompt from './Build/BuildPrompt.jsx'
 import PlacementPrompt from './Placement/PlacementPrompt.jsx'
 import DefeatOverlay from './Hud/DefeatOverlay.jsx'
 import './GameScreen.css'
@@ -43,13 +44,14 @@ export default function GameScreen({ seed, civ, difficulty, onExit }) {
               <img src="/sprites/icons/progress.png" alt="" />
               Progress
             </button>
+            <WonderBadge />
           </div>
-          <ExpansionPrompt />
+          <BuildPrompt />
           <PlacementPrompt />
           <CombatPanel />
           <ProgressOffer />
           <DefeatOverlay onExit={onExit} />
-          {treeOpen && <ProgressTree onClose={() => setTreeOpen(false)} />}
+          {treeOpen && <ProgressPanel onClose={() => setTreeOpen(false)} />}
         </div>
       </div>
     </GameProvider>

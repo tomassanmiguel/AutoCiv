@@ -34,10 +34,19 @@ starts the dev server and opens the game. The editor is at `/editor.html`.
 - `content.activeEras = 3`. The other twelve eras are designed but their content
   is **parked in `content.backlog`** — nothing is deleted, and the editor's
   Backlog tab restores a row into scope one at a time.
-- In scope: **43 techs · 10 buildings · 5 wonders · 3 tier unlocks.**
-  Parked: 244 techs · 37 buildings · 39 wonders · 12 tier unlocks.
+- The tech and building pools were **cleared to empty on purpose** and are being
+  rebuilt **one wired tech at a time**: a tech goes in only when the effect it
+  needs exists in the engine. The backlog holds the 385 parked rows.
+- In play right now: **9 techs (the +:attack: line, all Military) · 0 buildings ·
+  5 wonders · 3 tier unlocks.**
 - Iron is the terminal era for now, so nothing advances out of it and it carries
   no threshold.
+
+⚠️ **Economy and Society hold no techs, so those two branches cannot advance** —
+`sims/campaign.mjs` reports both as `STALLED` at Stone, which is the content
+shortfall showing up honestly rather than being papered over. Military has one
+Stone tech and needs two to advance, so the map currently never opens either.
+Filling those cells is the next content job.
 
 The goal for this slice is a **small playable game**: six waves of combat against
 the first three eras of techs, with the draft, the thresholds and the wonder loop
@@ -54,6 +63,12 @@ nothing to do with how hard the fighting is.
 a wave.** Combat difficulty scales on its own schedule, independent of how far
 any tech track has advanced — outrunning the enemy on tech is a legitimate way to
 win, and falling behind is a legitimate way to lose.
+
+In code the two clocks are `game.wave` (0-based; 65 ticks of development, then
+the wave attacks) and `game.draft.branchEra` (three of them). **The map reveal
+and the expansion permissions follow the ERA, never the wave** — the 15 eras and
+the 15 reveal notches are one ladder, one rung each, which is why the reveal
+needs no table of its own.
 
 ## 2. Three independent branches
 
@@ -95,10 +110,24 @@ that spans pools, and a group of one.
 |---|---|
 | **:food:** | **Expands automatically.** No prompt: the highest-yield available outpost is created, pushing your borders outward. |
 | **:production:** | **Prompts you to found a city** — *unless* you are holding an undrafted wonder, in which case you build the wonder instead. |
-| **:progress:** | Offers 3 advancements from the four current pools. |
+| **:progress:** | Offers 3 advancements from the three current pools. |
 
 City founding **no longer depends on food**. Food buys ground; production builds
 on it.
+
+### Auto-expansion prefers ground you can build on
+
+"Highest yield" needs one correction or the rule eats itself. Coast yields **3**
+while every early land terrain yields **2**, so a literal reading settles the
+entire coastline first — and **a city cannot be founded on water**. Measured: a
+run reached wave 4 with six outposts, no city site, and no way to ever get one.
+
+So the rule is: **land you could later build on wins first**; among those,
+highest yield; ties break **outward** (that is what "pushing your borders
+outward" means). Water is still settled once the land in reach is used up.
+
+Food buys ground, production builds on it — and ground you can never build on is
+not ground.
 
 ## 4. Wonders are drafted techs
 
@@ -122,19 +151,25 @@ the multiplier, which is what makes flat bonuses worth more than they look.
 
 ### Everything stacks. Nothing replaces.
 
-Two techs that touch the same quantity **both apply**. Bronze Working (+3), Iron
-Working (+6) and Steel (+12) leave a unit at **+21 attack**, not +12. Masonry,
-Castles, Star Forts and Magnetic Deflectors leave a fortification at **+75
-defence**. There is no tier system anywhere.
+Two techs that touch the same quantity **both apply**. Obsidian (+3), Bronze (+5)
+and Iron (+7) leave a unit at **+15 attack**, not +7. Masonry, Castles, Star
+Forts and Magnetic Deflectors leave a fortification at **+75 defence**. There is
+no tier system anywhere — the weapon/armour tier ladder the engine used to carry
+was deleted for contradicting exactly this rule.
+
+The attack line, as authored, is lightly exponential across the whole game:
+
+| Obsidian | Bronze | Iron | Steel | Muskets | Automatic | Laser | Liminite | Tachyonics |
+|---|---|---|---|---|---|---|---|---|
+| Stone | Bronze | Iron | Medieval | Exploration | Modern | Solar | Liminite | Galactic |
+| +3 | +5 | +7 | +11 | +17 | +27 | +42 | +65 | +100 |
+
+Taking all nine is **+277 attack**. They carry no prerequisites: skipping one
+costs you its number, not the rest of the line.
 
 The brief's own wording is the tell: it says *"increases all unit atk by 3"*,
 which is additive language. A tech that overwrote an earlier one would have had
 to say *"sets"*.
-
-The one narrow exception is per-effect: `stacks: false` stops a **repeating
-trigger** from accumulating — "after every combat, permanently +1" would grant
-+1 once instead of +1, +2, +3. It defaults to **true**, and it has nothing to do
-with the rule above.
 
 - **Rural tile** — controlled, with no outpost and no city.
 - **Outpost** — a settled tile. Its yield is multiplied (×2 to start; Feudalism
@@ -211,15 +246,29 @@ at `/editor.html` (dev server only) and validated against
 [`schema.js`](../src/game/data/schema.js).
 
 **A tech is described in WRITING**, with `:token:` markup for icons — "+2
-:food:", "grants a :melee: unit". There is no structured effect system.
+:food:", "grants a :melee: unit". That description is what the player reads.
+
+**What the game RUNS is a short list of effects**, `EFFECT_KINDS` in
+[`schema.js`](../src/game/data/schema.js). The registry grows **one entry at a
+time**, and the rule that keeps it honest is:
+
+> an effect kind exists in the registry **only in the same change that writes
+> the engine case which consumes it** (`GameManager._applyEffect`).
+
+`validateContent` rejects any kind with no case, so the two cannot drift. A row
+with no effects is written down and does nothing — which is fine and expected
+while the pool is being rebuilt; the editor's **Wired** column is how you see
+which is which.
+
+Currently implemented: **`unit_atk`** — flat :attack: on every unit, stacking.
 
 > An earlier version carried a full effect vocabulary — ~16 ops, targets,
 > scales, filters, triggers and 50 named rule keys — and all 654 effects were
 > encoded against it. It was **removed on purpose**: expensive to author, hard to
 > hold in your head, and it forced a decision about every mechanic long before
-> any of them were built. Mechanics get wired **one at a time**, as each is
-> actually implemented. Do not reintroduce a general effect language ahead of the
-> code that would consume it. (The old vocabulary is in git if it is ever wanted.)
+> any of them were built. The registry above is not that coming back — it holds
+> exactly what the engine runs today. **Do not add to it ahead of the code.**
+> (The old vocabulary is in git if it is ever wanted.)
 
 ## 11. Intrinsic class behaviour is never a tech
 

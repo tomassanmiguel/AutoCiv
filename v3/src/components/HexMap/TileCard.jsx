@@ -1,5 +1,5 @@
 import { UNIT_DEFS, unitStats } from '../../game/data/units.js'
-import { BUILDING_DEFS, buildingYield } from '../../game/data/buildings.js'
+import { buildingDef, buildingYield } from '../../game/data/buildings.js'
 import { RESOURCES, RES_ICON } from '../../game/world/terrain.js'
 import './TileCard.css'
 
@@ -17,10 +17,10 @@ import './TileCard.css'
 export default function TileCard({ game, tile, hovered, onHover }) {
   const actions = hovered ? game.tileActions(tile) : []
   const unitDef = tile.unit && UNIT_DEFS[tile.unit.key]
-  const buildDef = tile.building && BUILDING_DEFS[tile.building.key]
+  const buildDef = tile.building && buildingDef(tile.building.key)
   if (!unitDef && !buildDef && !tile.ruin) return null
 
-  const stats = unitDef ? unitStats(unitDef, game.era, game.mods, tile.unit.level ?? 1) : null
+  const stats = unitDef ? unitStats(unitDef, game.wave, game.mods, tile.unit.level ?? 1) : null
 
   return (
     <div className="tile-card">

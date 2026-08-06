@@ -39,7 +39,107 @@
     7
   ],
   "activeEras": 3,
-  "techs": [],
+  "techs": [
+    {
+      "id": "obsidian",
+      "name": "Obsidian",
+      "quadrant": "military",
+      "era": 0,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+3 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 3 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "bronze",
+      "name": "Bronze",
+      "quadrant": "military",
+      "era": 1,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+5 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 5 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "iron",
+      "name": "Iron",
+      "quadrant": "military",
+      "era": 2,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+7 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 7 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "steel",
+      "name": "Steel",
+      "quadrant": "military",
+      "era": 4,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+11 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 11 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "muskets",
+      "name": "Muskets",
+      "quadrant": "military",
+      "era": 6,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+17 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 17 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "automatic_weapons",
+      "name": "Automatic Weapons",
+      "quadrant": "military",
+      "era": 8,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+27 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 27 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "laser_weapons",
+      "name": "Laser Weapons",
+      "quadrant": "military",
+      "era": 10,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+42 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 42 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "liminite_weapons",
+      "name": "Liminite Weapons",
+      "quadrant": "military",
+      "era": 12,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+65 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 65 }],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "tachyonics",
+      "name": "Tachyonics",
+      "quadrant": "military",
+      "era": 13,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+100 :attack: to all units.",
+      "effects": [{ "kind": "unit_atk", "amount": 100 }],
+      "requires": [],
+      "group": ""
+    }
+  ],
   "buildings": [],
   "wonders": [
     {

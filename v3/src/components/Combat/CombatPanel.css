@@ -1,10 +1,12 @@
-/* Bottom-centre debug bar. Sits above the HUD strip's z-index so its controls
-   stay clickable, and is left free of the map's drag handlers. */
+/* Bottom-RIGHT debug bar. Sits above the HUD strip's z-index so its controls
+   stay clickable, and is left free of the map's drag handlers.
+   ⚠️ Right, not centre: the bottom-LEFT slot belongs to the prompts
+   (BuildPrompt / PlacementPrompt), and centring this covered them on a narrow
+   window — clipping the very line telling you to click a highlighted tile. */
 .combat-panel {
   position: absolute;
-  left: 50%;
+  right: 1rem;
   bottom: 4.2rem;
-  transform: translateX(-50%);
   z-index: 22;
   display: flex;
   flex-direction: column;

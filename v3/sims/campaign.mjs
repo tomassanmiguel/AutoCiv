@@ -1,24 +1,27 @@
 // Campaign sim — plays the whole loop headlessly.
 //
-//   node sims/campaign.mjs [eras] [--trace]
+//   node sims/campaign.mjs [waves] [--trace]
 //
-// This is the instrument for the question the economy sim cannot answer: does
-// the assembled game SURVIVE, and does the progress web actually reach the
-// player? It plays eras end to end — development ticks, progress offers,
-// expansions, placements, and the wave that closes each era — then reports what
-// happened.
+// The instrument for one question: does the assembled game SURVIVE, and does the
+// content layer actually reach the player? It plays waves end to end —
+// development ticks, the automatic :food: expansion, :production: cities and
+// wonders, :progress: drafts, placements, and the wave that closes each cycle —
+// then reports what happened.
+//
+// ⚠️ It counts in WAVES, not eras. The two clocks are independent now: an era is
+// a tech pool advanced only by drafting, and the report shows how far the three
+// branches actually got, which is the thing the content layer is judged on.
 //
 // The AI is deliberately simple and greedy. It is a load-bearing floor, not a
-// good player: if a competent-but-dumb strategy dies in era 2, the tuning is
+// good player: if a competent-but-dumb strategy dies on wave 2, the tuning is
 // wrong regardless of what a human could do.
 
 import { GameManager } from '../src/game/GameManager.js'
 import { buildingYield } from '../src/game/data/buildings.js'
-import { UNIT_DEFS, weaponTier, armorTier } from '../src/game/data/units.js'
-import { terrainOf } from '../src/game/world/terrain.js'
-import { foodAround, tileYield } from '../src/game/world/territory.js'
+import { foodAround } from '../src/game/world/territory.js'
+import { QUADRANTS, describeEffects } from '../src/game/data/schema.js'
 
-const ERAS = Number(process.argv[2]) || 4
+const WAVES = Number(process.argv[2]) || 4
 const TRACE = process.argv.includes('--trace')
 const SEEDS = [3, 11, 29, 47, 61]
 
@@ -26,17 +29,19 @@ const sum = (o) => o.food + o.production + o.gold + o.progress
 
 // --- the greedy player ------------------------------------------------------
 
-/** Prefer nodes that grant something placeable, then whatever is on offer. */
+/**
+ * Prefer rows that DO something the engine can run, then anything else.
+ *
+ * Most of the pool is written down but unwired while mechanics are added one at
+ * a time, so a scorer that only looked at effects would treat the whole draft as
+ * a coin flip. Unwired rows still count: taking them advances the branch.
+ */
 function pickOffer(game, offers) {
-  const score = (n) => {
-    let s = 1
-    for (const f of n.effects) {
-      if (f.kind === 'unit') s += 6 * f.grant          // stay alive first
-      else if (f.kind === 'building') s += 4 * f.grant
-      else if (f.kind === 'weapon' || f.kind === 'armor') s += 4
-      else if (f.kind === 'mult') s += 3
-      else if (f.kind === 'terrain') s += 2
-      else s += 2
+  const score = (row) => {
+    let s = row.isWonder ? 2 : 1
+    for (const f of row.effects ?? []) {
+      if (f.kind === 'unit_atk') s += 4 + (f.amount ?? 0) / 10
+      else s += 3
     }
     return s
   }
@@ -94,39 +99,28 @@ function spendGold(g, st) {
   }
 }
 
-/** Every 4th expansion is a city — the winner of the strategy sweep. */
-function pickExpansion(game, targets, st) {
-  st.n = (st.n ?? 0) + 1
-  const cityTurn = st.n % 4 === 0
-  if (cityTurn && targets.city.length) {
-    return { tile: targets.city.slice().sort((a, b) => foodAround(game.world, b) - foodAround(game.world, a))[0], mode: 'city' }
-  }
-  if (targets.improve.length) {
-    const score = (t) => {
-      const y = terrainOf(t.terrain).yields
-      // A tile with a camp on it is worth taking for the camp alone.
-      return y.food + y.production + y.gold + y.progress + (t.encampment ? 12 : 0)
-    }
-    return { tile: targets.improve.slice().sort((a, b) => score(b) - score(a))[0], mode: 'improve' }
-  }
-  if (targets.city.length) return { tile: targets.city[0], mode: 'city' }
-  return null
+/** A city site, best food in reach — the only thing that grows population. */
+const pickCity = (g) => {
+  const sites = g.cityTargets
+  if (!sites.length) return null
+  return sites.slice().sort((a, b) => foodAround(g.world, b) - foodAround(g.world, a))[0]
 }
 
 // --- one run ----------------------------------------------------------------
 
-function run(seed, eras) {
+function run(seed, waveCount) {
   const g = new GameManager(seed, {})
   const st = {}
   const waves = []
   let guard = 0
   let cumulative = 0
 
-  while (g.era < eras && !g.defeated && guard++ < 400000) {
+  while (g.wave < waveCount && !g.defeated && guard++ < 400000) {
     if (g.selection) {
       const sel = g.selection
       // Count every time the clock stops for the player — the real measure of
-      // whether the game is asking too much.
+      // whether the game is asking too much. (:food: never appears here: it
+      // expands on its own, which is precisely the point of the rule.)
       st.prompts = (st.prompts ?? 0) + 1
       st[`prompt_${sel.type}`] = (st[`prompt_${sel.type}`] ?? 0) + 1
       if (sel.type === 'progress') {
@@ -135,19 +129,24 @@ function run(seed, eras) {
       } else if (sel.type === 'placement') {
         const t = pickPlacement(g, sel.item, g.placementTargets)
         if (t) g.placeGrant(t); else g.skipSelection()
+      } else if (sel.type === 'city') {
+        const t = pickCity(g)
+        if (t) g.foundCityAt(t); else g.skipSelection()
+      } else if (sel.type === 'wonder') {
+        const t = g.wonderTargets[0]
+        if (t) g.buildWonderAt(t); else g.skipSelection()
       } else {
-        const mv = pickExpansion(g, g.expansionTargets, st)
-        if (mv) g.expandOnto(mv.tile, mv.mode); else g.skipSelection()
+        g.skipSelection()
       }
       continue
     }
     if (g.combat.active) {
-      const era = g.era
+      const wave = g.wave
       const before = g.combat.enemies.length
       if (!g.combat.result) g.resolveCombat()
       const c = g.combat
       waves.push({
-        era, wave: c.wave, enemies: before, result: c.result,
+        wave, enemies: before, result: c.result,
         razed: c.razed, breaches: c.breaches,
         palace: Math.round((c.palace.hp / c.palace.maxHp) * 100),
         defenders: c.units.length,
@@ -155,7 +154,7 @@ function run(seed, eras) {
       // endCombat (inside _resolveWave) is what tallies casualties.
       g._resolveWave()
       waves[waves.length - 1].losses = g.combat.losses ?? 0
-      // Rebuild between eras, while the board is quiet.
+      // Rebuild between waves, while the board is quiet.
       spendGold(g, st)
       continue
     }
@@ -165,19 +164,22 @@ function run(seed, eras) {
 
   const s = g.stats
   const out = {
-    seed, defeated: g.defeated, era: g.era, waves, cumulative,
+    seed, defeated: g.defeated, wave: g.wave, waves, cumulative,
     rate: sum(g.output), output: g.output,
     ...s,
-    nodes: g.progress.size,
+    taken: g.draft.taken.size,
+    branches: g.branches,
+    heldWonder: g.heldWonder?.name ?? null,
     units: [...g.world.terr.controlled].filter((t) => t.unit && !t.unit.destroyed).length,
     gold: Math.floor(g.resources.gold.value),
     prompts: st.prompts ?? 0,
     pProgress: st.prompt_progress ?? 0,
-    pExpansion: st.prompt_expansion ?? 0,
+    pCity: (st.prompt_city ?? 0) + (st.prompt_wonder ?? 0),
     pPlacement: st.prompt_placement ?? 0,
     repairs: st.repairs ?? 0, rebuilds: st.rebuilds ?? 0, upgrades: st.upgrades ?? 0,
     grantsQueued: g.grants.length,
     mods: g.mods,
+    takenRows: g.takenRows,
   }
   g.stop()
   return out
@@ -185,45 +187,54 @@ function run(seed, eras) {
 
 // --- report -----------------------------------------------------------------
 
-console.log(`\n=== campaign: ${SEEDS.length} seeds × ${ERAS} eras ===\n`)
-const runs = SEEDS.map((s) => run(s, ERAS))
+console.log(`\n=== campaign: ${SEEDS.length} seeds × ${WAVES} waves ===\n`)
+const runs = SEEDS.map((s) => run(s, WAVES))
 
-console.log('  seed  end  survived  tiles  cities  pop  bldg  units  nodes    rate  cumulative | repairs rebuilds upgrades   gold')
+console.log('  seed  wave  survived  tiles  cities  pop  bldg  units  techs    rate  cumulative | repairs rebuilds upgrades   gold')
 for (const r of runs) {
   console.log(
-    `  ${String(r.seed).padStart(4)} ${String(r.era).padStart(4)}` +
+    `  ${String(r.seed).padStart(4)} ${String(r.wave).padStart(4)}` +
     `  ${(r.defeated ? 'DIED' : 'yes').padStart(8)}` +
     ` ${String(r.controlled).padStart(6)} ${String(r.cities).padStart(7)} ${String(r.pop).padStart(4)}` +
     ` ${String(r.buildings).padStart(5)} ${String(r.units).padStart(6)}` +
-    ` ${String(r.nodes).padStart(6)} ${String(Math.round(r.rate)).padStart(7)} ${Math.round(r.cumulative).toLocaleString().padStart(11)} |` +
+    ` ${String(r.taken).padStart(6)} ${String(Math.round(r.rate)).padStart(7)} ${Math.round(r.cumulative).toLocaleString().padStart(11)} |` +
     ` ${String(r.repairs).padStart(7)} ${String(r.rebuilds).padStart(8)} ${String(r.upgrades).padStart(8)}` +
     ` ${r.gold.toLocaleString().padStart(6)}`)
 }
 
 // How often the clock stops for the player — the pacing measure that matters.
 console.log('\n=== prompts (times the clock stopped) ===')
-console.log('  seed   total  per era |  progress  expansion  placement')
+console.log('  seed   total per wave |  progress  build  placement')
 for (const r of runs) {
   console.log(
     `  ${String(r.seed).padStart(4)} ${String(r.prompts).padStart(7)}` +
-    ` ${(r.prompts / Math.max(1, r.era)).toFixed(1).padStart(8)} |` +
-    ` ${String(r.pProgress).padStart(9)} ${String(r.pExpansion).padStart(10)} ${String(r.pPlacement).padStart(10)}`)
+    ` ${(r.prompts / Math.max(1, r.wave)).toFixed(1).padStart(8)} |` +
+    ` ${String(r.pProgress).padStart(9)} ${String(r.pCity).padStart(6)} ${String(r.pPlacement).padStart(10)}`)
+}
+
+// THE CONTENT MEASURE. A branch that never leaves era 0 has an empty pool, not a
+// cautious player — that is the number to watch while the pool is rebuilt.
+console.log('\n=== how far each branch got ===')
+console.log(`  seed  ${QUADRANTS.map((q) => q.padEnd(24)).join('')}`)
+for (const r of runs) {
+  console.log(`  ${String(r.seed).padStart(4)}  ` + r.branches.map((b) =>
+    `${b.eraName} ${b.have}/${b.need || '—'}${b.stalled ? ' STALLED' : ''}`.padEnd(24)).join(''))
 }
 
 console.log('\n=== waves ===')
-console.log('  era  wave  enemies  defenders  result      palace%  losses  razed  breaches')
-const byEra = new Map()
+console.log('  wave  enemies  defenders  result      palace%  losses  razed  breaches')
+const byWave = new Map()
 for (const r of runs) {
   for (const w of r.waves) {
-    if (!byEra.has(w.era)) byEra.set(w.era, [])
-    byEra.get(w.era).push(w)
+    if (!byWave.has(w.wave)) byWave.set(w.wave, [])
+    byWave.get(w.wave).push(w)
   }
 }
 const avg = (xs, f) => xs.reduce((a, b) => a + f(b), 0) / (xs.length || 1)
-for (const [era, ws] of [...byEra.entries()].sort((a, b) => a[0] - b[0])) {
+for (const [wave, ws] of [...byWave.entries()].sort((a, b) => a[0] - b[0])) {
   const wins = ws.filter((w) => w.result === 'won').length
   console.log(
-    `  ${String(era).padStart(3)} ${String(ws[0].wave).padStart(5)}` +
+    `  ${String(wave + 1).padStart(4)}` +
     ` ${avg(ws, (w) => w.enemies).toFixed(1).padStart(8)}` +
     ` ${avg(ws, (w) => w.defenders).toFixed(1).padStart(10)}` +
     `  ${`${wins}/${ws.length} won`.padEnd(11)}` +
@@ -233,24 +244,23 @@ for (const [era, ws] of [...byEra.entries()].sort((a, b) => a[0] - b[0])) {
     ` ${avg(ws, (w) => w.breaches).toFixed(1).padStart(9)}`)
 }
 
-console.log('\n=== what the web handed out (seed 3) ===')
-const m = runs[0].mods
-console.log(`  units unlocked    : ${[...m.units].join(', ') || 'none'}`)
-console.log(`  buildings unlocked: ${[...m.buildings].join(', ') || 'none'}`)
-console.log(`  weapons           : ${weaponTier(m.weapon).name} (+${weaponTier(m.weapon).atk} :melee:/:cavalry: atk)`)
-console.log(`  armour            : ${armorTier(m.armor).name} (+${armorTier(m.armor).hp} hp)`)
-console.log(`  per-type mods     : ${Object.entries(m.unitMod).filter(([, v]) => Object.keys(v).length).map(([t, v]) => `${t} ${Object.entries(v).map(([k, n]) => `+${n}${k}`).join('')}`).join(', ') || 'none'}`)
-console.log(`  multipliers       : ${Object.entries(m.mult).filter(([, v]) => v).map(([k, v]) => `${k} +${Math.round(v * 100)}%`).join(', ') || 'none'}`)
-console.log(`  thresholds        : ${Object.entries(m.threshold).filter(([, v]) => v !== 1).map(([k, v]) => `${k} ×${v.toFixed(2)}`).join(', ') || 'none'}`)
-console.log(`  terrain bonuses   : ${Object.entries(m.terrain).map(([k, y]) => `${k} ${Object.entries(y).filter(([, v]) => v).map(([r, v]) => `+${v}${r[0]}`).join('')}`).join(', ') || 'none'}`)
-console.log(`  roads             : ${m.roads ? `yes (${Object.entries(m.roadYield).filter(([, v]) => v).map(([r, v]) => `+${v} ${r}`).join(' ')})` : 'no'}`)
-console.log(`  settle unlocked   : ${[...m.settle].join(', ') || 'none'}`)
+console.log('\n=== what research handed out (seed 3) ===')
+const r0 = runs[0]
+const m = r0.mods
+for (const row of r0.takenRows) {
+  console.log(`  ${row.name.padEnd(22)} ${row.quadrant.padEnd(9)} ${describeEffects(row) || '(written down, not wired)'}`)
+}
+if (!r0.takenRows.length) console.log('  nothing — the draft pool was empty')
+console.log(`  ---`)
+console.log(`  all units          : +${m.unitAtk} atk, +${m.unitDef} def`)
+console.log(`  units unlocked     : ${[...m.units].join(', ') || 'none'}`)
+console.log(`  buildings unlocked : ${[...m.buildings].join(', ') || 'none'}`)
+console.log(`  wonder held unbuilt: ${r0.heldWonder ?? 'none'}`)
+console.log(`  multipliers        : ${Object.entries(m.mult).filter(([, v]) => v).map(([k, v]) => `${k} +${Math.round(v * 100)}%`).join(', ') || 'none'}`)
+console.log(`  settle unlocked    : ${[...m.settle].join(', ') || 'none'}`)
 
 if (TRACE) {
   console.log('\n=== output composition (seed 3) ===')
-  const g = new GameManager(3, {})
-  void g
-  const r = runs[0]
-  console.log(`  final per tick: ${Object.entries(r.output).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · ')}`)
+  console.log(`  final per tick: ${Object.entries(r0.output).map(([k, v]) => `${k} ${Math.round(v)}`).join(' · ')}`)
 }
 console.log()

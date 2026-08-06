@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import {
   ERAS, QUADRANTS, thresholdFor, PLACEMENTS, PLACEMENT_KEYS, WONDER_TIERS,
   ICON_TOKEN_KEYS, unknownTokens,
+  EFFECT_KINDS, EFFECT_KEYS, blankEffect, describeEffect, describeEffects,
 } from '../game/data/schema.js'
 import Tokens from './Tokens.jsx'
 
@@ -105,6 +106,11 @@ export default function DataTable({ rows, totalRows, columns, problemsById, tech
                       readOnly={readOnly}
                       onChange={(description) => onPatch(row.id, { description })}
                     />
+                    <EffectEditor
+                      row={row}
+                      readOnly={readOnly}
+                      onChange={(effects) => onPatch(row.id, { effects })}
+                    />
                     <div className="ed-id">id: <code>{row.id}</code></div>
                   </td>
                 </tr>
@@ -177,6 +183,92 @@ function DescriptionEditor({ row, readOnly, onChange }) {
   )
 }
 
+/**
+ * WHAT THE ROW ACTUALLY DOES, as opposed to what its description claims.
+ *
+ * The list of kinds and their inputs comes straight from `EFFECT_KINDS`, so a
+ * new mechanic needs no work here — but a kind only exists in that registry
+ * because the engine has a case for it, which is what stops the editor
+ * authoring effects that silently do nothing.
+ *
+ * The generated sentence under the list is the DRIFT CHECK: if it does not match
+ * the description above it, one of the two is lying to the player.
+ */
+function EffectEditor({ row, readOnly, onChange }) {
+  const effects = row.effects ?? []
+  const patch = (i, p) => onChange(effects.map((e, n) => (n === i ? { ...e, ...p } : e)))
+
+  return (
+    <div className="ed-fx">
+      <label className="ed-desc-label">Effects</label>
+
+      {effects.length === 0 && (
+        <div className="ed-fx-none">
+          No effects — this row is written down but does nothing in game.
+        </div>
+      )}
+
+      {effects.map((e, i) => {
+        const spec = EFFECT_KINDS[e.kind]
+        return (
+          <div key={i} className={`ed-fx-row${spec ? '' : ' bad'}`}>
+            <select
+              className="ed-sel"
+              value={e.kind}
+              disabled={readOnly}
+              onChange={(ev) => onChange(effects.map((x, n) => (n === i ? blankEffect(ev.target.value) : x)))}
+            >
+              {!spec && <option value={e.kind}>⚠ {e.kind} (unknown)</option>}
+              {EFFECT_KEYS.map((k) => (
+                <option key={k} value={k}>{EFFECT_KINDS[k].label}</option>
+              ))}
+            </select>
+
+            {(spec?.params ?? []).map((p) => (
+              <label key={p.key} className="ed-fx-param">
+                {p.label}
+                <input
+                  type="number"
+                  min={p.min}
+                  value={e[p.key] ?? ''}
+                  readOnly={readOnly}
+                  onChange={(ev) => patch(i, { [p.key]: Number(ev.target.value) })}
+                />
+              </label>
+            ))}
+
+            <span className="ed-fx-says"><Tokens>{describeEffect(e)}</Tokens></span>
+            {!readOnly && (
+              <button className="danger" title="Remove"
+                onClick={() => onChange(effects.filter((_, n) => n !== i))}>✕</button>
+            )}
+          </div>
+        )
+      })}
+
+      {!readOnly && (
+        <button className="ed-req-add" onClick={() => onChange([...effects, blankEffect()])}>
+          + effect
+        </button>
+      )}
+
+      {effects.length > 0 && (
+        <div className="ed-fx-check">
+          in game this reads: <b><Tokens>{describeEffects(row)}</Tokens></b>
+        </div>
+      )}
+      <EffectHints effects={effects} />
+    </div>
+  )
+}
+
+/** The hint for whichever kinds are in use — one line each, not a manual. */
+function EffectHints({ effects }) {
+  const hints = [...new Set(effects.map((e) => EFFECT_KINDS[e.kind]?.hint).filter(Boolean))]
+  if (!hints.length) return null
+  return <div className="ed-fx-hint">{hints.map((h) => <div key={h}><Tokens>{h}</Tokens></div>)}</div>
+}
+
 function Cell({ col, row, techOptions, groupOptions, readOnly, onPatch, onRename, onToggle, isOpen }) {
   const v = row[col.key]
 
@@ -243,6 +335,18 @@ function Cell({ col, row, techOptions, groupOptions, readOnly, onPatch, onRename
           </datalist>
         </>
       )
+
+    // WIRED or not, at a glance. A pool being rebuilt one tech at a time is
+    // mostly unwired, and which rows the engine can actually run is the single
+    // most useful thing to see without opening every row.
+    case 'wired': {
+      const n = (row.effects ?? []).length
+      return (
+        <button className={`ed-wired${n ? ' on' : ''}`} onClick={onToggle} title={n ? describeEffects(row) : 'no effects'}>
+          {n ? `⚡ ${n}` : '—'}
+        </button>
+      )
+    }
 
     case 'description':
       return (

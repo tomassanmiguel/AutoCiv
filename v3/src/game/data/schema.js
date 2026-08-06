@@ -4,21 +4,22 @@
 // at /editor.html and read by the game.
 //
 // ---------------------------------------------------------------------------
-// THERE IS NO EFFECT SYSTEM HERE, AND THAT IS DELIBERATE
+// EFFECTS ARE A REGISTRY THAT GROWS ONE ENTRY AT A TIME
 // ---------------------------------------------------------------------------
 // An earlier version of this file carried a full structured-effect vocabulary —
 // ~16 ops, targets, scales, filters, triggers, durations and 50 named rule keys —
 // and every one of the 654 effects in the game was encoded against it. It was
-// removed on purpose. It was expensive to author, hard to hold in your head, and
-// it forced a decision about every mechanic long before any of them were built.
+// removed on purpose: expensive to author, hard to hold in your head, and it
+// forced a decision about every mechanic long before any of them were built.
 //
-// What replaces it: a **written description**, with `:token:` markup for icons.
-// Mechanics get wired ONE AT A TIME, as each is actually implemented, against
-// whatever the engine needs at that moment. Do not reintroduce a general effect
-// language ahead of the code that would consume it.
+// `EFFECT_KINDS` below is NOT that language coming back. THE RULE IS:
 //
-// (The old vocabulary is in git if it is ever wanted: see `schema.js` and
-// `describe-effect.js` before this commit.)
+//   an entry appears here only in the same change that writes the engine case
+//   which consumes it (`GameManager._applyEffect`).
+//
+// If nothing in the engine reads a kind, it does not belong in this file. Every
+// row still carries a written `description` for the player; the effects are what
+// the game actually runs.
 
 /** The 15 eras. The index IS the era number, everywhere. */
 export const ERAS = [
@@ -134,6 +135,45 @@ export const ICONS = [
   '/sprites/icons/defense.png', '/sprites/icons/range.png', '/sprites/icons/speed.png',
 ]
 
+// ---------------------------------------------------------------------------
+// The effect registry
+// ---------------------------------------------------------------------------
+
+/**
+ * Every mechanic the engine can currently run, keyed by `kind`.
+ *
+ * `params` drives the editor's inputs — there is no bespoke form per kind — and
+ * `describe` renders the effect back as a sentence so an author can see whether
+ * the written description still says what the row actually does.
+ *
+ * ⚠️ Read the note at the top of this file before adding to it.
+ */
+export const EFFECT_KINDS = {
+  unit_atk: {
+    // `label` renders inside a <select>, which cannot hold an icon — so it is
+    // plain words. `:token:` markup belongs in `hint` and `describe`.
+    label: 'All units — flat attack',
+    hint: 'Flat :attack: on every unit you control, present and future. Stacks with every other +:attack: tech — there is no weapon tier.',
+    params: [{ key: 'amount', label: 'Attack', min: 0, default: 3 }],
+    describe: (e) => `+${e.amount ?? 0} :attack: to all units.`,
+  },
+}
+export const EFFECT_KEYS = Object.keys(EFFECT_KINDS)
+
+/** A new effect row, with each param at its declared default. */
+export const blankEffect = (kind = EFFECT_KEYS[0]) => {
+  const out = { kind }
+  for (const p of EFFECT_KINDS[kind]?.params ?? []) out[p.key] = p.default
+  return out
+}
+
+export const describeEffect = (e) =>
+  EFFECT_KINDS[e?.kind]?.describe(e) ?? `⚠ unknown effect "${e?.kind}"`
+
+/** Everything a row does, as one line — the editor's drift check. */
+export const describeEffects = (row) =>
+  (row?.effects ?? []).map(describeEffect).join(' ')
+
 /**
  * `:token:` markup for descriptions. Write ":gold:" in a description and it
  * renders as the icon — the project's rule is icons over words for resources,
@@ -205,18 +245,18 @@ export const WONDER_TIERS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', '
 
 export const blankTech = () => ({
   id: '', name: '', quadrant: 'military', era: 0,
-  icon: '/sprites/ui/policy.png', description: '', requires: [], group: '',
+  icon: '/sprites/ui/policy.png', description: '', effects: [], requires: [], group: '',
 })
 
 export const blankBuilding = () => ({
   id: '', name: '', era: 0, placement: [],
-  icon: '/sprites/ui/building.png', unlockedBy: '', description: '',
+  icon: '/sprites/ui/building.png', unlockedBy: '', description: '', effects: [],
 })
 
 /** A wonder is a tech that a :production: threshold builds — so it has both. */
 export const blankWonder = () => ({
   id: '', name: '', tier: 'I', quadrant: 'economy', era: 0, placement: [],
-  icon: '/sprites/ui/wonder.png', description: '', requires: [], group: '',
+  icon: '/sprites/ui/wonder.png', description: '', effects: [], requires: [], group: '',
 })
 
 export const blankTierUnlock = () => ({
@@ -266,6 +306,19 @@ export function validateContent(content) {
     if (members.length < 2) { out.push(`group "${name}" has only one member — a group of one is not a choice`); continue }
     if (new Set(members.map((m) => m.quadrant)).size > 1 || new Set(members.map((m) => m.era)).size > 1) {
       out.push(`group "${name}" spans pools (${members.map((m) => `${m.name}:${m.quadrant}/${ERAS[m.era]}`).join(', ')}) — the choice can never be offered`)
+    }
+  }
+
+  // An effect the engine cannot run is worse than no effect: the row reads as
+  // wired, is drafted like it works, and silently does nothing.
+  for (const row of [...draftable, ...(content.buildings ?? [])]) {
+    if (row.effects && !Array.isArray(row.effects)) { out.push(`${row.id}: effects must be a list`); continue }
+    for (const e of row.effects ?? []) {
+      const spec = EFFECT_KINDS[e?.kind]
+      if (!spec) { out.push(`${row.id}: unknown effect kind "${e?.kind}" — nothing in the engine runs it`); continue }
+      for (const p of spec.params) {
+        if (!Number.isFinite(e[p.key])) out.push(`${row.id}: effect ${e.kind} needs a number for "${p.key}"`)
+      }
     }
   }
 

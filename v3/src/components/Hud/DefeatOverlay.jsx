@@ -15,7 +15,7 @@ export default function DefeatOverlay({ onExit }) {
       <div className="defeat-panel">
         <h2>The Palace Has Fallen</h2>
         <p className="defeat-sub">
-          Your civilization ended in the {game.eraName} era, on wave {game.era + 1}.
+          Your civilization ended in the {game.eraName} era, on wave {game.wave + 1}.
         </p>
         <div className="defeat-stats">
           <span><b>{s.controlled}</b> tiles held</span>

@@ -19,6 +19,7 @@
 
 import { neighbors, key as hkey } from '../hex/coords.js'
 import { levelMult } from './costs.js'
+import { WONDERS } from './content.js'
 
 /** Terrain groupings used by `of: 'class'`. */
 export const CLASSES = {
@@ -83,7 +84,24 @@ export const BUILDING_DEFS = {
 }
 
 export const BUILDING_LIST = Object.values(BUILDING_DEFS)
-export const buildingDef = (k) => BUILDING_DEFS[k] ?? null
+
+/**
+ * A BUILT WONDER occupies the tile's building slot, so every path that renders
+ * or values a building has to be able to resolve it.
+ *
+ * A wonder carries no yield clauses. What it does is content, wired one effect
+ * at a time — so this is a name, an icon and the authored description, and
+ * deliberately nothing more. `buildingYield` returns zero for it until an effect
+ * kind exists that pays out.
+ */
+export const WONDER_BUILDINGS = Object.fromEntries(
+  WONDERS.map((w) => [w.id, {
+    key: w.id, name: w.name, icon: w.icon ?? '/sprites/ui/wonder.png',
+    wonder: true, tier: w.tier, blurb: w.description,
+  }]),
+)
+
+export const buildingDef = (k) => BUILDING_DEFS[k] ?? WONDER_BUILDINGS[k] ?? null
 
 const ZERO = { food: 0, production: 0, gold: 0, progress: 0 }
 const addInto = (acc, y, n = 1) => {
@@ -142,6 +160,8 @@ const PER_TEXT = {
 }
 
 export function buildingEffectText(def) {
+  // A wonder's effect is authored prose, not generated from yield clauses.
+  if (def?.wonder) return def.blurb ?? ''
   const parts = []
   if (def.base && Object.values(def.base).some(Boolean)) parts.push(`${yieldText(def.base)} per tick`)
   if (def.per) {

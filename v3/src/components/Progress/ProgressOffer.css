@@ -60,8 +60,27 @@
   letter-spacing: 0.12em;
   color: var(--q, #8b93a8);
 }
-.offer-unlocks { font-size: 0.8rem; color: #e6c877; margin-top: 0.2rem; }
-.offer-effect { font-size: 0.78rem; line-height: 1.35; color: #aeb6c8; }
+.offer-effect { font-size: 0.82rem; line-height: 1.4; color: #cdd5e4; margin-top: 0.3rem; }
+
+/* The branch a card came from, so the colour of the card is the colour of the
+   clock it moves. Defined once in index.css. */
+.q-military { --q: var(--branch-military); }
+.q-economy  { --q: var(--branch-economy); }
+.q-society  { --q: var(--branch-society); }
+
+/* A wonder is drafted like a tech but does not resolve like one — it is held
+   until :production: builds it, and the card has to say so. */
+.offer-card.wonder { border-color: rgba(216, 173, 78, 0.45); }
+.offer-wonder-note {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  color: #e6c877;
+}
+.offer-wonder-note img { width: 13px; }
 
 .offer-skip {
   padding: 0.3rem 1rem;

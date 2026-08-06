@@ -319,6 +319,9 @@ const COLUMNS = {
     { key: 'requires', label: 'Requires', kind: 'techs', width: 160 },
     // A shared group name makes a set mutually exclusive.
     { key: 'group', label: 'Exclusive group', kind: 'group', width: 130 },
+    // Does the ENGINE run this row, or is it only written down? The pool is
+    // being rebuilt one wired tech at a time, so this is the column you scan.
+    { key: 'effects', label: 'Wired', kind: 'wired', width: 62 },
     { key: 'description', label: 'Description', kind: 'description' },
   ],
   buildings: [
@@ -327,6 +330,7 @@ const COLUMNS = {
     { key: 'era', label: 'Era', kind: 'era', width: 115 },
     { key: 'placement', label: 'Placement', kind: 'placements', width: 220 },
     { key: 'unlockedBy', label: 'Unlocked by', kind: 'tech', width: 170 },
+    { key: 'effects', label: 'Wired', kind: 'wired', width: 62 },
     { key: 'description', label: 'Description', kind: 'description' },
   ],
   wonders: [
@@ -338,6 +342,7 @@ const COLUMNS = {
     { key: 'era', label: 'Era', kind: 'era', width: 115 },
     { key: 'placement', label: 'Placement', kind: 'placements', width: 200 },
     { key: 'group', label: 'Exclusive group', kind: 'group', width: 120 },
+    { key: 'effects', label: 'Wired', kind: 'wired', width: 62 },
     { key: 'description', label: 'Description', kind: 'description' },
   ],
   // No branch column: a tier unlock fires when ANY branch reaches its era.

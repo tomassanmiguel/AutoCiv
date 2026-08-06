@@ -18,23 +18,26 @@
 > and currently lags the design considerably.
 >
 > ### 🔬 Current scope: Stone · Bronze · Iron, six waves
-> The content layer is pruned to a **microcosm** — `content.activeEras = 3`, with
-> 43 techs / 10 buildings / 5 wonders in play and everything else **parked in
-> `content.backlog`** (nothing deleted; the editor's Backlog tab restores rows).
-> Widening the era range later should be a **data** change, not a code change.
+> The content layer is pruned to a **microcosm** — `content.activeEras = 3`. The tech
+> and building pools were **cleared to empty on purpose** and are being rebuilt **one
+> wired tech at a time**: a tech goes in only once the engine can run its effect.
+> 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
+> Backlog tab restores them). Widening the era range should be a **data** change.
+>
+> In play: **9 techs** (the +:attack: line) · **0 buildings** · 5 wonders · 3 tier unlocks.
 
-> **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, era cycle,
-> territory economy, city growth, a **297-node progress web**, unit/building placement, an
-> **era-closing wave** with razing and permanent casualties, and a **gold economy**
-> (repair · upgrade · reroll) that is the counterweight to all of it.
-> `node sims/campaign.mjs 4` plays it headlessly.
+> **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
+> territory economy with **automatic :food: expansion**, :production: cities and wonders,
+> a **three-branch draft** off `content.json`, unit/building placement, a **wave** with
+> razing and permanent casualties, and a **gold economy** (repair · upgrade · reroll).
+> `node sims/campaign.mjs 6` plays it headlessly and reports how far each branch got.
 >
-> ⚠️ **The web was just re-authored from the design brief and is TEXT ONLY** — no node grants
-> anything yet, so the army is city levies and no building is ever placed. Wiring it back up,
-> node by node, is the next job. See **Progress web** below.
+> ⚠️ **The pools are nearly empty, so nothing advances yet.** Military holds one Stone
+> tech and needs two; Economy and Society hold none. The campaign sim prints `STALLED`
+> per branch — that is the content shortfall reported honestly, not a bug. Until those
+> cells fill, the map reveal never moves and no wonder is ever offered.
 >
-> **Balance past ~era 5 is not tuned** and is known to fall apart in the late game; the
-> four-era slice is what has been measured.
+> **Balance is not tuned** past the measured six-wave slice.
 >
 > This file is the source of truth for v3. The root `../CLAUDE.md` describes **v2** (square
 > grid, legitimacy, specialists, policies) — most of it does **not** apply here. Keep this
@@ -55,8 +58,8 @@ different core:
   perimeter) or tall (cities that multiply their surroundings).
 - **Production builds wonders and fortifications**, not a stream of ordinary buildings —
   buildings and unit classes come from the tech tree, roughly one of each.
-- **Progress is a radial tree** of rings; clearing enough of one ring opens the next, with
-  either/or choices so builds diverge.
+- **Progress is a roguelike draft** — three cards from your branches' current eras. What you
+  skip is gone, so builds diverge by what you passed up as much as by what you took.
 - **Enemy encampments** are scattered across the map and reinforce every wave until your
   borders reach them — the main pull to expand.
 
@@ -79,10 +82,13 @@ npm run dev                  # Vite dev server (5174) — the game
 npm run build                # builds BOTH entries
 npm run lint
 node sims/worldgen.mjs 200   # headless worldgen regression + map dump
-node sims/progress.mjs       # progress-web structure check (no crossed edges, forks, reach)
-node sims/campaign.mjs 4     # play 4 eras headlessly across 5 seeds — the balance instrument
-node sims/economy.mjs        # expansion-strategy sweep (wide vs tall)
+node sims/campaign.mjs 6     # play 6 WAVES across 5 seeds — the balance + content instrument
 ```
+
+`sims/progress.mjs` (web structure), `sims/economy.mjs` (wide-vs-tall expansion sweep)
+and `sims/endgame.mjs` were **deleted**: they measured the radial web and the
+settle-vs-city expansion choice, and neither exists any more — :food: expansion is
+automatic, so there is no strategy to sweep.
 
 The v3 preview config is `autociv-v3-dev` in the repo-root `.claude/launch.json` (port
 5174, so it can run alongside v2 on 5173).
@@ -100,8 +106,7 @@ v3/
 │   ├── music/title.ogg         # title track only — in-game music is cut for now
 │   └── logo/
 ├── sims/worldgen.mjs           # headless generation sweep + invariant report + ASCII map
-├── sims/progress.mjs           # progress-web structure assertions + greedy playthrough
-├── sims/campaign.mjs           # plays the WHOLE loop headlessly: waves, gold, survival
+├── sims/campaign.mjs           # the WHOLE loop headlessly: waves, gold, survival, branch reach
 ├── editor.html                 # second Vite entry — the content editor
 └── src/
     ├── App.jsx                 # screen router: loading → title → pregame → game
@@ -118,11 +123,9 @@ v3/
     │   │   └── invariants.js   # validate(world) -> violations[]
     │   ├── data/civilizations.js  # placeholder civ + difficulty for the pre-game screen
     │   ├── data/content.json   # THE CONTENT LAYER: techs, buildings, wonders (editor-owned)
-    │   ├── data/schema.js      # what content.json may contain — every enum, + feasibility()
-    │   ├── data/describe-effect.js # structured effect -> sentence (the round-trip check)
-    │   ├── data/progress.js    # the OLD in-game web: 297 nodes, 11 rings (superseded content)
-    │   ├── data/effects.js     # the effect VOCABULARY (wiring), split out of progress.js
-    │   ├── data/definitions.js # sub-tooltip definitions: buildings + rules terms
+    │   ├── data/schema.js      # what content.json may contain — enums, EFFECT_KINDS, feasibility()
+    │   ├── data/content.js     # the game's view of content.json: indexing + THE DRAFT
+    │   ├── data/cycle.js       # THE TWO CLOCKS: waves vs eras, reveal + expansion permissions
     │   ├── data/resources.js   # threshold model (food/production/progress) + accrual
     │   ├── data/enemies.js     # v2's type x domain x tier host composition
     │   ├── data/units.js       # generic player archetypes + the palace
@@ -133,9 +136,10 @@ v3/
         ├── common/             # NineSlice · InfoTip · IconText (ported unchanged)
         ├── GameScreen.jsx      # map + HUD strip + progress overlay
         ├── HexMap/             # camera, culling, hex rendering, hover card
-        ├── Progress/           # radial web overlay · offer cards · definition chips
+        ├── Progress/           # ProgressPanel (3 branch columns) · ProgressOffer (3 cards)
+        ├── Build/              # BuildPrompt — :production: founds a city or builds a wonder
         ├── Combat/             # wave/strength/speed debug bar
-        ├── Hud/                # StageBanner + OutputReadout (corner yields)
+        ├── Hud/                # StageBanner · OutputReadout · WonderBadge
         └── Menu/MenuOverlay.jsx# known-world slider + reroll + exit
 ```
 
@@ -331,16 +335,14 @@ threshold**, so it just shows its stock.
 v2's formula also carried a `1.25^era` term and a rubber band pacing the player against the
 era clock; v3 has no eras yet, so both are **dropped rather than faked**.
 
-> ⚠️ **The 1/s tick in `GameManager` is temporary scaffolding.** It exists so the threshold
-> bars actually move — output is still just the revealed map's total yield, and **nothing is
-> wired to crossing a level**. Rip it out when the real era/phase loop lands.
+(Crossing a level is fully wired now — see **The main cycle** below for what each of the
+three threshold resources does.)
 
 ### The content layer (`game/data/content.json`, `game/data/schema.js`, `/editor.html`)
 
-> **This is where techs, buildings and wonders now live**, and it is the source of truth going
-> forward. It is **not wired to the game yet** — `progress.js` below still drives the in-game
-> web. Two datasets exist on purpose during the migration; do not "fix" the duplication by
-> deleting either until the engine reads `content.json`.
+> **This is where techs, buildings and wonders live, and the engine now READS IT.** The
+> migration is done: the old web is deleted, there is one dataset, and `data/content.js`
+> below is the only module that touches the file.
 
 The draft mechanic it encodes — **[`docs/design.md`](docs/design.md) is the full statement**;
 this is the implementer's summary:
@@ -364,26 +366,26 @@ this is the implementer's summary:
 - **Wonders are drafted like techs** — era, quadrant, and an entry in the offer. Taking one does
   not build it; the next :production: threshold does. You are never offered a second while one
   is unbuilt.
-- **`tierUnlocks` are VISIBILITY ONLY**, one per era, and are **not per-quadrant**: a notch fires
-  when **any** quadrant reaches its era (`revealEra = max(quadrant eras)`), so the map follows
-  your furthest track. This is why there are no vision techs. The validator rejects any
-  non-`vision` effect here — anything else would be a draft pick you didn't spend.
+- **`tierUnlocks` are VISIBILITY ONLY**, one per era, and are **not per-branch**: a notch fires
+  when **any** branch reaches its era (`revealEra = max(branch eras)`), so the map follows your
+  furthest track. This is why there are no vision techs. **The reveal era also grants the
+  EXPANSION PERMISSIONS** (`data/cycle.js` `EXPANSION_UNLOCKS`), each pinned to the era whose
+  notch actually uncovers the ground it refers to.
 - **One unit per class, nine classes.** No named-unit ladder: techs raise the class's stat line
   and every unit of it already on the board improves. `UNIT_CLASS_BASE` holds placeholder stats.
 
-#### There is NO effect system — a tech is described in writing
-A tech carries a **`description`**: prose with `:token:` markup for icons ("+2 :food:", "grants
-a :melee: unit"). `schema.js` holds the eras, branches, thresholds, unit-class base stats,
-placements, icon tokens and the validators — and nothing else.
+#### A row is prose PLUS a short list of effects
+A row carries a **`description`** — prose with `:token:` markup for icons ("+2 :food:", "grants
+a :melee: unit") — which is what the player reads, and an **`effects`** list, which is what the
+game runs. See **The draft → Effects** below for the registry and the rule that governs it.
 
 > ⚠️ An earlier version carried a full structured-effect vocabulary — ~16 ops, targets, scales,
 > filters, triggers, durations and 50 named rule keys — and all 654 effects in the game were
 > encoded against it. **It was removed on purpose**: expensive to author, hard to hold in your
 > head, and it forced a decision about every mechanic long before any of them were built.
-> Mechanics get wired **one at a time**, as each is actually implemented, against whatever the
-> engine needs at that moment. **Do not reintroduce a general effect language ahead of the code
-> that would consume it.** The old vocabulary is in git (`schema.js` / `describe-effect.js`
-> before commit `4192d9f`) if it is ever wanted.
+> `EFFECT_KINDS` is **not that coming back** — it holds exactly what the engine runs today, and
+> grows only alongside the code that consumes it. **Do not add to it ahead of that code.** The
+> old vocabulary is in git (`schema.js` / `describe-effect.js` before commit `4192d9f`).
 
 **Exclusivity is a `group`**: techs sharing a group name are mutually exclusive, and the
 validator rejects a group that spans branches or eras (the choice could never be offered) or one
@@ -415,167 +417,56 @@ cannot corrupt it). A production build can read the dataset but not save it — 
 The game's **"no scrollbars anywhere" rule does not apply here** — it is a tool, and a
 three-hundred-row table scrolls.
 
-### Progress web (`game/data/progress.js`, `components/Progress/ProgressTree`)
+### The draft (`game/data/content.js`, `components/Progress`)
 
-> ⚠️ **SUPERSEDED as a content source by `content.json`** (above), but still what the game
-> actually runs on: the 11-ring web, its rings, and its `ringUnlock` gating are live until the
-> engine is migrated to the 15-era draft. Its *content* is frozen — author in the editor.
+> ⚠️ **The 297-node radial web is GONE** — `progress.js`, `effects.js`,
+> `definitions.js`, `ProgressTree`, `DefChips` and `sims/progress.mjs` were all
+> deleted. The game runs on `content.json` now. Do not resurrect the web; its content
+> sits in the backlog.
 
-A radial tree that **grows outward**, opened from the HUD's Progress button.
+`data/content.js` is the ONLY module that reads `content.json`. It indexes the file and
+answers the draft's one question — *given what I hold, what may I be offered?*
 
-**297 techs + 84 TBD slots, ELEVEN rings, four quadrants** — Society / Technology / Economy /
-Military, each owning a 90° sector. **A ring is an AGE**, and `RING_AGES` names them:
+- **Three branches, three eras.** `draft.branchEra` is `{military, economy, society}`, each
+  advanced by `recordPick` the moment that branch has taken `thresholdFor(era)` rows of its
+  current era. **Wonders count** — they cost the same pick, so exempting them would make a
+  wonder a free tempo gain.
+- **The pool is CURRENT TIER ONLY** (`offerable`): same branch, `era === branchEra[q]`, not
+  already taken, `requires` all held, no taken member of its `group`, and — for a wonder —
+  no wonder already held unbuilt. Everything skipped is **gone** once the branch advances.
+- **`revealEraOf` = max branch era**, which drives the map stage (`_syncReveal`) and the
+  expansion permissions. One era, one reveal notch — 15 and 15 — so no lookup table.
 
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Ancient | Bronze | Classical | Medieval | Renaissance | Industrial | Modern | Information | Solar System | Extrasolar | Galactic |
+**`ProgressOffer`** deals three cards; **`ProgressPanel`** is the three-column display of
+what you hold. What the panel deliberately does NOT show is the whole point:
 
-**Placement is DATED, not vibed.** Each ring is a period with real boundaries, and a tech goes
-where its actual invention does — Fireworks is 9th-century China (Medieval), Satellites is 1957
-(Modern), the ridden horse postdates the neolithic (Bronze, not Ancient):
+- **no dependency graph** — almost nothing has a prerequisite, so edges carried no signal
+- **no unchosen techs** — you cannot plan a route to a distant node, because what you skip
+  ceases to exist. Drawing the road not taken would draw a road that is not there.
 
-| ring | span | ring | span |
-|---|---|---|---|
-| Ancient | before ~3300 BC | Industrial | ~1700–1900 |
-| Bronze | ~3300–1200 BC | Modern | ~1900–1975 |
-| Classical | ~1200 BC–500 AD | Information | ~1975–2040 |
-| Medieval | ~500–1450 | Solar System | settling this system |
-| Renaissance | ~1450–1700 | Extrasolar / Galactic | leaving it / the far future |
+A branch with an empty pool reads **"nothing left to draft"** rather than silently never
+producing an offer.
 
-The three off-Earth rings are the exception: they are ordered by **reach**, not date, because
-there are no dates to have.
+#### Effects — a registry that grows ONE ENTRY AT A TIME
+`EFFECT_KINDS` in `schema.js` lists the mechanics the engine can run;
+`GameManager._applyEffect` is the switch that runs them. **They are added together:**
 
-**Rings are therefore UNEQUAL, and that is correct.** Economy's Industrial ring holds 16 nodes
-because that is when economics happened; **Society's Information ring holds NONE**, which is a
-real gap in the design (no internet-age culture or government material exists in the brief)
-rather than something to paper over. **Do not pad a ring to match its neighbours.** Totals per
-ring run 18 / 20 / 27 / 33 / 29 / 41 / 40 / 23 / 24 / 20 / 22.
+> an effect kind exists in the registry ONLY in the change that writes its engine case.
 
-⚠️ **Exactly four techs sit off their date**, all for the same reason — an exclusive group must
-occupy one ring or its choice can never be offered. They are listed in the file header
-(Democracy, Schism, Techno, Yakhchals). **Anything else that looks misplaced is a bug**; fix it
-rather than adding to that list.
+`validateContent` rejects a kind with no case, which is what keeps the two in step, and the
+editor's **Wired** column shows at a glance which rows the engine actually runs. A row with
+no effects is written down and does nothing — normal while the pool is being rebuilt.
 
-Every quadrant-ring also carries `TBD_PER_RING` placeholder nodes (1 in ring 0, 2 elsewhere):
-drawn as dashed hollow hexes with a `?`, **never takeable and never offered**
-(`GameManager.progressState` short-circuits on `node.tbd`), there to show where the web has
-room. They are generated in the build loop, not authored — change the constant, not 84 entries.
+Implemented today: **`unit_atk`** — flat :attack: on every unit, **stacking**. Nothing is
+stored on the unit; `unitStats` reads `mods.unitAtk` at call time, so a tech improves units
+placed long before it was taken. The palace is armed by it too.
 
-> ⚠️ **The nodes are DESIGN TEXT, not wiring.** They carry no `effects`, so taking one grants
-> nothing — the web is a readable plan. The effect vocabulary lives on in `data/effects.js`,
-> unchanged and still applied by `_applyEffects`; wiring a node means attaching records from
-> there. A node that HAS effects gets its text generated by `describe()` instead, so a wired
-> node's description can never drift — **never hand-write text for a wired node.** Until nodes
-> are wired, `campaign.mjs` shows an army of city levies only and no buildings at all.
-
-> ⚠️ **NOTHING HAS A PREREQUISITE right now.** A node opens when its ring opens. The `from:`
-> option, the edge drawing, and the planarity rule below are all **kept and simply unused**, so
-> dependencies can come back without a rewrite — and the validator still enforces them, so the
-> first `from:` you add is checked the moment you add it.
-
-**Exclusivity is explicit and rare** (`EXCLUSIVE`, 18 groups) — only real either/ors: Longbow
-vs Crossbow, Monotheism vs Polytheism, Democracy vs Communism vs Fascism, the six music
-genres. Members must share a ring (see the four dated exceptions above). A greedy playthrough
-takes **273 of 297**.
-
-**`validateStructure()` asserts the structure** (`node sims/progress.mjs`): one ring per age,
-**every ring legible at its radius**, unique names, exclusivity within one ring, every `sub:`
-term defined, enough attainable nodes per ring to open the next, and (vacuously, for now) no
-crossed edges.
-
-- **Ring radii are sized by the FULLEST ring, not by taste.** A quadrant-ring of `k` nodes
-  spreads them over 90°, so the arc between neighbours is `R·(π/2)/(k+1)` and must clear
-  `NODE_SIZE`. Economy's Ancient ring (8 techs + a TBD, at the smallest radius) is the binding
-  constraint at `RING0 = 520`; the sim prints the tightest gap per ring, so shrink these only if
-  it still passes.
-- **Edges are polar CURVES, not chords** (`edgePoints`) — unused while there are no
-  dependencies, kept because it is what keeps the drawing planar when they return. A straight
-  chord between two rings dips *inside* the inner ring whenever its endpoints are far apart in
-  angle (a parent with six children fans that wide), so it wanders into the band below and
-  crosses edges living there. A curve that interpolates radius **and** angle stays in its own
-  annulus and has exactly one point per radius, at
-  `angle(t) = parentAngle + (childAngle − parentAngle)·t`. Linear interpolation preserves order,
-  so two edges of one band whose parent angles and child angles are both non-decreasing can
-  never swap sides. The authoring rule: **read a ring in order and parent indices must never go
-  backwards**.
-- **Rings unlock by count**, and the count is DERIVED: `ringUnlock(r)` is 40% of what ring `r`
-  actually holds (min 4), because the rings are unequal — a fixed number would be a stroll
-  through Ancient (18 nodes) and a wall at Industrial (41). Reaching Galactic takes **110 picks**.
-  An unopened ring is **not rendered at all**, and the camera animates out to the new fit.
-- **"Show all"** (header toggle) draws every ring regardless of what is open — the design view
-  of the whole web. It is **presentation only**: nodes in unopened rings read `locked` and
-  cannot be taken, so inspecting the far rings never skips the progression that reaches them.
-  Edges are left neutral rather than dashed in that mode, or the entire outer web greys out and
-  the shape — the one thing the view is for — stops reading.
-- **Camera is the HexMap pattern** — ref-based, applied imperatively, so pan/zoom never
-  re-render the ~300 nodes. Wheel zooms at the cursor; left **or middle** drag pans; a drag that
-  moved suppresses the click so panning never takes a node by accident. "Recentre" re-fits.
-- **States**: green = taken, blue = available (pulsing), grey = locked. Each node is a
-  `clip-path` hexagon with an icon picked from its `tag` — the one non-free-text field on a
-  node, driving both the icon and the "unlocks" line. Age names are drawn on each ring circle
-  along the **Society/Technology divider**, where no node ever sits.
-
-#### Sub-definitions (`data/definitions.js`, `components/Progress/DefChips`)
-A node says "unlocks the guildhall" or "outposts get +2 :gold:" with no room to say what a
-guildhall or an outpost IS. Terms it leans on go in `sub: [...]` and are defined **once** in
-`definitions.js` (~75 entries: the buildings the web promises, plus concepts like outpost,
-temple, mercenary, taunt, bleed, blast radius). They render as hoverable chips, each its own
-`InfoTip`, so hovering one opens a definition **on top of** the node's tooltip.
-
-⚠️ That nesting only works because the node tooltip is `<InfoTip interactive>`: a plain tooltip
-has `pointer-events: none` and vanishes the moment the cursor leaves the anchor. `interactive`
-turns pointer events on and adds a 90 ms grace timer, so crossing the 16px gap into the tooltip
-doesn't close it.
-
-Two things keep that from feeling sticky, both in `InfoTip`:
-- **One open tooltip per nesting DEPTH** (a module-level `openAt` registry plus a `TipDepth`
-  context). Opening at depth `d` immediately closes anything open at `d` or deeper, so moving
-  between anchors *swaps* instead of leaving the old one up for the whole grace period. Depth
-  is what preserves nesting: a chip opens at depth 1 and leaves its parent at depth 0 alone.
-- ⚠️ **A portal still bubbles events through the REACT tree.** Mousemove over anything inside a
-  tooltip reaches the anchor's `onMouseMove` and re-runs `place()` — which then closed the
-  nested tooltip that very move had just opened. The tooltip container therefore
-  `stopPropagation()`s mousemove.
-
-A building named in `definitions.js` is **design text**; `data/buildings.js` holds the ones
-actually placeable. The two are deliberately separate — the design can name fifty buildings
-while ten exist, and nothing silently half-works.
-
-#### Node effects — a vocabulary, not 300 bespoke rules
-There are **twelve effect kinds** with parameters, applied by `GameManager._applyEffects` into
-ONE accumulated record, `game.mods`:
-
-| kind | what it does |
-|---|---|
-| `terrain` / `improved` | extra yields on a terrain type, or on every improvement |
-| `mult` | percentage on a resource — **additive per resource, applied once at the end** |
-| `threshold` | multiplier on a threshold (<1 is cheaper), applied at comparison time |
-| `unit` | unlocks a **better unit of its class** and grants some. Each unit key appears **exactly once** in the tree — asserted, because two techs both "unlocking the Mud Brick Wall" is a design smell |
-| `troops` | just bodies: N units of a **class**, resolved to the best unlocked unit of it **at placement time**. Opens with the class's base unit if it is still empty, so a grant can never be stranded |
-| `building` | unlocks it and queues a placement. Which node is the **unlocker** is derived — the earliest in ring order — so later ones read "grants another Granary" |
-| `weapon` / `armor` | a **TIER**, see below |
-| `unitMod` | per-type (melee/ranged/cavalry/defense) atk/hp/range/moves |
-| `road` | unlocks roads and sets what a road-adjacent tile earns |
-| `settle` | an expansion permission (tundra, ocean, mountain…) |
-| `city` / `palace` | per-city yields and growth rate; palace HP |
-
-**Effect TEXT is generated from the effects** (`describe`), so a WIRED node's description can
-never drift from what it actually does — never hand-write one.
-
-**Units are described by CLASS, never by name** — "grants 2 :melee: units". Which unit you
-actually get is the reveal when you place it, and it keeps the offer readable as the tiers
-climb. Buildings keep their names; they are distinctive, named things.
-
-**Weapons and armour are TIERS, not stacks.** You start the game on **Clubs** and **Hides**; a
-node moves you to Bronze → Iron → Steel (and Leather → Bronze Mail → Iron Mail), *replacing*
-the tier below via `bestTier`, so taking a lower tier later is a no-op. Weapons arm **melee and
-cavalry only** — ranged improve through their own `unitMod` line, so bows and blades advance
-separately.
-
-`validateStructure()` also asserts every `unit`/`building` effect names something real, and
-that no unit is unlocked twice.
+⚠️ **The weapon/armour TIER ladder was deleted** (`WEAPON_TIERS`, `ARMOR_TIERS`, `bestTier`).
+It replaced rather than stacked, contradicting the design's central rule, and it
+double-counted against the Obsidian→Tachyonics line that now carries that job.
 
 ---
+
 
 ## Conventions (carried over from v2 — still apply)
 
@@ -657,25 +548,42 @@ generate, then watch it play out at 2/6/12/30 beats per second (or Step / Resolv
 
 ---
 
-## The main cycle (`GameManager`, `data/eras.js`)
+## The main cycle (`GameManager`, `data/cycle.js`)
 
-**28 eras × 65 ticks**, driven by ONE clock and ONE pacing control in the HUD. Each tick either
-advances a running combat by a beat, or advances the game: accrue output, grow cities, count
-down the era. The era drives the map reveal (`stageForEra`) and hands out expansion
-permissions (`EXPANSION_UNLOCKS`).
+**TWO CLOCKS THAT DO NOT TOUCH**, and confusing them is the mistake to avoid:
 
-Crossing a **progress** threshold offers three advancements; crossing a **food** threshold
-offers one expansion. Either **pauses the clock** until resolved, exactly as v2's selections
-did (`_restartTimer` is gated on `!selection`).
+- **`game.wave`** — combat. 65 ticks of development, then the wave attacks; 30 waves. It
+  scales on its own ladder and **never waits for your research**.
+- **`draft.branchEra`** — three tech pools, moved only by drafting. `max()` of the three is the
+  **reveal era**, which drives the map stage and the expansion permissions.
+
+One timer and one pacing control in the HUD serve both. Each tick either advances a running
+combat by a beat, or advances the game: accrue output, grow cities, count down to the wave.
+
+Each threshold resource does something DIFFERENT, and only two of the three stop the clock:
+
+| resource | on crossing |
+|---|---|
+| **:progress:** | offers three advancements (`ProgressOffer`) — **pauses** |
+| **:production:** | founds a city, or builds a held wonder (`BuildPrompt`) — **pauses** |
+| **:food:** | **expands automatically, no prompt at all** (`_autoExpand`) |
+
+`_restartTimer` is gated on `!selection`, exactly as v2's selections were.
+
+⚠️ **`_autoExpand` prefers ground you can BUILD on**, then highest yield, ties breaking
+outward. Coast out-yields every early land tile and cities cannot stand on water, so a literal
+"highest yield" rule settled the whole coastline and left a run with **no city site and no
+route to one**. See `docs/design.md` §3 — it is a design decision, not an implementation
+detail, and it is recorded there.
 
 ## Territory & expansion (`world/territory.js`)
 
-One verb, two depths:
+Two depths, and they are now driven by DIFFERENT resources:
 
-- **Settle** — improve a controlled tile: its yield **doubles** and all six neighbours become
-  controlled. This is what makes the *next* expansion possible.
-- **Found city** — upgrade an improvement: no new ground, but the city's population compounds
-  and adds to production/gold/progress on top of the tile's natural yield.
+- **Settle** (:food:, automatic) — improve a controlled tile: its yield **doubles** and all six
+  neighbours become controlled. This is what makes the *next* expansion possible.
+- **Found city** (:production:, prompted) — upgrade an improvement: no new ground, but the
+  city's population compounds and adds to production/gold/progress on top of the tile's yield.
 
 Rules: cities never adjacent to another city, never on mountains, **never on water** (a city
 may sit beside water and take the growth bonus, but is founded on land), and only where there
@@ -723,14 +631,15 @@ construction**. A construction (Mud Brick Wall, Palisade, Stone Wall) has `atk: 
 construction that shoots back.
 
 **Where the army comes from is a deliberate split:**
-- **Territory** raises the *line*: each city musters one melee levy per era, capped at
+- **Territory** raises the *line*: each city musters one melee levy per wave, capped at
   `UNITS_PER_CITY_CAP` (3) units per city. Without this the army only ever shrank — casualties
-  are permanent and the web grants far fewer units than a wave kills, so every run died around
-  era 5 regardless of play.
-- **The progress web** gives *quality* (weapon/armour tiers) and the arms a levy never is —
-  bows, horses, walls.
-- You **start** with a single Warrior; **every ring-0 node grants a unit or a building**, so
-  the opening is stocked by what you choose rather than by what you were handed.
+  are permanent and the draft grants far fewer units than a wave kills, so every run died
+  around wave 5 regardless of play.
+- **The draft** gives *quality* — stacking +:attack: today, and the arms a levy never is
+  (bows, horses, walls) once those effect kinds exist.
+- You **start** with a single Warrior. ⚠️ **Nothing in the pool grants a unit or a building
+  yet** — no effect kind does that — so the army is city levies and the board holds no
+  buildings. That is the content shortfall, not a bug.
 
 Placement reuses the expansion affordance: legal tiles pulse, you click one. Units never stand
 on the palace tile (combat's occupancy map holds the palace there and would shadow them).
@@ -776,23 +685,33 @@ term (`prev + X·n·G^n`, `THRESHOLD_GROWTH = 1.09`): the linear rule alone grow
 in the level while output grows *exponentially* — more tiles, each worth more, multiplied by
 the web — so it fell behind and the game turned into an offer every couple of ticks.
 
+Only :progress: and :production: stop the clock; **:food: was the loudest of the three and is
+now silent**, which is most of why the prompt rate fell.
+
 ⚠️ **The threshold ladder and the wave budget are COUPLED.** Raising thresholds means fewer
 progress offers → fewer unit grants → a smaller army. Retune `BUDGET_BASE`/`BUDGET_GROWTH` in
 `data/enemies.js` whenever `RESOURCE_CONFIG` moves, or a slower ladder reads as brutal
-difficulty rather than as calmer pacing. `sims/campaign.mjs` reports **prompts per era**, which
-is the number to watch: currently **~4–7**, down from ~25.
+difficulty rather than as calmer pacing. `sims/campaign.mjs` reports **prompts per wave**,
+which is the number to watch: currently **~0.5–0.7**, though that is measured against a nearly
+empty tech pool and will rise as the pool fills.
 
-## The era's battle & razing
+## The wave & razing
 
-Each era **ends in a wave**, sized by the era you have reached — dawdling does not make it
-easier. Every **revealed, uncleared encampment fields an extra garrison standing on the camp**,
-already inside your frontier: that is the pressure to expand toward them.
+Development **ends in a wave**, sized by the wave counter — **not** by how far your tech has
+run, so dawdling does not make it easier and out-teching it is a real strategy. Every
+**revealed, uncleared encampment fields an extra garrison standing on the camp**, already
+inside your frontier: that is the pressure to expand toward them.
 
-**The wave is mustered at the START of the era and drawn on the battlefield ring throughout**
-(`prepareWave` / `buildHost`, faded via `.muster`), so you can see what is coming while there
-is still time to prepare. `startCombat` reuses that exact host — what you spent the era looking
-at is what turns up. The flow fields depend only on terrain and the known set, neither of which
-moves within an era, so a host built at era start is still valid when it attacks.
+**The wave is mustered at the START of development and drawn on the battlefield ring
+throughout** (`prepareWave` / `buildHost`, faded via `.muster`), so you can see what is coming
+while there is still time to prepare. `startCombat` reuses that exact host — what you spent the
+cycle looking at is what turns up.
+
+⚠️ **A reveal RE-MUSTERS the wave** (`_syncReveal`). The battlefield ring is derived from the
+known set, so opening the map moves it outward and leaves the mustered host standing on the old
+ring with flow fields computed against the old world. Under the single era clock this could
+only happen at the rollover, right before the muster; now **a draft can advance a branch at any
+point in development**, so the host is rebuilt whenever the frontier moves.
 
 A camp garrison's **travel domain** is: **island camps are always amphibious or astral**
 (nothing else can leave an island); everything else takes the cheapest domain that can
@@ -828,17 +747,15 @@ the tension is a budget rather than a death spiral.
 
 ## Campaign analysis (`sims/campaign.mjs`)
 
-`node sims/campaign.mjs [eras]` plays the whole loop headlessly across 5 seeds with a greedy
-AI, and reports survival, wave outcomes, casualties, razes, and what gold was spent on. It is
-the instrument the economy sim cannot replace: it answers *does the assembled game survive*.
+`node sims/campaign.mjs [waves]` plays the whole loop headlessly across 5 seeds with a greedy
+AI. It answers two questions:
 
-Measured at **4 eras: 5/5 survive**, palace 92–100%, ~1 casualty and 1–3 razes per wave, and
-gold genuinely spent (≈40 upgrades, 4–7 repairs, 2–6 rebuilds per run). **Past ~era 12 it
-falls apart** — the wave budget outruns a unit count capped by cities. That is known and
-deliberately untuned.
+1. *Does the assembled game survive?* — wave outcomes, casualties, razes, gold spent.
+2. **Does the CONTENT reach the player?** — a per-branch report of which era each branch
+   reached and whether it is `STALLED` with an empty pool. **This is the number to watch while
+   the tech pool is being rebuilt**, and it is why the sim survived the migration when the
+   other two did not.
 
-## Economy analysis (`sims/economy.mjs`)
-
-`node sims/economy.mjs [--trace]` runs eleven expansion strategies across three seeds and
-reports cumulative output at short / medium / long horizons. It is the tuning instrument for
-the wide-vs-tall trade-off — see the numbers in the commit that introduced it.
+Measured at **6 waves: 5/5 survive**, palace 86–100%, ~0.5 casualties per wave, 3–4 cities,
+and gold genuinely spent. All three branches currently report `STALLED` — see the scope box at
+the top of this file.

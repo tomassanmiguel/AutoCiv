@@ -6,23 +6,34 @@
 //   - `subscribe` / `getVersion` are ARROW FIELDS (useSyncExternalStore receives
 //     them unbound)
 //
-// THE MAIN CYCLE
+// THE MAIN CYCLE — TWO CLOCKS THAT DO NOT TOUCH
 //   One timer, one pacing control. Each tick either advances a running combat by
-//   a beat, or advances the game: accrue output, grow cities, count down the era.
-//   65 ticks to an era, 28 eras; the era drives the map reveal and hands out
-//   expansion permissions.
+//   a beat, or advances the game: accrue output, grow cities, count down to the
+//   wave.
 //
-//   Crossing a PROGRESS threshold offers three advancements; crossing a FOOD
-//   threshold offers an expansion. Either offer PAUSES the clock until resolved,
-//   exactly as v2's selections did.
-
+//   WAVE — combat. 65 ticks of development, then the wave attacks. Thirty waves,
+//   scaling on their own ladder.
+//   ERA  — a tech pool, one per BRANCH, advanced only by drafting. The furthest
+//   branch drives the map reveal and the expansion permissions.
+//
+//   Crossing a threshold does something different for each resource:
+//     :progress:   — offers three advancements (PAUSES the clock)
+//     :production: — founds a city, or builds a held wonder (PAUSES the clock)
+//     :food:       — expands automatically, with no prompt at all
+//
 import { generateWorld } from './world/worldgen.js'
 import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { terrainOf, isLand, isPassable } from './world/terrain.js'
 import { key, neighbors, lengthOf, disc } from './hex/coords.js'
-import { PROGRESS_NODES, ringUnlock, MAX_RING, progressById } from './data/progress.js'
 import { initialResources, accrue } from './data/resources.js'
-import { ERAS, TICKS_PER_ERA, ERA_COUNT, stageForEra, unlocksForEra, EXPANSION_UNLOCKS } from './data/eras.js'
+import { QUADRANTS, OFFER_SIZE, ERAS } from './data/schema.js'
+import {
+  initialDraft, drawOffers, recordPick, branchPool, branchProgress,
+  revealEraOf, draftableById,
+} from './data/content.js'
+import {
+  TICKS_PER_WAVE, WAVE_COUNT, stageForEra, unlocksForEra, EXPANSION_UNLOCKS,
+} from './data/cycle.js'
 import {
   initTerritory, expansionTargets, improveTile, foundCity,
   territoryYield, territoryStats, growCities, setTerritoryStage,
@@ -32,11 +43,9 @@ import {
 import {
   unitRepairCost, tileRepairCost, unitUpgradeCost, buildingUpgradeCost, rerollCost,
 } from './data/costs.js'
-import {
-  PALACE, UNIT_DEFS, WEAPON_TIERS, ARMOR_TIERS, bestTier, bestOfType, unitStats,
-} from './data/units.js'
-import { BUILDING_DEFS } from './data/buildings.js'
-import { installCombat, MAX_WAVES } from './manager/combat.js'
+import { PALACE, UNIT_DEFS, bestOfType, unitStats } from './data/units.js'
+import { buildingDef } from './data/buildings.js'
+import { installCombat } from './manager/combat.js'
 
 /** Palace HP recovered at the start of each era — damage accumulates, slowly. */
 const PALACE_REGEN = 0.25
@@ -62,22 +71,19 @@ const MUSTER_PER_CITY = 1
 const UNITS_PER_CITY_CAP = 3
 
 const UNIT_NAME = (k) => UNIT_DEFS[k]?.name ?? k
-const BUILDING_NAME = (k) => BUILDING_DEFS[k]?.name ?? k
 
 /** Hex distance between two tiles (axial). */
 const lengthOfDiff = (a, b) => lengthOf(a.q - b.q, a.r - b.r)
 
-/** Merge a yield bag into another, allocating only when there is something to add. */
-function addYields(into, y) {
-  const out = into ? { ...into } : { food: 0, production: 0, gold: 0, progress: 0 }
-  for (const k of ['food', 'production', 'gold', 'progress']) if (y[k]) out[k] += y[k]
-  return out
-}
-
 /**
- * The accumulated effect of everything taken from the progress web. ONE record,
- * read by the economy (`territoryYield`), combat (`unitStats`) and the expansion
- * gates — so there is never a second place a bonus could hide.
+ * The accumulated effect of every advancement taken. ONE record, read by the
+ * economy (`territoryYield`), combat (`unitStats`) and the expansion gates — so
+ * there is never a second place a bonus could hide.
+ *
+ * ⚠️ Most of these fields have a consumer but no PRODUCER yet: the effect
+ * registry currently holds a single kind (`unit_atk`), and the rest of the
+ * mechanics get wired one at a time. They are the engine's own accumulator, not
+ * a content vocabulary — see the note at the top of `data/schema.js`.
  */
 function freshMods() {
   return {
@@ -85,11 +91,9 @@ function freshMods() {
     improved: null,         // extra yields on every improvement
     mult: { food: 0, production: 0, gold: 0, progress: 0 }, // ADDITIVE percentages
     threshold: { food: 1, production: 1, progress: 1 },     // multipliers, <1 is cheaper
-    // You begin the game armed with clubs and dressed in hides. Both are TIERS:
-    // a node replaces the tier, it does not stack on it.
-    weapon: 'clubs',
-    armor: 'hides',
-    unitMod: { melee: {}, ranged: {}, cavalry: {}, defense: {} },
+    // Flat, civilization-wide, and STACKING. There is no weapon or armour tier.
+    unitAtk: 0,
+    unitDef: 0,
     units: new Set(),
     buildings: new Set(),
     roads: false,
@@ -104,7 +108,7 @@ function freshMods() {
 export const SPEEDS = { paused: 0, standard: 1, fast: 3, super: 5, ultra: 10 }
 
 /** How many advancements a progress threshold offers. */
-export const PROGRESS_OFFERS = 3
+export const PROGRESS_OFFERS = OFFER_SIZE
 
 export class GameManager {
   constructor(seed, { civ, difficulty } = {}) {
@@ -121,19 +125,23 @@ export class GameManager {
     this.world = generateWorld(this.seed)
     initTerritory(this.world)
 
-    this.era = 0
+    // THE COMBAT CLOCK. 0-based; the wave you fight is `wave + 1`.
+    this.wave = 0
     this.tick = 0
     this.speed = 'paused'
-    this.stage = stageForEra(0)
+
+    // THE TECH CLOCK — three of them, one per branch, moved only by drafting.
+    this.draft = initialDraft()
+    this.stage = stageForEra(this.revealEra)
     setTerritoryStage(this.world, this.stage)
     this._knownCache = null
 
-    this.progress = new Set()
     this.mods = freshMods()
-    this.grants = []      // queued placements from progress nodes
+    this.grants = []      // queued placements from advancements
     this.resources = initialResources()
-    this.selection = null // { type: 'progress' | 'expansion' | 'placement', ... }
-    this.pending = { progress: 0, expansion: 0 }
+    // { type: 'progress' | 'city' | 'wonder' | 'placement', ... }
+    this.selection = null
+    this.pending = { progress: 0, production: 0 }
     this.log = []
 
     this.phase = 'development' // 'development' | 'combat'
@@ -215,27 +223,70 @@ export class GameManager {
     const gained = accrue(this.resources, out, this.mods.threshold)
     growCities(this.world, this.mods.cityGrowth)
 
+    // Each threshold resource does something different, and only two of the
+    // three stop the clock. See `docs/design.md` §3.
     if (gained.progress > 0) this.pending.progress += gained.progress
-    if (gained.food > 0) this.pending.expansion += gained.food
+    if (gained.production > 0) this.pending.production += gained.production
+    // FOOD IS AUTOMATIC AND SILENT. It buys ground, which is never a decision
+    // worth a modal: the best available outpost is simply created.
+    for (let i = 0; i < gained.food; i++) this._autoExpand()
 
     this.tick++
-    if (this.tick >= TICKS_PER_ERA) this._startEraWave()
+    if (this.tick >= TICKS_PER_WAVE) this._startWave()
 
     this._openNextSelection()
     this._emit()
   }
 
-  // --- The era's battle -----------------------------------------------------
+  // --- The wave -------------------------------------------------------------
 
   /**
-   * The era ends in a fight. The wave is sized by the era you have reached, so
-   * dawdling does not make it easier — and every revealed encampment adds a
-   * garrison on top, which is the pressure to expand toward them.
+   * Development ends in a fight. The wave is sized by how many waves have
+   * already come, NOT by how far your tech has run — outrunning the ladder is a
+   * legitimate way to win. Every revealed encampment adds a garrison on top,
+   * which is the pressure to expand toward them.
    */
-  _startEraWave() {
+  _startWave() {
     this.phase = 'combat'
-    this.startCombat(this.era + 1, 1, { scratch: false })
-    this.log.push({ era: this.era, text: `A host masters on the frontier.` })
+    this.startCombat(this.wave + 1, 1, { scratch: false })
+    this.log.push({ wave: this.wave, text: `A host musters on the frontier.` })
+  }
+
+  /**
+   * Crossing a :food: threshold pushes the border outward on its own — the
+   * highest-yield outpost available, with no prompt. An outpost DOUBLES the
+   * tile's yield, so the best tile to settle is simply the best tile.
+   *
+   * ⚠️ WITH ONE CORRECTION, and it is load-bearing. Coast yields 3 while every
+   * early land terrain yields 2, so a literal "highest yield" rule settles the
+   * entire coastline before it ever touches land — and a city cannot be founded
+   * on water. Left literal, a run reaches wave 4 with six outposts, no city
+   * site, and no way to ever get one. So GROUND YOU CAN BUILD ON WINS FIRST:
+   * food buys ground, production builds on it, and ground you can never build on
+   * is not ground.
+   *
+   * Water is still settled once the land in reach is used up.
+   */
+  _autoExpand() {
+    const targets = expansionTargets(this.world, this.unlocks).improve
+    if (!targets.length) return false
+    const yieldOf = (t) => {
+      const y = terrainOf(t.terrain).yields
+      return y.food + y.production + y.gold + y.progress
+    }
+    const buildable = targets.filter((t) => isLand(t.terrain) && isPassable(t.terrain))
+    const pool = buildable.length ? buildable : targets
+    // Ties break OUTWARD — the design's word for what food buys is "pushing your
+    // borders outward", and hugging the palace is the opposite of that.
+    const best = pool.reduce((a, b) => {
+      const d = yieldOf(b) - yieldOf(a)
+      return d > 0 || (d === 0 && b.d > a.d) ? b : a
+    })
+    if (!improveTile(this.world, best)) return false
+    if (this.mods.roads) layRoads(this.world)
+    this._knownCache = null
+    this.log.push({ wave: this.wave, text: `Settled ${terrainOf(best.terrain).name}.` })
+    return true
   }
 
   /** The wave is over: bank the outcome, then roll into the next era. */
@@ -248,7 +299,7 @@ export class GameManager {
     if (result === 'lost') {
       this.defeated = true
       this.setSpeed('paused')
-      this.log.push({ era: this.era, text: 'The palace has fallen.' })
+      this.log.push({ wave: this.wave, text: 'The palace has fallen.' })
       this._emit()
       return
     }
@@ -257,31 +308,46 @@ export class GameManager {
     if (razed) bits.push(`${razed} razed`)
     if (breaches) bits.push(`${breaches} breaches`)
     this.log.push({
-      era: this.era,
-      text: `Wave ${this.era + 1} ${result === 'won' ? 'repelled' : 'ground to a halt'}${bits.length ? ` — ${bits.join(', ')}` : ''}.`,
+      wave: this.wave,
+      text: `Wave ${this.wave + 1} ${result === 'won' ? 'repelled' : 'ground to a halt'}${bits.length ? ` — ${bits.join(', ')}` : ''}.`,
     })
-    this._advanceEra()
+    this._advanceWave()
     this._emit()
   }
 
-  _advanceEra() {
-    if (this.era >= ERA_COUNT - 1) { this.tick = TICKS_PER_ERA; this.setSpeed('paused'); return }
-    this.era++
+  _advanceWave() {
+    if (this.wave >= WAVE_COUNT - 1) { this.tick = TICKS_PER_WAVE; this.setSpeed('paused'); return }
+    this.wave++
     this.tick = 0
-    // Masonry holds; the palace patches itself between eras but never fully.
+    // Masonry holds; the palace patches itself between waves but never fully.
     this.palaceHp = Math.min(this.palaceMaxHp, this.palaceHp + this.palaceMaxHp * PALACE_REGEN)
     this._musterFromCities()
-    const stage = stageForEra(this.era)
-    if (stage !== this.stage) {
-      this.stage = stage
-      this._knownCache = null
-      // Territory claimed past the old frontier comes alive as the map catches up.
-      setTerritoryStage(this.world, stage)
-      if (this.mods.roads) layRoads(this.world)
-    }
-    this.log.push({ era: this.era, text: `Entered the ${this.eraName} era.` })
+    this.log.push({ wave: this.wave, text: `Wave ${this.wave + 1} approaches.` })
     // Muster the coming wave NOW, so it is visible all through development.
     this.prepareWave()
+  }
+
+  /**
+   * Pull the map reveal up to whatever the furthest branch has reached. Called
+   * on every draft pick — the reveal is a consequence of research, never of the
+   * wave counter.
+   */
+  _syncReveal() {
+    const stage = stageForEra(this.revealEra)
+    if (stage === this.stage) return false
+    this.stage = stage
+    this._knownCache = null
+    // Territory claimed past the old frontier comes alive as the map catches up.
+    setTerritoryStage(this.world, stage)
+    if (this.mods.roads) layRoads(this.world)
+    // ⚠️ RE-MUSTER. The battlefield ring is derived from the known set, so a
+    // reveal moves it outward — and the mustered host is standing on the OLD
+    // ring, with flow fields computed against the old map. Under the era clock
+    // this could only happen at the rollover, immediately before the muster;
+    // now a draft can advance a branch at any point in development, so the host
+    // has to be rebuilt where the frontier actually is.
+    if (!this.combat.active) this.prepareWave()
+    return true
   }
 
   get palaceMaxHp() { return PALACE.def + this.mods.palaceDef }
@@ -320,7 +386,7 @@ export class GameManager {
         room--
       }
     }
-    if (raised) this.log.push({ era: this.era, text: `${raised} ${levy.name}${raised > 1 ? 's' : ''} mustered.` })
+    if (raised) this.log.push({ wave: this.wave, text: `${raised} ${levy.name}${raised > 1 ? 's' : ''} mustered.` })
     return raised
   }
 
@@ -335,17 +401,50 @@ export class GameManager {
     }
   }
 
-  get eraName() { return ERAS[this.era] }
+  // --- The three tech clocks ------------------------------------------------
 
-  /** Expansion permissions: the era hands some out, the progress web the rest. */
+  /** The furthest branch. Drives the reveal and the expansion permissions. */
+  get revealEra() { return revealEraOf(this.draft) }
+
+  get eraName() { return ERAS[this.revealEra] }
+
+  /** Per-branch era, count toward the next, and what is left to draft there. */
+  get branches() {
+    return QUADRANTS.map((q) => {
+      const { have, need } = branchProgress(this.draft, q)
+      const era = this.draft.branchEra[q]
+      return {
+        quadrant: q, era, eraName: ERAS[era], have, need,
+        remaining: branchPool(this.draft, q).length,
+        // A branch with nothing left in its tier cannot advance. That is the
+        // designed dead-end of a current-tier-only pool, and the panel says so
+        // rather than leaving the player waiting for an offer that never comes.
+        stalled: branchPool(this.draft, q).length === 0 && need > 0,
+      }
+    })
+  }
+
+  /** Everything drafted, newest last — for the three-column panel. */
+  get takenRows() {
+    const out = []
+    for (const id of this.draft.taken) {
+      const row = draftableById(id)
+      if (row) out.push(row)
+    }
+    return out
+  }
+
+  get heldWonder() { return this.draft.heldWonder }
+
+  /** Expansion permissions, granted by the reveal era. */
   get unlocks() {
-    const s = unlocksForEra(this.era)
+    const s = unlocksForEra(this.revealEra)
     for (const k of this.mods.settle) s.add(k)
     return s
   }
 
   get newUnlocksThisEra() {
-    return EXPANSION_UNLOCKS.filter((u) => u.era === this.era)
+    return EXPANSION_UNLOCKS.filter((u) => u.era === this.revealEra)
   }
 
   // --- Output ---------------------------------------------------------------
@@ -373,14 +472,20 @@ export class GameManager {
     if (this.pending.progress > 0) {
       const offers = this._drawProgressOffers()
       this.pending.progress--
-      // An exhausted web silently skips rather than opening an empty choice.
+      // An exhausted pool silently skips rather than opening an empty choice.
       if (offers.length) { this.selection = { type: 'progress', offers, rerolls: 0 }; this._restartTimer(); return }
     }
-    if (this.pending.expansion > 0) {
-      const targets = expansionTargets(this.world, this.unlocks)
-      this.pending.expansion--
-      if (targets.improve.length || targets.city.length) {
-        this.selection = { type: 'expansion', mode: null }
+    // :production: BUILDS. A held wonder takes precedence over founding a city —
+    // you drafted it, so it is already the choice you made.
+    if (this.pending.production > 0) {
+      this.pending.production--
+      if (this.draft.heldWonder) {
+        this.selection = { type: 'wonder', wonder: this.draft.heldWonder }
+        this._restartTimer()
+        return
+      }
+      if (this.cityTargets.length) {
+        this.selection = { type: 'city' }
         this._restartTimer()
         return
       }
@@ -388,18 +493,54 @@ export class GameManager {
   }
 
   _drawProgressOffers(exclude = null) {
-    const avail = PROGRESS_NODES.filter((n) => this.progressState(n) === 'available')
-    // A reroll that can hand back the same three cards is not a reroll. Only
-    // drop the old ones if there is enough left to fill a fresh hand.
-    const pool = exclude && avail.length > PROGRESS_OFFERS
-      ? avail.filter((n) => !exclude.includes(n))
-      : avail.slice()
+    return drawOffers(this.draft, PROGRESS_OFFERS, Math.random, exclude)
+  }
+
+  /** Where a city could be founded right now. */
+  get cityTargets() { return expansionTargets(this.world, this.unlocks).city }
+
+  /**
+   * Where the held wonder may stand. Its `placement` rules are content, and
+   * nothing in the engine reads them yet — so for now a wonder goes wherever a
+   * building could. ⚠️ Wire `PLACEMENTS` here when placement rules are built.
+   */
+  get wonderTargets() {
     const out = []
-    // Deterministic enough for a prototype; the real draw will be weighted.
-    while (out.length < PROGRESS_OFFERS && pool.length) {
-      out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0])
-    }
+    for (const t of this.world.terr.controlled) if (canPlaceBuilding(this.world, t)) out.push(t)
     return out
+  }
+
+  /** Found a city, spending the pending :production:. */
+  foundCityAt(tile) {
+    if (this.selection?.type !== 'city') return false
+    if (!foundCity(this.world, tile)) return false
+    if (this.mods.roads) layRoads(this.world)
+    this.log.push({ wave: this.wave, text: `Founded a city on ${terrainOf(tile.terrain).name}.` })
+    this.selection = null
+    this._knownCache = null
+    this._openNextSelection()
+    this._restartTimer()
+    this._emit()
+    return true
+  }
+
+  /**
+   * Build the held wonder. Drafting a wonder does not build it — this does, and
+   * clearing `heldWonder` is what lets wonders back into the offer.
+   */
+  buildWonderAt(tile) {
+    const sel = this.selection
+    if (sel?.type !== 'wonder') return false
+    if (!placeBuilding(this.world, tile, sel.wonder.id)) return false
+    tile.building.wonder = true
+    this.draft.heldWonder = null
+    this.log.push({ wave: this.wave, text: `Built ${sel.wonder.name}.` })
+    this.selection = null
+    this._knownCache = null
+    this._openNextSelection()
+    this._restartTimer()
+    this._emit()
+    return true
   }
 
   // --- Gold ------------------------------------------------------------------
@@ -420,7 +561,7 @@ export class GameManager {
   /** Cost of redrawing the current offer, or null if that is not a thing now. */
   get rerollCost() {
     if (this.selection?.type !== 'progress') return null
-    return rerollCost(this.era, this.selection.rerolls ?? 0)
+    return rerollCost(this.wave, this.selection.rerolls ?? 0)
   }
 
   /** Spend gold to redraw the three advancements. */
@@ -428,7 +569,7 @@ export class GameManager {
     const sel = this.selection
     if (sel?.type !== 'progress') return false
     // Rerolling is allowed mid-selection, when `canSpend` is otherwise false.
-    const cost = rerollCost(this.era, sel.rerolls ?? 0)
+    const cost = rerollCost(this.wave, sel.rerolls ?? 0)
     if (this.defeated || cost > this.resources.gold.value) return false
     this.resources.gold.value -= cost
     this.selection = {
@@ -449,18 +590,18 @@ export class GameManager {
     if (!t || !t.controlled || !this.canSpend) return out
     const g = this.resources.gold.value
     if (t.unit?.destroyed) {
-      const cost = unitRepairCost(this.era)
+      const cost = unitRepairCost(this.wave)
       out.push({ kind: 'repair-unit', label: `Repair ${UNIT_NAME(t.unit.key)}`, cost, afford: g >= cost })
     } else if (t.unit) {
-      const cost = unitUpgradeCost(this.era, t.unit.level ?? 1)
+      const cost = unitUpgradeCost(this.wave, t.unit.level ?? 1)
       out.push({ kind: 'upgrade-unit', label: `Upgrade ${UNIT_NAME(t.unit.key)}`, cost, afford: g >= cost, level: t.unit.level ?? 1 })
     }
     if (t.ruin) {
-      const cost = tileRepairCost(this.era, t.ruin.kind)
+      const cost = tileRepairCost(this.wave, t.ruin.kind)
       out.push({ kind: 'rebuild', label: `Rebuild ${t.ruin.kind}`, cost, afford: g >= cost })
     } else if (t.building) {
-      const cost = buildingUpgradeCost(this.era, t.building.level ?? 1)
-      out.push({ kind: 'upgrade-building', label: `Upgrade ${BUILDING_NAME(t.building.key)}`, cost, afford: g >= cost, level: t.building.level ?? 1 })
+      const cost = buildingUpgradeCost(this.wave, t.building.level ?? 1)
+      out.push({ kind: 'upgrade-building', label: `Upgrade ${buildingDef(t.building.key)?.name ?? t.building.key}`, cost, afford: g >= cost, level: t.building.level ?? 1 })
     }
     return out
   }
@@ -501,7 +642,7 @@ export class GameManager {
     if (!u || u.destroyed) return null
     const def = UNIT_DEFS[u.key]
     if (!def) return null
-    const s = unitStats(def, this.era, this.mods, u.level ?? 1)
+    const s = unitStats(def, this.wave, this.mods, u.level ?? 1)
 
     const walkable = (t) => !!t && isLand(t.terrain) && isPassable(t.terrain) &&
       t.revealStage <= this.stage && !(t.q === 0 && t.r === 0)
@@ -544,10 +685,23 @@ export class GameManager {
     return { move, attack, threat, stats: s }
   }
 
-  /** Resolve a progress offer: take the node and apply everything it grants. */
-  chooseOffer(node) {
+  /**
+   * Take one of the three offered advancements.
+   *
+   * A WONDER is not built here — it is held, and the next :production: threshold
+   * builds it. Everything else applies immediately.
+   */
+  chooseOffer(row) {
     if (this.selection?.type !== 'progress') return false
-    if (!this.chooseProgress(node, true)) return false
+    if (!this.selection.offers.some((o) => o.id === row.id)) return false
+
+    const { advanced } = recordPick(this.draft, row)
+    if (row.isWonder) this.draft.heldWonder = row
+    else this._applyEffects(row)
+    // Advancing a branch is what opens the map — the reveal follows research.
+    if (advanced) this._syncReveal()
+    this.log.push({ wave: this.wave, text: `Researched ${row.name}.` })
+
     this.selection = null
     this._openNextSelection()
     this._restartTimer()
@@ -590,7 +744,7 @@ export class GameManager {
   /** What a queued grant actually puts down — class grants resolve here. */
   grantDef(item) {
     if (!item) return null
-    if (item.kind === 'building') return BUILDING_DEFS[item.key] ?? null
+    if (item.kind === 'building') return buildingDef(item.key)
     return item.key ? UNIT_DEFS[item.key] : bestOfType(item.type, this.mods.units)
   }
 
@@ -607,7 +761,7 @@ export class GameManager {
     this.grants.shift()
     this.selection = null
     this._knownCache = null
-    this.log.push({ era: this.era, text: `Placed ${def.name} on ${terrainOf(tile.terrain).name}.` })
+    this.log.push({ wave: this.wave, text: `Placed ${def.name} on ${terrainOf(tile.terrain).name}.` })
     this._openNextSelection()
     this._restartTimer()
     this._emit()
@@ -625,154 +779,35 @@ export class GameManager {
 
   get expansionTargets() { return expansionTargets(this.world, this.unlocks) }
 
-  /** Which half of the expansion choice the player is aiming with. */
-  setExpansionMode(mode) {
-    if (this.selection?.type !== 'expansion') return
-    this.selection = { ...this.selection, mode }
-    this._emit()
-  }
-
-  /** Spend the pending expansion on a tile — improve it, or make it a city. */
-  expandOnto(tile, mode) {
-    if (this.selection?.type !== 'expansion') return false
-    const ok = mode === 'city' ? foundCity(this.world, tile) : improveTile(this.world, tile)
-    if (!ok) return false
-    // A new city joins the road network; new ground may open a shorter route.
-    if (this.mods.roads) layRoads(this.world)
-    this.log.push({
-      era: this.era,
-      text: mode === 'city'
-        ? `Founded a city on ${terrainOf(tile.terrain).name}.`
-        : `Improved ${terrainOf(tile.terrain).name}.`,
-    })
-    this.selection = null
-    this._knownCache = null
-    this._openNextSelection()
-    this._restartTimer()
-    this._emit()
-    return true
-  }
-
-  // --- Progress web ---------------------------------------------------------
+  // --- Effects ---------------------------------------------------------------
 
   /**
-   * How many nodes of `ring` are taken. CACHED against the size of the taken
-   * set: the tree asks this once per node per render (through `progressState`),
-   * and with ~300 nodes a fresh scan each time is quadratic for no reason.
+   * Fold an advancement's effects into `this.mods`.
+   *
+   * ⚠️ THIS SWITCH IS THE OTHER HALF OF `EFFECT_KINDS` in `data/schema.js`. An
+   * effect kind exists in the registry only because there is a case for it here;
+   * add the two together or the editor will happily author something that does
+   * nothing. `validateContent` rejects a kind with no case, which is the check
+   * that keeps them in step.
    */
-  chosenInRing(ring) {
-    if (this._ringCountsAt !== this.progress.size) {
-      const counts = new Array(MAX_RING + 1).fill(0)
-      for (const node of PROGRESS_NODES) if (this.progress.has(node.id)) counts[node.ring]++
-      this._ringCounts = counts
-      this._ringCountsAt = this.progress.size
-    }
-    return this._ringCounts[ring] ?? 0
-  }
-
-  ringVisible(ring) {
-    // The bar rises with the ring, because the rings do: 12 nodes at the centre,
-    // 68 at the rim. A flat 6 would have opened the whole web in a handful of eras.
-    return ring === 0 || this.chosenInRing(ring - 1) >= ringUnlock(ring - 1)
-  }
-
-  get visibleRing() {
-    let r = 0
-    while (r < MAX_RING && this.ringVisible(r + 1)) r++
-    return r
-  }
-
-  progressState(node) {
-    if (this.progress.has(node.id)) return 'unlocked'
-    if (!this.ringVisible(node.ring)) return 'hidden'
-    // A TBD slot is drawn so the web's room to grow is visible, but it is not a
-    // tech: never takeable, and never offered.
-    if (node.tbd) return 'locked'
-    if (node.excludes.some((id) => this.progress.has(id))) return 'locked'
-    if (node.prereqs.length && !node.prereqs.some((id) => this.progress.has(id))) return 'locked'
-    return 'available'
-  }
-
-  /**
-   * Take a node. Still allowed by direct click in the web (handy while the tree
-   * is being designed); `viaOffer` marks the real path.
-   */
-  chooseProgress(node, viaOffer = false) {
-    if (this.progressState(node) !== 'available') return false
-    this.progress.add(node.id)
-    this._applyEffects(node)
-    if (!viaOffer) { this._openNextSelection(); this._restartTimer(); this._emit() }
-    return true
-  }
-
-  /**
-   * Fold a node's effects into `this.mods` — the single accumulated record of
-   * everything the web has given you. Grants (units, buildings) are pushed onto
-   * the placement queue instead, since they need a tile.
-   */
-  _applyEffects(node) {
-    const m = this.mods
-    for (const f of node.effects) {
-      switch (f.kind) {
-        case 'terrain': m.terrain[f.terrain] = addYields(m.terrain[f.terrain], f.yields); break
-        case 'improved': m.improved = addYields(m.improved, f.yields); break
-        case 'mult': m.mult[f.res] += f.pct; break
-        // Clamped: stacked reductions must never make a threshold free.
-        case 'threshold': m.threshold[f.res] = Math.max(0.25, m.threshold[f.res] + f.pct); break
-        // Tiers only ever move forward, so taking Bronze after Iron is a no-op
-        // rather than a downgrade.
-        case 'weapon': m.weapon = bestTier(WEAPON_TIERS, m.weapon, f.tier); break
-        case 'armor': m.armor = bestTier(ARMOR_TIERS, m.armor, f.tier); break
-        case 'unitMod':
-          for (const [k, v] of Object.entries(f.mod)) {
-            m.unitMod[f.type][k] = (m.unitMod[f.type][k] ?? 0) + v
-          }
-          break
-        case 'settle': m.settle.add(f.settle); break
-        case 'palace':
-          m.palaceDef += f.mod.def ?? 0
-          this.palaceHp += f.mod.def ?? 0 // the new masonry is not pre-damaged
-          break
-        case 'city':
-          if (f.mod.growth) m.cityGrowth += f.mod.growth
-          if (f.mod.yields) m.cityYields = addYields(m.cityYields, f.mod.yields)
-          break
-        case 'road':
-          m.roads = true
-          m.roadYield = addYields(m.roadYield, f.yields)
-          layRoads(this.world)
-          break
-        case 'unit':
-          m.units.add(f.unit)
-          for (let i = 0; i < f.grant; i++) this.grants.push({ kind: 'unit', key: f.unit, name: UNIT_NAME(f.unit) })
-          break
-        // A bare class grant resolves to the best unlocked unit of that class
-        // AT PLACEMENT TIME, so troops queued before an upgrade still benefit
-        // from it. If the class is still empty it opens with the base unit, so
-        // a grant can never be stranded.
-        case 'troops':
-          for (let i = 0; i < f.grant; i++) this.grants.push({ kind: 'unit', type: f.type })
-          break
-        case 'building':
-          m.buildings.add(f.building)
-          for (let i = 0; i < f.grant; i++) this.grants.push({ kind: 'building', key: f.building, name: BUILDING_NAME(f.building) })
-          break
-        default: break
-      }
-    }
+  _applyEffects(row) {
+    for (const f of row.effects ?? []) this._applyEffect(f)
     this.world.terr.version++
   }
 
-  /** Every node taken so far, newest last — for the "what have I got" panel. */
-  get takenNodes() {
-    return [...this.progress].map(progressById).filter(Boolean)
-  }
-
-  resetProgress() {
-    this.progress = new Set()
-    this.mods = freshMods()
-    this.grants = []
-    this._emit()
+  _applyEffect(f) {
+    switch (f.kind) {
+      // Flat attack on every unit, present and future. STACKS — Obsidian, Bronze
+      // and Iron together are +15, not +7. Nothing is stored on the units: their
+      // stats are computed from `mods` at read time, so this reaches units placed
+      // long before the tech was taken.
+      case 'unit_atk':
+        this.mods.unitAtk += f.amount ?? 0
+        break
+      default:
+        // Unreachable via valid content; loud rather than silent if it happens.
+        console.warn(`[GameManager] no case for effect kind "${f.kind}"`)
+    }
   }
 
   // --- Known world ----------------------------------------------------------
@@ -821,16 +856,17 @@ export class GameManager {
 
   // --- Debug ----------------------------------------------------------------
 
-  setEra(n) {
-    this.era = Math.max(0, Math.min(ERA_COUNT - 1, n | 0))
+  /**
+   * Jump the COMBAT clock. It does not touch the tech clocks — the whole point
+   * of the split is that you can be on wave 12 in the Stone era, or the reverse.
+   */
+  jumpToWave(n) {
+    this.wave = Math.max(0, Math.min(WAVE_COUNT - 1, n | 0))
     this.tick = 0
-    this.stage = stageForEra(this.era)
     this._knownCache = null
     this.defeated = false
     this.phase = 'development'
     this.combat = { ...this.combat, active: false, result: null }
-    setTerritoryStage(this.world, this.stage)
-    if (this.mods.roads) layRoads(this.world)
     this.prepareWave()
     this._emit()
   }
@@ -853,12 +889,12 @@ export class GameManager {
   prevStage() { this.setStage(this.stage - 1) }
 
   regenerate(seed = (Math.random() * 0x100000000) >>> 0) {
-    const keepEra = this.era
+    const keepWave = this.wave
     this._load(seed)
-    this.setEra(keepEra)
+    this.jumpToWave(keepWave)
   }
 
-  setWave(n) { this.combat.wave = Math.max(1, Math.min(MAX_WAVES, n | 0)); this._emit() }
+  setWave(n) { this.combat.wave = Math.max(1, Math.min(WAVE_COUNT, n | 0)); this._emit() }
   setStrength(v) { this.combat.strength = Math.max(0.25, Math.min(3, v)); this._emit() }
 }
 

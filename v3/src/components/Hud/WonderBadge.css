@@ -1,0 +1,33 @@
+/* Sits in the bottom HUD strip beside the era readout. Compact — it is a
+   reminder, not a panel; the detail lives in its tooltip. */
+.wonder-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(216, 173, 78, 0.12);
+  border: 1px solid rgba(216, 173, 78, 0.45);
+  cursor: help;
+}
+.wonder-badge > img { width: 22px; flex: none; }
+
+.wb-body { display: flex; flex-direction: column; gap: 0.18rem; min-width: 92px; }
+.wb-name {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: #e8d5a0;
+  white-space: nowrap;
+}
+.wb-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.wb-fill { height: 100%; background: var(--accent-light); transition: width 0.25s ease; }
+.wb-pct {
+  font-size: 0.7rem;
+  color: #b7a071;
+  font-variant-numeric: tabular-nums;
+}

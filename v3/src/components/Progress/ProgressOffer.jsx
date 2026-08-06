@@ -1,12 +1,18 @@
 import { useGame } from '../../game/react/GameProvider.jsx'
+import { ERAS } from '../../game/data/schema.js'
 import IconText from '../common/IconText.jsx'
-import DefChips from './DefChips.jsx'
 import './ProgressOffer.css'
 
 /**
- * Crossing a PROGRESS threshold offers three advancements — v2's flow. The clock
- * is paused while this is open, and taking one applies its effects and may open
- * the next ring of the web.
+ * Crossing a :progress: threshold offers three advancements, drawn from the
+ * CURRENT ERA of each branch. The clock is paused while this is open.
+ *
+ * A card shows the row's authored description — the prose IS the design — and
+ * the branch/era it came from, because taking it is what advances that branch's
+ * clock and eventually opens the map.
+ *
+ * A WONDER card is marked: taking it does not build the wonder, it queues it for
+ * the next :production: threshold.
  *
  * Gold can REDRAW the hand. The price doubles with each reroll inside one offer
  * so it stays a decision rather than a slot machine, and resets at the next
@@ -29,15 +35,24 @@ export default function ProgressOffer() {
         </header>
 
         <div className="offer-cards">
-          {sel.offers.map((n) => (
-            <button key={n.id} className={`offer-card q-${n.quadrant}`} onClick={() => game.chooseOffer(n)}>
-              <img className="offer-icon" src={n.icon} alt={n.kind} />
-              <div className="offer-name">{n.name}</div>
-              <div className="offer-kind">{n.quadrant} · {n.kind}</div>
-              <div className="offer-unlocks">Unlocks <IconText>{n.unlocks}</IconText></div>
-              <div className="offer-effect"><IconText>{n.effect}</IconText></div>
-              {/* The card is not itself a tooltip, so its chips just work. */}
-              <DefChips keys={n.sub} className="offer-defs" />
+          {sel.offers.map((row) => (
+            <button
+              key={row.id}
+              className={`offer-card q-${row.quadrant}${row.isWonder ? ' wonder' : ''}`}
+              onClick={() => game.chooseOffer(row)}
+            >
+              <img className="offer-icon" src={row.icon} alt="" />
+              <div className="offer-name">{row.name}</div>
+              <div className="offer-kind">
+                {row.quadrant} · {ERAS[row.era]}
+                {row.isWonder && <> · wonder {row.tier}</>}
+              </div>
+              <div className="offer-effect"><IconText>{row.description}</IconText></div>
+              {row.isWonder && (
+                <div className="offer-wonder-note">
+                  Built at your next <img src="/sprites/icons/production.png" alt="production" /> threshold
+                </div>
+              )}
             </button>
           ))}
         </div>
@@ -55,6 +70,8 @@ export default function ProgressOffer() {
           <span className="offer-purse">
             <img src="/sprites/icons/gold.png" alt="gold" />{game.gold}
           </span>
+          {/* Skipping is a real cost here: the pool is CURRENT TIER ONLY, so
+              anything passed over is gone once the branch advances. */}
           <button className="offer-skip" onClick={() => game.skipSelection()}>Skip</button>
         </footer>
       </div>
