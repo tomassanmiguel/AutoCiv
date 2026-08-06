@@ -24,7 +24,7 @@
 import { generateWorld } from './world/worldgen.js'
 import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { terrainOf, isPassable } from './world/terrain.js'
-import { key, neighbors, lengthOf, disc } from './hex/coords.js'
+import { key, neighbors, disc } from './hex/coords.js'
 import { initialResources, accrue } from './data/resources.js'
 import { QUADRANTS, OFFER_SIZE, ERAS, connectionTierName } from './data/schema.js'
 import {
@@ -69,22 +69,12 @@ const GOLD_WEIGHT = 0.5
 const STARTING_CLASS = 'melee'
 const STARTING_UNITS = 1
 
-/**
- * Cities muster a levy each era. Without this the army only ever SHRINKS —
- * casualties are permanent and the web grants far fewer units than a wave kills,
- * so every run died around era 5 no matter how well it was played.
- *
- * The split it creates is the point: TERRITORY gives you a line of ordinary
- * infantry; the PROGRESS WEB gives you quality (weapon and armour tiers) and the
- * arms a levy will never be — bows, horses, and walls.
- */
-const MUSTER_PER_CITY = 1
-const UNITS_PER_CITY_CAP = 3
+// ⚠️ Cities do NOT muster units. You start with a single melee unit and every
+// other unit comes from a tech that GRANTS one — territory raises the economy,
+// the draft raises the army. (An earlier build had each city levy a melee unit
+// per wave; it was removed by design.)
 
 const UNIT_NAME = (k) => UNIT_DEFS[k]?.name ?? k
-
-/** Hex distance between two tiles (axial). */
-const lengthOfDiff = (a, b) => lengthOf(a.q - b.q, a.r - b.r)
 
 /**
  * The accumulated effect of every advancement taken. ONE record, read by the
@@ -403,10 +393,15 @@ export class GameManager {
       const d = yieldOf(b) - yieldOf(a)
       return d > 0 || (d === 0 && b.d > a.d) ? b : a
     })
+    const clearedBefore = this.world.terr.cleared ?? 0
     if (!improveTile(this.world, best)) return false
     // New controlled land can shorten a connection route, so re-lay.
     layConnections(this.world)
     this._knownCache = null
+    // Reaching a camp CLEARS it. The coming wave is mustered early and REUSED at
+    // combat start, so it must be rebuilt now or the cleared camp's garrison would
+    // still turn up. ("What you're looking at is what turns up.")
+    if ((this.world.terr.cleared ?? 0) !== clearedBefore && !this.combat.active) this.prepareWave()
     this.log.push({ wave: this.wave, text: `Settled ${terrainOf(best.terrain).name}.` })
     return true
   }
@@ -446,7 +441,6 @@ export class GameManager {
     this._encampmentBaselineStage = this.stage
     // Masonry holds; the palace patches itself between waves but never fully.
     this.palaceHp = Math.min(this.palaceMaxHp, this.palaceHp + this.palaceMaxHp * PALACE_REGEN)
-    this._musterFromCities()
     this.log.push({ wave: this.wave, text: `Wave ${this.wave + 1} approaches.` })
     // Muster the coming wave NOW, so it is visible all through development.
     this.prepareWave()
@@ -481,41 +475,6 @@ export class GameManager {
    * line of its own. `palaceDef` is the slot that line will fill.
    */
   get palaceMaxHp() { return PALACE.def + this.mods.palaceDef }
-
-  /**
-   * Each city raises one levy, up to a cap set by how many cities you hold.
-   * The levy is always MELEE — ranged, cavalry and walls stay things the draft
-   * has to grant you.
-   */
-  _musterFromCities() {
-    const cities = [...this.world.terr.cities]
-    if (!cities.length) return 0
-    // Destroyed units do NOT count against the cap — otherwise a bad wave locks
-    // you out of replacements at exactly the moment you need them.
-    const held = [...this.world.terr.controlled].filter((t) => t.unit && !t.unit.destroyed).length
-    let room = cities.length * UNITS_PER_CITY_CAP - held
-    if (room <= 0) return 0
-
-    const levy = unitOfClass('melee')
-    if (!levy) return 0
-
-    let raised = 0
-    for (const city of cities) {
-      if (room <= 0) break
-      for (let i = 0; i < MUSTER_PER_CITY && room > 0; i++) {
-        // Nearest free ground to that city, so the levy defends its own home.
-        const spot = [...this.world.terr.controlled]
-          .filter((t) => canPlaceUnit(this.world, t, levy))
-          .sort((a, b) => lengthOfDiff(a, city) - lengthOfDiff(b, city))[0]
-        if (!spot) break
-        placeUnit(this.world, spot, levy.key, levy)
-        raised++
-        room--
-      }
-    }
-    if (raised) this.log.push({ wave: this.wave, text: `${raised} ${levy.name}${raised > 1 ? 's' : ''} mustered.` })
-    return raised
-  }
 
   /** Ring the palace with the opening garrison, nearest tiles first. */
   _garrisonStart() {

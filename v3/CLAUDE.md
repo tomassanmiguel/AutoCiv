@@ -836,14 +836,13 @@ thing, so it was deleted. Don't reintroduce named units.
 - Combat caches **one enemy-proximity field per CLASS** (`_moveFields`), not one per unit: a
   naval route is nothing like a melee route, but there are only nine classes.
 
-**Where the army comes from is a deliberate split:**
-- **Territory** raises the *line*: each city musters one melee levy per wave, capped at
-  `UNITS_PER_CITY_CAP` (3) units per city. Without this the army only ever shrank — casualties
-  are permanent and the draft grants far fewer units than a wave kills, so every run died
-  around wave 5 regardless of play.
-- **The draft** gives *quality* — stacking +:attack: today, and the arms a levy never is
-  (bows, horses, walls) once those effect kinds exist.
-- You **start** with a single Warrior, and every +:attack: tech grants a :melee: unit on top.
+**Where the army comes from:**
+- ⚠️ **The DRAFT is the ONLY source of units.** You **start with a single melee unit**
+  (`STARTING_UNITS = 1`) and every other unit comes from a tech that GRANTS one (`grant_unit`);
+  most +:attack: / +:defense: techs grant a :melee: on top of their stat line. Territory raises
+  the *economy*, never the line. ⚠️ **Cities do NOT muster units** — an earlier build had each
+  city levy a melee unit per wave (`_musterFromCities`, capped per city); it was **removed by
+  design**. Casualties are permanent, so keeping an army alive is now a real constraint on play.
 - **Buildings ARE granted now** — `grant_building` hands you a placeable that pays out every
   tick. The **Progress line** (Economy quadrant, eras 0–13, one tech each: Mythology→Shrine …
   Dark Matter→Black Hole Station) is the first fully-wired building set. See **Content buildings**
