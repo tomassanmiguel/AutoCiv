@@ -36,10 +36,12 @@ import { makeRng, shuffle } from '../world/noise.js'
 export { WAVE_COUNT as MAX_WAVES } from '../data/cycle.js'
 
 /**
- * The crit multiplier is a FIXED ENGINE CONSTANT — no tech touches it. Techs only
- * ever add crit CHANCE (`mods.unitCritChancePct`); a landed crit always doubles.
+ * Crit constants — both FIXED, no tech touches them. Every unit (player AND
+ * enemy) has a base `BASE_CRIT_CHANCE` to crit; player crit techs add chance on
+ * top of that. A landed crit always multiplies damage by `CRIT_MULT`.
  */
 export const CRIT_MULT = 2
+export const BASE_CRIT_CHANCE = 0.05
 
 export const PHASE_LABEL = {
   'enemy-move': 'Enemies move',
@@ -592,14 +594,17 @@ class CombatMixin {
   _strike(attacker, target) {
     if (!target) return false
     const c = this.combat
-    // CRIT: a player unit's blow may double. Chance is read LIVE from mods (like
-    // atk/def) and capped at 100%; the multiplier is fixed. The palace is not a
-    // unit and enemies do not crit — both carry no `side: 'player'`.
+    // CRIT: any unit's blow may double. Every unit — player OR enemy — has a base
+    // chance; a player unit's crit techs add on top (read LIVE, like atk/def).
+    // Capped at 100%; the multiplier is fixed. The PALACE is not a unit — it
+    // carries no `side`, so it never crits.
     let dmg = attacker.atk
     let crit = false
-    if (attacker.side === 'player' && dmg > 0) {
-      const chance = Math.min(1, this.mods?.unitCritChancePct ?? 0)
-      if (chance > 0 && this._critRng() < chance) { dmg *= CRIT_MULT; crit = true }
+    if ((attacker.side === 'player' || attacker.side === 'enemy') && dmg > 0) {
+      let chance = BASE_CRIT_CHANCE
+      if (attacker.side === 'player') chance += this.mods?.unitCritChancePct ?? 0
+      chance = Math.min(1, chance)
+      if (this._critRng() < chance) { dmg *= CRIT_MULT; crit = true }
     }
     target.hp -= dmg
     // Its own monotonic counter, bumped HERE rather than reusing `beat`: the

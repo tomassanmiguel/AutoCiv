@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **35 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **34 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -493,10 +493,11 @@ Implemented today:
 - **`grant_unit`** — queues N units of a CLASS onto `this.grants`, each opening its own
   placement selection. Stats are read live at placement, so a grant queued before an upgrade
   still benefits from it. All nine classes are offerable.
-- **`unit_crit_chance_pct`** — +crit chance, summed flat (`mods.unitCritChancePct`), capped at
-  100% at roll time. **One dial only**: the multiplier is a fixed constant (`CRIT_MULT` = 2× in
-  `combat.js`), no tech touches it. Rolled in `_strike` off a per-wave seeded `_critRng`, and
-  **player units only** — the palace and enemies carry no `side: 'player'`.
+- **`unit_crit_chance_pct`** — +crit chance for player units, summed flat (`mods.unitCritChancePct`).
+  **Every unit (player AND enemy) already crits at a fixed 5% base** (`BASE_CRIT_CHANCE`); the tech
+  chance adds on top for players. Capped at 100% at roll time. **One dial only**: the multiplier is
+  a fixed constant (`CRIT_MULT` = 2× in `combat.js`), no tech touches it. Rolled in `_strike` off a
+  per-wave seeded `_critRng`; the **palace never crits** (it carries no `side`).
 - **`unit_speed`** — +combat acts to every unit that has movement terrain.
 - **repositioning** (`reposition_range`, `reposition_domain`, `reposition_cost`,
   `reposition_teleport`) and **`formation`** — see § Repositioning above.

@@ -37,7 +37,7 @@ starts the dev server and opens the game. The editor is at `/editor.html`.
 - The tech and building pools were **cleared to empty on purpose** and are being
   rebuilt **one wired tech at a time**: a tech goes in only when the effect it
   needs exists in the engine. The backlog holds the 385 parked rows.
-- In play right now: **35 techs · 0 buildings ·
+- In play right now: **34 techs · 0 buildings ·
   5 wonders · 3 tier unlocks.**
 - Iron is the terminal era for now, so nothing advances out of it and it carries
   no threshold.
@@ -325,10 +325,11 @@ Currently implemented:
 | **`formation`** | +atk/+def per friendly unit in reposition range, at combat start |
 | **`road_network`** | raises the gold every connection-route tile earns (see § Road network) |
 
-**Crit is one dial on purpose.** `unit_crit_chance_pct` adds crit *chance* only,
-summed flat across every held tech and capped at 100%; the crit *multiplier* is a
-fixed engine constant (`CRIT_MULT` = 2×), untouched by any tech. Only player
-units crit — not the palace, not enemies.
+**Crit is one dial on purpose.** Every unit — player AND enemy — has a base
+crit chance (`BASE_CRIT_CHANCE` = 5%); `unit_crit_chance_pct` adds *chance* on top
+for player units, summed flat and capped at 100%. The crit *multiplier* is a
+fixed engine constant (`CRIT_MULT` = 2×), untouched by any tech. The palace is
+not a unit and never crits.
 
 `grant_unit` names a **class**, never a named unit — there is only one unit per
 class, and its stat line is read live, so a grant queued before an upgrade still
