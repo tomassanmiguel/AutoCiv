@@ -29,7 +29,7 @@ import { initialResources, accrue } from './data/resources.js'
 import { QUADRANTS, OFFER_SIZE, ERAS } from './data/schema.js'
 import {
   initialDraft, drawOffers, recordPick, branchPool, branchProgress,
-  revealEraOf, draftableById,
+  revealEraOf, draftableById, randomPriorTech,
 } from './data/content.js'
 import {
   TICKS_PER_WAVE, WAVE_COUNT, stageForEra, unlocksForEra, EXPANSION_UNLOCKS,
@@ -38,7 +38,7 @@ import {
   initTerritory, expansionTargets, improveTile, foundCity,
   territoryYield, territoryStats, growCities, setTerritoryStage,
   layConnections, canPlaceBuilding, canPlaceUnit, placeBuilding, placeUnit,
-  repairUnit, restoreTile, repairTargets, visible,
+  repairUnit, restoreTile, repairTargets, visible, buildingOutput, cityGrowthInfo,
 } from './world/territory.js'
 import {
   unitRepairCost, tileRepairCost, unitUpgradeCost, buildingUpgradeCost, rerollCost,
@@ -139,6 +139,9 @@ function freshMods() {
     endCombatEarnedDefClass: {},      // class -> permanent +def to it + neighbours at combat end
     classGainsCommanderPct: {},       // class -> % of a commander's effect (STUB — no source yet)
 
+    // --- unique ---
+    palimpsest: 0,                    // # of random prior-era techs to recover at each combat end
+
     // --- ranged theme: poison ---
     rangedPoisonApply: 0,             // stacks a ranged hit applies
     rangedPoisonSlow: { amount: 0, min: 0 },
@@ -214,6 +217,11 @@ export class GameManager {
     // THE TECH CLOCK — three of them, one per branch, moved only by drafting.
     this.draft = initialDraft()
     this.stage = stageForEra(this.revealEra)
+    // Encampments revealed by an expanding map do not field a garrison the same
+    // wave they appear — only once a fresh development phase has begun with them
+    // already visible. This is the stage that gate is measured against; it
+    // catches up to `this.stage` at each `_advanceWave`.
+    this._encampmentBaselineStage = this.stage
     setTerritoryStage(this.world, this.stage)
     this._knownCache = null
 
@@ -332,6 +340,12 @@ export class GameManager {
   _startPrep() {
     if (this.phase !== 'development') return
     this.phase = 'prep'
+    // Record each unit's origin so reposition COST is measured from where it
+    // started prep — not from wherever it has been nudged to. Otherwise repeated
+    // single steps within free range make an arbitrarily long move free.
+    for (const t of this.world.terr.controlled) {
+      if (t.unit && !t.unit.destroyed) t.unit.repoOrigin = { q: t.q, r: t.r }
+    }
     // Nothing accrues in prep; the player acts, then begins the wave. The clock
     // is left alone so combat can run at whatever speed was set.
   }
@@ -426,6 +440,9 @@ export class GameManager {
     if (this.wave >= WAVE_COUNT - 1) { this.tick = TICKS_PER_WAVE; this.setSpeed('paused'); return }
     this.wave++
     this.tick = 0
+    // A fresh development phase begins: encampments revealed up to now are now
+    // "settled" and will field a garrison from this wave on (see _encampmentEnemies).
+    this._encampmentBaselineStage = this.stage
     // Masonry holds; the palace patches itself between waves but never fully.
     this.palaceHp = Math.min(this.palaceMaxHp, this.palaceHp + this.palaceMaxHp * PALACE_REGEN)
     this._musterFromCities()
@@ -693,6 +710,12 @@ export class GameManager {
     return true
   }
 
+  /** One building's live total per-tick output (for the on-tile card/tooltip). */
+  buildingOutput(t) { return buildingOutput(this.world, t, this.mods, this.revealEra) }
+
+  /** City tooltip data: food income + ticks to the next pop. */
+  cityInfo(t) { return cityGrowthInfo(this.world, t, this.mods.cityGrowth) }
+
   /**
    * What gold could do to this tile right now, with prices. One place, so the
    * UI never has to re-derive an affordability rule.
@@ -759,15 +782,19 @@ export class GameManager {
 
     const range = this.mods.repositionRange
     const opts = { domains: this.mods.repositionDomains, teleport: this.mods.repositionTeleport }
+    // Distance is measured from the unit's ORIGIN (its prep-start tile), not its
+    // current tile — so cost reflects total displacement and creeping one tile at
+    // a time can't move an arbitrary distance for free.
+    const origin = (u.repoOrigin && this.world.at(u.repoOrigin.q, u.repoOrigin.r)) || from
     // One field for the whole pick (unless teleporting, which is per-tile O(1)).
-    const field = this.mods.repositionTeleport ? null : repositionField(this.world, from, opts)
+    const field = this.mods.repositionTeleport ? null : repositionField(this.world, origin, opts)
 
     const out = []
     for (const t of this.world.terr.controlled) {
       if (t === from || !canPlaceUnit(this.world, t, def)) continue
       const d = field
         ? (field.get(key(t.q, t.r)) ?? Infinity)
-        : repositionDistance(this.world, from, t, opts)
+        : repositionDistance(this.world, origin, t, opts)
       if (!Number.isFinite(d)) continue
       const paid = Math.max(0, d - range)
       const cost = repositionCost(this.wave, paid, this.repositionCostMult)
@@ -982,6 +1009,23 @@ export class GameManager {
    * nothing. `validateContent` rejects a kind with no case, which is the check
    * that keeps them in step.
    */
+  /**
+   * PALIMPSEST: at each combat end, recover N uniformly-random UNCHOSEN techs
+   * from earlier eras. Their effects apply for free (mods fold in immediately;
+   * unit/building grants queue and resolve in the next development phase). The
+   * tech is added to `taken` so it can't be recovered or offered twice.
+   */
+  _grantPalimpsest() {
+    const n = this.mods.palimpsest ?? 0
+    for (let i = 0; i < n; i++) {
+      const tech = randomPriorTech(this.draft, this.revealEra)
+      if (!tech) break
+      this.draft.taken.add(tech.id)
+      this._applyEffects(tech)
+      this.log.push({ wave: this.wave, text: `Palimpsest recovers ${tech.name}.` })
+    }
+  }
+
   _applyEffects(row) {
     for (const f of row.effects ?? []) this._applyEffect(f)
     this.world.terr.version++
@@ -1052,6 +1096,9 @@ export class GameManager {
         // STUB: commander units do not exist, so there is no aura value to read.
         // Wire the mod so authoring works; it is inert until commanders land.
         this.mods.classGainsCommanderPct[f.unitClass] = (this.mods.classGainsCommanderPct[f.unitClass] ?? 0) + (f.pct ?? 0)
+        break
+      case 'palimpsest':
+        this.mods.palimpsest += 1
         break
 
       // --- ranged: poison ---

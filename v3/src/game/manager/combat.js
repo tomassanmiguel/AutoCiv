@@ -202,6 +202,47 @@ class CombatMixin {
     return units
   }
 
+  /**
+   * A placed unit's LIVE combat stats — exactly what it would fight at now, with
+   * Formations, the earned flats and fortification synergy folded in, plus the
+   * breakdown pieces the tooltip shows. This is the source of truth for the
+   * on-tile card so the numbers are the TRUE current value, not the class line.
+   */
+  unitBoardStats(tile) {
+    if (!tile?.unit) return null
+    const placed = []
+    for (const t of this.world.terr.controlled) {
+      if (!t.unit || t.unit.destroyed) continue
+      const def = UNIT_DEFS[t.unit.key]
+      if (def) placed.push({ t, def })
+    }
+    const i = placed.findIndex((p) => p.t === tile)
+    if (i < 0) return null
+    const { t, def } = placed[i]
+    const m = this.mods
+    const level = t.unit.level ?? 1
+    const formation = this._formationFlats(placed)[i]
+    const extra = { ...formation, earnedAtk: t.unit.earnedAtk ?? 0, earnedDef: t.unit.earnedDef ?? 0 }
+    const s = unitStats(def, this.wave, m, level, extra)
+    let hp = s.def
+    let fortAdj = 0
+    if (def.key === 'fortification' && m.fortDefPctPerAdjacentRanged) {
+      fortAdj = this._countAdjacent(placed, i, 'ranged')
+      if (fortAdj) hp = Math.max(1, Math.round(hp * (1 + (m.fortDefPctPerAdjacentRanged / 100) * fortAdj)))
+    }
+    const range = def.key === 'ranged' ? this._rangedRange(t, placed, i, s.range) : s.range
+    const taunt = this._pieceTauntRange({ key: def.key, type: def.key, q: t.q, r: t.r })
+    return {
+      key: def.key, name: def.name, atk: s.atk, def: hp, range, acts: s.acts, taunt, level,
+      // breakdown for the tooltip
+      baseAtk: def.atk, baseDef: def.def,
+      atkBasePct: m.unitAtkBasePct ?? 0, defBasePct: m.unitDefBasePct ?? 0,
+      earnedAtk: t.unit.earnedAtk ?? 0, earnedDef: t.unit.earnedDef ?? 0,
+      formationAtk: formation.atkFlat, formationDef: formation.defFlat,
+      classDefFlat: m.classDefFlat?.[def.key] ?? 0, fortAdj,
+    }
+  }
+
   /** Count OTHER `placed` units of `cls` adjacent to `placed[i]`. */
   _countAdjacent(placed, i, cls) {
     const { t } = placed[i]
@@ -277,6 +318,9 @@ class CombatMixin {
     const ORDER = ['default', 'amphibious', 'astral']
     for (const t of this.known.tiles) {
       if (!t.encampment) continue
+      // A camp only just uncovered by an expanding map holds off — it fields no
+      // garrison until a development phase has begun with it already visible.
+      if (t.revealStage > (this._encampmentBaselineStage ?? this.stage)) continue
       const domainKey = t.region === 'island' || t.terrain === 'island'
         ? (rng() < 0.75 ? 'amphibious' : 'astral')
         : ORDER.find((d) => this._fields[d]?.has(key(t.q, t.r))) ?? 'astral'
@@ -331,6 +375,8 @@ class CombatMixin {
           }
         }
       }
+      // PALIMPSEST: recover random prior-era advancements now the wave is won.
+      this._grantPalimpsest()
       this.palaceHp = Math.max(0, c.palace?.hp ?? this.palaceHp)
       this.world.terr.version++
     }

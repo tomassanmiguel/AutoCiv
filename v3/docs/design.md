@@ -348,6 +348,7 @@ Currently implemented:
 | **`class_self_tile_yield_bonus`** | a unit of the class adds +resource to its own tile's yield |
 | **`end_of_combat_def_earned_for_class_and_adjacent`** | at combat end, the class + its neighbours earn permanent :defense: |
 | **`class_gains_pct_of_commander_effect`** | ⚠️ STUB — inert until commander units exist |
+| **`palimpsest`** | at each combat end, recover a random unchosen tech from an earlier era |
 | **`grant_building`** | grants a BUILDING (by id) to place on the map (see § Buildings) |
 | **`self_tile_yield_bonus`** | +resource on the building's own tile |
 | **`radius_tile_yield_bonus`** | +resource per tile in radius (optional terrain / has-unit filter) |
@@ -418,6 +419,12 @@ becomes straight-line, ignoring terrain.
 
 **Cost** is `perTile(wave) × (distance − range)`, reduced by Logistics-style
 techs (and never to zero). See `costs.js` and `world/reposition.js`.
+
+**Distance is measured from a unit's ORIGIN** — the tile it stood on when prep
+began, recorded at `_startPrep` as `unit.repoOrigin`. Cost reflects total
+displacement, not the length of the last drag, so nudging a unit one free tile at
+a time cannot walk it across the map for nothing; dragging back toward its origin
+is free again.
 
 **Formations** read the same range as a combat buff: at the start of a wave, each
 unit gains flat :attack:/:defense: for every *other* friendly unit inside its

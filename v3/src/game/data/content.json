@@ -1768,6 +1768,21 @@
       "quadrant": "military",
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "palimpsest",
+      "name": "Palimpsest",
+      "quadrant": "society",
+      "era": 5,
+      "icon": "/sprites/icons/progress.png",
+      "description": "At the end of each combat, recover a random unchosen advancement from a previous era.",
+      "effects": [
+        {
+          "kind": "palimpsest"
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [

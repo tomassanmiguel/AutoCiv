@@ -560,6 +560,14 @@ export const EFFECT_KINDS = {
     describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain ${e.pct ?? 0}% of a commander's effect (not yet active).`,
   },
 
+  // --- unique -----------------------------------------------------------------
+  palimpsest: {
+    label: 'Palimpsest — recover a lost advancement',
+    hint: 'At the end of each combat, gain one uniformly-random UNCHOSEN tech from an earlier era (its effects apply for free; grants queue for placement).',
+    params: [],
+    describe: () => 'At the end of combat, recover a random unchosen advancement from a previous era.',
+  },
+
   // --- buildings -------------------------------------------------------------
   // A TECH effect: queue a specific building for placement (mirrors grant_unit,
   // but for a named building id rather than a class).

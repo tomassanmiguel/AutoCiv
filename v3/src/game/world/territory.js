@@ -518,71 +518,86 @@ function bonusEffectLevels(world, t, mods) {
  * levels from adjacent units (Castle Towns) — the two are the same currency, so
  * an unpaid bonus level is worth exactly a paid upgrade for the effects.
  */
-export function buildingBonuses(world, mods = null, era = 0) {
-  const bonus = new Map()
-  let curMult = 1 // the acting building's effect-level multiplier
-  const add = (tile, res, amt) => {
-    if (!amt || !res) return
-    const b = bonus.get(tile) ?? { food: 0, production: 0, gold: 0, progress: 0 }
-    b[res] += amt * curMult
-    bonus.set(tile, b)
-  }
-  const disc_ = (t, radius) => {
+/**
+ * Evaluate ONE building's effects, calling `add(tile, resource, amount)` for each
+ * yield it contributes — with the building's EFFECT-LEVEL multiplier already
+ * folded in. Shared by `buildingBonuses` (the board-wide pass) and
+ * `buildingOutput` (one building's total, for the card).
+ */
+function evalBuildingEffects(world, mods, era, t, buildings, add) {
+  const def = buildingDef(t.building?.key)
+  if (!def?.effects) return
+  const effLevel = (t.building.level ?? 1) + bonusEffectLevels(world, t, mods)
+  const mult = 1 + 0.25 * (effLevel - 1)
+  const put = (tile, res, amt) => { if (amt && res) add(tile, res, amt * mult) }
+  const disc_ = (tt, radius) => {
     const out = []
-    for (const c of disc(t.q, t.r, radius)) { const o = world.tiles.get(hkey(c.q, c.r)); if (o) out.push(o) }
+    for (const c of disc(tt.q, tt.r, radius)) { const o = world.tiles.get(hkey(c.q, c.r)); if (o) out.push(o) }
     return out
   }
-  const buildings = [...world.terr.buildings]
-  for (const t of buildings) {
-    const def = buildingDef(t.building.key)
-    if (!def?.effects) continue
-    const effLevel = (t.building.level ?? 1) + bonusEffectLevels(world, t, mods)
-    curMult = 1 + 0.25 * (effLevel - 1)
-    for (const f of def.effects) {
-      switch (f.kind) {
-        case 'self_tile_yield_bonus':
-          add(t, f.resource, f.amount)
-          break
-        case 'radius_tile_yield_bonus':
-          for (const o of disc_(t, f.radius)) {
-            if (f.terrainFilter && o.terrain !== f.terrainFilter) continue
-            if (f.hasUnitFilter && !(o.unit && !o.unit.destroyed)) continue
-            add(o, f.resource, f.amount)
-          }
-          break
-        case 'radius_city_yield_bonus_per_citizen':
-          for (const o of disc_(t, f.radius)) {
-            if (!o.city) continue
-            add(o, f.resource, (f.flatAmount ?? 0) + (f.perCitizen ?? 0) * (o.city.pop ?? 0))
-          }
-          break
-        case 'yield_growth_per_wave_survived':
-          add(t, f.resource, (t.building.wavesSurvived ?? 0) * (f.amount ?? 0))
-          break
-        case 'yield_growth_per_nearby_unit_death':
-          add(t, f.resource, t.building.deathBonus ?? 0)
-          break
-        case 'radius_yield_bonus_per_building_age':
-          for (const o of disc_(t, f.radius)) {
-            if (!o.building) continue
-            add(o, f.resource, (f.amount ?? 0) * Math.max(0, era - (o.building.builtEra ?? era)))
-          }
-          break
-        case 'self_yield_bonus_per_distance_to_nearest_building':
-          add(t, f.resource, (f.perTile ?? 0) * distanceToNearestBuilding(world, t, buildings))
-          break
-        case 'radius_yield_from_other_base_yields':
-          for (const o of disc_(t, f.radius)) {
-            const y = terrainOf(o.terrain).yields
-            add(o, 'progress', y.food + y.production + y.gold) // "other" base yields = everything but progress
-          }
-          break
-        default:
-          break
-      }
+  for (const f of def.effects) {
+    switch (f.kind) {
+      case 'self_tile_yield_bonus':
+        put(t, f.resource, f.amount)
+        break
+      case 'radius_tile_yield_bonus':
+        for (const o of disc_(t, f.radius)) {
+          if (f.terrainFilter && o.terrain !== f.terrainFilter) continue
+          if (f.hasUnitFilter && !(o.unit && !o.unit.destroyed)) continue
+          put(o, f.resource, f.amount)
+        }
+        break
+      case 'radius_city_yield_bonus_per_citizen':
+        for (const o of disc_(t, f.radius)) {
+          if (!o.city) continue
+          put(o, f.resource, (f.flatAmount ?? 0) + (f.perCitizen ?? 0) * (o.city.pop ?? 0))
+        }
+        break
+      case 'yield_growth_per_wave_survived':
+        put(t, f.resource, (t.building.wavesSurvived ?? 0) * (f.amount ?? 0))
+        break
+      case 'yield_growth_per_nearby_unit_death':
+        put(t, f.resource, t.building.deathBonus ?? 0)
+        break
+      case 'radius_yield_bonus_per_building_age':
+        for (const o of disc_(t, f.radius)) {
+          if (!o.building) continue
+          put(o, f.resource, (f.amount ?? 0) * Math.max(0, era - (o.building.builtEra ?? era)))
+        }
+        break
+      case 'self_yield_bonus_per_distance_to_nearest_building':
+        put(t, f.resource, (f.perTile ?? 0) * distanceToNearestBuilding(world, t, buildings))
+        break
+      case 'radius_yield_from_other_base_yields':
+        for (const o of disc_(t, f.radius)) {
+          const y = terrainOf(o.terrain).yields
+          put(o, 'progress', y.food + y.production + y.gold) // "other" base yields = everything but progress
+        }
+        break
+      default:
+        break
     }
   }
+}
+
+export function buildingBonuses(world, mods = null, era = 0) {
+  const bonus = new Map()
+  const add = (tile, res, amt) => {
+    const b = bonus.get(tile) ?? { food: 0, production: 0, gold: 0, progress: 0 }
+    b[res] += amt
+    bonus.set(tile, b)
+  }
+  const buildings = [...world.terr.buildings]
+  for (const t of buildings) evalBuildingEffects(world, mods, era, t, buildings, add)
   return bonus
+}
+
+/** ONE building's total per-tick output (summed across every tile it feeds). */
+export function buildingOutput(world, t, mods = null, era = 0) {
+  const out = { food: 0, production: 0, gold: 0, progress: 0 }
+  const buildings = [...world.terr.buildings]
+  evalBuildingEffects(world, mods, era, t, buildings, (_tile, res, amt) => { out[res] += amt })
+  return out
 }
 
 /**
@@ -728,7 +743,10 @@ export function razeTile(world, t) {
     t.building = null
     terr.buildings.delete(t)
   } else if (t.city) {
-    ruin = { kind: 'city', pop: t.city.pop, food: t.city.food }
+    // A razed city comes back one pop SMALLER, permanently — and, being a ruin,
+    // grows no population at all until gold rebuilds it (it is out of the growth
+    // set). Never below 1: a city is at least a hamlet.
+    ruin = { kind: 'city', pop: Math.max(1, (t.city.pop ?? 1) - 1), food: t.city.food }
     t.city = null
     terr.cities.delete(t)
   } else if (t.improved) {
@@ -806,6 +824,19 @@ export function growCities(world, growthMult = 1) {
     }
   }
   return grew
+}
+
+/**
+ * City tooltip data: per-tick food income (the same `rate` growCities banks),
+ * the cost of the next pop, and how many ticks until it arrives.
+ */
+export function cityGrowthInfo(world, t, growthMult = 1) {
+  if (!t.city) return null
+  const rate = foodAround(world, t) * (waterAround(world, t) ? CITY_WATER_BONUS : 1) * growthMult
+  const cost = cityPopCost(t.city.pop)
+  const remaining = Math.max(0, cost - (t.city.food ?? 0))
+  const ticks = rate > 0 ? Math.ceil(remaining / rate) : Infinity
+  return { rate, cost, food: t.city.food ?? 0, pop: t.city.pop, ticks }
 }
 
 /** Counts for the HUD / sims. */

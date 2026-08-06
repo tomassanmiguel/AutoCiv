@@ -138,6 +138,17 @@ export function recordPick(draft, row) {
   return { advanced }
 }
 
+/**
+ * PALIMPSEST: a uniformly-random UNCHOSEN tech from an era EARLIER than `era`.
+ * It ignores the normal pool rules (branch, current-tier, group) — it is a free
+ * recovery, not an offer — and never returns a wonder. `null` if nothing is left.
+ */
+export function randomPriorTech(draft, era, rng = Math.random) {
+  const pool = TECHS.filter((t) => !draft.taken.has(t.id) && (t.era ?? 0) < era)
+  if (!pool.length) return null
+  return pool[Math.floor(rng() * pool.length)]
+}
+
 /** How far along the current era a branch is: `{ have, need }`. */
 export const branchProgress = (draft, q) => ({
   have: draft.branchTaken[q],

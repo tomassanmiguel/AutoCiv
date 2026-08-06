@@ -554,6 +554,10 @@ Implemented today:
   `reposition_teleport`) and **`formation`** — see § Repositioning above.
 - **`road_network`** — raises `mods.connectionGold`; its bool `prodFromGold` param sets
   `connectionProd` (Maglev). See § City connections.
+- **`palimpsest`** (unique, Renaissance) — `mods.palimpsest` counts how many random UNCHOSEN
+  prior-era techs to recover at each combat end. `_grantPalimpsest` (called from `endCombat`)
+  draws via `randomPriorTech(draft, revealEra)`, adds it to `taken`, and applies its effects for
+  free — modifiers fold in immediately, unit/building grants queue and resolve next dev.
 - **ranged theme (20 kinds)** — poison, preloaded shots, shot chaining, range/placement
   grants, class-scoped crit, and the earned-flat atk slot. See § Ranged combat below.
 - **fortification theme (8 kinds)** — `class_def_flat` (per-class raw flat def, folded into the
@@ -844,11 +848,21 @@ on the palace tile (combat's occupancy map holds the palace there and would shad
 
 **On-tile UI** (`components/HexMap/TileCard`): a unit is a **hexagon badge** with its type icon
 centred, a rim coloured by flavour, and **attack bottom-left / defence bottom-right** — always
-the same two corners, so the numbers are read by position rather than by label. A building is a
-**name card** showing its live yield as resource icons tinted to match the corner readout.
-Hovering either reveals its **gold actions** (repair / upgrade) with prices, right on the thing
-being spent on — repair and upgrade are the only gold sinks, so they belong there rather than
-in a side panel.
+the same two corners. The numbers are the **TRUE live stats** from `GameManager.unitBoardStats`
+(Formations, earned flats and fortification synergy folded in), not the bare class line. A
+building is a **name card** showing its real per-tick output from `GameManager.buildingOutput`
+(the summed effect contribution — content buildings no longer read as "idle"). Hovering either
+reveals its **gold actions** with prices, right on the thing being spent on. A tile can hold
+BOTH a unit and a building, so the two sets sit on **opposite sides** — unit gold LEFT, building
+gold RIGHT (`.tc-actions.left/.right`) — and each upgrade names its target ("Upgrade Unit" /
+"Upgrade Building"). A **city with a unit on it** tucks its pop pip into the corner
+(`.hex-city.cornered`) so the centred badge can't swallow it.
+
+**The tile hover card** (`TileTip`) is the read-the-numbers surface, mirroring the enemy
+`PieceCard` tooltip: for a **player unit** it shows the live atk/def/range/taunt plus a
+`StatLine` breakdown (base → research % → class flat → formation → earned → adj-ranged); for a
+**city** it shows food income and ticks to the next pop (`GameManager.cityInfo` →
+`cityGrowthInfo`); for a **building** its live `makes:` output.
 
 **Hovering a unit paints its reach** (`GameManager.unitReachCells`): BLUE = ground it can walk
 to this turn, RED = what it can strike from where it stands, AMBER = what it could strike after
@@ -898,7 +912,11 @@ empty tech pool and will rise as the pool fills.
 Development **ends in a wave**, sized by the wave counter — **not** by how far your tech has
 run, so dawdling does not make it easier and out-teching it is a real strategy. Every
 **revealed, uncleared encampment fields an extra garrison standing on the camp**, already
-inside your frontier: that is the pressure to expand toward them.
+inside your frontier: that is the pressure to expand toward them. ⚠️ **But a camp only just
+uncovered by an expanding map holds off** — `_encampmentEnemies` skips any camp whose
+`revealStage` is past `_encampmentBaselineStage` (the stage at the start of the current dev
+phase, updated in `_advanceWave`). So a mid-development reveal does not spawn a garrison out of
+nowhere; the new camps join from the NEXT wave.
 
 **The wave is mustered at the START of development and drawn on the battlefield ring
 throughout** (`prepareWave` / `buildHost`, faded via `.muster`), so you can see what is coming
@@ -920,7 +938,9 @@ to the turn cap *every single era*.
 An enemy with nothing in reach **razes the ground it stands on** — building, then city, then
 improvement — leaving a **ruin**. Casualties are likewise not erased: a fallen unit stands on
 its tile as `destroyed`. Both are **repair bills, not erasures**, which is what gives gold
-something to do.
+something to do. ⚠️ **A razed city comes back one pop SMALLER, permanently** (`razeTile` stores
+`max(1, pop-1)` in the ruin) — and, being a ruin, grows no population at all until gold rebuilds
+it (it is out of the growth set).
 
 ## Gold (`data/costs.js`, `components/Tile/TilePanel`)
 
