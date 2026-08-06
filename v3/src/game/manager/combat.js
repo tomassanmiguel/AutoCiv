@@ -119,13 +119,10 @@ class CombatMixin {
         : this._playerArmy(),
       palace: {
         ...PALACE, hp: this.palaceHp, maxHp, q: 0, r: 0,
-        // The palace is armed by the same research every unit is, through the
-        // same two-layer formula — so its base attack grows with the rest.
-        atk: Math.round(
-          (PALACE.atk + (this.mods?.unitAtkFlat ?? 0)) *
-          (1 + (this.mods?.unitAtkBasePct ?? 0)) *
-          (1 + (this.mods?.unitAtkPct ?? 0)),
-        ),
+        // ⚠️ THE PALACE IS NOT A UNIT. Unit research does not touch it — neither
+        // the attack line nor the defence line — because it gets a tech line of
+        // its own. Do not fold `unitAtk*` / `unitDef*` in here.
+        atk: PALACE.atk,
         lastAttackSeq: null, lastAttackDir: null,
       },
       events: [],

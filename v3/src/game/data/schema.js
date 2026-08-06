@@ -216,6 +216,13 @@ export const EFFECT_KINDS = {
     describe: (e) => `+${e.amount ?? 0}% base :attack: to all units.`,
   },
 
+  unit_def_base_pct: {
+    label: 'All units — base defence %',
+    hint: 'The :defense: mirror of the base-attack modifier. Raises every unit\'s base :defense: — which IS its hit points — so a Fortification gains far more than a Ranged unit. Base modifiers add together, then the whole base is multiplied by the ordinary modifiers.',
+    params: [{ key: 'amount', label: 'Percent', min: 0, default: 25 }],
+    describe: (e) => `+${e.amount ?? 0}% base :defense: to all units.`,
+  },
+
   grant_unit: {
     label: 'Grant units of a class',
     hint: 'Queues units to place on the map. The CLASS is what is granted, not a named unit — which unit it becomes is resolved at placement time from the best one you have unlocked, so a grant queued before an upgrade still benefits from it.',

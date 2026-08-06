@@ -113,7 +113,10 @@ function freshMods() {
     unitAtkFlat: 0,
     unitAtkBasePct: 0,
     unitAtkPct: 0,
-    unitDef: 0,
+    // DEFENCE IS HIT POINTS, and runs the identical two-layer formula.
+    unitDefFlat: 0,
+    unitDefBasePct: 0,
+    unitDefPct: 0,
     units: new Set(),
     buildings: new Set(),
     roads: false,
@@ -367,6 +370,11 @@ export class GameManager {
     return true
   }
 
+  /**
+   * ⚠️ THE PALACE IS NOT A UNIT. `unitDef*` deliberately does not appear here:
+   * the unit research lines do not touch it, because the palace gets a tech
+   * line of its own. `palaceDef` is the slot that line will fill.
+   */
   get palaceMaxHp() { return PALACE.def + this.mods.palaceDef }
 
   /**
@@ -829,6 +837,10 @@ export class GameManager {
       // long before the tech was taken.
       case 'unit_atk_base_pct':
         this.mods.unitAtkBasePct += (f.amount ?? 0) / 100
+        break
+      // The same, for hit points. UNITS ONLY — the palace has its own line.
+      case 'unit_def_base_pct':
+        this.mods.unitDefBasePct += (f.amount ?? 0) / 100
         break
       // A CLASS grant, never a named unit: which unit it becomes is resolved by
       // `grantDef` at placement time from the best one unlocked, so a grant

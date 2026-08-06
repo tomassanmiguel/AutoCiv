@@ -228,6 +228,134 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "leatherwork",
+      "name": "Leatherwork",
+      "quadrant": "military",
+      "era": 0,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+25% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 25
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "bucklers",
+      "name": "Bucklers",
+      "quadrant": "military",
+      "era": 2,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+40% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 40
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "armor",
+      "name": "Armor",
+      "quadrant": "military",
+      "era": 4,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+70% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 70
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "trench_warfare",
+      "name": "Trench Warfare",
+      "quadrant": "military",
+      "era": 8,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+120% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 120
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "kevlar",
+      "name": "Kevlar",
+      "quadrant": "military",
+      "era": 9,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+200% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 200
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "magnetic_shields",
+      "name": "Magnetic Shields",
+      "quadrant": "military",
+      "era": 11,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+350% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 350
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "liminite_plating",
+      "name": "Liminite Plating",
+      "quadrant": "military",
+      "era": 12,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+600% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 600
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "null_fields",
+      "name": "Null Fields",
+      "quadrant": "military",
+      "era": 14,
+      "icon": "/sprites/icons/defense.png",
+      "description": "+1000% base :defense: to all units.",
+      "effects": [
+        {
+          "kind": "unit_def_base_pct",
+          "amount": 1000
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [],

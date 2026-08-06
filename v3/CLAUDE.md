@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **9 techs** (the +:attack: line) · **0 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **17 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion**, :production: cities and wonders,
@@ -470,20 +470,26 @@ no effects is written down and does nothing — normal while the pool is being r
 
 Implemented today:
 
-- **`unit_atk_base_pct`** — a percentage of BASE :attack: on every unit, **stacking**. Nothing
-  is stored on the unit; `unitStats` reads `mods` at call time, so a tech improves units placed
-  long before it was taken. The palace is armed through the same formula.
+- **`unit_atk_base_pct`** / **`unit_def_base_pct`** — a percentage of BASE :attack: / :defense:
+  on every unit, **stacking**. Nothing is stored on the unit; `unitStats` reads `mods` at call
+  time, so a tech improves units placed long before it was taken.
 
-  ⚠️ **ATTACK IS TWO LAYERS**, and mixing them up is the easy mistake:
+  ⚠️ **BOTH STATS ARE TWO LAYERS**, and mixing them up is the easy mistake:
   ```
   atk = (base + unitAtkFlat) × (1 + unitAtkBasePct) × (1 + unitAtkPct)
+  def = (base + unitDefFlat) × (1 + unitDefBasePct) × (1 + unitDefPct)   // def IS hit points
   ```
   Additive within a layer, multiplicative between. A **base modifier** raises the base itself,
   so Siege (base 20) gains 3.3× what Ranged (base 6) does from the same tech — with a FLAT
-  line every class converged on ~285 attack and the classes stopped meaning anything.
-  `unitAtkFlat` is folded in first so a future "+2 :attack: on a kill" is multiplied by your
-  research instead of drowned by it. Only `unitAtkBasePct` has a producer today; the other two
-  are the slots the formula needs and are consumed correctly the moment an effect fills them.
+  line every class converged on ~285 attack and the classes stopped meaning anything. The
+  `*Flat` term is folded in first so a future "+2 :attack: on a kill" is multiplied by your
+  research instead of drowned by it. Only the two `*BasePct` sums have producers today; the
+  rest are the slots the formula needs and are consumed correctly the moment an effect fills
+  them.
+
+  ⚠️ **THE PALACE IS NOT A UNIT.** Neither line touches its attack or its HP — it gets a tech
+  line of its own, and `palaceDef` is that line's slot. Do not fold `unitAtk*` / `unitDef*`
+  into `palaceMaxHp` or into the combat palace piece; both sites say so in a comment.
 - **`grant_unit`** — queues N units of a CLASS onto `this.grants`, each opening its own
   placement selection. Stats are read live at placement, so a grant queued before an upgrade
   still benefits from it. All nine classes are offerable.
@@ -493,7 +499,7 @@ all the registry has needed; both the editor and the validator branch on `p.opti
 
 ⚠️ **The weapon/armour TIER ladder was deleted** (`WEAPON_TIERS`, `ARMOR_TIERS`, `bestTier`).
 It replaced rather than stacked, contradicting the design's central rule, and it
-double-counted against the Obsidian→Tachyonics line that now carries that job.
+double-counted against the base-modifier attack line that now carries that job.
 
 ---
 

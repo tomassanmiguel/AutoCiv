@@ -40,7 +40,7 @@ function pickOffer(game, offers) {
   const score = (row) => {
     let s = row.isWonder ? 2 : 1
     for (const f of row.effects ?? []) {
-      if (f.kind === 'unit_atk_base_pct') s += 4 + (f.amount ?? 0) / 100
+      if (f.kind === 'unit_atk_base_pct' || f.kind === 'unit_def_base_pct') s += 4 + (f.amount ?? 0) / 100
       else s += 3
     }
     return s
@@ -252,7 +252,7 @@ for (const row of r0.takenRows) {
 }
 if (!r0.takenRows.length) console.log('  nothing — the draft pool was empty')
 console.log(`  ---`)
-console.log(`  all units          : +${Math.round(m.unitAtkBasePct * 100)}% base atk, +${Math.round(m.unitAtkPct * 100)}% atk, +${m.unitDef} def`)
+console.log(`  all units          : +${Math.round(m.unitAtkBasePct * 100)}% base atk, +${Math.round(m.unitDefBasePct * 100)}% base def`)
 console.log(`  units unlocked     : ${[...m.units].join(', ') || 'none'}`)
 console.log(`  buildings unlocked : ${[...m.buildings].join(', ') || 'none'}`)
 console.log(`  wonder held unbuilt: ${r0.heldWonder ?? 'none'}`)

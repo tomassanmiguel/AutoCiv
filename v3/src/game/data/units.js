@@ -58,21 +58,25 @@ export const canMoveOn = (def, terrain) => !!def && def.movement.has(terrain)
  */
 export function equipmentOf(def, mods) {
   const rows = []
-  const basePct = mods?.unitAtkBasePct ?? 0
-  const pct = mods?.unitAtkPct ?? 0
-  const hp = mods?.unitDef ?? 0
+  const atkBase = mods?.unitAtkBasePct ?? 0
+  const defBase = mods?.unitDefBasePct ?? 0
   // Shown as a percentage AND as what it is worth on THIS class, because the
   // whole point of a base modifier is that the same +% is worth more here than
   // it is on a weaker class.
-  if (basePct && def.atk > 0) {
+  if (atkBase && def.atk > 0) {
     rows.push({
       slot: 'Research',
-      name: `Weaponry +${Math.round(basePct * 100)}% base`,
-      bonus: `+${Math.round(def.atk * basePct)} :attack:`,
+      name: `Weaponry +${Math.round(atkBase * 100)}% base`,
+      bonus: `+${Math.round(def.atk * atkBase)} :attack:`,
     })
   }
-  if (pct && def.atk > 0) rows.push({ slot: 'Research', name: 'Modifiers', bonus: `+${Math.round(pct * 100)}% :attack:` })
-  if (hp) rows.push({ slot: 'Research', name: 'Armour', bonus: `+${hp} :defense:` })
+  if (defBase) {
+    rows.push({
+      slot: 'Research',
+      name: `Armour +${Math.round(defBase * 100)}% base`,
+      bonus: `+${Math.round(def.def * defBase)} :defense:`,
+    })
+  }
   if (!def.movement.size) rows.push({ slot: 'Movement', name: 'Never moves', bonus: null })
   return rows
 }
@@ -106,16 +110,22 @@ export const PALACE = {
  */
 export function unitStats(def, wave, mods, level = 1) {
   const s = Math.pow(1.18, wave) * (1 + 0.25 * (level - 1))
-  const defBonus = mods?.unitDef ?? 0
 
   const baseAtk = (def.atk + (mods?.unitAtkFlat ?? 0)) *
     (1 + (mods?.unitAtkBasePct ?? 0)) *
     (1 + (mods?.unitAtkPct ?? 0))
 
+  // Defence IS hit points, and runs the identical formula. Unlike attack there
+  // is no zero case: every unit has hit points, including the ones that never
+  // strike — a wall is nothing BUT hit points.
+  const baseDef = (def.def + (mods?.unitDefFlat ?? 0)) *
+    (1 + (mods?.unitDefBasePct ?? 0)) *
+    (1 + (mods?.unitDefPct ?? 0))
+
   return {
     ...def,
     level,
-    def: Math.max(1, Math.round(def.def * s) + defBonus),
+    def: Math.max(1, Math.round(baseDef * s)),
     atk: def.atk === 0 ? 0 : Math.max(1, Math.round(baseAtk * s)),
     range: def.range,
     acts: def.acts,

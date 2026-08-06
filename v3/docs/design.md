@@ -37,7 +37,7 @@ starts the dev server and opens the game. The editor is at `/editor.html`.
 - The tech and building pools were **cleared to empty on purpose** and are being
   rebuilt **one wired tech at a time**: a tech goes in only when the effect it
   needs exists in the engine. The backlog holds the 385 parked rows.
-- In play right now: **9 techs (the +:attack: line, all Military) · 0 buildings ·
+- In play right now: **17 techs · 0 buildings ·
   5 wonders · 3 tier unlocks.**
 - Iron is the terminal era for now, so nothing advances out of it and it carries
   no threshold.
@@ -179,44 +179,21 @@ washed out by them.
 
 ### Everything stacks. Nothing replaces.
 
-Two techs that touch the same quantity **both apply**. Obsidian (+25%), Bronze
-(+40%) and Iron (+60%) leave a unit at **+125% base attack**, not +60%. Masonry,
-Castles, Star Forts and Magnetic Deflectors all count toward a fortification's
-defence. There is no tier system anywhere — the weapon/armour tier ladder the
-engine used to carry was deleted for contradicting exactly this rule.
+Two techs that touch the same quantity **both apply**. There is no tier system
+anywhere — the weapon/armour tier ladder the engine used to carry was deleted for
+contradicting exactly this rule.
 
-The attack line is a **base modifier**, lightly exponential across the game:
+Prefer a **base modifier** to a flat bonus for anything a whole class of thing
+shares. A flat line washes the classes out: with a flat attack ladder every unit
+class converged on roughly the same number and a Siege unit ended the game
+hitting no harder than a Ranged one. A percentage of base keeps their ratios
+intact for the whole run.
 
-| Obsidian | Bronze | Iron | Steel | Muskets | Automatic | Laser | Liminite | Tachyonics |
-|---|---|---|---|---|---|---|---|---|
-| Stone | Bronze | Iron | Medieval | Exploration | Modern | Solar | Liminite | Galactic |
-| +25% | +40% | +60% | +100% | +160% | +250% | +400% | +600% | +1000% |
+### The palace is NOT a unit
 
-Taking all nine is **+2635% base attack — ×27.35**. They carry no prerequisites:
-skipping one costs you its percentage, not the rest of the line. **Each also
-grants a :melee: unit to place**, so the line is the army's size as well as its
-edge.
-
-**This is why they are base modifiers and not flat bonuses.** A flat line washed
-the classes out — every one of them converged on the same number, and a Siege
-unit ended the game hitting no harder than a Ranged one:
-
-| class | base | with the whole line | a flat +277 would give |
-|---|---|---|---|
-| ranged | 6 | **164** | 283 |
-| melee | 7 | **191** | 284 |
-| cavalry | 8 | **219** | 285 |
-| naval | 10 | **274** | 287 |
-| siege | 20 | **547** | 297 |
-
-A percentage of base keeps the 3.3 : 1 siege-to-ranged ratio intact for the whole
-run, and it means anything that later adds **flat** attack — on a kill, from a
-building — is multiplied by everything you have researched rather than drowned
-by it.
-
-The brief's own wording is the tell: it says *"increases all unit atk by 3"*,
-which is additive language. A tech that overwrote an earlier one would have had
-to say *"sets"*.
+Unit research — attack, defence, anything keyed to `unitAtk*` / `unitDef*` —
+does not touch the palace's attack or its hit points. The palace gets a tech line
+of its own, and folding unit research into it would quietly pre-empt that.
 
 - **Rural tile** — controlled, with no outpost and no city. Water is always this
   and never more.
@@ -337,6 +314,7 @@ Currently implemented:
 | kind | what it does |
 |---|---|
 | **`unit_atk_base_pct`** | a % of BASE :attack: on every unit — a base modifier |
+| **`unit_def_base_pct`** | the same, for :defense: (which is hit points) |
 | **`grant_unit`** | queues N units of a CLASS to place on the map |
 
 `grant_unit` names a **class**, never a named unit — there is only one unit per
