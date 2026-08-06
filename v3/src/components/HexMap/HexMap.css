@@ -171,8 +171,13 @@
   filter: drop-shadow(0 0 4px rgba(255, 190, 70, 0.65));
 }
 
-/* An improvement is a small dot; a city replaces it with a population pip. */
+/* An improvement (outpost) is a small dot; a city replaces it with a population
+   pip. Pinned to the BOTTOM-RIGHT corner (absolute, out of the grid flow) so a
+   unit badge or building card centred on the same tile never covers it. */
 .hex-improved {
+  position: absolute;
+  bottom: 8%;
+  right: 8%;
   width: 15%;
   aspect-ratio: 1;
   border-radius: 50%;

@@ -586,7 +586,9 @@ export default function HexMap() {
   const markerEls = useMemo(() => shown.map((t) => {
     const k = `${t.q},${t.r}`
     if (known.bfSet.has(k)) return null
-    const dot = t.improved && !t.city && !t.building
+    // The outpost pip shows for ANY improved, city-less tile — even one with a
+    // unit or building on it — pinned to a corner so it is never covered.
+    const dot = t.improved && !t.city
     if (!dot && !t.city && !t.encampment) return null
     const c = centerOf(t.q, t.r)
     return (

@@ -749,11 +749,14 @@ pays its :gold: — it just cannot be settled, and therefore cannot be built on.
 terrain appears in `TERRAIN_GATE` any more; a gate there would be dead config reading as a
 rule.
 
-**What may be settled** (`expansionTargets`) is anything VISIBLE that is one of:
-**adjacent** to the controlled border (one ring past your outposts — this used to require the
-tile to already be controlled), the **border of a gated region you have not entered**
-(the only way onto the New World, Moon, Mars, exoplanet), or an **isolated speck** that
-nothing is ever adjacent to.
+**What may be settled** (`expansionTargets`) is a **visible tile you ALREADY CONTROL** (the
+main case — settling it claims its neighbours via `improveTile`, so the frontier still pushes
+outward; you just build within your borders), the **border of a gated region you have not
+entered** (the only way to CROSS onto the New World / Moon / Mars / exoplanet, since control
+can't spread over water), or an **isolated speck** nothing is ever adjacent to. ⚠️ Outposts are
+**no longer offered one ring past the border** — settle within your land and it grows outward.
+Because the palace is a city and **a city may not be founded adjacent to another**, a city only
+becomes foundable once you have improved a tile **2+ rings from the palace**.
 
 Rules: cities never adjacent to another city, never on mountains, **never on water** (a city
 may sit beside water and take the growth bonus, but is founded on land), and only where there

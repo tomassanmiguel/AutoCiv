@@ -193,17 +193,17 @@ export function canExpandOnto(world, t, unlocks) {
 /**
  * Everything a single expansion could be spent on right now.
  *
- * SETTLE ANYTHING YOU CAN SEE THAT TOUCHES YOU. Three ways in, and no others:
+ * SETTLE ONLY GROUND YOU ALREADY CONTROL. Settling a controlled tile improves it
+ * AND claims its neighbours (`improveTile`), so the frontier still pushes outward
+ * — you just build within your own borders rather than one ring past them. Two
+ * exceptions exist because control cannot spread across water/void on its own:
  *
- *  1. ADJACENT — a visible tile next to ground you control. Note this is
- *     adjacency to the CONTROLLED border, not to an improvement, so it reaches
- *     one ring further out than the old "must already be controlled" rule.
- *  2. FOOTHOLD — the border of a gated region you have not entered yet (the
- *     New World, the Moon, Mars, the exoplanet). This is the ONLY way in: you
- *     cannot appear in the middle of Mars, and since outposts can no longer sit
- *     on water you cannot walk a chain of ocean tiles there either.
- *  3. SPECK — an isolated island/asteroid/star that nothing is ever adjacent to.
- *     The border-first rule would strand these forever.
+ *  1. CONTROLLED — a visible, controlled, unimproved land tile. The main case.
+ *  2. FOOTHOLD — the border of a gated region you have not entered yet (the New
+ *     World, the Moon, Mars, the exoplanet). This is the ONLY way to CROSS into a
+ *     new landmass, since outposts can't sit on water to walk there.
+ *  3. SPECK — an isolated island/asteroid/star nothing is ever adjacent to; the
+ *     border-first rule would strand these forever.
  *
  *  city — an improved tile that may become a city
  */
@@ -219,13 +219,11 @@ export function expansionTargets(world, unlocks) {
     improve.push(t)
   }
 
-  // 1. Adjacent: the controlled tiles themselves, and everything touching them.
-  for (const t of world.terr.controlled) {
-    offer(t)
-    for (const n of neighbors(t.q, t.r)) offer(world.at(n.q, n.r))
-  }
+  // 1. Ground you already control — outposts are built WITHIN your borders.
+  for (const t of world.terr.controlled) offer(t)
 
-  // 2. Footholds: the border of a gated region you have not entered yet.
+  // 2. Footholds: the border of a gated region you have not entered yet — the
+  //    only way to cross onto a new landmass (control can't spread over water).
   for (const [region, gate] of Object.entries(GATED_REGIONS)) {
     if (!unlocks.has(gate) || regionEntered(world, region)) continue
     for (const t of world.terr.borders[region] ?? []) offer(t)
