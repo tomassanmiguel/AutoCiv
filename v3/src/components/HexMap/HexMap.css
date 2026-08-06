@@ -262,6 +262,14 @@
   stroke-width: 4;
   animation: hex-target 1.3s ease-in-out infinite;
 }
+/* A city-founding tile in the :food: expand choice — GOLD, to read apart from a
+   green settle tile. */
+.hex-overlay polygon.city-target {
+  fill: rgba(255, 206, 110, 0.2);
+  stroke: rgba(255, 216, 120, 0.98);
+  stroke-width: 4;
+  animation: hex-target 1.3s ease-in-out infinite;
+}
 @keyframes hex-target {
   0%, 100% { fill-opacity: 0.5; stroke-opacity: 0.7; }
   50% { fill-opacity: 1; stroke-opacity: 1; }

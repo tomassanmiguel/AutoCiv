@@ -4,50 +4,65 @@ import IconText from '../common/IconText.jsx'
 import './BuildPrompt.css'
 
 /**
- * :production: BUILDS. Crossing its threshold does one of two things:
+ * :food: EXPANDS — and now it is a manual choice again. Crossing a food
+ * threshold opens this prompt; the map lights two disjoint sets and you click:
  *
- *   WONDER — if you are holding one you drafted but never built, it is built
- *            now. Drafting was the decision; this is only where it stands.
- *   CITY   — otherwise you found a city. A city claims no new ground, but its
- *            population compounds forever.
+ *   SETTLE (green) — improve a border tile into an outpost. Its yield doubles and
+ *                    its neighbours come under your control (pushing outward).
+ *   CITY   (gold)  — found a city on an existing improvement. No new ground, but
+ *                    its population compounds forever.
  *
- * :food: is deliberately absent from this file. It expands the border on its
- * own, with no prompt — buying ground is not a decision worth stopping for.
- *
- * Either way the map highlights the legal tiles and you click one.
+ * You may also Skip, forfeiting this expansion. (:production: is currently inert;
+ * it will build wonders later.)
  */
 export default function BuildPrompt() {
   const game = useGame()
   const sel = game.selection
-  if (sel?.type !== 'city' && sel?.type !== 'wonder') return null
+  // 'wonder' kept for when :production: is re-enabled; 'city' is folded into 'expand'.
+  if (sel?.type === 'wonder') return <WonderPrompt game={game} wonder={sel.wonder} />
+  if (sel?.type !== 'expand') return null
 
-  const wonder = sel.type === 'wonder' ? sel.wonder : null
-  const targets = wonder ? game.wonderTargets : game.cityTargets
-  const best = !wonder && targets.length
-    ? targets.reduce((a, b) => (foodAround(game.world, b) > foodAround(game.world, a) ? b : a))
+  const settle = game.expandTargets
+  const cities = game.cityTargets
+  const best = settle.length
+    ? settle.reduce((a, b) => (foodAround(game.world, b) > foodAround(game.world, a) ? b : a))
     : null
 
   return (
-    <div className={`build-prompt${wonder ? ' is-wonder' : ''}`}>
-      <img className="build-icon" src={wonder ? wonder.icon : '/sprites/ui/pop.png'} alt="" />
+    <div className="build-prompt">
+      <img className="build-icon" src="/sprites/icons/food.png" alt="" />
       <div className="build-body">
         <div className="build-head">
-          <b>{wonder ? wonder.name : 'Found a city'}</b>
-          <span className="build-kind">{wonder ? `Wonder ${wonder.tier}` : 'Production'}</span>
+          <b>Expand your borders</b>
+          <span className="build-kind">Food</span>
         </div>
         <div className="build-effect">
-          {wonder
-            ? <IconText>{wonder.description}</IconText>
-            : 'Population compounds forever, but claims no ground.'}
+          Settle an outpost (<span className="build-swatch settle" />) or found a city
+          (<span className="build-swatch city" />).
         </div>
         <div className="build-hint">
-          Click a highlighted tile · {targets.length} available
+          {settle.length} to settle · {cities.length} to build a city
           {best && <> · best: {foodAround(game.world, best)} food nearby</>}
         </div>
       </div>
-      {/* A wonder cannot be skipped away: you spent a draft pick on it, and it
-          stays held until there is somewhere to put it. */}
-      {!wonder && <button className="build-skip" onClick={() => game.skipSelection()}>Skip</button>}
+      <button className="build-skip" onClick={() => game.skipSelection()}>Skip</button>
+    </div>
+  )
+}
+
+function WonderPrompt({ game, wonder }) {
+  const targets = game.wonderTargets
+  return (
+    <div className="build-prompt is-wonder">
+      <img className="build-icon" src={wonder.icon} alt="" />
+      <div className="build-body">
+        <div className="build-head">
+          <b>{wonder.name}</b>
+          <span className="build-kind">Wonder {wonder.tier}</span>
+        </div>
+        <div className="build-effect"><IconText>{wonder.description}</IconText></div>
+        <div className="build-hint">Click a highlighted tile · {targets.length} available</div>
+      </div>
     </div>
   )
 }

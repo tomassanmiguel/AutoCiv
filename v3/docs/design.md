@@ -108,13 +108,14 @@ that spans pools, and a group of one.
 
 | resource | on crossing a threshold |
 |---|---|
-| **:food:** | **Expands automatically.** No prompt: the highest-yield available outpost is created, pushing your borders outward. |
-
-| **:production:** | **Prompts you to found a city** — *unless* you are holding an undrafted wonder, in which case you build the wonder instead. |
+| **:food:** | **Opens a manual EXPAND choice** — settle an outpost on a border tile (green, pushes your borders outward) OR found a city on an existing improvement (gold). You pick the tile; you may also Skip. |
 | **:progress:** | Offers 3 advancements from the three current pools. |
+| **:production:** | ⚠️ **INERT for now.** It accrues and crosses levels but does nothing; its future job is to build wonders. |
 
-City founding **no longer depends on food**. Food buys ground; production builds
-on it.
+Both outpost-settling and city-founding are paid by :food: now — the two are the
+two resolutions of one expand choice. (Outpost placement used to be automatic;
+it is a manual pick again.) Because :production: is inert, a drafted **wonder
+stays held** until production is re-enabled.
 
 ### Where an outpost may go
 
@@ -137,23 +138,13 @@ settling a chain of ocean tiles.
 Terrain gates (tundra, desert, mountain, and the off-world unlocks) still apply
 on top.
 
-### "Highest yield" counts :gold: at HALF
-
-:gold: is the only resource with **no threshold** — it buys repairs and upgrades
-rather than compounding into growth — so a raw sum overrates gold-heavy ground.
-At full weight desert (3 :gold:) outranked plains and hills; at half it does not.
-
-```
-score = :food: + :production: + :progress: + 0.5 × :gold:
-```
-
-Ties break **outward**, which is what "pushing your borders outward" means.
-
 ## 4. Wonders are drafted techs
 
 A wonder appears in the advancement offer like any other card, with an era and a
-quadrant. Taking one does not build it — **the next :production: threshold builds
-it instead of a city**, and you place it on the map.
+quadrant. Taking one does not build it — a future :production: threshold will
+build it and let you place it on the map. **Until :production: is re-enabled, a
+drafted wonder simply stays held** (and no second wonder is offered while one is
+held, so drafting a wonder now parks that slot).
 
 **You are never offered a wonder while you already hold an unbuilt one.**
 

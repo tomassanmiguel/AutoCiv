@@ -53,15 +53,6 @@ import { installCombat } from './manager/combat.js'
 const PALACE_REGEN = 0.25
 
 /**
- * What :gold: is worth when comparing one tile against another.
- *
- * HALF, because gold is the only resource with no threshold: it buys repairs and
- * upgrades rather than compounding into growth, so a raw sum overrates
- * gold-heavy ground.
- */
-const GOLD_WEIGHT = 0.5
-
-/**
  * What you start with. Without this, surviving era 0 depends entirely on whether
  * the web happened to offer a military node before the first wave — a coin flip
  * the player cannot influence, which is not a decision.
@@ -221,7 +212,7 @@ export class GameManager {
     this.resources = initialResources()
     // { type: 'progress' | 'city' | 'wonder' | 'placement', ... }
     this.selection = null
-    this.pending = { progress: 0, production: 0 }
+    this.pending = { progress: 0, food: 0 }
     this.log = []
 
     this.phase = 'development' // 'development' | 'combat'
@@ -305,13 +296,12 @@ export class GameManager {
     const gained = accrue(this.resources, out, this.mods.threshold)
     growCities(this.world, this.mods.cityGrowth)
 
-    // Each threshold resource does something different, and only two of the
-    // three stop the clock. See `docs/design.md` §3.
+    // Each threshold resource does something different. See `docs/design.md` §3.
+    // :progress: offers advancements; :food: opens a manual expansion (settle an
+    // outpost OR found a city). :production: is currently INERT — it accrues and
+    // crosses levels but does nothing (it will build wonders later).
     if (gained.progress > 0) this.pending.progress += gained.progress
-    if (gained.production > 0) this.pending.production += gained.production
-    // FOOD IS AUTOMATIC AND SILENT. It buys ground, which is never a decision
-    // worth a modal: the best available outpost is simply created.
-    for (let i = 0; i < gained.food; i++) this._autoExpand()
+    if (gained.food > 0) this.pending.food += gained.food
 
     this.tick++
     if (this.tick >= TICKS_PER_WAVE) this._startPrep()
@@ -366,35 +356,19 @@ export class GameManager {
     this.log.push({ wave: this.wave, text: `A host musters on the frontier.` })
   }
 
+  /** Where a new outpost may be settled right now (the :food: expansion choice). */
+  get expandTargets() { return expansionTargets(this.world, this.unlocks).improve }
+
   /**
-   * Crossing a :food: threshold pushes the border outward on its own — the
-   * highest-yield outpost available, with no prompt. An outpost DOUBLES the
-   * tile's yield, so the best tile to settle is simply the best tile.
-   *
-   * ⚠️ :gold: COUNTS HALF. It is the only resource with no threshold — it buys
-   * repairs and upgrades rather than compounding into growth — so a raw sum
-   * overrates gold-heavy ground. At full weight, desert (3 :gold:) outranked
-   * plains and hills; at half it does not.
-   *
-   * Ties break OUTWARD, since the design's word for what food buys is "pushing
-   * your borders outward" and hugging the palace is the opposite of that.
-   *
-   * Water needs no special case here: an outpost can never be on it
-   * (`canExpandOnto`), so it is never in `targets` at all.
+   * Settle an outpost on `tile`, resolving a :food: expansion selection. An
+   * outpost DOUBLES the tile's yield and pulls its neighbours into control. The
+   * player picks the tile now (it used to be automatic); founding a city on an
+   * existing improvement is the other resolution of the same selection.
    */
-  _autoExpand() {
-    const targets = expansionTargets(this.world, this.unlocks).improve
-    if (!targets.length) return false
-    const yieldOf = (t) => {
-      const y = terrainOf(t.terrain).yields
-      return y.food + y.production + y.progress + y.gold * GOLD_WEIGHT
-    }
-    const best = targets.reduce((a, b) => {
-      const d = yieldOf(b) - yieldOf(a)
-      return d > 0 || (d === 0 && b.d > a.d) ? b : a
-    })
+  settleAt(tile) {
+    if (this.selection?.type !== 'expand') return false
     const clearedBefore = this.world.terr.cleared ?? 0
-    if (!improveTile(this.world, best)) return false
+    if (!improveTile(this.world, tile)) return false
     // New controlled land can shorten a connection route, so re-lay.
     layConnections(this.world)
     this._knownCache = null
@@ -402,7 +376,11 @@ export class GameManager {
     // combat start, so it must be rebuilt now or the cleared camp's garrison would
     // still turn up. ("What you're looking at is what turns up.")
     if ((this.world.terr.cleared ?? 0) !== clearedBefore && !this.combat.active) this.prepareWave()
-    this.log.push({ wave: this.wave, text: `Settled ${terrainOf(best.terrain).name}.` })
+    this.log.push({ wave: this.wave, text: `Settled ${terrainOf(tile.terrain).name}.` })
+    this.selection = null
+    this._openNextSelection()
+    this._restartTimer()
+    this._emit()
     return true
   }
 
@@ -566,17 +544,13 @@ export class GameManager {
       // An exhausted pool silently skips rather than opening an empty choice.
       if (offers.length) { this.selection = { type: 'progress', offers, rerolls: 0 }; this._restartTimer(); return }
     }
-    // :production: BUILDS. A held wonder takes precedence over founding a city —
-    // you drafted it, so it is already the choice you made.
-    if (this.pending.production > 0) {
-      this.pending.production--
-      if (this.draft.heldWonder) {
-        this.selection = { type: 'wonder', wonder: this.draft.heldWonder }
-        this._restartTimer()
-        return
-      }
-      if (this.cityTargets.length) {
-        this.selection = { type: 'city' }
+    // :food: EXPANDS — a manual choice: settle a new outpost OR found a city on
+    // an existing improvement. If there is nowhere to do either, the crossing is
+    // silently spent rather than opening an empty choice.
+    while (this.pending.food > 0) {
+      this.pending.food--
+      if (this.expandTargets.length || this.cityTargets.length) {
+        this.selection = { type: 'expand' }
         this._restartTimer()
         return
       }
@@ -601,9 +575,9 @@ export class GameManager {
     return out
   }
 
-  /** Found a city, spending the pending :production:. */
+  /** Found a city on an improvement — the other resolution of a :food: expansion. */
   foundCityAt(tile) {
-    if (this.selection?.type !== 'city') return false
+    if (this.selection?.type !== 'expand' && this.selection?.type !== 'city') return false
     if (!foundCity(this.world, tile)) return false
     // A new city rewires the whole network (the old-world relay rule is global).
     layConnections(this.world)

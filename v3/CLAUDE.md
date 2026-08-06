@@ -137,7 +137,7 @@ v3/
         ├── GameScreen.jsx      # map + HUD strip + progress overlay
         ├── HexMap/             # camera, culling, hex rendering, hover card
         ├── Progress/           # ProgressPanel (3 branch columns) · ProgressOffer (3 cards)
-        ├── Build/              # BuildPrompt — :production: founds a city or builds a wonder
+        ├── Build/              # BuildPrompt — :food: expand choice (settle outpost / found city)
         ├── Combat/             # wave/strength/speed debug bar
         ├── Hud/                # StageBanner · OutputReadout · WonderBadge
         └── Menu/MenuOverlay.jsx# known-world slider + reroll + exit
@@ -382,8 +382,8 @@ this is the implementer's summary:
   ⚠️ **An era is a TECH POOL and nothing else.** It does not pace the map, gate combat, or scale
   difficulty. Combat is the **wave** ladder — 30 waves, one combat each, scaling on its own.
   The two clocks never touch.
-- **:food: expands automatically** (highest-yield outpost, no prompt); **:production: founds a
-  city** — or builds a **wonder** if you hold an undrafted one; **:progress: offers 3 techs**.
+- **:food: opens a manual expand choice** (settle an outpost OR found a city); **:progress:
+  offers 3 techs**; **:production: is inert for now** (it will build wonders/cities later).
 - **Wonders are drafted like techs** — era, quadrant, and an entry in the offer. Taking one does
   not build it; the next :production: threshold does. You are never offered a second while one
   is unbuilt.
@@ -692,20 +692,24 @@ prep.
 One timer and one pacing control in the HUD serve both. Each tick either advances a running
 combat by a beat, or advances the game: accrue output, grow cities, count down to the wave.
 
-Each threshold resource does something DIFFERENT, and only two of the three stop the clock:
+Each threshold resource does something DIFFERENT:
 
 | resource | on crossing |
 |---|---|
 | **:progress:** | offers three advancements (`ProgressOffer`) — **pauses** |
-| **:production:** | founds a city, or builds a held wonder (`BuildPrompt`) — **pauses** |
-| **:food:** | **expands automatically, no prompt at all** (`_autoExpand`) |
+| **:food:** | opens a manual **expand** choice (`BuildPrompt`) — **pauses** |
+| **:production:** | ⚠️ **INERT for now** — accrues and crosses levels but does nothing (it will build wonders later) |
 
 `_restartTimer` is gated on `!selection`, exactly as v2's selections were.
 
-`_autoExpand` scores `food + production + progress + 0.5·gold` (`GOLD_WEIGHT`), ties breaking
-outward. ⚠️ **Gold counts HALF** because it is the only resource with no threshold — it buys
-repairs and upgrades rather than compounding — and at full weight desert outranked plains and
-hills. Water needs no special case: an outpost can never be on it, so it is never a target.
+⚠️ **:food: is a MANUAL choice again** (it used to auto-expand silently). A `type:'expand'`
+selection lights two disjoint sets and you click one: a **settle** tile (green,
+`game.expandTargets` → `settleAt` → `improveTile`, doubles the tile's yield and claims its
+neighbours) or a **city** tile (gold, `game.cityTargets` → `foundCityAt`, an existing
+improvement whose population compounds). Skip forfeits the expansion. HexMap's aiming carries
+both sets (`cityAimSet` colours/dispatches the city tiles apart from settle tiles). `_autoExpand`
+and its `GOLD_WEIGHT` scoring are **gone**. ⚠️ Because :production: is inert, **held wonders can't
+be built right now** — a drafted wonder just stays held until production is re-enabled.
 
 ## Territory & expansion (`world/territory.js`)
 
@@ -909,8 +913,9 @@ term (`prev + X·n·G^n`, `THRESHOLD_GROWTH = 1.09`): the linear rule alone grow
 in the level while output grows *exponentially* — more tiles, each worth more, multiplied by
 the web — so it fell behind and the game turned into an offer every couple of ticks.
 
-Only :progress: and :production: stop the clock; **:food: was the loudest of the three and is
-now silent**, which is most of why the prompt rate fell.
+**:progress: and :food: stop the clock** (an advancement offer / a manual expand choice);
+**:production: is inert**, so it never pauses. (Food used to auto-expand silently; it is a
+manual choice again by design.)
 
 ⚠️ **The threshold ladder and the wave budget are COUPLED.** Raising thresholds means fewer
 progress offers → fewer unit grants → a smaller army. Retune `BUDGET_BASE`/`BUDGET_GROWTH` in

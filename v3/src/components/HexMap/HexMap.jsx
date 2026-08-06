@@ -88,14 +88,26 @@ export default function HexMap() {
   const known = game.known
   const combat = game.combat
   const sel = game.selection
-  // AIMING. Three selections put something on the map — founding a city,
-  // building a held wonder, placing a granted unit/building — and all three use
-  // the same affordance: legal tiles glow and become clickable. One aiming
-  // state, one look. (:food: expansion is NOT here: it is automatic and silent.)
+  // AIMING. Several selections put something on the map — settling an outpost or
+  // founding a city (:food:), building a held wonder, placing a granted
+  // unit/building — and all use the same affordance: legal tiles glow and become
+  // clickable. The :food: EXPAND choice is special: it lights TWO disjoint sets,
+  // settle-tiles (green) and city-tiles (gold), and dispatches by which was hit.
   const placing = sel?.type === 'placement' ? sel.item : null
+  const expandSel = sel?.type === 'expand'
+  // City-founding tiles: their own set so they can be coloured and dispatched
+  // apart from settle tiles in the expand choice.
+  const cityAimSet = (expandSel || sel?.type === 'city')
+    ? new Set(game.cityTargets.map((x) => `${x.q},${x.r}`))
+    : null
   const expSet = (() => {
     if (placing) return new Set(game.placementTargets.map((x) => `${x.q},${x.r}`))
-    if (sel?.type === 'city') return new Set(game.cityTargets.map((x) => `${x.q},${x.r}`))
+    if (expandSel) {
+      const s = new Set(game.expandTargets.map((x) => `${x.q},${x.r}`))
+      if (cityAimSet) for (const k of cityAimSet) s.add(k) // both kinds are clickable
+      return s
+    }
+    if (sel?.type === 'city') return cityAimSet
     if (sel?.type === 'wonder') return new Set(game.wonderTargets.map((x) => `${x.q},${x.r}`))
     return null
   })()
@@ -106,6 +118,10 @@ export default function HexMap() {
     : null
   const aimAt = (t) => {
     if (placing) game.placeGrant(t)
+    else if (expandSel) {
+      if (cityAimSet?.has(`${t.q},${t.r}`)) game.foundCityAt(t)
+      else game.settleAt(t)
+    }
     else if (sel?.type === 'city') game.foundCityAt(t)
     else if (sel?.type === 'wonder') game.buildWonderAt(t)
   }
@@ -694,8 +710,12 @@ export default function HexMap() {
             {shown.map((t) => {
               const k = `${t.q},${t.r}`
               const repoInfo = repoMap?.get(k)
+              // A city-founding tile (gold) reads apart from a settle tile (green)
+              // in the :food: expand choice; everywhere else `cityAimSet` is null.
+              const isCity = cityAimSet?.has(k)
               const cls = [
-                expSet?.has(k) && 'target',
+                isCity && 'city-target',
+                !isCity && expSet?.has(k) && 'target',
                 blockedSet?.has(k) && 'blocked',
                 reach?.move.has(k) && 'can-move',
                 reach?.attack.has(k) && 'can-hit',

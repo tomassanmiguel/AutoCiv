@@ -67,3 +67,15 @@
   cursor: pointer;
 }
 .build-skip:hover { color: #e2e7f2; border-color: rgba(255, 255, 255, 0.3); }
+
+/* Inline colour swatches keying the two expand-target colours to the map. */
+.build-swatch {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 3px;
+  vertical-align: -0.05em;
+  margin: 0 0.1em;
+}
+.build-swatch.settle { background: rgba(150, 240, 150, 0.9); box-shadow: 0 0 0 1px rgba(180, 250, 170, 0.9); }
+.build-swatch.city { background: rgba(255, 210, 120, 0.95); box-shadow: 0 0 0 1px rgba(255, 216, 120, 0.98); }

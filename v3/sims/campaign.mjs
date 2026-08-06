@@ -132,6 +132,16 @@ function run(seed, waveCount) {
       } else if (sel.type === 'city') {
         const t = pickCity(g)
         if (t) g.foundCityAt(t); else g.skipSelection()
+      } else if (sel.type === 'expand') {
+        // Greedy: settle the highest-food border tile; if none, found a city.
+        const s = g.expandTargets
+        if (s.length) {
+          const best = s.slice().sort((a, b) => foodAround(g.world, b) - foodAround(g.world, a))[0]
+          g.settleAt(best)
+        } else {
+          const c = pickCity(g)
+          if (c) g.foundCityAt(c); else g.skipSelection()
+        }
       } else if (sel.type === 'wonder') {
         const t = g.wonderTargets[0]
         if (t) g.buildWonderAt(t); else g.skipSelection()
