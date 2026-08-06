@@ -26,7 +26,7 @@ import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { terrainOf, isPassable } from './world/terrain.js'
 import { key, neighbors, lengthOf, disc } from './hex/coords.js'
 import { initialResources, accrue } from './data/resources.js'
-import { QUADRANTS, OFFER_SIZE, ERAS } from './data/schema.js'
+import { QUADRANTS, OFFER_SIZE, ERAS, connectionTierName } from './data/schema.js'
 import {
   initialDraft, drawOffers, recordPick, branchPool, branchProgress,
   revealEraOf, draftableById, randomPriorTech,
@@ -180,6 +180,7 @@ function freshMods() {
     // is Maglev's rider — route tiles also earn :production: equal to their gold.
     connectionGold: 1,
     connectionProd: false,
+    connectionTier: 0,                // 0 = Trail; road techs raise it (names the routes)
     units: new Set(),
     buildings: new Set(),
     settle: new Set(),
@@ -535,6 +536,9 @@ export class GameManager {
   get revealEra() { return revealEraOf(this.draft) }
 
   get eraName() { return ERAS[this.revealEra] }
+
+  /** What a city-connection tile is called right now (Trail → Road → …). */
+  get connectionName() { return connectionTierName(this.mods.connectionTier) }
 
   /** Per-branch era, count toward the next, and what is left to draft there. */
   get branches() {
@@ -1206,6 +1210,8 @@ export class GameManager {
       case 'road_network':
         this.mods.connectionGold += f.gold ?? 0
         if (f.prodFromGold) this.mods.connectionProd = true
+        // The most advanced tier held names the routes (Trail → Road → …).
+        this.mods.connectionTier = Math.max(this.mods.connectionTier, f.tier ?? 1)
         // A richer network changes tile yields; the road tiles themselves do not
         // move, so no need to re-lay — just bump the memo version.
         this.world.terr.version++

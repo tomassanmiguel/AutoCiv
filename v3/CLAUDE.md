@@ -553,7 +553,8 @@ Implemented today:
 - **repositioning** (`reposition_range`, `reposition_domain`, `reposition_cost`,
   `reposition_teleport`) and **`formation`** — see § Repositioning above.
 - **`road_network`** — raises `mods.connectionGold`; its bool `prodFromGold` param sets
-  `connectionProd` (Maglev). See § City connections.
+  `connectionProd` (Maglev); its `tier` param feeds `mods.connectionTier` (max), which names the
+  routes (Trail → Road → …, `game.connectionName`). See § City connections.
 - **`palimpsest`** (unique, Renaissance) — `mods.palimpsest` counts how many random UNCHOSEN
   prior-era techs to recover at each combat end. `_grantPalimpsest` (called from `endCombat`)
   draws via `randomPriorTech(draft, revealEra)`, adds it to `taken`, and applies its effects for
@@ -770,6 +771,11 @@ global, so the network is **recomputed whole** on any city/territory change. Mag
 `connectionProd` → route tiles also earn :production: equal to their gold. `t.road` marks route
 tiles (still drawn by HexMap's `roadEdges`).
 
+Every route has a **tier name**: `road_network`'s `tier` param feeds `mods.connectionTier` (the
+MAX held), and `game.connectionName` maps it through `CONNECTION_TIERS` — **Trail** (0, the default
+with no road tech) → **Road** → **Railroad** → **Highway** → **Maglev**. The tile tooltip shows the
+current name in place of a generic "road".
+
 ## Repositioning (prep phase — `world/reposition.js`, `costs.js`)
 Moving a placed unit is a **prep-phase** action (`game.canReposition`). It costs :gold: per tile
 of distance BEYOND your free **reposition range** (`mods.repositionRange`, 0 without research);
@@ -853,10 +859,17 @@ the same two corners. The numbers are the **TRUE live stats** from `GameManager.
 building is a **name card** showing its real per-tick output from `GameManager.buildingOutput`
 (the summed effect contribution — content buildings no longer read as "idle"). Hovering either
 reveals its **gold actions** with prices, right on the thing being spent on. A tile can hold
-BOTH a unit and a building, so the two sets sit on **opposite sides** — unit gold LEFT, building
-gold RIGHT (`.tc-actions.left/.right`) — and each upgrade names its target ("Upgrade Unit" /
-"Upgrade Building"). A **city with a unit on it** tucks its pop pip into the corner
-(`.hex-city.cornered`) so the centred badge can't swallow it.
+BOTH a unit and a building, so the two sets go **above vs below** the tile — building gold ABOVE,
+unit gold BELOW (`.tc-actions.above/.below`) — never overlapping, and each upgrade names its
+target ("Upgrade Unit" / "Upgrade Building").
+
+⚠️ **The tile card is PHASE-DRIVEN** (`compact = game.phase === 'development'`). In **development**
+the economy is centre stage: the unit shrinks to a small icon with **no stat pills**, so
+buildings/cities dominate. In **prep** (and combat, via `PieceCard`) the units and their stats take
+over. A **city with a unit on it** tucks its pop pip into the corner (`.hex-city.cornered`) only
+when a FULL badge is shown (prep/combat) — in development the small icon leaves the pip centred.
+⚠️ A **destroyed** unit still renders its badge (greyed via `.destroyed`), just with no stat pills —
+`unitBoardStats` returns null for it, so the card must not gate the badge on stats.
 
 **The tile hover card** (`TileTip`) is the read-the-numbers surface, mirroring the enemy
 `PieceCard` tooltip: for a **player unit** it shows the live atk/def/range/taunt plus a

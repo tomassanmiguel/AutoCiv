@@ -537,4 +537,7 @@ re-route an old one — so the network is recomputed whole whenever cities or
 territory change (`world/territory.js` `layConnections`).
 
 `road_network` effects raise the per-tile connection gold; **Maglev**'s rider
-also gives each route tile :production: equal to its :gold:.
+also gives each route tile :production: equal to its :gold:. Each also carries a
+**tier**, and the most advanced held tier NAMES the routes — **Trail** (the default
+with no road tech) → **Road** → **Railroad** → **Highway** → **Maglev** — shown as a
+tag on connection tiles.

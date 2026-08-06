@@ -142,6 +142,10 @@ export const TERRAIN_GROUP_NAMES = Object.keys(TERRAIN_GROUPS)
 /** The four threshold/economy resources a yield effect may target. */
 export const RESOURCE_KEYS = ['food', 'production', 'gold', 'progress']
 
+/** City-connection tier names, indexed by tier. 0 = the default (no road tech). */
+export const CONNECTION_TIERS = ['Trail', 'Road', 'Railroad', 'Highway', 'Maglev']
+export const connectionTierName = (tier) => CONNECTION_TIERS[Math.min(tier, CONNECTION_TIERS.length - 1)] ?? 'Trail'
+
 export const REPOSITION_DOMAINS = {
   water: 'Across water',
   space: 'Across space',
@@ -324,6 +328,9 @@ export const EFFECT_KINDS = {
     params: [
       { key: 'gold', label: 'Gold', min: 0, default: 1 },
       { key: 'prodFromGold', label: '+production = its gold', type: 'bool', default: false },
+      // The connection TIER names the route (Trail/Road/Railroad/…); the most
+      // advanced held tier is the tag shown on connection tiles.
+      { key: 'tier', label: 'Connection tier', min: 1, default: 1, optional: true },
     ],
     describe: (e) =>
       `Connection tiles earn +${e.gold ?? 0} base :gold:` +

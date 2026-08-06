@@ -412,7 +412,8 @@
         {
           "kind": "road_network",
           "gold": 1,
-          "prodFromGold": false
+          "prodFromGold": false,
+          "tier": 1
         }
       ],
       "requires": [],
@@ -474,7 +475,8 @@
         {
           "kind": "road_network",
           "gold": 2,
-          "prodFromGold": false
+          "prodFromGold": false,
+          "tier": 2
         }
       ],
       "requires": [],
@@ -495,7 +497,8 @@
         {
           "kind": "road_network",
           "gold": 3,
-          "prodFromGold": false
+          "prodFromGold": false,
+          "tier": 3
         }
       ],
       "requires": [],
@@ -516,7 +519,8 @@
         {
           "kind": "road_network",
           "gold": 1,
-          "prodFromGold": true
+          "prodFromGold": true,
+          "tier": 4
         }
       ],
       "requires": [],
