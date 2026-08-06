@@ -551,7 +551,7 @@ export class GameManager {
   // --- Output ---------------------------------------------------------------
 
   /** Per-tick output of everything you control, with every progress modifier. */
-  get output() { return territoryYield(this.world, this.mods) }
+  get output() { return territoryYield(this.world, this.mods, this.revealEra) }
 
   get stats() { return territoryStats(this.world) }
 
@@ -880,7 +880,8 @@ export class GameManager {
     if (!item) return []
     const out = []
     if (item.kind === 'building') {
-      for (const t of this.world.terr.controlled) if (canPlaceBuilding(this.world, t)) out.push(t)
+      const bdef = buildingDef(item.key)
+      for (const t of this.world.terr.controlled) if (canPlaceBuilding(this.world, t, bdef)) out.push(t)
       return out
     }
     // A unit's own class decides its ground — that is what keeps naval units at
@@ -936,7 +937,7 @@ export class GameManager {
     const def = this.grantDef(sel.item)
     if (!def) return false
     const ok = sel.item.kind === 'building'
-      ? placeBuilding(this.world, tile, def.key)
+      ? placeBuilding(this.world, tile, def.key, def, this.revealEra)
       : placeUnit(this.world, tile, def.key, this._placeDef(def))
     if (!ok) return false
     this.grants.shift()
@@ -1079,6 +1080,12 @@ export class GameManager {
         for (let i = 0; i < (f.count ?? 1); i++) {
           this.grants.push({ kind: 'unit', type: f.unitClass })
         }
+        break
+      // Queue a specific building for placement — mirrors grant_unit, but the
+      // key is a building id (which carries its own placement rules).
+      case 'grant_building':
+        this.mods.buildings.add(f.buildingId)
+        this.grants.push({ kind: 'building', key: f.buildingId, name: buildingDef(f.buildingId)?.name ?? f.buildingId })
         break
       // +combat movement, units only (the palace has its own line).
       case 'unit_speed':

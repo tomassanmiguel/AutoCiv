@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **56 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **70 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -505,6 +505,15 @@ Implemented today:
 - **`grant_unit`** — queues N units of a CLASS onto `this.grants`, each opening its own
   placement selection. Stats are read live at placement, so a grant queued before an upgrade
   still benefits from it. All nine classes are offerable.
+- **`grant_building`** — the building analogue: queues a BUILDING (by id) onto `this.grants`,
+  opening a placement selection over legal controlled tiles. See **Content buildings** below.
+- **building effect kinds (8)** — `self_tile_yield_bonus`, `radius_tile_yield_bonus`
+  (terrain/has-unit filters), `radius_city_yield_bonus_per_citizen`,
+  `yield_growth_per_wave_survived`, `yield_growth_per_nearby_unit_death`,
+  `radius_yield_bonus_per_building_age`, `self_yield_bonus_per_distance_to_nearest_building`,
+  `radius_yield_from_other_base_yields`. These are **CONTINUOUS** — `buildingBonuses(world, era)`
+  in `world/territory.js` folds them into `territoryYield` every tick, keyed off each building
+  instance's run state. See **Content buildings**.
 - **`unit_crit_chance_pct`** — +crit chance for player units, summed flat (`mods.unitCritChancePct`).
   **Every unit (player AND enemy) already crits at a fixed 5% base** (`BASE_CRIT_CHANCE`); the tech
   chance adds on top for players. Capped at 100% at roll time. **One dial only**: the multiplier is
@@ -735,11 +744,31 @@ into `unitStats`'s `extra` arg (folded into the base, pre-multiplier).
 
 ## Buildings, units, and placement
 
-**Buildings** (`data/buildings.js`) are unlocked by a progress node, which usually grants one
-or more **placements**. Every building's payout is **adjacency-shaped**: a flat base plus a
-per-neighbour bonus keyed to terrain / control / improvements / cities / other buildings.
-That is the whole design — *where* you put it matters more than which one you got. A Lumber
-Camp in deep forest pays several times what one on the plains does.
+**Content buildings** (`content.buildings`, resolved via `buildingDef` in `data/buildings.js`)
+are unlocked and usually **granted** by a progress tech (`grant_building`). You place one on a
+legal controlled tile and it pays out **every tick**. Each carries a **placement** rule list
+(multi-select, same as wonders — and a non-empty list **overrides** the default open-void
+exclusion, so a Space Telescope goes on space) and an **effects** list drawn from the 8 building
+effect kinds. Unlike a tech's one-shot effect, these are **CONTINUOUS**: `buildingBonuses(world,
+era)` in `world/territory.js` walks `world.terr.buildings`, evaluates each effect (self-tile,
+radius, per-citizen, or a run-state growth term), and `territoryYield` adds the result to the
+owning tiles' yield every tick (only for **visible** tiles).
+- **Instance state** (`placeBuilding`): `{ key, level, builtEra, wavesSurvived, deathBonus }`.
+  `wavesSurvived` ticks up in `endCombat`; `deathBonus` accumulates via the **unit-death hook**
+  (`combat.js` `_onUnitDeath`, called wherever a piece dies — `_dealBlow`, `_poisonTick`) for
+  `yield_growth_per_nearby_unit_death`; both are preserved through raze→ruin→repair (`razeTile`/
+  `restoreTile` keep `builtEra`, reset the growth counters).
+- **The Progress line** (14 buildings, one Economy tech per era 0–13): Shrine, Library (grows
+  +2/wave), Academy (self + adjacent-garrison), Basilica (per-citizen city bonus), University,
+  Observatory (mountain-filtered), Gazette (death hook, New-World ×2), Laboratory, Museum
+  (per-building-age), Arctic Research Station (tundra-only), Space Telescope (space-only),
+  Cogitarium (per-distance-to-nearest-building), Alien Research Center (exoplanet-only, sum of
+  other base yields), Black Hole Station (singularity-only).
+
+⚠️ The **legacy `BUILDING_DEFS`** in `buildings.js` (granary/lumbercamp/… — an adjacency-shaped
+`base`+`per` model) are **superseded and unreferenced**: nothing grants them and `buildingDef`
+resolves `CONTENT_BUILDINGS` first (one id, `library`, collides — content must win). They are
+kept only as a parts bin; do not wire new content against them.
 
 **Units** (`data/units.js`) are **one per class, nine classes, generated from
 `content.unitClasses`**. `units.js` holds no unit data of its own any more — it turns the
@@ -765,7 +794,10 @@ thing, so it was deleted. Don't reintroduce named units.
 - **The draft** gives *quality* — stacking +:attack: today, and the arms a levy never is
   (bows, horses, walls) once those effect kinds exist.
 - You **start** with a single Warrior, and every +:attack: tech grants a :melee: unit on top.
-  ⚠️ **Nothing grants a BUILDING yet** — no effect kind does — so the board holds none.
+- **Buildings ARE granted now** — `grant_building` hands you a placeable that pays out every
+  tick. The **Progress line** (Economy quadrant, eras 0–13, one tech each: Mythology→Shrine …
+  Dark Matter→Black Hole Station) is the first fully-wired building set. See **Content buildings**
+  below.
 
 Placement reuses the expansion affordance: legal tiles pulse, you click one. Units never stand
 on the palace tile (combat's occupancy map holds the palace there and would shadow them).

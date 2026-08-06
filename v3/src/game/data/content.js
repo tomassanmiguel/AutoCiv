@@ -32,6 +32,12 @@ export const DRAFTABLE = [...TECHS, ...WONDERS]
 export const BUILDINGS = raw.buildings ?? []
 export const TIER_UNLOCKS = raw.tierUnlocks ?? []
 
+/** Content buildings by id — the def the engine reads (name/icon/placement/effects). */
+export const CONTENT_BUILDINGS = Object.fromEntries(
+  BUILDINGS.map((b) => [b.id, { key: b.id, name: b.name, icon: b.icon ?? '/sprites/ui/building.png', placement: b.placement ?? [], effects: b.effects ?? [], blurb: b.description }]),
+)
+export const contentBuilding = (id) => CONTENT_BUILDINGS[id] ?? null
+
 /**
  * The nine unit classes, in the schema's canonical order regardless of how the
  * file happens to be sorted. `data/units.js` turns these into the unit defs the

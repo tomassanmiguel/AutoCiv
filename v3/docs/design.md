@@ -278,15 +278,37 @@ stacked.
 
 ## 9. Buildings
 
+A **content building** is a placeable that pays out **every tick**, unlocked (and
+usually granted) by a progress tech. It carries a **description**, a **placement**
+rule list, and a list of **effects** drawn from the building effect kinds — the
+same author-a-row-of-effects model techs use, but the effects are *continuous*
+(recomputed into tile yields each tick) rather than one-shot.
+
+**A tech GRANTS a building** with `grant_building` (naming a building id): the
+player is handed a placement, drops it on a legal controlled tile, and it starts
+producing. This is exactly how `grant_unit` works, one tier up. The **Progress**
+line is the first fully-built example — Mythology → Shrine, Writing → Library, …,
+Dark Matter → Black Hole Station — one economy tech per era granting one building
+that pours out :progress:. (The Ascension era deliberately has none.)
+
 **Placement is multi-select.** A building lists every rule that must hold, so
 "coastal, and not adjacent to open ocean" is two entries rather than a bespoke
-enum member. An empty list means anywhere you control.
+enum member. An empty list means anywhere you control. A non-empty rule list
+**overrides the default open-void exclusion**, which is how a Space Telescope or a
+Black Hole Station is placed on ground a normal building may not touch.
 
 **A building's area effects are measured from the building.** "All tiles in
-range 3" means tiles within 3 of *it* — encoded as `filter: within_radius` with a
-`radius`. This is the opposite of `in_range_of`, which means the *subject* is
-near something else, and getting the two backwards is the single most common
-authoring error.
+range 1" means tiles within 1 of *it*. The effect kinds spell out what varies:
+a flat self-tile bonus, a radius bonus (optionally filtered to a terrain or to
+tiles with a unit on them), a per-citizen city bonus, or a yield that **grows**
+over the run — per wave survived, per nearby unit death, or per era a neighbour
+has stood. A building instance therefore carries run state — `builtEra`,
+`wavesSurvived`, and an accumulating `deathBonus` — alongside its level.
+
+**The unit-death hook is wider than one building.** `yield_growth_per_nearby_unit_death`
+fires whenever **any** unit dies within radius — friend or (optionally) foe, on
+either side — so the Gazette banks :progress: off the whole battlefield, not just
+its own casualties, and doubles in the New World.
 
 ## 10. The content layer
 
@@ -318,6 +340,15 @@ Currently implemented:
 | **`unit_crit_chance_pct`** | +% chance for a unit's hit to crit (double damage) |
 | **`unit_speed`** | +combat :speed: on every unit that can move |
 | **`grant_unit`** | queues N units of a CLASS to place on the map |
+| **`grant_building`** | grants a BUILDING (by id) to place on the map (see § Buildings) |
+| **`self_tile_yield_bonus`** | +resource on the building's own tile |
+| **`radius_tile_yield_bonus`** | +resource per tile in radius (optional terrain / has-unit filter) |
+| **`radius_city_yield_bonus_per_citizen`** | +flat, +per-citizen resource to each city in radius |
+| **`yield_growth_per_wave_survived`** | +resource for each wave the building survives (resets on raze) |
+| **`yield_growth_per_nearby_unit_death`** | permanent +resource per unit death in radius (New-World ×) |
+| **`radius_yield_bonus_per_building_age`** | +resource per era each building in radius has stood |
+| **`self_yield_bonus_per_distance_to_nearest_building`** | +resource per tile of distance to the nearest other building |
+| **`radius_yield_from_other_base_yields`** | each tile in radius gains :progress: = sum of its other base yields |
 | **`reposition_range`** | +free reposition distance (see § Repositioning) |
 | **`reposition_domain`** | a terrain domain becomes free to cross when repositioning |
 | **`reposition_cost`** | cuts the gold cost of repositioning beyond free range |

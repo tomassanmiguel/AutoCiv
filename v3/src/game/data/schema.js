@@ -139,6 +139,9 @@ export const TERRAIN_GROUP_NAMES = Object.keys(TERRAIN_GROUPS)
  * traverse, which is what makes (e.g.) the two coasts of an ocean "adjacent" for
  * a galleon. The keys are the options a `reposition_domain` effect may carry.
  */
+/** The four threshold/economy resources a yield effect may target. */
+export const RESOURCE_KEYS = ['food', 'production', 'gold', 'progress']
+
 export const REPOSITION_DOMAINS = {
   water: 'Across water',
   space: 'Across space',
@@ -480,6 +483,101 @@ export const EFFECT_KINDS = {
     ],
     describe: (e) => `A :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: unit permanently gains +${e.amount ?? 0} :attack: on a :crit:.`,
   },
+
+  // --- buildings -------------------------------------------------------------
+  // A TECH effect: queue a specific building for placement (mirrors grant_unit,
+  // but for a named building id rather than a class).
+  grant_building: {
+    label: 'Grant a building',
+    hint: 'Unlocks a building and queues one to place on the map, respecting that building\'s placement rules.',
+    params: [{ key: 'buildingId', label: 'Building', type: 'building', default: '' }],
+    describe: (e) => `Grants the ${e.buildingId || '—'} :building: to place.`,
+  },
+
+  // The rest are BUILDING effects — continuously active, they modify tile yields
+  // which then feed the normal per-tick accrual. See docs/design.md § Buildings.
+  self_tile_yield_bonus: {
+    label: 'Building — +yield to own tile',
+    hint: 'A flat resource bonus to the tile the building stands on.',
+    params: [
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'amount', label: 'Amount', default: 3 },
+    ],
+    describe: (e) => `+${e.amount ?? 0} :${e.resource}: to its own tile.`,
+  },
+  radius_tile_yield_bonus: {
+    label: 'Building — +yield in radius',
+    hint: 'A flat bonus to each tile within a radius, optionally only tiles of one terrain and/or tiles with a unit on them.',
+    params: [
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'amount', label: 'Amount', default: 1 },
+      { key: 'radius', label: 'Radius', min: 0, default: 1 },
+      { key: 'terrainFilter', label: 'Terrain (any if blank)', options: ['', ...TERRAIN_KEYS], default: '', optional: true },
+      { key: 'hasUnitFilter', label: 'Only tiles with a unit', type: 'bool', default: false, optional: true },
+    ],
+    describe: (e) => `+${e.amount ?? 0} :${e.resource}: to each tile in range ${e.radius ?? 0}` +
+      (e.terrainFilter ? ` (${terrainLabel(e.terrainFilter)} only)` : '') +
+      (e.hasUnitFilter ? ' with a unit on it' : '') + '.',
+  },
+  radius_city_yield_bonus_per_citizen: {
+    label: 'Building — +yield to cities in radius',
+    hint: 'Each city in radius gains a flat amount plus a per-citizen amount times its population.',
+    params: [
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'flatAmount', label: 'Flat', default: 1 },
+      { key: 'perCitizen', label: 'Per citizen', default: 1 },
+      { key: 'radius', label: 'Radius', min: 0, default: 1 },
+    ],
+    describe: (e) => `Each city in range ${e.radius ?? 0} gains +${e.flatAmount ?? 0} :${e.resource}:, plus +${e.perCitizen ?? 0} per citizen.`,
+  },
+  yield_growth_per_wave_survived: {
+    label: 'Building — grows per wave survived',
+    hint: 'The building\'s own-tile bonus grows by this much for each wave it survives, optionally resetting to 0 if it is razed.',
+    params: [
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'amount', label: 'Per wave', default: 2 },
+      { key: 'resetOnRaze', label: 'Reset on raze', type: 'bool', default: true, optional: true },
+    ],
+    describe: (e) => `Its own tile gains +${e.amount ?? 0} :${e.resource}: per wave survived${e.resetOnRaze ? ' (resets if razed)' : ''}.`,
+  },
+  yield_growth_per_nearby_unit_death: {
+    label: 'Building — grows per nearby death',
+    hint: 'The own-tile bonus PERMANENTLY grows each time a unit dies in radius — any side, friendly or enemy. Optionally multiplied when the building sits in the New World.',
+    params: [
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'amount', label: 'Per death', default: 1 },
+      { key: 'radius', label: 'Radius', min: 0, default: 4 },
+      { key: 'includeEnemies', label: 'Count enemy deaths', type: 'bool', default: true, optional: true },
+      { key: 'newWorldMultiplier', label: 'New World ×', min: 1, default: 2, optional: true },
+    ],
+    describe: (e) => `Permanently +${e.amount ?? 0} :${e.resource}: to its own tile per unit death in range ${e.radius ?? 0}` +
+      (e.newWorldMultiplier > 1 ? ` (×${e.newWorldMultiplier} in the New World)` : '') + '.',
+  },
+  radius_yield_bonus_per_building_age: {
+    label: 'Building — +yield per building age in radius',
+    hint: 'Each building in radius gains, to its own tile, an amount times how many eras have passed since it was built.',
+    params: [
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'amount', label: 'Per era', default: 1 },
+      { key: 'radius', label: 'Radius', min: 0, default: 2 },
+    ],
+    describe: (e) => `Every building in range ${e.radius ?? 0} gains +${e.amount ?? 0} :${e.resource}: per era since it was built.`,
+  },
+  self_yield_bonus_per_distance_to_nearest_building: {
+    label: 'Building — +yield per distance to nearest building',
+    hint: 'The own-tile bonus scales with how far this building is from the nearest OTHER building — isolation is the reward.',
+    params: [
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'perTile', label: 'Per tile', default: 15 },
+    ],
+    describe: (e) => `+${e.perTile ?? 0} :${e.resource}: to its own tile per tile of distance to the nearest other building.`,
+  },
+  radius_yield_from_other_base_yields: {
+    label: 'Building — progress from other base yields',
+    hint: 'Each tile in radius gains :progress: equal to the sum of its OTHER base yields (food + production + gold).',
+    params: [{ key: 'radius', label: 'Radius', min: 0, default: 1 }],
+    describe: (e) => `Each tile in range ${e.radius ?? 0} gains :progress: equal to its other base yields.`,
+  },
 }
 export const EFFECT_KEYS = Object.keys(EFFECT_KINDS)
 
@@ -641,10 +739,15 @@ export function validateContent(content) {
     for (const e of row.effects ?? []) {
       const spec = EFFECT_KINDS[e?.kind]
       if (!spec) { out.push(`${row.id}: unknown effect kind "${e?.kind}" — nothing in the engine runs it`); continue }
+      const buildingIds = new Set((content.buildings ?? []).map((b) => b.id))
       for (const p of spec.params) {
-        // Three param shapes: a `bool`, an `options` choice, or a number.
+        // An OPTIONAL param may be absent; validate only when present.
+        if (p.optional && e[p.key] === undefined) continue
+        // Param shapes: bool, a `building` id, an `options` choice, or a number.
         if (p.type === 'bool') {
           if (typeof e[p.key] !== 'boolean') out.push(`${row.id}: effect ${e.kind} needs true/false for "${p.key}"`)
+        } else if (p.type === 'building') {
+          if (!buildingIds.has(e[p.key])) out.push(`${row.id}: effect ${e.kind} names building "${e[p.key]}" which does not exist`)
         } else if (p.options) {
           if (!p.options.includes(e[p.key])) {
             out.push(`${row.id}: effect ${e.kind} has "${p.key}" = "${e[p.key]}" — must be one of ${p.options.join(', ')}`)

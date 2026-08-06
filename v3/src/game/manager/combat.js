@@ -26,6 +26,7 @@ import {
   waveBudget, makeEnemy, rollTier,
 } from '../data/enemies.js'
 import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
+import { buildingDef } from '../data/buildings.js'
 import { isPassable, isLand } from '../world/terrain.js'
 import { razeTile } from '../world/territory.js'
 import { repositionField } from '../world/reposition.js'
@@ -310,6 +311,10 @@ class CombatMixin {
         else u.home.unit.stationaryCombats = (u.home.unit.stationaryCombats ?? 0) + 1
       }
       c.losses = losses
+      // Every building that came through the wave weathers one more (Library).
+      for (const bt of this.world.terr.buildings) {
+        if (bt.building) bt.building.wavesSurvived = (bt.building.wavesSurvived ?? 0) + 1
+      }
       this.palaceHp = Math.max(0, c.palace?.hp ?? this.palaceHp)
       this.world.terr.version++
     }
@@ -694,7 +699,7 @@ class CombatMixin {
       q: target.q, r: target.r, amount: dealt, crit,
       kind: target === c.palace ? 'palace' : 'damage',
     })
-    if (target.hp <= 0 && target !== c.palace) { target.hp = 0; target.dead = true }
+    if (target.hp <= 0 && target !== c.palace) { target.hp = 0; target.dead = true; this._onUnitDeath(target) }
     if (target === c.palace) c.palace.hp = Math.max(0, c.palace.hp)
     if (crit && attacker.side === 'player') this._onPlayerCrit(attacker, dealt, isPreload)
     return { landed: true, dealt, crit }
@@ -793,7 +798,30 @@ class CombatMixin {
     const c = this.combat
     c.actionSeq = (c.actionSeq ?? 0) + 1
     c.events.push({ id: `poison-${c.actionSeq}-${e.id}`, q: e.q, r: e.r, amount: dmg, kind: 'poison' })
-    if (e.hp <= 0) { e.hp = 0; e.dead = true }
+    if (e.hp <= 0) { e.hp = 0; e.dead = true; this._onUnitDeath(e) }
+  }
+
+  /**
+   * GAZETTE and kin: any unit dying near a building can permanently grow that
+   * building's yield. Fires on EVERY death — friendly OR enemy (the effect's
+   * `includeEnemies` gates the enemy case) — deliberately wider than a
+   * unit-death theme that would only count your own losses.
+   */
+  _onUnitDeath(piece) {
+    if (!piece || piece === this.combat.palace) return
+    const buildings = this.world.terr.buildings
+    if (!buildings.size) return
+    for (const bt of buildings) {
+      const def = buildingDef(bt.building.key)
+      if (!def?.effects) continue
+      for (const f of def.effects) {
+        if (f.kind !== 'yield_growth_per_nearby_unit_death') continue
+        if (piece.side === 'enemy' && !f.includeEnemies) continue
+        if (distance(bt.q, bt.r, piece.q, piece.r) > (f.radius ?? 0)) continue
+        const mult = bt.region === 'new_world' ? (f.newWorldMultiplier ?? 1) : 1
+        bt.building.deathBonus = (bt.building.deathBonus ?? 0) + (f.amount ?? 0) * mult
+      }
+    }
   }
 
   /** Screen-space unit vector from attacker to target, for the lunge animation. */

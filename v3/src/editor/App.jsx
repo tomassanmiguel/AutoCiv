@@ -243,6 +243,10 @@ export default function App() {
     for (const t of [...(content.techs ?? []), ...(content.wonders ?? [])]) if (t.group) s.add(t.group)
     return [...s].sort()
   }, [content.techs, content.wonders])
+  const buildingOptions = useMemo(
+    () => (content.buildings ?? []).map((b) => ({ value: b.id, label: b.name })),
+    [content.buildings],
+  )
 
   return (
     <div className="ed">
@@ -299,6 +303,7 @@ export default function App() {
             problemsById={problemsById}
             techOptions={techOptions}
             groupOptions={groupOptions}
+            buildingOptions={buildingOptions}
             readOnly={tab === 'backlog'}
             detail={tab === 'unitClasses' ? 'unitClass' : 'description'}
             fixedRows={tab === 'unitClasses'}

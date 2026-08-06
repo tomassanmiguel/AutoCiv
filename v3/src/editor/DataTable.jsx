@@ -15,7 +15,7 @@ import Tokens from './Tokens.jsx'
  * The row expands to author the DESCRIPTION — a long piece of prose with
  * `:token:` icon markup never fits in a cell, and the preview needs room.
  */
-export default function DataTable({ rows, totalRows, columns, problemsById, techOptions, groupOptions, readOnly, detail = 'description', fixedRows = false, onRestore, onPatch, onRename, onDelete, onDuplicate }) {
+export default function DataTable({ rows, totalRows, columns, problemsById, techOptions, groupOptions, buildingOptions, readOnly, detail = 'description', fixedRows = false, onRestore, onPatch, onRename, onDelete, onDuplicate }) {
   const [open, setOpen] = useState(null)
   // Default: era outward, then branch, then alphabetical — how you read a draft
   // pool, one tier at a time.
@@ -137,6 +137,7 @@ export default function DataTable({ rows, totalRows, columns, problemsById, tech
                       <EffectEditor
                         row={row}
                         readOnly={readOnly}
+                        buildingOptions={buildingOptions}
                         onChange={(effects) => onPatch(row.id, { effects })}
                       />
                     )}
@@ -223,7 +224,7 @@ function DescriptionEditor({ row, readOnly, onChange }) {
  * The generated sentence under the list is the DRIFT CHECK: if it does not match
  * the description above it, one of the two is lying to the player.
  */
-function EffectEditor({ row, readOnly, onChange }) {
+function EffectEditor({ row, readOnly, onChange, buildingOptions = [] }) {
   const effects = row.effects ?? []
   const patch = (i, p) => onChange(effects.map((e, n) => (n === i ? { ...e, ...p } : e)))
 
@@ -266,6 +267,19 @@ function EffectEditor({ row, readOnly, onChange }) {
                       onChange={(ev) => patch(i, { [p.key]: ev.target.checked })}
                     />
                     {p.label}
+                  </>
+                ) : p.type === 'building' ? (
+                  <>
+                    {p.label}
+                    <select
+                      className="ed-sel"
+                      value={e[p.key] ?? ''}
+                      disabled={readOnly}
+                      onChange={(ev) => patch(i, { [p.key]: ev.target.value })}
+                    >
+                      <option value="">—</option>
+                      {buildingOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </>
                 ) : p.options ? (
                   <>

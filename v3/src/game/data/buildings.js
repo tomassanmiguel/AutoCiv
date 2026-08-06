@@ -19,7 +19,7 @@
 
 import { neighbors, key as hkey } from '../hex/coords.js'
 import { levelMult } from './costs.js'
-import { WONDERS } from './content.js'
+import { WONDERS, CONTENT_BUILDINGS } from './content.js'
 
 /** Terrain groupings used by `of: 'class'`. */
 export const CLASSES = {
@@ -101,7 +101,10 @@ export const WONDER_BUILDINGS = Object.fromEntries(
   }]),
 )
 
-export const buildingDef = (k) => BUILDING_DEFS[k] ?? WONDER_BUILDINGS[k] ?? null
+// ⚠️ CONTENT_BUILDINGS FIRST — the active, effects-driven buildings. The old
+// `BUILDING_DEFS` (granary/library/…) are legacy base/per defs nothing grants,
+// and one id ('library') collides; content must win so it isn't shadowed.
+export const buildingDef = (k) => CONTENT_BUILDINGS[k] ?? BUILDING_DEFS[k] ?? WONDER_BUILDINGS[k] ?? null
 
 const ZERO = { food: 0, production: 0, gold: 0, progress: 0 }
 const addInto = (acc, y, n = 1) => {
@@ -160,8 +163,8 @@ const PER_TEXT = {
 }
 
 export function buildingEffectText(def) {
-  // A wonder's effect is authored prose, not generated from yield clauses.
-  if (def?.wonder) return def.blurb ?? ''
+  // A wonder or a content building carries authored prose, not yield clauses.
+  if (def?.wonder || def?.effects) return def.blurb ?? ''
   const parts = []
   if (def.base && Object.values(def.base).some(Boolean)) parts.push(`${yieldText(def.base)} per tick`)
   if (def.per) {

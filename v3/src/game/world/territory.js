@@ -16,9 +16,9 @@
 // its adjacent tiles and buys population against an exponential cost, with a
 // multiplier if it can reach water.
 
-import { neighbors, key as hkey } from '../hex/coords.js'
-import { terrainOf, isWater, isPassable, travelClass } from './terrain.js'
-import { buildingYield } from '../data/buildings.js'
+import { neighbors, key as hkey, lengthOf, disc } from '../hex/coords.js'
+import { terrainOf, isWater, isLand, isPassable, travelClass } from './terrain.js'
+import { buildingYield, buildingDef } from '../data/buildings.js'
 
 // --- City growth knobs -----------------------------------------------------
 export const CITY_POP_BASE = 260      // food for pop 2
@@ -473,14 +473,103 @@ export function tileYield(world, t, mods) {
   return out
 }
 
+// ---------------------------------------------------------------------------
+// Building effects — a continuous, per-tick yield pass
+// ---------------------------------------------------------------------------
+//
+// Unlike tech effects (one-shot at draft time), a building's effects are ALWAYS
+// ACTIVE: they add to tile yields, which then feed the normal accrual. This pass
+// reads current board state every tick. See docs/design.md § Buildings.
+
+/** Hex distance from `t` to the nearest OTHER building; a cap when it is alone. */
+function distanceToNearestBuilding(world, t, buildings) {
+  let best = Infinity
+  for (const o of buildings) {
+    if (o === t) continue
+    const d = lengthOf(t.q - o.q, t.r - o.r)
+    if (d < best) best = d
+  }
+  // No other building anywhere: cap at ~the map radius (implementer's call).
+  return Number.isFinite(best) ? best : 40
+}
+
 /**
- * Summed per-tick output of everything you control.
+ * The per-tile yield bonus contributed by every building on the board, keyed by
+ * tile. `era` is the current reveal era (for age-based effects).
+ */
+export function buildingBonuses(world, era = 0) {
+  const bonus = new Map()
+  const add = (tile, res, amt) => {
+    if (!amt || !res) return
+    const b = bonus.get(tile) ?? { food: 0, production: 0, gold: 0, progress: 0 }
+    b[res] += amt
+    bonus.set(tile, b)
+  }
+  const disc_ = (t, radius) => {
+    const out = []
+    for (const c of disc(t.q, t.r, radius)) { const o = world.tiles.get(hkey(c.q, c.r)); if (o) out.push(o) }
+    return out
+  }
+  const buildings = [...world.terr.buildings]
+  for (const t of buildings) {
+    const def = buildingDef(t.building.key)
+    if (!def?.effects) continue
+    for (const f of def.effects) {
+      switch (f.kind) {
+        case 'self_tile_yield_bonus':
+          add(t, f.resource, f.amount)
+          break
+        case 'radius_tile_yield_bonus':
+          for (const o of disc_(t, f.radius)) {
+            if (f.terrainFilter && o.terrain !== f.terrainFilter) continue
+            if (f.hasUnitFilter && !(o.unit && !o.unit.destroyed)) continue
+            add(o, f.resource, f.amount)
+          }
+          break
+        case 'radius_city_yield_bonus_per_citizen':
+          for (const o of disc_(t, f.radius)) {
+            if (!o.city) continue
+            add(o, f.resource, (f.flatAmount ?? 0) + (f.perCitizen ?? 0) * (o.city.pop ?? 0))
+          }
+          break
+        case 'yield_growth_per_wave_survived':
+          add(t, f.resource, (t.building.wavesSurvived ?? 0) * (f.amount ?? 0))
+          break
+        case 'yield_growth_per_nearby_unit_death':
+          add(t, f.resource, t.building.deathBonus ?? 0)
+          break
+        case 'radius_yield_bonus_per_building_age':
+          for (const o of disc_(t, f.radius)) {
+            if (!o.building) continue
+            add(o, f.resource, (f.amount ?? 0) * Math.max(0, era - (o.building.builtEra ?? era)))
+          }
+          break
+        case 'self_yield_bonus_per_distance_to_nearest_building':
+          add(t, f.resource, (f.perTile ?? 0) * distanceToNearestBuilding(world, t, buildings))
+          break
+        case 'radius_yield_from_other_base_yields':
+          for (const o of disc_(t, f.radius)) {
+            const y = terrainOf(o.terrain).yields
+            add(o, 'progress', y.food + y.production + y.gold) // "other" base yields = everything but progress
+          }
+          break
+        default:
+          break
+      }
+    }
+  }
+  return bonus
+}
+
+/**
+ * Summed per-tick output of everything you control, INCLUDING building effects.
  *
  * Percentage modifiers are ADDITIVE per resource and applied ONCE at the end —
  * sum the bonuses, then ×(1 + bonus). Chaining them multiplicatively is how v2's
  * late game ran away, so don't.
  */
-export function territoryYield(world, mods) {
+export function territoryYield(world, mods, era = 0) {
+  const bonus = buildingBonuses(world, era)
   const out = { food: 0, production: 0, gold: 0, progress: 0 }
   for (const t of world.terr.controlled) {
     const y = tileYield(world, t, mods)
@@ -488,6 +577,10 @@ export function territoryYield(world, mods) {
     out.production += y.production
     out.gold += y.gold
     out.progress += y.progress
+    // Building bonuses are flat adds on top, and only for tiles that actually
+    // yield (controlled AND revealed).
+    const b = visible(world, t) && bonus.get(t)
+    if (b) { out.food += b.food; out.production += b.production; out.gold += b.gold; out.progress += b.progress }
   }
   if (mods?.mult) {
     for (const k of ['food', 'production', 'gold', 'progress']) {
@@ -501,10 +594,42 @@ export function territoryYield(world, mods) {
 // Placement (buildings and units granted by the progress web)
 // ---------------------------------------------------------------------------
 
-/** May a granted BUILDING go here? Controlled, revealed, land, nothing there yet. */
-export function canPlaceBuilding(world, t) {
-  return !!t && t.controlled && visible(world, t) && !t.building
-    && isPassable(t.terrain) && !NEVER.has(t.terrain)
+/**
+ * A building's placement RULES, evaluated against a tile. A key the engine does
+ * not implement is permissive (returns true), so a wonder's descriptive rule
+ * never blocks placement — only the rules that mean something are enforced.
+ */
+const PLACEMENT_PREDICATES = {
+  land: (w, t) => isLand(t.terrain),
+  water: (w, t) => isWater(t.terrain),
+  coast: (w, t) => t.terrain === 'coast',
+  tundra: (w, t) => t.terrain === 'tundra' || t.terrain === 'exotundra',
+  desert: (w, t) => t.terrain === 'desert' || t.terrain === 'exodesert',
+  hills: (w, t) => t.terrain === 'hills' || t.terrain === 'exohills',
+  mountain: (w, t) => t.terrain === 'mountain' || t.terrain === 'exomountain' || t.terrain === 'mars_mountain',
+  space: (w, t) => t.terrain === 'space' || t.terrain === 'deep_space',
+  exoplanet: (w, t) => t.region === 'exoplanet',
+  singularity: (w, t) => t.terrain === 'singularity',
+  new_world: (w, t) => t.region === 'new_world',
+  off_earth: (w, t) => t.band && t.band !== 'earth',
+  city: (w, t) => !!t.city,
+  adjacent_city: (w, t) => neighbors(t.q, t.r).some((n) => w.at(n.q, n.r)?.city),
+}
+export const matchesPlacement = (world, t, key) =>
+  PLACEMENT_PREDICATES[key] ? PLACEMENT_PREDICATES[key](world, t) : true
+
+/**
+ * May a granted BUILDING go here? Controlled, revealed, passable, nothing there
+ * yet — and matching every rule in the building's `placement` list. When a
+ * building declares a placement (e.g. `space`), those rules are the authority
+ * and OVERRIDE the default open-void exclusion, so a Space Telescope can sit on
+ * open space while an unrestricted building still cannot.
+ */
+export function canPlaceBuilding(world, t, def = null) {
+  if (!t || !t.controlled || !visible(world, t) || t.building || !isPassable(t.terrain)) return false
+  const rules = def?.placement
+  if (rules && rules.length) return rules.every((k) => matchesPlacement(world, t, k))
+  return !NEVER.has(t.terrain)
 }
 
 /**
@@ -525,9 +650,12 @@ export function canPlaceUnit(world, t, def = null) {
   return isPassable(t.terrain)
 }
 
-export function placeBuilding(world, t, key) {
-  if (!canPlaceBuilding(world, t)) return false
-  t.building = { key, level: 1 }
+export function placeBuilding(world, t, key, def = null, builtEra = 0) {
+  if (!canPlaceBuilding(world, t, def)) return false
+  // Per-building state for the effect passes: when it was built (Museum), the
+  // waves it has weathered (Library), and permanent bonuses it has accrued
+  // (Gazette's death growth). See data/buildings.js § building effects.
+  t.building = { key, level: 1, builtEra, wavesSurvived: 0, deathBonus: 0 }
   world.terr.buildings.add(t)
   world.terr.version++
   return true
@@ -559,7 +687,9 @@ export function razeTile(world, t) {
   const terr = world.terr
   let ruin = null
   if (t.building) {
-    ruin = { kind: 'building', key: t.building.key, level: t.building.level ?? 1 }
+    // Preserve `builtEra` so a rebuild keeps its age; the growth counters
+    // (waves survived, death bonus) are lost with the instance and start fresh.
+    ruin = { kind: 'building', key: t.building.key, level: t.building.level ?? 1, builtEra: t.building.builtEra ?? 0 }
     t.building = null
     terr.buildings.delete(t)
   } else if (t.city) {
@@ -585,7 +715,7 @@ export function restoreTile(world, t) {
   const ruin = t.ruin
   if (!ruin) return false
   if (ruin.kind === 'building') {
-    t.building = { key: ruin.key, level: ruin.level }
+    t.building = { key: ruin.key, level: ruin.level, builtEra: ruin.builtEra ?? 0, wavesSurvived: 0, deathBonus: 0 }
     world.terr.buildings.add(t)
   } else if (ruin.kind === 'city') {
     // The population comes back with it — you are rebuilding, not refounding.

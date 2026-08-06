@@ -1252,9 +1252,470 @@
       "quadrant": "military",
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "mythology",
+      "name": "Mythology",
+      "quadrant": "economy",
+      "era": 0,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Shrine.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "shrine"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "writing",
+      "name": "Writing",
+      "quadrant": "economy",
+      "era": 1,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Library.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "library"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "mathematics",
+      "name": "Mathematics",
+      "quadrant": "economy",
+      "era": 2,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Academy.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "academy"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "basilicas",
+      "name": "Basilicas",
+      "quadrant": "economy",
+      "era": 3,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Basilica.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "basilica"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "education",
+      "name": "Education",
+      "quadrant": "economy",
+      "era": 4,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the University.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "university"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "astronomy",
+      "name": "Astronomy",
+      "quadrant": "economy",
+      "era": 5,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Observatory.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "observatory"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "journalism",
+      "name": "Journalism",
+      "quadrant": "economy",
+      "era": 6,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Gazette.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "gazette"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "scientific_method",
+      "name": "Scientific Method",
+      "quadrant": "economy",
+      "era": 7,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Laboratory.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "laboratory"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "natural_history",
+      "name": "Natural History",
+      "quadrant": "economy",
+      "era": 8,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Museum.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "museum"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "ecology",
+      "name": "Ecology",
+      "quadrant": "economy",
+      "era": 9,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Arctic Research Station.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "arctic_research_station"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "spectroscopy",
+      "name": "Spectroscopy",
+      "quadrant": "economy",
+      "era": 10,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Space Telescope.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "space_telescope"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "deep_thought",
+      "name": "Deep Thought",
+      "quadrant": "economy",
+      "era": 11,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Cogitarium.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "cogitarium"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "xenobiology",
+      "name": "Xenobiology",
+      "quadrant": "economy",
+      "era": 12,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Alien Research Center.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "alien_research_center"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "dark_matter",
+      "name": "Dark Matter",
+      "quadrant": "economy",
+      "era": 13,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Black Hole Station.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "black_hole_station"
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
-  "buildings": [],
+  "buildings": [
+    {
+      "id": "shrine",
+      "name": "Shrine",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+3 :progress: to its own tile.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 3
+        }
+      ]
+    },
+    {
+      "id": "library",
+      "name": "Library",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+3 :progress: to its own tile. Gains +2 :progress: per wave survived without being razed; resets on raze.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 3
+        },
+        {
+          "kind": "yield_growth_per_wave_survived",
+          "resource": "progress",
+          "amount": 2,
+          "resetOnRaze": true
+        }
+      ]
+    },
+    {
+      "id": "academy",
+      "name": "Academy",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+5 :progress: to its own tile. +1 :progress: to each tile in range 1 with a unit stationed on it.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 5
+        },
+        {
+          "kind": "radius_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 1,
+          "radius": 1,
+          "hasUnitFilter": true
+        }
+      ]
+    },
+    {
+      "id": "basilica",
+      "name": "Basilica",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "Each city in range 1 gains +1 :progress:, plus +1 :progress: per citizen in that city.",
+      "effects": [
+        {
+          "kind": "radius_city_yield_bonus_per_citizen",
+          "resource": "progress",
+          "flatAmount": 1,
+          "perCitizen": 1,
+          "radius": 1
+        }
+      ]
+    },
+    {
+      "id": "university",
+      "name": "University",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+12 :progress: to its own tile.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 12
+        }
+      ]
+    },
+    {
+      "id": "observatory",
+      "name": "Observatory",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+6 :progress: to each mountain tile in range 1.",
+      "effects": [
+        {
+          "kind": "radius_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 6,
+          "radius": 1,
+          "terrainFilter": "mountain"
+        }
+      ]
+    },
+    {
+      "id": "gazette",
+      "name": "Gazette",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+1 :progress: to its own tile. Whenever any unit dies within range 4, permanently gain +1 :progress:/tick (doubled in the New World).",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 1
+        },
+        {
+          "kind": "yield_growth_per_nearby_unit_death",
+          "resource": "progress",
+          "amount": 1,
+          "radius": 4,
+          "includeEnemies": true,
+          "newWorldMultiplier": 2
+        }
+      ]
+    },
+    {
+      "id": "laboratory",
+      "name": "Laboratory",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+20 :progress: to its own tile.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 20
+        }
+      ]
+    },
+    {
+      "id": "museum",
+      "name": "Museum",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+1 :progress: to its own tile. Every building in range 2 gains +1 :progress: to its own tile per era elapsed since it was built.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 1
+        },
+        {
+          "kind": "radius_yield_bonus_per_building_age",
+          "resource": "progress",
+          "amount": 1,
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "id": "arctic_research_station",
+      "name": "Arctic Research Station",
+      "placement": [
+        "tundra"
+      ],
+      "icon": "/sprites/ui/building.png",
+      "description": "Tundra placement only. +10 :progress: for every tundra tile in range 1.",
+      "effects": [
+        {
+          "kind": "radius_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 10,
+          "radius": 1,
+          "terrainFilter": "tundra"
+        }
+      ]
+    },
+    {
+      "id": "space_telescope",
+      "name": "Space Telescope",
+      "placement": [
+        "space"
+      ],
+      "icon": "/sprites/ui/building.png",
+      "description": "Space placement only. +50 :progress: to its own tile.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 50
+        }
+      ]
+    },
+    {
+      "id": "cogitarium",
+      "name": "Cogitarium",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "+15 :progress: to its own tile per tile of distance to the nearest other building (adjacent = just +15).",
+      "effects": [
+        {
+          "kind": "self_yield_bonus_per_distance_to_nearest_building",
+          "resource": "progress",
+          "perTile": 15
+        }
+      ]
+    },
+    {
+      "id": "alien_research_center",
+      "name": "Alien Research Center",
+      "placement": [
+        "exoplanet"
+      ],
+      "icon": "/sprites/ui/building.png",
+      "description": "Exoplanet placement only. Every tile in range 1 gains :progress: equal to the sum of its other base yields.",
+      "effects": [
+        {
+          "kind": "radius_yield_from_other_base_yields",
+          "radius": 1
+        }
+      ]
+    },
+    {
+      "id": "black_hole_station",
+      "name": "Black Hole Station",
+      "placement": [
+        "singularity"
+      ],
+      "icon": "/sprites/ui/building.png",
+      "description": "Singularity placement only. +500 :progress: to its own tile.",
+      "effects": [
+        {
+          "kind": "self_tile_yield_bonus",
+          "resource": "progress",
+          "amount": 500
+        }
+      ]
+    }
+  ],
   "wonders": [
     {
       "id": "stonehenge",
