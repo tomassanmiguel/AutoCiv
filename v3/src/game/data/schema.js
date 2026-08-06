@@ -134,6 +134,26 @@ export const TERRAIN_GROUPS = {
 export const TERRAIN_GROUP_NAMES = Object.keys(TERRAIN_GROUPS)
 
 /**
+ * REPOSITION DOMAINS — the terrain a "reposition across X" tech lets you cross
+ * for free when measuring reposition range. A domain's tiles cost 0 range to
+ * traverse, which is what makes (e.g.) the two coasts of an ocean "adjacent" for
+ * a galleon. The keys are the options a `reposition_domain` effect may carry.
+ */
+export const REPOSITION_DOMAINS = {
+  water: 'Across water',
+  space: 'Across space',
+  deep_space: 'Across deep space',
+}
+export const REPOSITION_DOMAIN_KEYS = Object.keys(REPOSITION_DOMAINS)
+export const REPOSITION_DOMAIN_TERRAINS = {
+  water: new Set(where((d) => d.domain === 'water')),
+  // Solar-system void and bodies.
+  space: new Set(has('space', 'moon', 'lunar_crater', 'asteroid', 'mars', 'mars_ice', 'mars_mountain')),
+  // The far void and what floats in it.
+  deep_space: new Set(has('deep_space', 'exomoon', 'planet', 'star', 'singularity')),
+}
+
+/**
  * A new unit class. Stats are placeholders; a balance pass replaces them.
  *
  * ⚠️ `id` must be one of `UNIT_CLASSES` — the engine indexes units by class key,
@@ -234,6 +254,69 @@ export const EFFECT_KINDS = {
       const n = e.count ?? 1
       return `Grants ${n} :${e.unitClass === 'fortification' ? 'fort' : e.unitClass}: unit${n === 1 ? '' : 's'} to place.`
     },
+  },
+
+  // --- repositioning ---------------------------------------------------------
+  // Troops cannot be repositioned for free by default — you pay :gold: scaling
+  // with distance. These effects buy free distance, free crossings, and cheaper
+  // moves. See docs/design.md § Repositioning.
+  reposition_range: {
+    label: 'Reposition range',
+    hint: 'Free reposition distance during the prep phase: a unit may be moved this many tiles for no :gold:, and beyond it you pay for each extra tile. Stacks across techs.',
+    params: [{ key: 'amount', label: 'Tiles', min: 0, default: 1 }],
+    describe: (e) => `+${e.amount ?? 0} reposition range.`,
+  },
+
+  reposition_domain: {
+    label: 'Reposition across a domain',
+    hint: 'Makes a whole terrain domain FREE to cross when measuring reposition range — its tiles cost 0. "Across water" makes the far coast of an ocean effectively adjacent. You still have to END on a tile your class can occupy.',
+    params: [{ key: 'domain', label: 'Domain', options: REPOSITION_DOMAIN_KEYS, default: 'water' }],
+    describe: (e) => `Reposition ${REPOSITION_DOMAINS[e?.domain] ? REPOSITION_DOMAINS[e.domain].toLowerCase() : `across ${e?.domain}`} for free.`,
+  },
+
+  reposition_cost: {
+    label: 'Reposition cost reduction',
+    hint: 'Cuts the :gold: cost of repositioning beyond your free range. Reductions add together and clamp — repositioning never becomes free this way, only cheaper. Needs some reposition range to matter.',
+    params: [{ key: 'pct', label: 'Percent off', min: 0, default: 50 }],
+    describe: (e) => `Repositioning costs ${e.pct ?? 0}% less :gold:.`,
+  },
+
+  unit_speed: {
+    label: 'All units — +speed',
+    hint: 'Adds combat movement (:speed:) to every unit that can move. Classes that never move (walls, ranged) are unaffected — an extra step means nothing without movement terrain.',
+    params: [{ key: 'amount', label: 'Speed', min: 0, default: 1 }],
+    describe: (e) => `+${e.amount ?? 0} :speed: to all units.`,
+  },
+
+  reposition_teleport: {
+    label: 'Reposition ignores obstacles',
+    hint: 'Reposition distance becomes straight-line — obstacles and terrain no longer lengthen a move. A unit hops directly to the target within range.',
+    params: [],
+    describe: () => 'Repositioning ignores intervening terrain (straight-line distance).',
+  },
+
+  // --- formations ------------------------------------------------------------
+  formation: {
+    label: 'Formation bonus',
+    hint: 'At combat start, each unit gains flat :attack: and :defense: for every OTHER friendly unit inside its reposition range. A per-unit flat, folded into the base before the percentage lines — so a tight cluster is worth more than the numbers look.',
+    params: [
+      { key: 'atk', label: 'Atk each', min: 0, default: 2 },
+      { key: 'def', label: 'Def each', min: 0, default: 2 },
+    ],
+    describe: (e) => `+${e.atk ?? 0} :attack: / +${e.def ?? 0} :defense: per friendly unit in reposition range.`,
+  },
+
+  // --- road network ----------------------------------------------------------
+  road_network: {
+    label: 'Road network — connection gold',
+    hint: 'Raises the :gold: every tile ON a city-connection route earns (a base modifier, so an outpost doubles it). Cities connect automatically; this only makes the routes richer. Maglev\'s rider also gives each route tile :production: equal to its :gold:.',
+    params: [
+      { key: 'gold', label: 'Gold', min: 0, default: 1 },
+      { key: 'prodFromGold', label: '+production = its gold', type: 'bool', default: false },
+    ],
+    describe: (e) =>
+      `Connection tiles earn +${e.gold ?? 0} base :gold:` +
+      (e.prodFromGold ? ', and :production: equal to their :gold:.' : '.'),
   },
 }
 export const EFFECT_KEYS = Object.keys(EFFECT_KINDS)
@@ -395,8 +478,10 @@ export function validateContent(content) {
       const spec = EFFECT_KINDS[e?.kind]
       if (!spec) { out.push(`${row.id}: unknown effect kind "${e?.kind}" — nothing in the engine runs it`); continue }
       for (const p of spec.params) {
-        // A param with `options` is a choice; anything else is a number.
-        if (p.options) {
+        // Three param shapes: a `bool`, an `options` choice, or a number.
+        if (p.type === 'bool') {
+          if (typeof e[p.key] !== 'boolean') out.push(`${row.id}: effect ${e.kind} needs true/false for "${p.key}"`)
+        } else if (p.options) {
           if (!p.options.includes(e[p.key])) {
             out.push(`${row.id}: effect ${e.kind} has "${p.key}" = "${e[p.key]}" — must be one of ${p.options.join(', ')}`)
           }

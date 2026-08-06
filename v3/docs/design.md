@@ -315,7 +315,14 @@ Currently implemented:
 |---|---|
 | **`unit_atk_base_pct`** | a % of BASE :attack: on every unit — a base modifier |
 | **`unit_def_base_pct`** | the same, for :defense: (which is hit points) |
+| **`unit_speed`** | +combat :speed: on every unit that can move |
 | **`grant_unit`** | queues N units of a CLASS to place on the map |
+| **`reposition_range`** | +free reposition distance (see § Repositioning) |
+| **`reposition_domain`** | a terrain domain becomes free to cross when repositioning |
+| **`reposition_cost`** | cuts the gold cost of repositioning beyond free range |
+| **`reposition_teleport`** | reposition distance ignores terrain (straight-line) |
+| **`formation`** | +atk/+def per friendly unit in reposition range, at combat start |
+| **`road_network`** | raises the gold every connection-route tile earns (see § Road network) |
 
 `grant_unit` names a **class**, never a named unit — there is only one unit per
 class, and its stat line is read live, so a grant queued before an upgrade still
@@ -339,3 +346,58 @@ mis-encoding.
 Relatedly, **classes are granted, not unlocked**. "Mud Brick" hands you a
 fortification; it does not switch fortifications on. Every tech that reads
 "unlocks X units" means "grants an X unit".
+
+## 12. Repositioning
+
+Between development and the wave there is a **prep phase** — the clock stops, the
+mustered enemy host is on the frontier, and you arrange the board: reposition
+units, repair, upgrade. Pressing **Begin Wave** starts the fight.
+
+**Moving a placed unit costs :gold:, scaling with distance** — by default. Every
+unit may be hauled anywhere you control, but you pay per tile. A unit must still
+end on terrain its class can occupy (naval stays on water).
+
+**Reposition RANGE buys free distance.** With range *R* a unit moves up to *R*
+tiles for nothing; past that you pay for each extra tile. Range is 0 without
+research — the whole line exists to raise it.
+
+**Reposition distance** is a 0-1 walk over the map: a tile in a granted DOMAIN
+("across water", "across space", "across deep space") costs 0 to cross, every
+other tile costs 1. Nothing blocks a path — a domain only ever makes a move
+cheaper — so galleons make the far coast of an ocean effectively adjacent while
+you still land on solid ground. **Teleport** discards the walk entirely: distance
+becomes straight-line, ignoring terrain.
+
+**Cost** is `perTile(wave) × (distance − range)`, reduced by Logistics-style
+techs (and never to zero). See `costs.js` and `world/reposition.js`.
+
+**Formations** read the same range as a combat buff: at the start of a wave, each
+unit gains flat :attack:/:defense: for every *other* friendly unit inside its
+reposition range. It is the reward for how you *arranged* the board, fixed at
+combat start rather than chasing units as they move. The flat is folded into the
+base before the percentage lines, so a tight cluster is worth more than it looks.
+
+## 13. Road network
+
+**Cities connect automatically — no tech required — and every tile ON a
+connection route earns +1 base :gold:** (a base modifier, so an outpost on the
+route doubles it). Road techs only make the routes richer and grant reposition
+range; they do not create the network. A tile on two routes counts once.
+
+Who connects to whom:
+
+- **On the Old World**, a city routes to the **palace** by the shortest land
+  path — *unless* another city C′ is both nearer the palace than it is **and**
+  nearer to it than the palace is, in which case it routes to every such C′
+  instead. (Those hook toward the palace themselves, so everything stays joined
+  while hugging the terrain rather than firing spokes from the capital.)
+- **On any other landmass** — no palace to root on — a city connects to its **two
+  nearest cities on the same landmass**.
+
+Routes are **land only**: controlled, passable, and neither water nor open void
+(a celestial-body surface is fine). The topology is global — a new city can
+re-route an old one — so the network is recomputed whole whenever cities or
+territory change (`world/territory.js` `layConnections`).
+
+`road_network` effects raise the per-tile connection gold; **Maglev**'s rider
+also gives each route tile :production: equal to its :gold:.

@@ -24,18 +24,18 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **17 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **27 techs** · **0 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
-> territory economy with **automatic :food: expansion**, :production: cities and wonders,
-> a **three-branch draft** off `content.json`, unit/building placement, a **wave** with
-> razing and permanent casualties, and a **gold economy** (repair · upgrade · reroll).
-> `node sims/campaign.mjs 6` plays it headlessly and reports how far each branch got.
+> territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
+> :production: cities and wonders, a **three-branch draft** off `content.json`, unit/building
+> placement, a **prep phase** with **gold-priced repositioning**, and a **wave** with razing
+> and permanent casualties. `node sims/campaign.mjs 6` plays it headlessly.
 >
-> ⚠️ **The pools are nearly empty, so nothing advances yet.** Military holds one Stone
-> tech and needs two; Economy and Society hold none. The campaign sim prints `STALLED`
-> per branch — that is the content shortfall reported honestly, not a bug. Until those
-> cells fill, the map reveal never moves and no wonder is ever offered.
+> ⚠️ **The early pools are still thin.** Military (Obsidian/Leatherwork/Formations) and
+> Economy (Roads) have a little in-slice; Society has none. Most of the reposition/road line
+> sits at eras past the 3-era slice, wired but not yet reachable. The campaign sim prints how
+> far each branch got.
 >
 > **Balance is not tuned** past the measured six-wave slice.
 >
@@ -493,9 +493,15 @@ Implemented today:
 - **`grant_unit`** — queues N units of a CLASS onto `this.grants`, each opening its own
   placement selection. Stats are read live at placement, so a grant queued before an upgrade
   still benefits from it. All nine classes are offerable.
+- **`unit_speed`** — +combat acts to every unit that has movement terrain.
+- **repositioning** (`reposition_range`, `reposition_domain`, `reposition_cost`,
+  `reposition_teleport`) and **`formation`** — see § Repositioning above.
+- **`road_network`** — raises `mods.connectionGold`; its bool `prodFromGold` param sets
+  `connectionProd` (Maglev). See § City connections.
 
-An effect param is a **number**, or a **choice** if it declares `options`. Two input types is
-all the registry has needed; both the editor and the validator branch on `p.options`.
+An effect param is a **number**, a **choice** (`options`), or a **bool** (`type:'bool'`, a
+checkbox — used by `road_network`'s Maglev rider). An effect may also have **no params** at all
+(`reposition_teleport` is a flag). The editor and validator branch on those three shapes.
 
 ⚠️ **The weapon/armour TIER ladder was deleted** (`WEAPON_TIERS`, `ARMOR_TIERS`, `bestTier`).
 It replaced rather than stacked, contradicting the design's central rule, and it
@@ -588,10 +594,17 @@ generate, then watch it play out at 2/6/12/30 beats per second (or Step / Resolv
 
 **TWO CLOCKS THAT DO NOT TOUCH**, and confusing them is the mistake to avoid:
 
-- **`game.wave`** — combat. 65 ticks of development, then the wave attacks; 30 waves. It
-  scales on its own ladder and **never waits for your research**.
+- **`game.wave`** — combat. 65 ticks of development → a **prep phase** → the wave; 30 waves.
+  It scales on its own ladder and **never waits for your research**.
 - **`draft.branchEra`** — three tech pools, moved only by drafting. `max()` of the three is the
   **reveal era**, which drives the map stage and the expansion permissions.
+
+**Phase machine is `development → prep → combat`** (`game.phase`). Development ends at tick 65 by
+entering **prep** (`_startPrep`) — the clock stops accruing, the mustered host is on the frontier,
+and the player arranges the board (reposition/repair/upgrade). `beginWave()` (the PrepBanner's
+button) starts combat; it un-pauses if needed, since combat borrows the clock. `gameTick` no-ops
+outside `development`, so nothing accrues in prep. The sim calls `beginWave()` the instant it sees
+prep.
 
 One timer and one pacing control in the HUD serve both. Each tick either advances a running
 combat by a beat, or advances the game: accrue output, grow cities, count down to the wave.
@@ -662,6 +675,30 @@ take 18 seconds; it now takes 3.
 
 City growth is separate from the expansion meter: each city banks its adjacent food (×1.5 with
 water in reach) and buys population against an exponential cost.
+
+### City connections (`layConnections`)
+Cities wire themselves together **automatically, no tech needed**, and every tile ON a route
+earns `mods.connectionGold` base :gold: (default **1**, raised by `road_network` techs; doubled
+by an outpost since it is a base modifier). ⚠️ This **replaced** the old `layRoads`/`roadYield`
+(palace-spoke network + road-adjacency bonus) — both are gone. Topology: an Old-World city routes
+to the **palace** by shortest LAND path, unless a relay city is both nearer the palace than it is
+and nearer to it than the palace is (then it routes to those); an off-world city connects to its
+**two nearest same-landmass (`region`) cities**. Routes never cross water or open void. The rule is
+global, so the network is **recomputed whole** on any city/territory change. Maglev's rider sets
+`connectionProd` → route tiles also earn :production: equal to their gold. `t.road` marks route
+tiles (still drawn by HexMap's `roadEdges`).
+
+## Repositioning (prep phase — `world/reposition.js`, `costs.js`)
+Moving a placed unit is a **prep-phase** action (`game.canReposition`). It costs :gold: per tile
+of distance BEYOND your free **reposition range** (`mods.repositionRange`, 0 without research);
+within range it is free. **Distance** is a 0-1 BFS (`repositionField`): a tile in a granted
+**domain** (`mods.repositionDomains` — water / space / deep_space) costs 0 to cross, else 1;
+nothing blocks a path. **Teleport** (`mods.repositionTeleport`) makes distance straight-line. A
+destination must be empty and legal for the unit's class. `repositionTargets`/`repositionUnit` are
+the API; the UI is a pick-then-click flow in `HexMap` (green free / amber paid-with-cost / red
+unaffordable). **Formations** reuse the same range as a combat buff — `_formationFlats` in
+`combat.js` counts friendly neighbours within range at combat start and passes a **per-unit flat**
+into `unitStats`'s `extra` arg (folded into the base, pre-multiplier).
 
 ## Buildings, units, and placement
 

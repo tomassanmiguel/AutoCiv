@@ -253,31 +253,49 @@ function EffectEditor({ row, readOnly, onChange }) {
               ))}
             </select>
 
-            {/* A param with `options` is a choice; everything else is a number.
-                Two input types is all the registry has ever needed. */}
+            {/* Three param shapes: a bool checkbox, an options choice, or a
+                number. The registry declares which; nothing here is bespoke. */}
             {(spec?.params ?? []).map((p) => (
-              <label key={p.key} className="ed-fx-param">
-                {p.label}
-                {p.options ? (
-                  <select
-                    className="ed-sel"
-                    value={e[p.key] ?? ''}
-                    disabled={readOnly}
-                    onChange={(ev) => patch(i, { [p.key]: ev.target.value })}
-                  >
-                    {p.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+              <label key={p.key} className={`ed-fx-param${p.type === 'bool' ? ' bool' : ''}`}>
+                {p.type === 'bool' ? (
+                  <>
+                    <input
+                      type="checkbox"
+                      checked={!!e[p.key]}
+                      disabled={readOnly}
+                      onChange={(ev) => patch(i, { [p.key]: ev.target.checked })}
+                    />
+                    {p.label}
+                  </>
+                ) : p.options ? (
+                  <>
+                    {p.label}
+                    <select
+                      className="ed-sel"
+                      value={e[p.key] ?? ''}
+                      disabled={readOnly}
+                      onChange={(ev) => patch(i, { [p.key]: ev.target.value })}
+                    >
+                      {p.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </>
                 ) : (
-                  <input
-                    type="number"
-                    min={p.min}
-                    value={e[p.key] ?? ''}
-                    readOnly={readOnly}
-                    onChange={(ev) => patch(i, { [p.key]: Number(ev.target.value) })}
-                  />
+                  <>
+                    {p.label}
+                    <input
+                      type="number"
+                      min={p.min}
+                      value={e[p.key] ?? ''}
+                      readOnly={readOnly}
+                      onChange={(ev) => patch(i, { [p.key]: Number(ev.target.value) })}
+                    />
+                  </>
                 )}
               </label>
             ))}
+            {/* An effect with no params (e.g. a flag) still needs to read as a
+                real, complete row. */}
+            {spec && spec.params.length === 0 && <span className="ed-fx-flag">no settings</span>}
 
             <span className="ed-fx-says"><Tokens>{describeEffect(e)}</Tokens></span>
             {!readOnly && (

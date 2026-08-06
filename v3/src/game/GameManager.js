@@ -37,12 +37,14 @@ import {
 import {
   initTerritory, expansionTargets, improveTile, foundCity,
   territoryYield, territoryStats, growCities, setTerritoryStage,
-  layRoads, canPlaceBuilding, canPlaceUnit, placeBuilding, placeUnit,
+  layConnections, canPlaceBuilding, canPlaceUnit, placeBuilding, placeUnit,
   repairUnit, restoreTile, repairTargets, visible,
 } from './world/territory.js'
 import {
   unitRepairCost, tileRepairCost, unitUpgradeCost, buildingUpgradeCost, rerollCost,
+  repositionCost,
 } from './data/costs.js'
+import { repositionField, repositionDistance } from './world/reposition.js'
 import { PALACE, UNIT_DEFS, unitOfClass, unitStats } from './data/units.js'
 import { buildingDef } from './data/buildings.js'
 import { installCombat } from './manager/combat.js'
@@ -117,10 +119,26 @@ function freshMods() {
     unitDefFlat: 0,
     unitDefBasePct: 0,
     unitDefPct: 0,
+    // Combat movement (+acts). Zero-movement classes ignore it.
+    unitSpeed: 0,
+    // Per-unit FORMATION flat: +atk / +def for each other friendly unit inside
+    // reposition range, resolved at combat start.
+    formationAtk: 0,
+    formationDef: 0,
+    // Repositioning (prep phase). `range` is free tiles; `domains` are terrain
+    // classes free to cross; `costReduction` sums the Logistics-style discounts;
+    // `teleport` makes reposition distance straight-line.
+    repositionRange: 0,
+    repositionDomains: new Set(),
+    repositionCostReduction: 0,
+    repositionTeleport: false,
+    // City connections. `connectionGold` is the base :gold: every route tile
+    // earns (1 even with no road tech); road techs raise it. `connectionProd`
+    // is Maglev's rider — route tiles also earn :production: equal to their gold.
+    connectionGold: 1,
+    connectionProd: false,
     units: new Set(),
     buildings: new Set(),
-    roads: false,
-    roadYield: null,
     settle: new Set(),
     cityGrowth: 1,
     cityYields: null,
@@ -241,7 +259,9 @@ export class GameManager {
 
   /** One tick of the development cycle. Safe to call headlessly (sims do). */
   gameTick() {
-    if (this.selection || this.defeated || this.combat.active) return
+    // Prep is a HELD phase: development is over but the wave has not begun, and
+    // nothing accrues until the player presses Begin.
+    if (this.selection || this.defeated || this.combat.active || this.phase !== 'development') return
     const out = this.output
     const gained = accrue(this.resources, out, this.mods.threshold)
     growCities(this.world, this.mods.cityGrowth)
@@ -255,19 +275,45 @@ export class GameManager {
     for (let i = 0; i < gained.food; i++) this._autoExpand()
 
     this.tick++
-    if (this.tick >= TICKS_PER_WAVE) this._startWave()
+    if (this.tick >= TICKS_PER_WAVE) this._startPrep()
 
     this._openNextSelection()
     this._emit()
   }
 
-  // --- The wave -------------------------------------------------------------
+  // --- Prep & the wave ------------------------------------------------------
 
   /**
-   * Development ends in a fight. The wave is sized by how many waves have
-   * already come, NOT by how far your tech has run — outrunning the ladder is a
-   * legitimate way to win. Every revealed encampment adds a garrison on top,
-   * which is the pressure to expand toward them.
+   * Development ends, but the wave does not land immediately: it lands when YOU
+   * say so. The prep phase is the planning window — the clock stops accruing,
+   * the mustered host is on the frontier, and you arrange the board: reposition
+   * units, repair, upgrade. `beginWave` sets the fight going.
+   */
+  _startPrep() {
+    if (this.phase !== 'development') return
+    this.phase = 'prep'
+    // Nothing accrues in prep; the player acts, then begins the wave. The clock
+    // is left alone so combat can run at whatever speed was set.
+  }
+
+  get inPrep() { return this.phase === 'prep' && !this.combat.active && !this.defeated }
+
+  /** Leave prep and start the wave. The player's "Begin Wave" button. */
+  beginWave() {
+    if (this.phase !== 'prep' || this.combat.active) return false
+    // Combat borrows the clock; if it was paused the fight would freeze, so make
+    // sure it is running.
+    if (this.speed === 'paused') this.speed = 'standard'
+    this._startWave()
+    this._restartTimer()
+    this._emit()
+    return true
+  }
+
+  /**
+   * The wave is sized by how many waves have already come, NOT by how far your
+   * tech has run — outrunning the ladder is a legitimate way to win. Every
+   * revealed encampment adds a garrison on top.
    */
   _startWave() {
     this.phase = 'combat'
@@ -303,7 +349,8 @@ export class GameManager {
       return d > 0 || (d === 0 && b.d > a.d) ? b : a
     })
     if (!improveTile(this.world, best)) return false
-    if (this.mods.roads) layRoads(this.world)
+    // New controlled land can shorten a connection route, so re-lay.
+    layConnections(this.world)
     this._knownCache = null
     this.log.push({ wave: this.wave, text: `Settled ${terrainOf(best.terrain).name}.` })
     return true
@@ -359,7 +406,7 @@ export class GameManager {
     this._knownCache = null
     // Territory claimed past the old frontier comes alive as the map catches up.
     setTerritoryStage(this.world, stage)
-    if (this.mods.roads) layRoads(this.world)
+    layConnections(this.world)
     // ⚠️ RE-MUSTER. The battlefield ring is derived from the known set, so a
     // reveal moves it outward — and the mustered host is standing on the OLD
     // ring, with flow fields computed against the old map. Under the era clock
@@ -538,7 +585,8 @@ export class GameManager {
   foundCityAt(tile) {
     if (this.selection?.type !== 'city') return false
     if (!foundCity(this.world, tile)) return false
-    if (this.mods.roads) layRoads(this.world)
+    // A new city rewires the whole network (the old-world relay rule is global).
+    layConnections(this.world)
     this.log.push({ wave: this.wave, text: `Founded a city on ${terrainOf(tile.terrain).name}.` })
     this.selection = null
     this._knownCache = null
@@ -648,6 +696,64 @@ export class GameManager {
   }
 
   get repairTargets() { return repairTargets(this.world) }
+
+  // --- Repositioning (prep phase) -------------------------------------------
+
+  /** Repositioning is a prep-phase action: not during development or combat. */
+  get canReposition() { return this.inPrep }
+
+  /**
+   * Where the unit on `from` could be repositioned, with the gold cost of each.
+   *
+   *   free   — within your reposition range, costs nothing
+   *   cost   — gold for the tiles beyond the free range (0 when free)
+   *
+   * A destination must be empty and legal for the unit's class. Distance uses
+   * the reposition metric (domains free to cross; straight-line when teleport).
+   */
+  repositionTargets(from) {
+    const u = from?.unit
+    if (!u || u.destroyed || !this.canReposition) return []
+    const def = UNIT_DEFS[u.key]
+    if (!def) return []
+
+    const range = this.mods.repositionRange
+    const opts = { domains: this.mods.repositionDomains, teleport: this.mods.repositionTeleport }
+    // One field for the whole pick (unless teleporting, which is per-tile O(1)).
+    const field = this.mods.repositionTeleport ? null : repositionField(this.world, from, opts)
+
+    const out = []
+    for (const t of this.world.terr.controlled) {
+      if (t === from || !canPlaceUnit(this.world, t, def)) continue
+      const d = field
+        ? (field.get(key(t.q, t.r)) ?? Infinity)
+        : repositionDistance(this.world, from, t, opts)
+      if (!Number.isFinite(d)) continue
+      const paid = Math.max(0, d - range)
+      const cost = repositionCost(this.wave, paid, this.repositionCostMult)
+      out.push({ tile: t, dist: d, free: paid === 0, cost, afford: cost <= this.resources.gold.value })
+    }
+    return out
+  }
+
+  /** The gold cost of moving the unit on `from` to `to` (null if illegal). */
+  repositionCostTo(from, to) {
+    return this.repositionTargets(from).find((r) => r.tile === to) ?? null
+  }
+
+  /** Move a placed unit to another tile, paying if it is beyond free range. */
+  repositionUnit(from, to) {
+    const info = this.repositionCostTo(from, to)
+    if (!info) return false
+    if (info.cost > 0 && !this._spend(info.cost)) return false
+    to.unit = from.unit
+    from.unit = null
+    this.world.terr.version++
+    this._knownCache = null
+    this.log.push({ wave: this.wave, text: `Repositioned ${UNIT_NAME(to.unit.key)}${info.cost ? ` (${info.cost} gold)` : ''}.` })
+    this._emit()
+    return true
+  }
 
   /**
    * Where the unit on `tile` could go and what it could hit — for the hover
@@ -851,11 +957,49 @@ export class GameManager {
           this.grants.push({ kind: 'unit', type: f.unitClass })
         }
         break
+      // +combat movement, units only (the palace has its own line).
+      case 'unit_speed':
+        this.mods.unitSpeed += f.amount ?? 0
+        break
+
+      // --- repositioning ---
+      case 'reposition_range':
+        this.mods.repositionRange += f.amount ?? 0
+        break
+      case 'reposition_domain':
+        this.mods.repositionDomains.add(f.domain)
+        break
+      case 'reposition_cost':
+        // Reductions ADD, then clamp so a move is never fully free this way.
+        this.mods.repositionCostReduction = Math.min(0.9, this.mods.repositionCostReduction + (f.pct ?? 0) / 100)
+        break
+      case 'reposition_teleport':
+        this.mods.repositionTeleport = true
+        break
+
+      // --- formations: per-unit flat resolved at combat start ---
+      case 'formation':
+        this.mods.formationAtk += f.atk ?? 0
+        this.mods.formationDef += f.def ?? 0
+        break
+
+      // --- city connections ---
+      case 'road_network':
+        this.mods.connectionGold += f.gold ?? 0
+        if (f.prodFromGold) this.mods.connectionProd = true
+        // A richer network changes tile yields; the road tiles themselves do not
+        // move, so no need to re-lay — just bump the memo version.
+        this.world.terr.version++
+        break
+
       default:
         // Unreachable via valid content; loud rather than silent if it happens.
         console.warn(`[GameManager] no case for effect kind "${f.kind}"`)
     }
   }
+
+  /** The live gold-cost multiplier on repositioning (Logistics etc.). */
+  get repositionCostMult() { return Math.max(0.1, 1 - this.mods.repositionCostReduction) }
 
   // --- Known world ----------------------------------------------------------
 

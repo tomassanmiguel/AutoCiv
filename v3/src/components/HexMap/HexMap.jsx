@@ -103,6 +103,36 @@ export default function HexMap() {
   // AFTER the `hover` state: reading it above is a temporal-dead-zone crash.
   const reach = !combat.active && hover?.unit ? game.unitReachCells(hover) : null
 
+  // REPOSITIONING (prep phase). Click a unit to pick it up; valid tiles light —
+  // green where it is free, amber (with a cost) where it is paid — and a second
+  // click drops it. Distinct from the aiming flow because prep has no selection.
+  const [repo, setRepo] = useState(null)
+  const canReposition = game.canReposition
+  // Drop the picked-up unit when prep ends, so it doesn't re-highlight on the
+  // next prep. (A transient UI reset on phase change — the state genuinely lives
+  // in React, not the model.)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (!canReposition) setRepo(null) }, [canReposition])
+  const repoActive = canReposition && repo?.unit && !repo.unit.destroyed
+  const version = game.getVersion()
+  const repoMap = useMemo(() => {
+    if (!repoActive) return null
+    return new Map(game.repositionTargets(repo).map((r) => [`${r.tile.q},${r.tile.r}`, r]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repoActive, repo, version])
+
+  const onTileClick = (t, k) => {
+    if (expSet?.has(k)) { aimAt(t); return }
+    if (repoActive) {
+      if (t === repo) { setRepo(null); return }             // click the unit again → drop
+      const info = repoMap?.get(k)
+      if (info) { if (info.afford && game.repositionUnit(repo, t)) setRepo(null); return }
+      if (t.unit && !t.unit.destroyed) { setRepo(t); return } // switch to another unit
+      setRepo(null); return
+    }
+    if (canReposition && t.unit && !t.unit.destroyed) setRepo(t) // pick up
+  }
+
   // --- Content layout (origin + size of the known world in content px) -------
   const layout = useMemo(() => {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
@@ -386,7 +416,7 @@ export default function HexMap() {
               }}
               onMouseEnter={() => hoverOn(t)}
               onMouseLeave={() => hoverOff(t)}
-              onClick={() => { if (expSet?.has(k)) aimAt(t) }}
+              onClick={() => onTileClick(t, k)}
             >
               {!isBf && t.improved && !t.city && !t.building && <span className="hex-improved" />}
               {!isBf && t.city && (
@@ -408,20 +438,32 @@ export default function HexMap() {
             move here" and "can hit here" are the same tiles, so picking one
             would make the other invisible for the commonest unit in the game.
             FILL = where it can stand, STROKE = what it can hit. */}
-        {(reach || expSet) && (
+        {(reach || expSet || repoActive) && (
           <svg className="hex-overlay" width={layout.w} height={layout.h}>
             {shown.map((t) => {
               const k = `${t.q},${t.r}`
+              const repoInfo = repoMap?.get(k)
               const cls = [
                 expSet?.has(k) && 'target',
                 blockedSet?.has(k) && 'blocked',
                 reach?.move.has(k) && 'can-move',
                 reach?.attack.has(k) && 'can-hit',
                 reach?.threat.has(k) && 'threat',
+                repoActive && t === repo && 'repo-src',
+                repoInfo && (repoInfo.free ? 'repo-free' : repoInfo.afford ? 'repo-paid' : 'repo-poor'),
               ].filter(Boolean)
               if (!cls.length) return null
               const c = centerOf(t.q, t.r)
-              return <polygon key={k} className={cls.join(' ')} points={hexPoints(c.x, c.y, HEX_SIZE - SEAM)} />
+              // A paid reposition tile shows its gold cost right on the tile.
+              const label = repoInfo && !repoInfo.free
+              return (
+                <g key={k}>
+                  <polygon className={cls.join(' ')} points={hexPoints(c.x, c.y, HEX_SIZE - SEAM)} />
+                  {label && (
+                    <text className="repo-cost" x={c.x} y={c.y + 5} textAnchor="middle">{repoInfo.cost}</text>
+                  )}
+                </g>
+              )
             })}
           </svg>
         )}

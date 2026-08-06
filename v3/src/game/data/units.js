@@ -108,17 +108,23 @@ export const PALACE = {
  * A class with no attack (a wall, a command unit) stays at zero: no bonus of any
  * kind may turn one into something that strikes back.
  */
-export function unitStats(def, wave, mods, level = 1) {
+export function unitStats(def, wave, mods, level = 1, extra = null) {
   const s = Math.pow(1.18, wave) * (1 + 0.25 * (level - 1))
 
-  const baseAtk = (def.atk + (mods?.unitAtkFlat ?? 0)) *
+  // `extra` carries PER-UNIT flats (Formations) — a unit next to three friends
+  // gains 3× the formation bonus. It joins the civ-wide flat inside the base,
+  // before the multipliers, so a tight formation is worth more than it looks.
+  const atkFlat = (mods?.unitAtkFlat ?? 0) + (extra?.atkFlat ?? 0)
+  const defFlat = (mods?.unitDefFlat ?? 0) + (extra?.defFlat ?? 0)
+
+  const baseAtk = (def.atk + atkFlat) *
     (1 + (mods?.unitAtkBasePct ?? 0)) *
     (1 + (mods?.unitAtkPct ?? 0))
 
   // Defence IS hit points, and runs the identical formula. Unlike attack there
   // is no zero case: every unit has hit points, including the ones that never
   // strike — a wall is nothing BUT hit points.
-  const baseDef = (def.def + (mods?.unitDefFlat ?? 0)) *
+  const baseDef = (def.def + defFlat) *
     (1 + (mods?.unitDefBasePct ?? 0)) *
     (1 + (mods?.unitDefPct ?? 0))
 
@@ -128,6 +134,8 @@ export function unitStats(def, wave, mods, level = 1) {
     def: Math.max(1, Math.round(baseDef * s)),
     atk: def.atk === 0 ? 0 : Math.max(1, Math.round(baseAtk * s)),
     range: def.range,
-    acts: def.acts,
+    // +speed from research, but a class with no movement terrain still can't
+    // move — the extra step has nowhere to go.
+    acts: def.acts + (def.movement.size ? (mods?.unitSpeed ?? 0) : 0),
   }
 }

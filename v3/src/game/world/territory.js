@@ -17,7 +17,7 @@
 // multiplier if it can reach water.
 
 import { neighbors, key as hkey } from '../hex/coords.js'
-import { terrainOf, isWater, isPassable } from './terrain.js'
+import { terrainOf, isWater, isPassable, travelClass } from './terrain.js'
 import { buildingYield } from '../data/buildings.js'
 
 // --- City growth knobs -----------------------------------------------------
@@ -304,59 +304,123 @@ export function foundCity(world, t) {
 }
 
 // ---------------------------------------------------------------------------
-// Roads
+// City connections
 // ---------------------------------------------------------------------------
+//
+// Cities wire themselves together automatically — no tech required — and every
+// tile ON a connection route earns bonus gold (see tileYield / mods.connectionGold).
+// Road techs only make the routes richer and extend reposition range; they do
+// not create the network.
+//
+// The topology (see docs/design.md § Road network):
+//   - ON THE OLD WORLD, a city connects to the PALACE by the shortest land route,
+//     UNLESS some other city C' is both nearer the palace than it is AND nearer to
+//     it than the palace is — then it connects to every such C' instead. (Those
+//     hook toward the palace themselves, so the whole thing stays joined while
+//     hugging the terrain instead of firing spokes from the capital.)
+//   - ANYWHERE ELSE — a separate landmass with no palace to root on — a city
+//     connects to its two nearest cities on the SAME landmass.
+//   - Routes are LAND ONLY: passable, controlled, and neither water nor open void
+//     (celestial-body surfaces are fine). A tile on two routes still counts once.
 
-/**
- * Lay the road network: every city joined to the palace along the shortest route
- * through ground you control. Called when roads unlock and whenever a city is
- * founded, so the network always reflects the current city list.
- *
- * The network GROWS rather than being rebuilt: each city is joined to the
- * nearest tile already carrying road, which is what makes it read as a road
- * system and not a bundle of separate spokes out of the capital.
- */
-export function layRoads(world) {
-  const roads = world.terr.roads
-  const home = world.at(0, 0)
-  if (!roads.size) { home.road = true; roads.add(home) }
-
-  const passable = (t) => t && t.controlled && visible(world, t) && isPassable(t.terrain)
-  // Nearest-first, so short spurs are absorbed before long ones are drawn.
-  const todo = [...world.terr.cities].filter((t) => !t.road).sort((a, b) => a.d - b.d)
-
-  for (const target of todo) {
-    if (target.road) continue
-    // BFS outward from the whole existing network at once.
-    const prev = new Map()
-    const q = [...roads]
-    const seen = new Set(q)
-    let hit = null
-    while (q.length && !hit) {
-      const t = q.shift()
-      for (const n of neighbors(t.q, t.r)) {
-        const o = world.tiles.get(hkey(n.q, n.r))
-        if (!o || seen.has(o) || !passable(o)) continue
-        seen.add(o)
-        prev.set(o, t)
-        if (o === target) { hit = o; break }
-        q.push(o)
-      }
-    }
-    if (!hit) continue // unreachable overland (another continent) — no road
-    for (let t = hit; t && !t.road; t = prev.get(t)) { t.road = true; roads.add(t) }
-  }
-  world.terr.version++
+/** May a connection route run through this tile? Land you control, no sea/void. */
+function routable(world, t) {
+  return t && t.controlled && visible(world, t) && isPassable(t.terrain) &&
+    !isWater(t.terrain) && travelClass(t.terrain) !== 'void'
 }
 
-/** Memoised "does this tile touch the road network" — same reasoning as foodAround. */
-function roadAround(world, t) {
-  const v = world.terr.version
-  if (t._roadVersion === v) return t._roadAround
-  const r = t.road || neighbors(t.q, t.r).some((n) => world.tiles.get(hkey(n.q, n.r))?.road)
-  t._roadVersion = v
-  t._roadAround = r
-  return r
+/**
+ * Shortest routable path between two tiles as an ordered tile list (inclusive),
+ * or null if there is none. Plain BFS — routes are short and recomputed rarely.
+ */
+function routeBetween(world, from, to) {
+  if (!routable(world, from) || !routable(world, to)) return null
+  const prev = new Map()
+  const seen = new Set([from])
+  const q = [from]
+  while (q.length) {
+    const t = q.shift()
+    if (t === to) break
+    for (const n of neighbors(t.q, t.r)) {
+      const o = world.tiles.get(hkey(n.q, n.r))
+      if (!o || seen.has(o) || !routable(world, o)) continue
+      seen.add(o)
+      prev.set(o, t)
+      q.push(o)
+    }
+  }
+  if (!seen.has(to)) return null
+  const path = []
+  for (let t = to; t; t = prev.get(t)) { path.push(t); if (t === from) break }
+  return path
+}
+
+/** Route distances from `city` to every other city (Infinity if unreachable). */
+function cityDistances(world, city, others) {
+  const dist = new Map([[city, 0]])
+  const seen = new Set([city])
+  const q = [city]
+  const targets = new Set(others)
+  let found = 0
+  while (q.length && found < targets.size) {
+    const t = q.shift()
+    for (const n of neighbors(t.q, t.r)) {
+      const o = world.tiles.get(hkey(n.q, n.r))
+      if (!o || seen.has(o) || !routable(world, o)) continue
+      seen.add(o)
+      dist.set(o, dist.get(t) + 1)
+      if (targets.has(o)) found++
+      q.push(o)
+    }
+  }
+  return (other) => (dist.has(other) ? dist.get(other) : Infinity)
+}
+
+/**
+ * (Re)compute the whole connection network from the current city list. Rebuilt,
+ * not grown: the old-world rule depends on where every OTHER city sits, so a new
+ * city can re-route an old one.
+ */
+export function layConnections(world) {
+  const roads = world.terr.roads
+  for (const t of roads) t.road = false
+  roads.clear()
+
+  const cities = [...world.terr.cities]
+  const palace = world.at(0, 0)
+  const paint = (from, to) => {
+    const path = routeBetween(world, from, to)
+    if (path) for (const t of path) { t.road = true; roads.add(t) }
+  }
+
+  for (const city of cities) {
+    if (city === palace) continue
+    const others = cities.filter((c) => c !== city)
+
+    if (city.region === 'old_world') {
+      const distTo = cityDistances(world, city, [palace, ...others])
+      const dPalace = distTo(palace)
+      // Cities that shortcut this one toward the palace.
+      const relays = others.filter((c) =>
+        c.region === 'old_world' &&
+        distTo(c) < dPalace &&                         // nearer to us than the palace is
+        cityDistances(world, c, [palace])(palace) < dPalace) // and nearer the palace than we are
+      if (relays.length) { for (const r of relays) paint(city, r) }
+      else if (dPalace < Infinity) paint(city, palace)
+    } else {
+      // Off the old world: nearest two cities on the same landmass.
+      const kin = others.filter((c) => c.region === city.region)
+      if (!kin.length) continue
+      const distTo = cityDistances(world, city, kin)
+      const nearest = kin
+        .map((c) => ({ c, d: distTo(c) }))
+        .filter((x) => x.d < Infinity)
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 2)
+      for (const { c } of nearest) paint(city, c)
+    }
+  }
+  world.terr.version++
 }
 
 // ---------------------------------------------------------------------------
@@ -389,10 +453,12 @@ export function tileYield(world, t, mods) {
   addInto(out, terrainOf(t.terrain).yields)
   const tb = mods?.terrain?.[t.terrain]
   if (tb) addInto(out, tb)
+  // A city-connection route tile earns BASE gold (1 even with no road tech, more
+  // with them), so an outpost on the route doubles it along with the terrain.
+  if (t.road && mods) out.gold += mods.connectionGold ?? 0
   if (t.improved) { out.food *= 2; out.production *= 2; out.gold *= 2; out.progress *= 2 }
 
   if (t.improved && mods?.improved) addInto(out, mods.improved)
-  if (mods?.roadYield && roadAround(world, t)) addInto(out, mods.roadYield)
   if (t.building) addInto(out, buildingYield(world, t))
   if (t.city) {
     // A city keeps its tile's natural yield and adds its population on top.
@@ -401,6 +467,9 @@ export function tileYield(world, t, mods) {
     out.progress += t.city.pop
     if (mods?.cityYields) addInto(out, mods.cityYields)
   }
+  // Maglev's rider: a connection tile also earns production equal to the gold it
+  // ends up making. Last, so it sees the full (doubled, teched) gold.
+  if (t.road && mods?.connectionProd) out.production += out.gold
   return out
 }
 

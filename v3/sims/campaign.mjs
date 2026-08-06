@@ -140,6 +140,8 @@ function run(seed, waveCount) {
       }
       continue
     }
+    // Prep is a held phase: the greedy AI does not reposition, it just begins.
+    if (g.phase === 'prep') { g.beginWave(); continue }
     if (g.combat.active) {
       const wave = g.wave
       const before = g.combat.enemies.length

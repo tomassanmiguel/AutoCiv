@@ -1,0 +1,284 @@
+# AutoCiv v3 — Theme Checklist
+
+> **This is a living tracker, not a spec.** Design happens in the "design" thread, theme
+> by theme — we talk through a theme, land on a baseline mechanic (if it needs one) and a
+> set of techs, and they get written down here. The "implementation" thread reads this file
+> to know what's ready to wire into `content.json` / the engine, and checks items off as
+> they go live.
+>
+> **Nothing here is authoritative until it's written down.** Themes with no techs yet are
+> marked `_Not yet discussed._` — do not invent content for them ahead of this thread
+> deciding it, and do not treat the old `design-brief.md` roster as pre-approved content for
+> any theme; we are designing fresh. The brief may still be worth a glance for *inspiration*
+> once a theme is under discussion, never as a source to port from directly.
+>
+> **Checklist legend:**
+> - `[ ]` — designed here, not yet wired into the engine / `content.json`
+> - `[x]` — wired and live
+>
+> Some themes need a **baseline mechanic** decided before any tech in them makes sense (see
+> Troop Transport below for the pattern) — that goes in an italic note under the heading,
+> separate from the checklist, since it's the rule the techs modify rather than a tech
+> itself. A theme can also carry a **decided ruling** even before it has techs (e.g. how
+> razed wonders behave) — those are locked in, not open questions.
+
+---
+
+## 1. Critical Hits
+*We will add a crit mechanic.*
+
+_Not yet discussed._
+
+## 2. Ranged Units
+
+_Not yet discussed._
+
+## 3. Cavalry Units
+
+_Not yet discussed._
+
+## 4. Spawners
+*Buildings that periodically create new temporary defenders in combat. These count as
+mercenaries for the purposes of interaction with the diplomacy/mercenary techs.*
+
+_Not yet discussed._
+
+## 5. Melee Units
+
+_Not yet discussed._
+
+## 6. Commander Units
+
+_Not yet discussed._
+
+## 7. Siege Units
+
+_Not yet discussed._
+
+## 8. Aerial Units
+
+_Not yet discussed._
+
+## 9. Naval Units
+
+_Not yet discussed._
+
+## 10. Astral Units
+
+_Not yet discussed._
+
+## 11. Fortification Units
+
+_Not yet discussed._
+
+## 12. Traps
+
+_Not yet discussed._
+
+## 13. Unit Death
+*Effects that occur when our own units die.*
+
+_Not yet discussed._
+
+## 14. Unit Survival
+*Effects that occur when our own units survive.*
+
+_Not yet discussed._
+
+## 15. Options Economy
+*Rerolls, more offered options.*
+
+_Not yet discussed._
+
+## 16. Troop Transport
+*Moving units on the map to reposition for enemy waves.*
+
+*Troops cannot be repositioned by default except by paying gold, scaling with the distance
+repositioned. These techs grant **reposition range** — moving within that range during the
+planning phase is free; beyond it, the gold cost checks against the nearest tile that is
+still within range. A few techs grant reposition **"across"** a terrain kind, meaning tiles
+of that kind don't count toward the range calculation at all — e.g. with Galleons, the coast
+of the New World and the coast of the Old World are adjacent for repositioning purposes,
+regardless of the water between them.*
+
+- [ ] **Roads** — +1 reposition range. City connections (the shortest passable route between
+  cities) gain +1 base :gold: yield — every tile in the connection benefits.
+- [ ] **Galleons** — reposition range extends across water. +1 reposition range.
+- [ ] **Formations** — units gain +2 :attack: and +2 :defense: for each other unit within
+  their reposition range. +1 reposition range.
+- [ ] **Railroad** — +2 reposition range. City connections gain +2 :gold:.
+- [ ] **Highways** — +3 reposition range. City connections gain +3 :gold:.
+- [ ] **Maglev** — +3 reposition range. City connections gain +1 :gold:. City connection
+  tiles also gain :production: equal to their :gold: yield.
+- [ ] **Solar Shuttles** — reposition range extends across space. +2 reposition range.
+- [ ] **Mass Relays** — reposition range extends across deep space. +3 reposition range.
+- [ ] **Logistics** *(Modern)* — repositioning costs reduced by 50% (requires a reposition
+  range greater than 0 from another tech).
+- [ ] **Teleportation** — +4 reposition range. All units gain +1 :speed: and teleport
+  directly to their destination, ignoring intermediate obstacles.
+
+## 17. Time Manipulation
+*More ticks, effects that trigger per-tick.*
+
+*Decided: these techs push out the WAVE clock — they add development ticks before the next
+wave attacks, or otherwise manipulate that countdown — never the era/tech-pool clock, which
+has no tick-length in v3 (eras are a pure tech-pool gate; see `design.md` §1).*
+
+_Not yet discussed._
+
+## 18. Progress Buildings
+
+_Not yet discussed._
+
+## 19. Production Buildings
+
+_Not yet discussed._
+
+## 20. Food Buildings
+
+_Not yet discussed._
+
+## 21. Gold Buildings
+
+_Not yet discussed._
+
+## 22. Cities
+
+*Subtheme: **Population** — techs that buff citizens directly, independent of which city
+they're in (e.g. "all citizens produce +1 :progress:").*
+
+_Not yet discussed._
+
+## 23. Wonder Theme
+*Many wonders live in other themes — this theme is about paying off having a lot of them.*
+
+*Decided: a razed wonder stops having its effect until repaired. An unbuilt/undrafted wonder
+has no effect — the exception is a tech that specifically interacts with that state (e.g.
+one that reduces wonder build time).*
+
+_Not yet discussed._
+
+## 24. Building Adjacencies
+
+*Decided: the road/rail transport network (see Troop Transport) does **not** extend building
+adjacency — it would be non-obvious to players. Adjacency is read off literal neighboring
+tiles only.*
+
+_Not yet discussed._
+
+## 25. Buildings
+
+*Universal modifiers that apply to every building regardless of type — a flat or percentage
+bonus to all buildings' output, a blanket upgrade-cost discount, etc. — as distinct from
+Building Adjacencies (how a building reads its neighbors) and the four resource-building
+themes above (which are new buildings).*
+
+_Not yet discussed._
+
+## 26. Global
+
+*Modifiers that affect total output and the progress/production/food thresholds directly,
+independent of the map — not tied to any specific tile, building, or unit. Distinct from
+Buildings (25), which still applies per building instance.*
+
+_Not yet discussed._
+
+## 27. Mercenaries
+
+_Not yet discussed._
+
+## 28. Enemy Control
+
+*Decided: this theme is about messing with the enemy army during the **prep phase** —
+before combat starts — not mid-combat manipulation.*
+
+_Not yet discussed._
+
+## 29. Lunar
+
+_Not yet discussed._
+
+## 30. Martian
+
+_Not yet discussed._
+
+## 31. Plains
+
+_Not yet discussed._
+
+## 32. Forests
+
+_Not yet discussed._
+
+## 33. Deserts
+
+_Not yet discussed._
+
+## 34. Tundra
+
+_Not yet discussed._
+
+## 35. Mountains
+
+_Not yet discussed._
+
+## 36. Hills
+
+_Not yet discussed._
+
+## 37. Sea
+
+_Not yet discussed._
+
+## 38. Islands
+
+_Not yet discussed._
+
+## 39. New World
+
+*Old World vs. New World as a geographic identity, not a terrain type — bonuses for
+colonizing and holding land outside your home continent.*
+
+_Not yet discussed._
+
+## 40. Exoplanet
+
+_Not yet discussed._
+
+## 41. Celestial Bodies
+
+_Not yet discussed._
+
+## 42. Upgrades
+
+_Not yet discussed._
+
+## 43. Repairs
+
+_Not yet discussed._
+
+## 44. Investments
+*Long-term incentives — e.g. buildings that gain value over time.*
+
+*Decided: this is a loose umbrella, not one shared mechanic — individual investment types
+get their own subthemes/baseline mechanics as we design them.*
+
+_Not yet discussed._
+
+## 45. End of Combat
+*Triggers that happen per wave.*
+
+_Not yet discussed._
+
+## 46. Palace
+*Buffing the palace, but also palace adjacency.*
+
+_Not yet discussed._
+
+## 47. Outposts
+
+_Not yet discussed._
+
+## 48. Religion/Temples
+
+_Not yet discussed._

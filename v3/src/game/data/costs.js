@@ -36,3 +36,16 @@ export const rerollCost = (era, rerollsThisOffer) =>
 
 /** Level scaling shared by units and buildings: +25% of base per level above 1. */
 export const levelMult = (level) => 1 + 0.25 * (level - 1)
+
+/**
+ * Repositioning a unit costs :gold: per tile of distance BEYOND your free range,
+ * scaling with the wave like every other spend. Deliberately cheaper per tile
+ * than a repair, so a short shuffle is affordable but hauling the whole army
+ * across the map is a real bill.
+ *
+ * `tiles` is the paid distance (already net of free range); `mult` is the
+ * reduction from Logistics-style techs (1 = full price, 0.5 = half).
+ */
+export const repositionPerTile = (wave) => Math.round((12 + 8 * wave) * pow(1.12, wave))
+export const repositionCost = (wave, tiles, mult = 1) =>
+  tiles <= 0 ? 0 : Math.max(1, Math.round(repositionPerTile(wave) * tiles * mult))

@@ -488,3 +488,8 @@ body {
 /* 0 movement terrain is a REAL, correct value for a fortification — say so
    rather than showing a bare "0 terrain" that reads as unfinished. */
 .ed-terr-cell.never { color: #8a7fb0; font-style: italic; }
+
+/* A boolean effect param reads as "[x] label", not "label [x]". */
+.ed-fx-param.bool { flex-direction: row; }
+.ed-fx-param.bool input { accent-color: #d9c168; }
+.ed-fx-flag { font-size: 11px; color: #6d7488; font-style: italic; }

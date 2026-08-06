@@ -1,0 +1,35 @@
+.prep-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 4.4rem;
+  transform: translateX(-50%);
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 0.7rem 0.55rem 1rem;
+  border-radius: 12px;
+  background: rgba(12, 15, 26, 0.94);
+  border: 1px solid rgba(201, 154, 46, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.prep-text { display: flex; flex-direction: column; gap: 0.1rem; max-width: 380px; }
+.prep-text b { font-family: var(--font-display); color: var(--accent-light); font-size: 0.95rem; }
+.prep-text span { font-size: 0.78rem; color: #aeb6c8; }
+.prep-text span b { font-family: var(--font-body); color: #e8d5a0; font-size: inherit; }
+
+.prep-begin {
+  flex: none;
+  padding: 0.5rem 1.1rem;
+  border-radius: 9px;
+  border: 1px solid rgba(220, 110, 90, 0.7);
+  background: rgba(220, 110, 90, 0.18);
+  color: #ffd9cf;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.prep-begin:hover { background: rgba(220, 110, 90, 0.32); transform: translateY(-1px); }

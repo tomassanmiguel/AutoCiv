@@ -356,6 +356,210 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "roads",
+      "name": "Roads",
+      "quadrant": "economy",
+      "era": 1,
+      "icon": "/sprites/ui/utility-building.png",
+      "description": "+1 reposition range. Tiles on a city connection earn +1 more base :gold:.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 1
+        },
+        {
+          "kind": "road_network",
+          "gold": 1,
+          "prodFromGold": false
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "galleons",
+      "name": "Galleons",
+      "quadrant": "economy",
+      "era": 6,
+      "icon": "/sprites/ui/boat.png",
+      "description": "+1 reposition range, and repositioning crosses water for free.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 1
+        },
+        {
+          "kind": "reposition_domain",
+          "domain": "water"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "formations",
+      "name": "Formations",
+      "quadrant": "military",
+      "era": 2,
+      "icon": "/sprites/ui/melee.png",
+      "description": "+1 reposition range. Each unit gains +2 :attack: and +2 :defense: for every other unit in its reposition range.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 1
+        },
+        {
+          "kind": "formation",
+          "atk": 2,
+          "def": 2
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "railroad",
+      "name": "Railroad",
+      "quadrant": "economy",
+      "era": 7,
+      "icon": "/sprites/ui/utility-building.png",
+      "description": "+2 reposition range. Connection tiles earn +2 more base :gold:.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 2
+        },
+        {
+          "kind": "road_network",
+          "gold": 2,
+          "prodFromGold": false
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "highways",
+      "name": "Highways",
+      "quadrant": "economy",
+      "era": 8,
+      "icon": "/sprites/ui/utility-building.png",
+      "description": "+3 reposition range. Connection tiles earn +3 more base :gold:.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 3
+        },
+        {
+          "kind": "road_network",
+          "gold": 3,
+          "prodFromGold": false
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "maglev",
+      "name": "Maglev",
+      "quadrant": "economy",
+      "era": 9,
+      "icon": "/sprites/ui/utility-building.png",
+      "description": "+3 reposition range. Connection tiles earn +1 more base :gold:, and :production: equal to their :gold:.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 3
+        },
+        {
+          "kind": "road_network",
+          "gold": 1,
+          "prodFromGold": true
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "solar_shuttles",
+      "name": "Solar Shuttles",
+      "quadrant": "economy",
+      "era": 10,
+      "icon": "/sprites/ui/astral.png",
+      "description": "+2 reposition range, and repositioning crosses space for free.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 2
+        },
+        {
+          "kind": "reposition_domain",
+          "domain": "space"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "mass_relays",
+      "name": "Mass Relays",
+      "quadrant": "economy",
+      "era": 11,
+      "icon": "/sprites/ui/astral.png",
+      "description": "+3 reposition range, and repositioning crosses deep space for free.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 3
+        },
+        {
+          "kind": "reposition_domain",
+          "domain": "deep_space"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "logistics",
+      "name": "Logistics",
+      "quadrant": "economy",
+      "era": 8,
+      "icon": "/sprites/ui/utility-building.png",
+      "description": "Repositioning costs 50% less :gold:.",
+      "effects": [
+        {
+          "kind": "reposition_cost",
+          "pct": 50
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "teleportation",
+      "name": "Teleportation",
+      "quadrant": "military",
+      "era": 14,
+      "icon": "/sprites/ui/utility.png",
+      "description": "+4 reposition range and +1 :speed: to all units. Repositioning ignores all intervening terrain.",
+      "effects": [
+        {
+          "kind": "reposition_range",
+          "amount": 4
+        },
+        {
+          "kind": "unit_speed",
+          "amount": 1
+        },
+        {
+          "kind": "reposition_teleport"
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [],

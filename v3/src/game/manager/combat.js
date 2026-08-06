@@ -28,6 +28,7 @@ import {
 import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
 import { isPassable, isLand } from '../world/terrain.js'
 import { razeTile } from '../world/territory.js'
+import { repositionField } from '../world/reposition.js'
 import { makeRng, shuffle } from '../world/noise.js'
 
 // The wave ladder lives in `data/cycle.js` — it is the game's clock, not a
@@ -132,20 +133,25 @@ class CombatMixin {
   }
 
   /**
-   * The real defenders: every unit the progress web granted and you placed.
-   * Their stats are live — weapons/armour/per-type mods are folded in here, so
-   * a Warrior placed in era 0 fights at era-3 strength once you have the tech.
+   * The real defenders: every unit you placed. Their stats are live — the
+   * research lines are folded in here, so a unit placed in wave 0 fights at
+   * wave-5 strength once you have the tech.
    */
   _playerArmy() {
-    const units = []
-    let id = 0
+    // Where each surviving unit stands, so Formations can count neighbours.
+    const placed = []
     for (const t of this.world.terr.controlled) {
-      // A destroyed unit is a ruin, not a soldier — it sits the battle out
-      // until it is repaired.
       if (!t.unit || t.unit.destroyed) continue
       const def = UNIT_DEFS[t.unit.key]
-      if (!def) continue
-      const s = unitStats(def, this.wave, this.mods, t.unit.level ?? 1)
+      if (def) placed.push({ t, def })
+    }
+    const formation = this._formationFlats(placed)
+
+    const units = []
+    let id = 0
+    for (let i = 0; i < placed.length; i++) {
+      const { t, def } = placed[i]
+      const s = unitStats(def, this.wave, this.mods, t.unit.level ?? 1, formation[i])
       units.push({
         id: id++, side: 'player', key: def.key, name: s.name, type: s.type,
         q: t.q, r: t.r, home: t,
@@ -155,6 +161,38 @@ class CombatMixin {
       })
     }
     return units
+  }
+
+  /**
+   * FORMATIONS: each unit gains flat atk/def for every OTHER friendly unit
+   * inside its reposition range, measured at combat start. Returns an array of
+   * `{ atkFlat, defFlat }` aligned with `placed`.
+   *
+   * Resolved once here, not per combat step: repositioning is a prep concept and
+   * the bonus is the reward for how you ARRANGED the board, not for where units
+   * drift to mid-fight.
+   */
+  _formationFlats(placed) {
+    const per = placed.map(() => ({ atkFlat: 0, defFlat: 0 }))
+    const { formationAtk, formationDef, repositionRange } = this.mods
+    if ((!formationAtk && !formationDef) || repositionRange <= 0) return per
+
+    const opts = { domains: this.mods.repositionDomains, teleport: this.mods.repositionTeleport, maxDist: repositionRange }
+    for (let i = 0; i < placed.length; i++) {
+      const field = this.mods.repositionTeleport
+        ? null
+        : repositionField(this.world, placed[i].t, opts)
+      let n = 0
+      for (let j = 0; j < placed.length; j++) {
+        if (i === j) continue
+        const o = placed[j].t
+        const d = field ? (field.get(key(o.q, o.r)) ?? Infinity)
+          : distance(placed[i].t.q, placed[i].t.r, o.q, o.r)
+        if (d <= repositionRange) n++
+      }
+      per[i] = { atkFlat: n * formationAtk, defFlat: n * formationDef }
+    }
+    return per
   }
 
   /**
