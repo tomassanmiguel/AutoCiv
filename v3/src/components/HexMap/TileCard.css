@@ -30,6 +30,10 @@
   place-items: center;
   width: 58%;
 }
+/* DEVELOPMENT (compact): the economy is centre stage — the unit shrinks to a
+   small icon and its stat pills are not rendered, so buildings/cities dominate. */
+.tile-card.compact .tc-unit-wrap { width: 30%; }
+.tile-card.compact .tc-uicon { margin-bottom: 0; }
 
 .tc-unit {
   position: relative;
@@ -176,10 +180,10 @@
   margin-top: -0.1em;
   pointer-events: auto;
 }
-/* Unit gold on the LEFT, building gold on the RIGHT — a tile can hold both, so
-   they must never stack on top of each other. */
-.tc-actions.left { left: 0; transform: none; align-items: flex-start; padding-left: 0.2em; }
-.tc-actions.right { left: auto; right: 0; transform: none; align-items: flex-end; padding-right: 0.2em; }
+/* Building gold ABOVE the tile, unit gold BELOW — a tile can hold both, so they
+   must never stack. `below` keeps the default (top:100%); `above` flips up. */
+.tc-actions.below { top: 100%; }
+.tc-actions.above { top: auto; bottom: 100%; padding: 0.3em 0.9em 0.5em; }
 
 .tc-action {
   display: flex;

@@ -561,6 +561,7 @@ export default function HexMap() {
   // set and the TERRITORY (which change on expansion/raze, not on a combat beat),
   // so they are memoised against `terrVersion` and skip the churn.
   const terrVersion = game.world.terr.version
+  const devPhase = game.phase === 'development'
 
   // The small on-tile markers (improvement dot / city pip / camp level) — the one
   // thing the terrain DIVs still carried. Kept as DOM in the camera-scaled content
@@ -575,14 +576,15 @@ export default function HexMap() {
     return (
       <div key={`m${k}`} className="hex-marker-anchor" style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H }}>
         {dot && <span className="hex-improved" />}
-        {/* When a unit stands on a city, tuck the pop pip into the corner so the
-            unit badge (centred) does not swallow the city entirely. */}
-        {t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}${t.unit ? ' cornered' : ''}`}>{t.city.pop}</span>}
+        {/* When a FULL unit badge stands on a city (prep/combat), tuck the pop pip
+            into the corner so the centred badge does not swallow it. In development
+            the unit is a small icon, so the pip stays centred and prominent. */}
+        {t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}${t.unit && !devPhase ? ' cornered' : ''}`}>{t.city.pop}</span>}
         {t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }).filter(Boolean), [shown, known, terrVersion, game.stage])
+  }).filter(Boolean), [shown, known, terrVersion, game.stage, devPhase])
 
   // The territory border, drawn as real hex EDGES where controlled meets
   // uncontrolled — one clean outline around the whole country.
@@ -760,6 +762,7 @@ export default function HexMap() {
                 tile={t}
                 hovered={hover === t}
                 onHover={() => hoverOn(t)}
+                compact={game.phase === 'development'}
               />
             </div>
           )
@@ -845,7 +848,7 @@ function TileTip({ game, tile, battlefield }) {
       <div className="hex-tip-title">{def.name}</div>
       <div className="hex-tip-sub">
         {tile.region.replace(/_/g, ' ')} · ring {tile.d} · wedge {tile.wedge}
-        {tile.improved && ' · improved'}{tile.road && ' · road'}
+        {tile.improved && ' · improved'}{tile.road && ` · ${game.connectionName}`}
       </div>
       <div className="hex-tip-body">
         {Object.entries(shownYield).some(([, v]) => v > 0)
