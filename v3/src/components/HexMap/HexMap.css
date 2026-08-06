@@ -201,6 +201,15 @@
   background: radial-gradient(circle at 35% 30%, #fff6d5, #e8c05c 55%, #7a5410);
   box-shadow: 0 0 20px rgba(216, 173, 78, 0.9), 0 2px 8px rgba(0, 0, 0, 0.7);
 }
+/* A city with a unit on it: shrink the pip and pin it to the top-left corner so
+   the centred unit badge cannot cover it (absolute, so it leaves the grid flow). */
+.hex-city.cornered {
+  position: absolute;
+  top: 4%;
+  left: 4%;
+  width: 24%;
+  font-size: 0.62rem;
+}
 
 .hex-tip-note.build { color: #b8d2e6; }
 .hex-tip-note.unit { color: #e3d3a0; }

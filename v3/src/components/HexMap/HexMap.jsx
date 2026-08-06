@@ -16,8 +16,8 @@ import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
 
 import PieceCard from './PieceCard.jsx'
 import TileCard from './TileCard.jsx'
-import { UNIT_DEFS, equipmentOf } from '../../game/data/units.js'
-import { buildingDef, buildingYield, buildingEffectText } from '../../game/data/buildings.js'
+import { UNIT_DEFS } from '../../game/data/units.js'
+import { buildingDef, buildingEffectText } from '../../game/data/buildings.js'
 import { tileYield } from '../../game/world/territory.js'
 import IconText from '../common/IconText.jsx'
 import './HexMap.css'
@@ -575,7 +575,9 @@ export default function HexMap() {
     return (
       <div key={`m${k}`} className="hex-marker-anchor" style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H }}>
         {dot && <span className="hex-improved" />}
-        {t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>}
+        {/* When a unit stands on a city, tuck the pop pip into the corner so the
+            unit badge (centred) does not swallow the city entirely. */}
+        {t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}${t.unit ? ' cornered' : ''}`}>{t.city.pop}</span>}
         {t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
       </div>
     )
@@ -855,36 +857,74 @@ function TileTip({ game, tile, battlefield }) {
       </div>
       {def.note && <div className="hex-tip-note">{def.note}</div>}
       {tile.q === 0 && tile.r === 0 && <div className="hex-tip-note palace">Your palace stands here.</div>}
+      {tile.city && (() => {
+        const ci = game.cityInfo(tile)
+        if (!ci) return null
+        return (
+          <div className="hex-tip-note build">
+            <b>City</b> — population {ci.pop}
+            <div className="hex-tip-sub">
+              +{ci.rate.toFixed(1)} :food:/tick · next pop in {Number.isFinite(ci.ticks) ? `${ci.ticks} tick${ci.ticks === 1 ? '' : 's'}` : '—'}
+              {' '}({Math.floor(ci.food)}/{ci.cost} :food:)
+            </div>
+          </div>
+        )
+      })()}
       {bDef && (
         <div className="hex-tip-note build">
           <b>{bDef.name}</b> — <IconText>{buildingEffectText(bDef)}</IconText>
           <div className="hex-tip-sub">
-            here: {Object.entries(buildingYield(game.world, tile)).filter(([, v]) => v > 0)
-              .map(([r, v]) => `+${v} ${r}`).join(' ') || 'nothing yet'}
+            makes: {Object.entries(game.buildingOutput(tile)).filter(([, v]) => v > 0)
+              .map(([r, v]) => `+${Math.round(v)} ${r}`).join(' ') || 'nothing yet'}
           </div>
         </div>
       )}
-      {uDef && (
-        <div className="hex-tip-note unit">
-          <b>{uDef.name}</b> — {uDef.blurb}
-          {/* What it actually carries. Weapon and armour are civilization-wide
-              tiers, so this is where you see a re-arming land on a unit. */}
-          <div className="hex-tip-gear">
-            {equipmentOf(uDef, game.mods).map((g) => (
-              <div key={g.slot} className="gear-row">
-                <span className="gear-slot">{g.slot}</span>
-                <span className="gear-name">{g.name}</span>
-                {g.bonus && <span className="gear-bonus"><IconText>{g.bonus}</IconText></span>}
-              </div>
-            ))}
+      {uDef && (() => {
+        const s = game.unitBoardStats(tile)
+        return (
+          <div className="hex-tip-note unit">
+            <b>{uDef.name}</b> — {uDef.blurb}
+            {s && !tile.unit.destroyed && (
+              <>
+                <div className="hex-tip-body">
+                  {s.atk > 0 && <span className="hex-tip-yield"><IconText>{`:attack: ${s.atk}`}</IconText></span>}
+                  <span className="hex-tip-yield"><IconText>{`:defense: ${s.def}`}</IconText></span>
+                  {s.range > 0 && <span className="hex-tip-yield"><IconText>{`:range: ${Number.isFinite(s.range) ? s.range : '∞'}`}</IconText></span>}
+                  {s.acts > 0 && <span className="hex-tip-yield"><IconText>{`:speed: ${s.acts}`}</IconText></span>}
+                  {s.taunt > 0 && <span className="hex-tip-yield">taunt {s.taunt}</span>}
+                </div>
+                <div className="hex-tip-gear">
+                  <StatLine label="Base" atk={s.baseAtk} def={s.baseDef} />
+                  {(s.atkBasePct > 0 || s.defBasePct > 0) &&
+                    <StatLine label="Research" atk={s.atkBasePct ? `+${Math.round(s.atkBasePct * 100)}%` : null} def={s.defBasePct ? `+${Math.round(s.defBasePct * 100)}%` : null} />}
+                  {s.classDefFlat > 0 && <StatLine label="Class" def={`+${s.classDefFlat}`} />}
+                  {(s.formationAtk > 0 || s.formationDef > 0) &&
+                    <StatLine label="Formation" atk={s.formationAtk ? `+${s.formationAtk}` : null} def={s.formationDef ? `+${s.formationDef}` : null} />}
+                  {(s.earnedAtk > 0 || s.earnedDef > 0) &&
+                    <StatLine label="Earned" atk={s.earnedAtk ? `+${s.earnedAtk}` : null} def={s.earnedDef ? `+${s.earnedDef}` : null} />}
+                  {s.fortAdj > 0 && <StatLine label="Adj. ranged" def={`×${s.fortAdj}`} />}
+                </div>
+              </>
+            )}
           </div>
-        </div>
-      )}
+        )
+      })()}
       {tile.encampment && (
         <div className="hex-tip-note camp">
           Enemy encampment (level {tile.encampment.level}) — fields a garrison every wave until your borders reach it.
         </div>
       )}
+    </div>
+  )
+}
+
+/** One line of a unit's stat breakdown: a label, then its atk / def contribution. */
+function StatLine({ label, atk = null, def = null }) {
+  return (
+    <div className="gear-row">
+      <span className="gear-slot">{label}</span>
+      {atk != null && <span className="gear-bonus"><IconText>{`:attack: ${atk}`}</IconText></span>}
+      {def != null && <span className="gear-bonus"><IconText>{`:defense: ${def}`}</IconText></span>}
     </div>
   )
 }

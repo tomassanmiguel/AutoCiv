@@ -176,6 +176,10 @@
   margin-top: -0.1em;
   pointer-events: auto;
 }
+/* Unit gold on the LEFT, building gold on the RIGHT — a tile can hold both, so
+   they must never stack on top of each other. */
+.tc-actions.left { left: 0; transform: none; align-items: flex-start; padding-left: 0.2em; }
+.tc-actions.right { left: auto; right: 0; transform: none; align-items: flex-end; padding-right: 0.2em; }
 
 .tc-action {
   display: flex;
