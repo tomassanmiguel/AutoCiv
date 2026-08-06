@@ -207,7 +207,40 @@ _Not yet discussed._
 
 ## 18. Progress Buildings
 
-_Not yet discussed._
+*One building per era. Every effect below targets a specific tile's :progress: YIELD
+(its own tile, or tiles in a radius) rather than adding directly to the civ total — it
+rides the normal per-tick territory-yield accrual rather than being a separate payout.*
+
+- [ ] **Mythology** *(Stone)* → *Shrine* — +3 :progress: to its own tile.
+- [ ] **Writing** *(Bronze)* → *Library* — +3 :progress: to its own tile. Gains +2
+  :progress: (to its own tile) for every wave it survives without being razed; resets on
+  raze.
+- [ ] **Mathematics** *(Iron)* → *Academy* — +5 :progress: to its own tile, plus +1
+  :progress: to every tile in range 1 that has a unit stationed on it.
+- [ ] **Basilicas** *(Classical)* → *Basilica* — every city in range 1 gains +1
+  :progress:, plus +1 :progress: per citizen in that city.
+- [ ] **Education** *(Medieval)* → *University* — +12 :progress: to its own tile.
+- [ ] **Astronomy** *(Renaissance)* → *Observatory* — +6 :progress: to every mountain
+  tile in range 1.
+- [ ] **Journalism** *(Exploration)* → *Gazette* — +1 :progress: to its own tile.
+  Whenever any unit dies (friendly or enemy) within range 4, permanently gain +1
+  :progress:/tick (doubled if the Gazette is in the New World).
+- [ ] **Scientific Method** *(Steam)* → *Laboratory* — +20 :progress: to its own tile.
+- [ ] **Natural History** *(Modern)* → *Museum* — +1 :progress: to its own tile. Every
+  building in range 2 gains +1 :progress: to its own tile for every era that has passed
+  since it was built.
+- [ ] **Ecology** *(Information)* → *Arctic Research Station* (tundra placement only) —
+  +10 :progress: for every tundra tile in range 1.
+- [ ] **Spectroscopy** *(Solar)* → *Space Telescope* (space placement only) — +50
+  :progress: to its own tile.
+- [ ] **Deep Thought** *(Exodus)* → *Cogitarium* — +15 :progress: to its own tile per
+  tile of distance to the nearest other building (an adjacent building means just +15;
+  no other building nearby scales it up from there).
+- [ ] **Xenobiology** *(Liminite)* → *Alien Research Center* (exoplanet placement only) —
+  every tile in range 1 gains :progress: equal to the sum of its other base yields.
+- [ ] **Dark Matter** *(Galactic)* → *Black Hole Station* (singularity placement only) —
+  +500 :progress: to its own tile.
+- [ ] *(Ascension — no entry yet.)*
 
 ## 19. Production Buildings
 

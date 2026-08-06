@@ -26,8 +26,14 @@ const HEX_H = HEX_SIZE * SQRT3
 const SEAM = 1.5 // shrink each hex slightly so the dark backdrop reads as a grid seam
 
 const FIT_PADDING = 0.94
-const MIN_TILES_ACROSS = 6 // most zoomed-in view
+const MIN_TILES_ACROSS = 2.5 // most zoomed-in view (smaller = closer)
 const CULL_MARGIN = HEX_W * 1.5
+// Below this ON-SCREEN hex width, drop the per-tile `clip-path` (square textured
+// tiles instead of clipped hexes). clip-path is the single most expensive paint
+// op per tile, and at a small on-screen size the hexagon corners are invisible —
+// so this keeps the terrain TEXTURE while making a full-map zoom far cheaper to
+// re-rasterise. Toggled as a class on the content div (imperative, no re-render).
+const DETAIL_HEX_PX = 20
 
 /** The six corners of a flat-top hex, as an SVG `points` string. */
 const hexPoints = (cx, cy, R) => Array.from({ length: 6 }, (_, i) => {
@@ -214,6 +220,10 @@ export default function HexMap() {
     const { scale, tx, ty } = cameraRef.current
     if (contentRef.current) {
       contentRef.current.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
+      // Drop clip-path on all tiles when zoomed out — a class toggle, so no React
+      // re-render; the browser repaints once at the threshold, then zoom frames
+      // paint cheap square textures instead of thousands of clipped hexes.
+      contentRef.current.classList.toggle('overview', HEX_W * scale < DETAIL_HEX_PX)
     }
     updateView()
   }

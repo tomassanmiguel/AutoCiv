@@ -28,6 +28,13 @@
   justify-content: center;
   transition: filter 0.1s ease;
 }
+/* OVERVIEW (zoomed out): drop the per-tile clip-path — the most expensive paint
+   op — but KEEP the terrain texture. Tiles become squares, invisible at a few px
+   per hex, and a full-map zoom re-rasterises far cheaper. Toggled by a class on
+   the content div (see HexMap.jsx applyTransform), so it costs no re-render. */
+.hexmap-content.overview .hex,
+.hexmap-content.overview .hex::before { clip-path: none; }
+
 /* The hover cue is a separate lightweight overlay (one node), not a class on the
    memoised terrain hex — see HexMap.jsx PERFORMANCE note. */
 .hex-hover-cue {
