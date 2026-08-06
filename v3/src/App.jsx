@@ -23,15 +23,15 @@ export default function App() {
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY)
   const [fading, setFading] = useState(false)
 
-  // One AudioManager for the whole session. v3 has only the one track so far, so
-  // it plays across EVERY screen — the game included, rather than falling silent
-  // in-game. It loops and cross-fades on its own; `playTrack` is idempotent, so
-  // re-requesting the same src on a screen change never restarts it. (Dedicated
-  // era music can swap in here per screen once it exists.)
+  // One AudioManager for the whole session, shared across screens so the
+  // title↔era hand-off cross-fades on one system. App drives the TITLE track on
+  // every non-game screen; IN game the era track is driven by `AudioController`
+  // (inside GameScreen, where the reveal era is readable). `playTrack` is
+  // idempotent, so re-requesting the same src on a re-render never restarts it.
   const [audio] = useState(() => new AudioManager(0.5))
 
   useEffect(() => {
-    audio.playTrack(TITLE_TRACK)
+    if (screen !== 'game') audio.playTrack(TITLE_TRACK)
   }, [screen, audio])
 
   // Unlock audio on the first user gesture (browser autoplay policy). Honors the
@@ -77,7 +77,7 @@ export default function App() {
       {screen === 'title' && <TitleScreen onNewGame={openSetup} />}
       {screen === 'pregame' && <PreGameScreen onStart={beginGame} onBack={exitToTitle} />}
       {screen === 'game' && (
-        <GameScreen seed={seed} civ={civ} difficulty={difficulty} onExit={exitToTitle} />
+        <GameScreen seed={seed} civ={civ} difficulty={difficulty} audio={audio} onExit={exitToTitle} />
       )}
       <div className={`screen-fade${fading ? ' active' : ''}`} />
     </div>

@@ -13,6 +13,7 @@ import BuildPrompt from './Build/BuildPrompt.jsx'
 import PrepBanner from './Prep/PrepBanner.jsx'
 import PlacementPrompt from './Placement/PlacementPrompt.jsx'
 import DefeatOverlay from './Hud/DefeatOverlay.jsx'
+import AudioController from './AudioController.jsx'
 import './GameScreen.css'
 
 /**
@@ -23,7 +24,7 @@ import './GameScreen.css'
  * Three prompts share the bottom-left slot and are mutually exclusive by
  * construction — only one `selection` exists at a time.
  */
-export default function GameScreen({ seed, civ, difficulty, onExit }) {
+export default function GameScreen({ seed, civ, difficulty, audio, onExit }) {
   const manager = useMemo(() => new GameManager(seed, { civ, difficulty }), [seed, civ, difficulty])
   const [treeOpen, setTreeOpen] = useState(false)
 
@@ -34,6 +35,7 @@ export default function GameScreen({ seed, civ, difficulty, onExit }) {
 
   return (
     <GameProvider manager={manager}>
+      <AudioController audio={audio} />
       <div className="game-screen">
         <div className="map-window">
           <HexMap />

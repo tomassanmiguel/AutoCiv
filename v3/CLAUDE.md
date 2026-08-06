@@ -103,7 +103,7 @@ v3/
 ├── public/
 │   ├── sprites/tiles/*.png     # 24 terrain tiles (incl. hills, desert, tundra, full-coast)
 │   ├── sprites/{icons,ui}/     # resource/stat icons, 9-slice frames, silhouettes
-│   ├── music/title.ogg         # the only track — plays across every screen, in-game included
+│   ├── music/*.ogg             # title track + 10 era tracks (shared with v2); era-driven in-game
 │   └── logo/
 ├── sims/worldgen.mjs           # headless generation sweep + invariant report + ASCII map
 ├── sims/campaign.mjs           # the WHOLE loop headlessly: waves, gold, survival, branch reach
