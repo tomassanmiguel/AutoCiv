@@ -289,6 +289,7 @@ export default function App() {
           />
           <DataTable
             rows={filtered}
+            totalRows={rows.length}
             columns={columns}
             problemsById={problemsById}
             techOptions={techOptions}

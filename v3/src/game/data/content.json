@@ -39,539 +39,8 @@
     7
   ],
   "activeEras": 3,
-  "techs": [
-    {
-      "id": "fire",
-      "name": "Fire",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/pop.png",
-      "requires": [],
-      "description": "Enables the establishment of cities.",
-      "group": ""
-    },
-    {
-      "id": "foraging",
-      "name": "Foraging",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/food.png",
-      "requires": [],
-      "description": "Increases the :food: yield of forests.",
-      "group": "agriculture"
-    },
-    {
-      "id": "agriculture",
-      "name": "Agriculture",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/food.png",
-      "requires": [],
-      "description": "Increases the :food: yield of plains.",
-      "group": "agriculture"
-    },
-    {
-      "id": "mining",
-      "name": "Mining",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/production.png",
-      "requires": [],
-      "description": "Increases the :production: yield of hills and mountains.",
-      "group": "mining"
-    },
-    {
-      "id": "timbering",
-      "name": "Timbering",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/production.png",
-      "requires": [],
-      "description": "Increases the :production: yield of forests by 1.",
-      "group": "mining"
-    },
-    {
-      "id": "pottery",
-      "name": "Pottery",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the granary building.",
-      "group": ""
-    },
-    {
-      "id": "sewing",
-      "name": "Sewing",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/pop.png",
-      "requires": [],
-      "description": "Enables outposts in tundra.",
-      "group": "sewing"
-    },
-    {
-      "id": "yakhchals",
-      "name": "Yakhchals",
-      "quadrant": "economy",
-      "era": 0,
-      "icon": "/sprites/ui/pop.png",
-      "requires": [],
-      "description": "Enables outposts in deserts.",
-      "group": "sewing"
-    },
-    {
-      "id": "the_wheel",
-      "name": "The Wheel",
-      "quadrant": "economy",
-      "era": 1,
-      "icon": "/sprites/ui/utility-building.png",
-      "requires": [],
-      "description": "Lays roads between your cities by the shortest route — mountains count triple. Every tile on or beside a road gains +1 :gold:.",
-      "group": ""
-    },
-    {
-      "id": "sailing",
-      "name": "Sailing",
-      "quadrant": "economy",
-      "era": 1,
-      "icon": "/sprites/ui/boat.png",
-      "requires": [],
-      "description": "Grants a :naval: unit.",
-      "group": ""
-    },
-    {
-      "id": "terracing",
-      "name": "Terracing",
-      "quadrant": "economy",
-      "era": 1,
-      "icon": "/sprites/ui/food.png",
-      "requires": [],
-      "description": "Increases the :food: yield of mountains and hills by 2.",
-      "group": ""
-    },
-    {
-      "id": "fermentation",
-      "name": "Fermentation",
-      "quadrant": "economy",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the plantation building.",
-      "group": ""
-    },
-    {
-      "id": "currency",
-      "name": "Currency",
-      "quadrant": "economy",
-      "era": 2,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the market building.",
-      "group": ""
-    },
-    {
-      "id": "naval_trade",
-      "name": "Naval Trade",
-      "quadrant": "economy",
-      "era": 2,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the harbor building.",
-      "group": ""
-    },
-    {
-      "id": "burial_rites",
-      "name": "Burial Rites",
-      "quadrant": "society",
-      "era": 0,
-      "icon": "/sprites/ui/progress.png",
-      "requires": [],
-      "description": "Whenever one of your units dies, gain :progress: equal to its :attack:.",
-      "group": "burial_rites"
-    },
-    {
-      "id": "mysticism",
-      "name": "Mysticism",
-      "quadrant": "society",
-      "era": 0,
-      "icon": "/sprites/ui/policy.png",
-      "requires": [],
-      "description": "Rerolls cost 25% less.",
-      "group": ""
-    },
-    {
-      "id": "festivals",
-      "name": "Festivals",
-      "quadrant": "society",
-      "era": 0,
-      "icon": "/sprites/ui/policy.png",
-      "requires": [],
-      "description": "End-of-combat effects happen one additional time.",
-      "group": ""
-    },
-    {
-      "id": "slavery",
-      "name": "Slavery",
-      "quadrant": "society",
-      "era": 0,
-      "icon": "/sprites/ui/gold.png",
-      "requires": [],
-      "description": "For every 2 enemy units you defeat, permanently gain +1 :gold: per tick.",
-      "group": "burial_rites"
-    },
-    {
-      "id": "writing",
-      "name": "Writing",
-      "quadrant": "society",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the library building.",
-      "group": ""
-    },
-    {
-      "id": "hereditary_rule",
-      "name": "Hereditary Rule",
-      "quadrant": "society",
-      "era": 1,
-      "icon": "/sprites/ui/wonder.png",
-      "requires": [],
-      "description": "The palace gains +8 :attack: and +30 :defense:.",
-      "group": ""
-    },
-    {
-      "id": "holidays",
-      "name": "Holidays",
-      "quadrant": "society",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [
-        "monotheism",
-        "polytheism"
-      ],
-      "description": "Builds a temple. Temples raise all base outputs by 1 after every combat.",
-      "group": ""
-    },
-    {
-      "id": "polytheism",
-      "name": "Polytheism",
-      "quadrant": "society",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Builds a temple. Temples produce 1 :progress: for each adjacent outpost or citizen.",
-      "group": "monotheism"
-    },
-    {
-      "id": "monotheism",
-      "name": "Monotheism",
-      "quadrant": "society",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Builds a temple. Temples produce 1 :progress:, multiplied by the number of temples you own.",
-      "group": "monotheism"
-    },
-    {
-      "id": "monumentality",
-      "name": "Monumentality",
-      "quadrant": "society",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the monument. Buildings gain +2 upgrade levels for each adjacent wonder.",
-      "group": ""
-    },
-    {
-      "id": "oligarchy",
-      "name": "Oligarchy",
-      "quadrant": "society",
-      "era": 2,
-      "icon": "/sprites/ui/wonder.png",
-      "requires": [],
-      "description": "The palace produces +4 :gold:.",
-      "group": ""
-    },
-    {
-      "id": "caste_system",
-      "name": "Caste System",
-      "quadrant": "society",
-      "era": 2,
-      "icon": "/sprites/ui/policy.png",
-      "requires": [],
-      "description": "Increases the effect of every upgrade by 10%.",
-      "group": ""
-    },
-    {
-      "id": "mud_brick",
-      "name": "Mud Brick",
-      "quadrant": "military",
-      "era": 0,
-      "icon": "/sprites/ui/defense.png",
-      "requires": [],
-      "description": "Grants a :fort: fortification unit.",
-      "group": ""
-    },
-    {
-      "id": "the_sling",
-      "name": "The Sling",
-      "quadrant": "military",
-      "era": 0,
-      "icon": "/sprites/ui/ranged.png",
-      "requires": [],
-      "description": "Grants a :ranged: unit.",
-      "group": ""
-    },
-    {
-      "id": "leatherwork",
-      "name": "Leatherwork",
-      "quadrant": "military",
-      "era": 0,
-      "icon": "/sprites/ui/defense.png",
-      "requires": [],
-      "description": "All units gain +8 :defense:.",
-      "group": ""
-    },
-    {
-      "id": "bronze_working",
-      "name": "Bronze Working",
-      "quadrant": "military",
-      "era": 1,
-      "icon": "/sprites/icons/attack.png",
-      "requires": [],
-      "description": "All units gain +3 :attack:. Creates a :melee: unit.",
-      "group": ""
-    },
-    {
-      "id": "horseback_riding",
-      "name": "Horseback Riding",
-      "quadrant": "military",
-      "era": 1,
-      "icon": "/sprites/ui/cavalry.png",
-      "requires": [],
-      "description": "Grants a :cavalry: unit.",
-      "group": ""
-    },
-    {
-      "id": "archery",
-      "name": "Archery",
-      "quadrant": "military",
-      "era": 1,
-      "icon": "/sprites/ui/ranged.png",
-      "requires": [],
-      "description": "Creates a :ranged: unit and gives all ranged units +5 :attack:.",
-      "group": ""
-    },
-    {
-      "id": "composite_bows",
-      "name": "Composite Bows",
-      "quadrant": "military",
-      "era": 1,
-      "icon": "/sprites/ui/ranged.png",
-      "requires": [],
-      "description": "Creates a :ranged: unit. Ranged units gain +5 :attack:.",
-      "group": ""
-    },
-    {
-      "id": "masonry",
-      "name": "Masonry",
-      "quadrant": "military",
-      "era": 1,
-      "icon": "/sprites/ui/defense.png",
-      "requires": [],
-      "description": "Grants a :fort: fortification. All fortifications gain +5 :defense:.",
-      "group": ""
-    },
-    {
-      "id": "armor",
-      "name": "Armor",
-      "quadrant": "military",
-      "era": 1,
-      "icon": "/sprites/icons/defense.png",
-      "requires": [],
-      "description": "All units gain +12 :defense:. Creates a :melee: unit.",
-      "group": ""
-    },
-    {
-      "id": "war_horns",
-      "name": "War Horns",
-      "quadrant": "military",
-      "era": 1,
-      "icon": "/sprites/ui/utility.png",
-      "requires": [],
-      "description": "Grants a :utility: command unit.",
-      "group": ""
-    },
-    {
-      "id": "iron_working",
-      "name": "Iron Working",
-      "quadrant": "military",
-      "era": 2,
-      "icon": "/sprites/icons/attack.png",
-      "requires": [],
-      "description": "All units gain +6 :attack:. Creates a :melee: unit.",
-      "group": ""
-    },
-    {
-      "id": "siege",
-      "name": "Siege",
-      "quadrant": "military",
-      "era": 2,
-      "icon": "/sprites/ui/siege.png",
-      "requires": [],
-      "description": "Grants a :siege: unit.",
-      "group": ""
-    },
-    {
-      "id": "mathematics",
-      "name": "Mathematics",
-      "quadrant": "society",
-      "era": 0,
-      "icon": "/sprites/ui/progress.png",
-      "requires": [],
-      "description": "Reduces the cost of all future :progress: thresholds by 3%.",
-      "group": ""
-    },
-    {
-      "id": "calendar",
-      "name": "Calendar",
-      "quadrant": "society",
-      "era": 0,
-      "icon": "/sprites/ui/policy.png",
-      "requires": [],
-      "description": "Increases the length of each era by 5 ticks.",
-      "group": ""
-    },
-    {
-      "id": "astronomy",
-      "name": "Astronomy",
-      "quadrant": "society",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the observatory, buildable on mountains only.",
-      "group": ""
-    },
-    {
-      "id": "machinery",
-      "name": "Machinery",
-      "quadrant": "economy",
-      "era": 1,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Unlocks the workshop building.",
-      "group": ""
-    },
-    {
-      "id": "shipbuilding",
-      "name": "Shipbuilding",
-      "quadrant": "economy",
-      "era": 2,
-      "icon": "/sprites/ui/building.png",
-      "requires": [],
-      "description": "Grants a :naval: unit and unlocks the wharf.",
-      "group": ""
-    }
-  ],
-  "buildings": [
-    {
-      "id": "temple",
-      "name": "Temple",
-      "era": 1,
-      "placement": [],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "The religion building. On its own it does little — nearly every religious node adds another output or multiplier to EVERY temple you own, so they are meant to be stacked."
-    },
-    {
-      "id": "library",
-      "name": "Library",
-      "era": 3,
-      "placement": [],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Produces +1 :progress: per tick, and another +1 after every combat it survives. Razing it resets the accumulation."
-    },
-    {
-      "id": "market",
-      "name": "Market",
-      "era": 1,
-      "placement": [],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Every citizen within range 3 produces +1 :gold:."
-    },
-    {
-      "id": "observatory",
-      "name": "Observatory",
-      "era": 5,
-      "placement": [
-        "mountain"
-      ],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Mountain only. Produces +1 :progress:, and gains another +1 permanently every time you reroll an offer."
-    },
-    {
-      "id": "granary",
-      "name": "Granary",
-      "era": 0,
-      "placement": [],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Doubles the base :food: yield of every plains tile in range 1."
-    },
-    {
-      "id": "workshop",
-      "name": "Workshop",
-      "era": 2,
-      "placement": [],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Produces +16 :production: per tick."
-    },
-    {
-      "id": "wharf",
-      "name": "Wharf",
-      "era": 4,
-      "placement": [
-        "coast"
-      ],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Produces 18 :food: per tick."
-    },
-    {
-      "id": "monument",
-      "name": "Monument",
-      "era": 0,
-      "placement": [],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Produces +15 :progress: per tick."
-    },
-    {
-      "id": "harbor",
-      "name": "Harbor",
-      "era": 1,
-      "placement": [
-        "coast"
-      ],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Gives +1 base :gold: yield to every connected water tile."
-    },
-    {
-      "id": "plantation",
-      "name": "Plantation",
-      "era": 6,
-      "placement": [],
-      "icon": "/sprites/ui/building.png",
-      "unlockedBy": "",
-      "description": "Produces +1 :food:, and permanently +1 more every 20 ticks."
-    }
-  ],
+  "techs": [],
+  "buildings": [],
   "wonders": [
     {
       "id": "stonehenge",
@@ -669,6 +138,439 @@
   ],
   "backlog": {
     "techs": [
+      {
+        "id": "fire",
+        "name": "Fire",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/pop.png",
+        "requires": [],
+        "description": "Enables the establishment of cities.",
+        "group": ""
+      },
+      {
+        "id": "foraging",
+        "name": "Foraging",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/food.png",
+        "requires": [],
+        "description": "Increases the :food: yield of forests.",
+        "group": "agriculture"
+      },
+      {
+        "id": "agriculture",
+        "name": "Agriculture",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/food.png",
+        "requires": [],
+        "description": "Increases the :food: yield of plains.",
+        "group": "agriculture"
+      },
+      {
+        "id": "mining",
+        "name": "Mining",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/production.png",
+        "requires": [],
+        "description": "Increases the :production: yield of hills and mountains.",
+        "group": "mining"
+      },
+      {
+        "id": "timbering",
+        "name": "Timbering",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/production.png",
+        "requires": [],
+        "description": "Increases the :production: yield of forests by 1.",
+        "group": "mining"
+      },
+      {
+        "id": "pottery",
+        "name": "Pottery",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the granary building.",
+        "group": ""
+      },
+      {
+        "id": "sewing",
+        "name": "Sewing",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/pop.png",
+        "requires": [],
+        "description": "Enables outposts in tundra.",
+        "group": "sewing"
+      },
+      {
+        "id": "yakhchals",
+        "name": "Yakhchals",
+        "quadrant": "economy",
+        "era": 0,
+        "icon": "/sprites/ui/pop.png",
+        "requires": [],
+        "description": "Enables outposts in deserts.",
+        "group": "sewing"
+      },
+      {
+        "id": "the_wheel",
+        "name": "The Wheel",
+        "quadrant": "economy",
+        "era": 1,
+        "icon": "/sprites/ui/utility-building.png",
+        "requires": [],
+        "description": "Lays roads between your cities by the shortest route — mountains count triple. Every tile on or beside a road gains +1 :gold:.",
+        "group": ""
+      },
+      {
+        "id": "sailing",
+        "name": "Sailing",
+        "quadrant": "economy",
+        "era": 1,
+        "icon": "/sprites/ui/boat.png",
+        "requires": [],
+        "description": "Grants a :naval: unit.",
+        "group": ""
+      },
+      {
+        "id": "terracing",
+        "name": "Terracing",
+        "quadrant": "economy",
+        "era": 1,
+        "icon": "/sprites/ui/food.png",
+        "requires": [],
+        "description": "Increases the :food: yield of mountains and hills by 2.",
+        "group": ""
+      },
+      {
+        "id": "fermentation",
+        "name": "Fermentation",
+        "quadrant": "economy",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the plantation building.",
+        "group": ""
+      },
+      {
+        "id": "currency",
+        "name": "Currency",
+        "quadrant": "economy",
+        "era": 2,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the market building.",
+        "group": ""
+      },
+      {
+        "id": "naval_trade",
+        "name": "Naval Trade",
+        "quadrant": "economy",
+        "era": 2,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the harbor building.",
+        "group": ""
+      },
+      {
+        "id": "burial_rites",
+        "name": "Burial Rites",
+        "quadrant": "society",
+        "era": 0,
+        "icon": "/sprites/ui/progress.png",
+        "requires": [],
+        "description": "Whenever one of your units dies, gain :progress: equal to its :attack:.",
+        "group": "burial_rites"
+      },
+      {
+        "id": "mysticism",
+        "name": "Mysticism",
+        "quadrant": "society",
+        "era": 0,
+        "icon": "/sprites/ui/policy.png",
+        "requires": [],
+        "description": "Rerolls cost 25% less.",
+        "group": ""
+      },
+      {
+        "id": "festivals",
+        "name": "Festivals",
+        "quadrant": "society",
+        "era": 0,
+        "icon": "/sprites/ui/policy.png",
+        "requires": [],
+        "description": "End-of-combat effects happen one additional time.",
+        "group": ""
+      },
+      {
+        "id": "slavery",
+        "name": "Slavery",
+        "quadrant": "society",
+        "era": 0,
+        "icon": "/sprites/ui/gold.png",
+        "requires": [],
+        "description": "For every 2 enemy units you defeat, permanently gain +1 :gold: per tick.",
+        "group": "burial_rites"
+      },
+      {
+        "id": "writing",
+        "name": "Writing",
+        "quadrant": "society",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the library building.",
+        "group": ""
+      },
+      {
+        "id": "hereditary_rule",
+        "name": "Hereditary Rule",
+        "quadrant": "society",
+        "era": 1,
+        "icon": "/sprites/ui/wonder.png",
+        "requires": [],
+        "description": "The palace gains +8 :attack: and +30 :defense:.",
+        "group": ""
+      },
+      {
+        "id": "holidays",
+        "name": "Holidays",
+        "quadrant": "society",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [
+          "monotheism",
+          "polytheism"
+        ],
+        "description": "Builds a temple. Temples raise all base outputs by 1 after every combat.",
+        "group": ""
+      },
+      {
+        "id": "polytheism",
+        "name": "Polytheism",
+        "quadrant": "society",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Builds a temple. Temples produce 1 :progress: for each adjacent outpost or citizen.",
+        "group": "monotheism"
+      },
+      {
+        "id": "monotheism",
+        "name": "Monotheism",
+        "quadrant": "society",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Builds a temple. Temples produce 1 :progress:, multiplied by the number of temples you own.",
+        "group": "monotheism"
+      },
+      {
+        "id": "monumentality",
+        "name": "Monumentality",
+        "quadrant": "society",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the monument. Buildings gain +2 upgrade levels for each adjacent wonder.",
+        "group": ""
+      },
+      {
+        "id": "oligarchy",
+        "name": "Oligarchy",
+        "quadrant": "society",
+        "era": 2,
+        "icon": "/sprites/ui/wonder.png",
+        "requires": [],
+        "description": "The palace produces +4 :gold:.",
+        "group": ""
+      },
+      {
+        "id": "caste_system",
+        "name": "Caste System",
+        "quadrant": "society",
+        "era": 2,
+        "icon": "/sprites/ui/policy.png",
+        "requires": [],
+        "description": "Increases the effect of every upgrade by 10%.",
+        "group": ""
+      },
+      {
+        "id": "mud_brick",
+        "name": "Mud Brick",
+        "quadrant": "military",
+        "era": 0,
+        "icon": "/sprites/ui/defense.png",
+        "requires": [],
+        "description": "Grants a :fort: fortification unit.",
+        "group": ""
+      },
+      {
+        "id": "the_sling",
+        "name": "The Sling",
+        "quadrant": "military",
+        "era": 0,
+        "icon": "/sprites/ui/ranged.png",
+        "requires": [],
+        "description": "Grants a :ranged: unit.",
+        "group": ""
+      },
+      {
+        "id": "leatherwork",
+        "name": "Leatherwork",
+        "quadrant": "military",
+        "era": 0,
+        "icon": "/sprites/ui/defense.png",
+        "requires": [],
+        "description": "All units gain +8 :defense:.",
+        "group": ""
+      },
+      {
+        "id": "bronze_working",
+        "name": "Bronze Working",
+        "quadrant": "military",
+        "era": 1,
+        "icon": "/sprites/icons/attack.png",
+        "requires": [],
+        "description": "All units gain +3 :attack:. Creates a :melee: unit.",
+        "group": ""
+      },
+      {
+        "id": "horseback_riding",
+        "name": "Horseback Riding",
+        "quadrant": "military",
+        "era": 1,
+        "icon": "/sprites/ui/cavalry.png",
+        "requires": [],
+        "description": "Grants a :cavalry: unit.",
+        "group": ""
+      },
+      {
+        "id": "archery",
+        "name": "Archery",
+        "quadrant": "military",
+        "era": 1,
+        "icon": "/sprites/ui/ranged.png",
+        "requires": [],
+        "description": "Creates a :ranged: unit and gives all ranged units +5 :attack:.",
+        "group": ""
+      },
+      {
+        "id": "composite_bows",
+        "name": "Composite Bows",
+        "quadrant": "military",
+        "era": 1,
+        "icon": "/sprites/ui/ranged.png",
+        "requires": [],
+        "description": "Creates a :ranged: unit. Ranged units gain +5 :attack:.",
+        "group": ""
+      },
+      {
+        "id": "masonry",
+        "name": "Masonry",
+        "quadrant": "military",
+        "era": 1,
+        "icon": "/sprites/ui/defense.png",
+        "requires": [],
+        "description": "Grants a :fort: fortification. All fortifications gain +5 :defense:.",
+        "group": ""
+      },
+      {
+        "id": "armor",
+        "name": "Armor",
+        "quadrant": "military",
+        "era": 1,
+        "icon": "/sprites/icons/defense.png",
+        "requires": [],
+        "description": "All units gain +12 :defense:. Creates a :melee: unit.",
+        "group": ""
+      },
+      {
+        "id": "war_horns",
+        "name": "War Horns",
+        "quadrant": "military",
+        "era": 1,
+        "icon": "/sprites/ui/utility.png",
+        "requires": [],
+        "description": "Grants a :utility: command unit.",
+        "group": ""
+      },
+      {
+        "id": "iron_working",
+        "name": "Iron Working",
+        "quadrant": "military",
+        "era": 2,
+        "icon": "/sprites/icons/attack.png",
+        "requires": [],
+        "description": "All units gain +6 :attack:. Creates a :melee: unit.",
+        "group": ""
+      },
+      {
+        "id": "siege",
+        "name": "Siege",
+        "quadrant": "military",
+        "era": 2,
+        "icon": "/sprites/ui/siege.png",
+        "requires": [],
+        "description": "Grants a :siege: unit.",
+        "group": ""
+      },
+      {
+        "id": "mathematics",
+        "name": "Mathematics",
+        "quadrant": "society",
+        "era": 0,
+        "icon": "/sprites/ui/progress.png",
+        "requires": [],
+        "description": "Reduces the cost of all future :progress: thresholds by 3%.",
+        "group": ""
+      },
+      {
+        "id": "calendar",
+        "name": "Calendar",
+        "quadrant": "society",
+        "era": 0,
+        "icon": "/sprites/ui/policy.png",
+        "requires": [],
+        "description": "Increases the length of each era by 5 ticks.",
+        "group": ""
+      },
+      {
+        "id": "astronomy",
+        "name": "Astronomy",
+        "quadrant": "society",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the observatory, buildable on mountains only.",
+        "group": ""
+      },
+      {
+        "id": "machinery",
+        "name": "Machinery",
+        "quadrant": "economy",
+        "era": 1,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Unlocks the workshop building.",
+        "group": ""
+      },
+      {
+        "id": "shipbuilding",
+        "name": "Shipbuilding",
+        "quadrant": "economy",
+        "era": 2,
+        "icon": "/sprites/ui/building.png",
+        "requires": [],
+        "description": "Grants a :naval: unit and unlocks the wharf.",
+        "group": ""
+      },
       {
         "id": "caravansaries",
         "name": "Caravansaries",
@@ -3752,6 +3654,102 @@
       }
     ],
     "buildings": [
+      {
+        "id": "temple",
+        "name": "Temple",
+        "era": 1,
+        "placement": [],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "The religion building. On its own it does little — nearly every religious node adds another output or multiplier to EVERY temple you own, so they are meant to be stacked."
+      },
+      {
+        "id": "library",
+        "name": "Library",
+        "era": 3,
+        "placement": [],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Produces +1 :progress: per tick, and another +1 after every combat it survives. Razing it resets the accumulation."
+      },
+      {
+        "id": "market",
+        "name": "Market",
+        "era": 1,
+        "placement": [],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Every citizen within range 3 produces +1 :gold:."
+      },
+      {
+        "id": "observatory",
+        "name": "Observatory",
+        "era": 5,
+        "placement": [
+          "mountain"
+        ],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Mountain only. Produces +1 :progress:, and gains another +1 permanently every time you reroll an offer."
+      },
+      {
+        "id": "granary",
+        "name": "Granary",
+        "era": 0,
+        "placement": [],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Doubles the base :food: yield of every plains tile in range 1."
+      },
+      {
+        "id": "workshop",
+        "name": "Workshop",
+        "era": 2,
+        "placement": [],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Produces +16 :production: per tick."
+      },
+      {
+        "id": "wharf",
+        "name": "Wharf",
+        "era": 4,
+        "placement": [
+          "coast"
+        ],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Produces 18 :food: per tick."
+      },
+      {
+        "id": "monument",
+        "name": "Monument",
+        "era": 0,
+        "placement": [],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Produces +15 :progress: per tick."
+      },
+      {
+        "id": "harbor",
+        "name": "Harbor",
+        "era": 1,
+        "placement": [
+          "coast"
+        ],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Gives +1 base :gold: yield to every connected water tile."
+      },
+      {
+        "id": "plantation",
+        "name": "Plantation",
+        "era": 6,
+        "placement": [],
+        "icon": "/sprites/ui/building.png",
+        "unlockedBy": "",
+        "description": "Produces +1 :food:, and permanently +1 more every 20 ticks."
+      },
       {
         "id": "theater",
         "name": "Theater",

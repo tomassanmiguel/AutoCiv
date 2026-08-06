@@ -13,7 +13,7 @@ import Tokens from './Tokens.jsx'
  * The row expands to author the DESCRIPTION — a long piece of prose with
  * `:token:` icon markup never fits in a cell, and the preview needs room.
  */
-export default function DataTable({ rows, columns, problemsById, techOptions, groupOptions, readOnly, onRestore, onPatch, onRename, onDelete, onDuplicate }) {
+export default function DataTable({ rows, totalRows, columns, problemsById, techOptions, groupOptions, readOnly, onRestore, onPatch, onRename, onDelete, onDuplicate }) {
   const [open, setOpen] = useState(null)
   // Default: era outward, then branch, then alphabetical — how you read a draft
   // pool, one tier at a time.
@@ -113,7 +113,15 @@ export default function DataTable({ rows, columns, problemsById, techOptions, gr
           })}
         </tbody>
       </table>
-      {rows.length === 0 && <div className="ed-empty">Nothing matches these filters.</div>}
+      {/* An empty POOL and an empty FILTER RESULT are different problems, and
+          telling you the wrong one sends you hunting for a filter that isn't set. */}
+      {rows.length === 0 && (
+        <div className="ed-empty">
+          {totalRows === 0
+            ? <>This pool is empty. Add one with <b>+ New</b>, or bring one back from the <b>Backlog</b>.</>
+            : 'Nothing matches these filters.'}
+        </div>
+      )}
     </div>
   )
 }
