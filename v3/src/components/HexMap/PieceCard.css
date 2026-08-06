@@ -175,11 +175,17 @@
   100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
 }
 
-/* A mustered enemy: the same card, faded back, so the coming wave reads as a
-   threat that has not landed yet rather than as a live combatant. */
-.muster { opacity: 0.62; filter: saturate(0.75); }
-.muster .piece-card { animation: muster-breathe 2.6s ease-in-out infinite; }
+/* A mustered enemy: the coming wave, shown right where and as what it will
+   attack. Clearly legible (you plan your defence against it) but marked as
+   not-yet-landed with a dashed "incoming" ring and a gentle breathing pulse. */
+.muster { opacity: 0.92; }
+.muster .piece-card {
+  animation: muster-breathe 2.4s ease-in-out infinite;
+  outline: 2px dashed rgba(255, 120, 90, 0.85);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 @keyframes muster-breathe {
-  0%, 100% { transform: scale(0.94); }
-  50% { transform: scale(1); }
+  0%, 100% { transform: scale(0.95); }
+  50% { transform: scale(1.02); }
 }

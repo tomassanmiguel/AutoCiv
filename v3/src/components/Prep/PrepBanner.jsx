@@ -21,8 +21,8 @@ export default function PrepBanner() {
         <b>Prepare</b>
         <span>
           {range > 0
-            ? <>Click a unit to reposition it — <b>{range}</b> tiles free, farther costs gold.</>
-            : <>Repair, upgrade, and arrange before the wave. Reposition range comes from research.</>}
+            ? <>Drag a unit to reposition it — <b>{range}</b> tiles free, farther costs gold.</>
+            : <>Drag a unit to reposition it (costs gold). Free range comes from research. Repair and upgrade here too.</>}
         </span>
       </div>
       <button className="prep-begin" onClick={() => game.beginWave()}>Begin Wave ⚔</button>

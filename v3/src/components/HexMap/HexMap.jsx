@@ -1,3 +1,10 @@
+/* eslint-disable react-hooks/refs --
+   This map view is built on imperative refs by design: the camera
+   (`cameraRef`/`viewRef`) is applied to the DOM without re-rendering, and the
+   memoised terrain layer reads its event handlers from `handlers.current` so it
+   never rebuilds on a state change. Every `.current` access here happens in an
+   event handler or effect, at event time — not during render — which the rule
+   cannot prove but is the whole point of the pattern. */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { SQRT3, DIRS } from '../../game/hex/coords.js'
@@ -78,6 +85,7 @@ export default function HexMap() {
   const didMountRef = useRef(false)
   const prevLayoutRef = useRef(null)
   const dragRef = useRef(null)
+  const repoDragRef = useRef(null) // an in-progress reposition drag
 
   const [view, setView] = useState(null)
   const [hover, setHover] = useState(null)
@@ -91,6 +99,12 @@ export default function HexMap() {
   const hoverOn = (t) => {
     clearTimeout(hoverTimer.current)
     setHover((h) => (h === t ? h : t))
+  }
+  // The hex layer's enter handler also tracks a reposition drag's drop target.
+  const hexEnter = (t) => {
+    hoverOn(t)
+    const d = repoDragRef.current
+    if (d) { d.over = t; if (t !== d.from) d.moved = true }
   }
   const hoverOff = (t) => {
     clearTimeout(hoverTimer.current)
@@ -121,16 +135,32 @@ export default function HexMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repoActive, repo, version])
 
+  // Placement/aim is a click; REPOSITION is a DRAG (below).
   const onTileClick = (t, k) => {
-    if (expSet?.has(k)) { aimAt(t); return }
-    if (repoActive) {
-      if (t === repo) { setRepo(null); return }             // click the unit again → drop
-      const info = repoMap?.get(k)
-      if (info) { if (info.afford && game.repositionUnit(repo, t)) setRepo(null); return }
-      if (t.unit && !t.unit.destroyed) { setRepo(t); return } // switch to another unit
-      setRepo(null); return
+    if (expSet?.has(k)) aimAt(t)
+  }
+
+  /**
+   * DRAG-TO-REPOSITION. Press on one of your units during prep and the legal
+   * destinations light — green free, amber with the gold cost printed on the
+   * tile — following the same `repoMap` the highlight layer draws. Drop on a
+   * destination to move (paying if it is beyond free range); drop anywhere else
+   * to cancel. Pressing a non-unit tile falls through to panning.
+   */
+  const onHexMouseDown = (e, t) => {
+    if (!(canReposition && t.unit && !t.unit.destroyed)) return // let the viewport pan
+    e.stopPropagation()
+    e.preventDefault()
+    setRepo(t)
+    repoDragRef.current = { from: t, over: t, moved: false }
+    const onUp = () => {
+      window.removeEventListener('mouseup', onUp)
+      const d = repoDragRef.current
+      repoDragRef.current = null
+      if (d && d.moved && d.over && d.over !== d.from) game.repositionUnit(d.from, d.over)
+      setRepo(null)
     }
-    if (canReposition && t.unit && !t.unit.destroyed) setRepo(t) // pick up
+    window.addEventListener('mouseup', onUp)
   }
 
   // --- Content layout (origin + size of the known world in content px) -------
@@ -352,43 +382,91 @@ export default function HexMap() {
     return out
   }, [known, layout, view])
 
-  // The territory border, drawn as real hex EDGES where controlled meets
-  // uncontrolled — one clean outline around the whole country. Ringing each
-  // tile individually read as a grid of boxes instead of a border.
-  const borderEdges = []
-  for (const t of shown) {
-    // Claimed-but-unrevealed ground is inert, so it must not read as territory.
-    if (!t.controlled || t.revealStage > game.stage) continue
-    if (known.bfSet.has(`${t.q},${t.r}`)) continue
-    const c = centerOf(t.q, t.r)
-    for (let i = 0; i < 6; i++) {
-      const o = game.world.at(t.q + DIRS[i][0], t.r + DIRS[i][1])
-      if (o && o.controlled) continue
-      // DIRS[i] faces the edge spanning the corners at -60i and -60i+60 degrees.
-      const a0 = (-60 * i) * (Math.PI / 180)
-      const a1 = (-60 * i + 60) * (Math.PI / 180)
-      const R = HEX_SIZE - SEAM
-      borderEdges.push({
-        id: `${t.q},${t.r}:${i}`,
-        x1: c.x + R * Math.cos(a0), y1: c.y + R * Math.sin(a0),
-        x2: c.x + R * Math.cos(a1), y2: c.y + R * Math.sin(a1),
-      })
-    }
-  }
+  // ⚠️ PERFORMANCE. A wave fires ~10 combat beats/second, each bumping the game
+  // version and re-rendering this component. At late-era map sizes `shown` is
+  // thousands of tiles, so recomputing the border/road geometry and re-diffing
+  // every hex div EACH BEAT was the map lag. The terrain layer and the two edge
+  // sets depend only on the SHOWN set and the TERRITORY (which changes on
+  // expansion/raze, not on a combat beat), so they are memoised against
+  // `terrVersion` and skip the churn entirely. `hexEls` reads its click/hover
+  // handlers from a ref so the frozen elements still run current logic.
+  const terrVersion = game.world.terr.version
+  // The memoised hex layer reads its handlers from this ref, so frozen elements
+  // always run the CURRENT logic. Updated in an effect (not during render).
+  const handlers = useRef({})
+  useEffect(() => {
+    handlers.current = { click: onTileClick, enter: hexEnter, leave: hoverOff, down: onHexMouseDown }
+  })
 
-  // Roads are drawn as segments between adjacent road tiles. Only the first
-  // three directions are walked, so each link is emitted once rather than twice.
-  const roadEdges = []
-  for (const t of shown) {
-    if (!t.road) continue
-    const c = centerOf(t.q, t.r)
-    for (let i = 0; i < 3; i++) {
-      const o = game.world.at(t.q + DIRS[i][0], t.r + DIRS[i][1])
-      if (!o?.road) continue
-      const oc = centerOf(o.q, o.r)
-      roadEdges.push({ id: `${t.q},${t.r}:${i}`, x1: c.x, y1: c.y, x2: oc.x, y2: oc.y })
+  const hexEls = useMemo(() => shown.map((t) => {
+    const k = `${t.q},${t.r}`
+    const { left, top } = posOf(t)
+    const isBf = known.bfSet.has(k)
+    return (
+      <div
+        key={k}
+        className={`hex${isBf ? ' battlefield' : ''}` +
+          `${t.controlled && !isBf && t.revealStage <= game.stage ? ' controlled' : ''}`}
+        style={{
+          left, top, width: HEX_W - SEAM, height: HEX_H - SEAM,
+          backgroundImage: `url(${spriteUrl(isBf ? 'battlefield' : t.terrain)})`,
+        }}
+        onMouseDown={(e) => handlers.current.down(e, t)}
+        onMouseEnter={() => handlers.current.enter(t)}
+        onMouseLeave={() => handlers.current.leave(t)}
+        onClick={() => handlers.current.click(t, k)}
+      >
+        {!isBf && t.improved && !t.city && !t.building && <span className="hex-improved" />}
+        {!isBf && t.city && <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>}
+        {!isBf && t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
+      </div>
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [shown, known, terrVersion, game.stage])
+
+  // The territory border, drawn as real hex EDGES where controlled meets
+  // uncontrolled — one clean outline around the whole country.
+  const borderEdges = useMemo(() => {
+    const out = []
+    for (const t of shown) {
+      // Claimed-but-unrevealed ground is inert, so it must not read as territory.
+      if (!t.controlled || t.revealStage > game.stage) continue
+      if (known.bfSet.has(`${t.q},${t.r}`)) continue
+      const c = centerOf(t.q, t.r)
+      for (let i = 0; i < 6; i++) {
+        const o = game.world.at(t.q + DIRS[i][0], t.r + DIRS[i][1])
+        if (o && o.controlled) continue
+        const a0 = (-60 * i) * (Math.PI / 180)
+        const a1 = (-60 * i + 60) * (Math.PI / 180)
+        const R = HEX_SIZE - SEAM
+        out.push({
+          id: `${t.q},${t.r}:${i}`,
+          x1: c.x + R * Math.cos(a0), y1: c.y + R * Math.sin(a0),
+          x2: c.x + R * Math.cos(a1), y2: c.y + R * Math.sin(a1),
+        })
+      }
     }
-  }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, known, terrVersion, game.stage])
+
+  // Roads are drawn as segments between adjacent road tiles; only the first three
+  // directions are walked, so each link is emitted once.
+  const roadEdges = useMemo(() => {
+    const out = []
+    for (const t of shown) {
+      if (!t.road) continue
+      const c = centerOf(t.q, t.r)
+      for (let i = 0; i < 3; i++) {
+        const o = game.world.at(t.q + DIRS[i][0], t.r + DIRS[i][1])
+        if (!o?.road) continue
+        const oc = centerOf(o.q, o.r)
+        out.push({ id: `${t.q},${t.r}:${i}`, x1: c.x, y1: c.y, x2: oc.x, y2: oc.y })
+      }
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, known, terrVersion])
 
   return (
     <div className="hexmap-viewport" ref={viewportRef} onMouseDown={onMouseDown}>
@@ -397,35 +475,16 @@ export default function HexMap() {
         ref={contentRef}
         style={{ width: layout.w, height: layout.h }}
       >
-        {shown.map((t) => {
-          const k = `${t.q},${t.r}`
-          const { left, top } = posOf(t)
-          const isBf = known.bfSet.has(k)
-          return (
-            <div
-              key={k}
-              className={`hex${isBf ? ' battlefield' : ''}${hover === t ? ' hovered' : ''}` +
-                `${t.controlled && !isBf && t.revealStage <= game.stage ? ' controlled' : ''}` +
-                `${expSet?.has(k) ? ' expandable' : ''}`}
-              style={{
-                left,
-                top,
-                width: HEX_W - SEAM,
-                height: HEX_H - SEAM,
-                backgroundImage: `url(${spriteUrl(isBf ? 'battlefield' : t.terrain)})`,
-              }}
-              onMouseEnter={() => hoverOn(t)}
-              onMouseLeave={() => hoverOff(t)}
-              onClick={() => onTileClick(t, k)}
-            >
-              {!isBf && t.improved && !t.city && !t.building && <span className="hex-improved" />}
-              {!isBf && t.city && (
-                <span className={`hex-city${t.city.palace ? ' palace' : ''}`}>{t.city.pop}</span>
-              )}
-              {!isBf && t.encampment && <span className="hex-marker camp">{t.encampment.level}</span>}
-            </div>
-          )
-        })}
+        {/* The static terrain layer — memoised, so combat beats and hovers do not
+            re-diff thousands of nodes. */}
+        {hexEls}
+
+        {/* Hover cue, kept OUT of the memoised layer: a single brightening tile
+            drawn over the hovered hex. */}
+        {hover && !combat.active && (() => {
+          const { left, top } = posOf(hover)
+          return <div className="hex-hover-cue" style={{ left, top, width: HEX_W - SEAM, height: HEX_H - SEAM }} />
+        })()}
 
         {/* Tile highlights are REAL SVG HEXAGONS, not CSS rings.
             An `inset box-shadow` is painted on the element's rectangle and only

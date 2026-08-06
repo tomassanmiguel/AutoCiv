@@ -28,7 +28,15 @@
   justify-content: center;
   transition: filter 0.1s ease;
 }
-.hex.hovered { filter: brightness(1.35) saturate(1.1); }
+/* The hover cue is a separate lightweight overlay (one node), not a class on the
+   memoised terrain hex — see HexMap.jsx PERFORMANCE note. */
+.hex-hover-cue {
+  position: absolute;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  background: rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+  z-index: 4;
+}
 
 /* Markers sit on top of the tile art. */
 .hex-marker {

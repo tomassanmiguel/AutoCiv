@@ -311,6 +311,14 @@ tech; for now the menu slider drives it directly.
 - **Culling** is what makes ~4000 tiles cheap: only tiles inside the visible rect render,
   and the cull rect only updates once it has moved by more than a hex. Zoomed in, DOM drops
   to ~180 nodes; zoomed out to fit, everything renders but each hex is tiny.
+- ⚠️ **The terrain hex layer is MEMOISED** (`hexEls`), as are `borderEdges`/`roadEdges`, keyed on
+  `[shown, known, terrVersion]` — NOT on the game version. A wave fires ~10 beats/second, each
+  bumping the version; without this, every beat re-diffed thousands of hex divs and recomputed
+  the edge geometry, which was the large-map lag. The frozen hexes read their click/hover/down
+  handlers from `handlers.current` (a ref updated in an effect) so they still run current logic.
+  The hover brightness was moved OUT of the hex class to a single `.hex-hover-cue` overlay for the
+  same reason. (`react-hooks/refs` is disabled file-wide: the imperative camera + handler refs are
+  the deliberate perf pattern and are all read at event time.)
 - **Stage changes** counter-translate the camera by the content-origin shift *first* (so the
   view holds still), then animate the zoom-out reveal — same trick v2 used for era growth.
 - **`requestAnimationFrame` does not fire on a hidden tab**, which would strand the camera at
@@ -718,8 +726,10 @@ within range it is free. **Distance** is a 0-1 BFS (`repositionField`): a tile i
 **domain** (`mods.repositionDomains` — water / space / deep_space) costs 0 to cross, else 1;
 nothing blocks a path. **Teleport** (`mods.repositionTeleport`) makes distance straight-line. A
 destination must be empty and legal for the unit's class. `repositionTargets`/`repositionUnit` are
-the API; the UI is a pick-then-click flow in `HexMap` (green free / amber paid-with-cost / red
-unaffordable). **Formations** reuse the same range as a combat buff — `_formationFlats` in
+the API; the UI is **drag-to-reposition** in `HexMap` — press a unit (`onHexMouseDown`), the legal
+tiles light (green free / amber paid-with-cost printed on the tile / red unaffordable), drop on one
+to move or anywhere else to cancel; a non-unit press falls through to panning. **Formations** reuse
+the same range as a combat buff — `_formationFlats` in
 `combat.js` counts friendly neighbours within range at combat start and passes a **per-unit flat**
 into `unitStats`'s `extra` arg (folded into the base, pre-multiplier).
 
