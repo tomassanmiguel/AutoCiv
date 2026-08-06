@@ -23,13 +23,15 @@ export default function App() {
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY)
   const [fading, setFading] = useState(false)
 
-  // One AudioManager for the whole session. v3 currently plays the title track
-  // only — in-game music is cut until the era/phase structure is decided.
+  // One AudioManager for the whole session. v3 has only the one track so far, so
+  // it plays across EVERY screen — the game included, rather than falling silent
+  // in-game. It loops and cross-fades on its own; `playTrack` is idempotent, so
+  // re-requesting the same src on a screen change never restarts it. (Dedicated
+  // era music can swap in here per screen once it exists.)
   const [audio] = useState(() => new AudioManager(0.5))
 
   useEffect(() => {
-    if (screen === 'game') audio.stop()
-    else audio.playTrack(TITLE_TRACK)
+    audio.playTrack(TITLE_TRACK)
   }, [screen, audio])
 
   // Unlock audio on the first user gesture (browser autoplay policy). Honors the
