@@ -493,16 +493,38 @@ function distanceToNearestBuilding(world, t, buildings) {
   return Number.isFinite(best) ? best : 40
 }
 
+/** Bonus EFFECT LEVELS a building gets from adjacent units (Castle Towns). */
+function bonusEffectLevels(world, t, mods) {
+  const belc = mods?.buildingEffectLevelAdjacentClass
+  if (!belc) return 0
+  let lv = 0
+  for (const cls in belc) {
+    const amt = belc[cls]
+    if (!amt) continue
+    if (neighbors(t.q, t.r).some((n) => {
+      const o = world.tiles.get(hkey(n.q, n.r))
+      return o?.unit && !o.unit.destroyed && o.unit.key === cls
+    })) lv += amt
+  }
+  return lv
+}
+
 /**
  * The per-tile yield bonus contributed by every building on the board, keyed by
  * tile. `era` is the current reveal era (for age-based effects).
+ *
+ * EFFECT LEVEL scales every one of a building's effect magnitudes by +25% per
+ * level, additive. Effective level = its paid upgrade level PLUS any bonus effect
+ * levels from adjacent units (Castle Towns) — the two are the same currency, so
+ * an unpaid bonus level is worth exactly a paid upgrade for the effects.
  */
-export function buildingBonuses(world, era = 0) {
+export function buildingBonuses(world, mods = null, era = 0) {
   const bonus = new Map()
+  let curMult = 1 // the acting building's effect-level multiplier
   const add = (tile, res, amt) => {
     if (!amt || !res) return
     const b = bonus.get(tile) ?? { food: 0, production: 0, gold: 0, progress: 0 }
-    b[res] += amt
+    b[res] += amt * curMult
     bonus.set(tile, b)
   }
   const disc_ = (t, radius) => {
@@ -514,6 +536,8 @@ export function buildingBonuses(world, era = 0) {
   for (const t of buildings) {
     const def = buildingDef(t.building.key)
     if (!def?.effects) continue
+    const effLevel = (t.building.level ?? 1) + bonusEffectLevels(world, t, mods)
+    curMult = 1 + 0.25 * (effLevel - 1)
     for (const f of def.effects) {
       switch (f.kind) {
         case 'self_tile_yield_bonus':
@@ -569,7 +593,8 @@ export function buildingBonuses(world, era = 0) {
  * late game ran away, so don't.
  */
 export function territoryYield(world, mods, era = 0) {
-  const bonus = buildingBonuses(world, era)
+  const bonus = buildingBonuses(world, mods, era)
+  const csty = mods?.classSelfTileYield
   const out = { food: 0, production: 0, gold: 0, progress: 0 }
   for (const t of world.terr.controlled) {
     const y = tileYield(world, t, mods)
@@ -577,10 +602,17 @@ export function territoryYield(world, mods, era = 0) {
     out.production += y.production
     out.gold += y.gold
     out.progress += y.progress
-    // Building bonuses are flat adds on top, and only for tiles that actually
-    // yield (controlled AND revealed).
-    const b = visible(world, t) && bonus.get(t)
+    // Building bonuses (and a unit's class self-tile yield) are flat adds on top,
+    // and only for tiles that actually yield (controlled AND revealed).
+    if (!visible(world, t)) continue
+    const b = bonus.get(t)
     if (b) { out.food += b.food; out.production += b.production; out.gold += b.gold; out.progress += b.progress }
+    // A unit of a class with a self-tile yield (Corvee Garrisons) adds to its own
+    // tile — the unit equivalent of a building's self_tile_yield_bonus.
+    if (csty && t.unit && !t.unit.destroyed) {
+      const uy = csty[t.unit.key]
+      if (uy) for (const k of ['food', 'production', 'gold', 'progress']) if (uy[k]) out[k] += uy[k]
+    }
   }
   if (mods?.mult) {
     for (const k of ['food', 'production', 'gold', 'progress']) {
@@ -646,6 +678,9 @@ export function canPlaceUnit(world, t, def = null) {
   if (!t || !t.controlled || !visible(world, t) || t.unit) return false
   if (t.q === 0 && t.r === 0) return false
   if (NEVER.has(t.terrain)) return false
+  // A unit and a building share a tile freely — EXCEPT a fortification, which is
+  // a structure in its own right and cannot stand on top of a building.
+  if (def?.blockedByBuilding && t.building) return false
   if (def) return def.placement.has(t.terrain)
   return isPassable(t.terrain)
 }

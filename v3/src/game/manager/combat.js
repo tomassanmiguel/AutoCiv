@@ -167,8 +167,9 @@ class CombatMixin {
     for (let i = 0; i < placed.length; i++) {
       const { t, def } = placed[i]
       const level = t.unit.level ?? 1
-      // `extra` = per-unit formation flat + the persistent EARNED-flat (Marksmanship).
-      const extra = { ...formation[i], earnedAtk: t.unit.earnedAtk ?? 0 }
+      // `extra` = per-unit formation flat + the persistent EARNED-flats
+      // (Marksmanship's atk, Defensive Tactics' def), kept across combats.
+      const extra = { ...formation[i], earnedAtk: t.unit.earnedAtk ?? 0, earnedDef: t.unit.earnedDef ?? 0 }
       const s = unitStats(def, this.wave, this.mods, level, extra)
 
       // A fortification gains a % of hit points per adjacent ranged unit.
@@ -314,6 +315,21 @@ class CombatMixin {
       // Every building that came through the wave weathers one more (Library).
       for (const bt of this.world.terr.buildings) {
         if (bt.building) bt.building.wavesSurvived = (bt.building.wavesSurvived ?? 0) + 1
+      }
+      // DEFENSIVE TACTICS: permanent earned :defense: to surviving units of the
+      // class AND their surviving neighbours (via the earned-flat def slot).
+      const edClass = this.mods.endCombatEarnedDefClass
+      if (Object.keys(edClass).length) {
+        const survivors = [...this.world.terr.controlled].filter((t) => t.unit && !t.unit.destroyed)
+        for (const [cls, amount] of Object.entries(edClass)) {
+          if (!amount) continue
+          const anchors = survivors.filter((t) => t.unit.key === cls)
+          if (!anchors.length) continue
+          for (const t of survivors) {
+            const near = t.unit.key === cls || anchors.some((a) => distance(t.q, t.r, a.q, a.r) === 1)
+            if (near) t.unit.earnedDef = (t.unit.earnedDef ?? 0) + amount
+          }
+        }
       }
       this.palaceHp = Math.max(0, c.palace?.hp ?? this.palaceHp)
       this.world.terr.version++
@@ -522,6 +538,10 @@ class CombatMixin {
     // enemy's first beat each turn, so it fires exactly once.
     let visible = false
     if (e.poison > 0) { this._poisonTick(e); visible = true; if (e.dead) return true }
+    // TAUNT: a fortification in range drags the enemy onto itself — it heads for
+    // the wall instead of flowing to the palace, until it is in reach to strike.
+    const taunt = this._taunterFor(e)
+    if (taunt) return this._moveToward(e, taunt) || visible
     const occ = this._occupancy()
     const field = this._fields[e.domain]
     let moved = false
@@ -546,6 +566,31 @@ class CombatMixin {
       moved = true
     }
     return visible || moved
+  }
+
+  /** Greedy step toward a target tile (used by taunt), stopping in attack reach. */
+  _moveToward(e, target) {
+    const occ = this._occupancy()
+    const field = this._fields[e.domain]
+    let moved = false
+    for (let s = 0; s < e.acts; s++) {
+      if (distance(e.q, e.r, target.q, target.r) <= e.range) break // in reach — hold and strike
+      let best = null
+      let bestD = distance(e.q, e.r, target.q, target.r)
+      for (const n of neighbors(e.q, e.r)) {
+        const nk = key(n.q, n.r)
+        if (!field.has(nk) || occ.has(nk)) continue // off-domain or blocked
+        const d = distance(n.q, n.r, target.q, target.r)
+        if (d < bestD) { best = n; bestD = d }
+      }
+      if (!best) break
+      occ.delete(key(e.q, e.r))
+      e.q = best.q
+      e.r = best.r
+      occ.set(key(e.q, e.r), e)
+      moved = true
+    }
+    return moved
   }
 
   // 2 — ONE melee/cavalry closes on the nearest enemy; ranged never move.
@@ -620,6 +665,10 @@ class CombatMixin {
   //     ground it is standing on. Returns whether anything happened.
   _enemyAttack(e) {
     const c = this.combat
+    // TAUNT: a fortification taunting this enemy and inside its reach must be hit
+    // before any other target — soaking blows is the wall's whole job.
+    const taunt = this._taunterFor(e)
+    if (taunt && distance(e.q, e.r, taunt.q, taunt.r) <= e.range) return this._strike(e, taunt)
     const target = this._lowestHpWithin(c.units, e, e.range)
     if (target) return this._strike(e, target)
     if (distance(e.q, e.r, 0, 0) <= e.range) {
@@ -701,8 +750,54 @@ class CombatMixin {
     })
     if (target.hp <= 0 && target !== c.palace) { target.hp = 0; target.dead = true; this._onUnitDeath(target) }
     if (target === c.palace) c.palace.hp = Math.max(0, c.palace.hp)
+    // RETALIATION: attacking a unit of a retaliating class (a fortification, via
+    // Moats / Barbed Wire) deals flat damage straight back to the attacker.
+    // Additive across the techs held; applies even if the blow killed the target.
+    if (target.side === 'player' && attacker.side === 'enemy') {
+      const back = this.mods?.retaliateOnClassAttacked?.[target.type] ?? 0
+      if (back > 0) this._retaliate(attacker, back)
+    }
     if (crit && attacker.side === 'player') this._onPlayerCrit(attacker, dealt, isPreload)
     return { landed: true, dealt, crit }
+  }
+
+  /** Flat damage back to an attacker (fortification retaliation). */
+  _retaliate(attacker, amount) {
+    const c = this.combat
+    attacker.hp -= amount
+    c.actionSeq = (c.actionSeq ?? 0) + 1
+    c.events.push({ id: `${c.actionSeq}-retal-${attacker.id}`, q: attacker.q, r: attacker.r, amount, crit: false, kind: 'damage' })
+    if (attacker.hp <= 0) { attacker.hp = 0; attacker.dead = true; this._onUnitDeath(attacker) }
+  }
+
+  /**
+   * A piece's taunt range — how far a fortification pulls enemies onto itself.
+   * Intrinsic to classes with a base taunt (fortifications, base 2); widened by
+   * Watchtowers and, on the right ground, Planetary Defenses. 0 = does not taunt.
+   */
+  _pieceTauntRange(p) {
+    const base = UNIT_DEFS[p.key]?.taunt ?? 0
+    if (base <= 0) return 0
+    let r = base + (this.mods.classTauntRangeFlat[p.type] ?? 0)
+    const onT = this.mods.classTauntRangeOnTerrain[p.type]
+    if (onT) {
+      const terr = this.world.tiles.get(key(p.q, p.r))?.terrain
+      if (terr && onT[terr]) r += onT[terr]
+    }
+    return r
+  }
+
+  /** The nearest taunting fortification whose taunt range covers enemy `e`. */
+  _taunterFor(e) {
+    let best = null, bestD = Infinity
+    for (const u of this.combat.units) {
+      if (u.dead || u.hp <= 0) continue
+      const tr = this._pieceTauntRange(u)
+      if (tr <= 0) continue
+      const d = distance(e.q, e.r, u.q, u.r)
+      if (d <= tr && d < bestD) { best = u; bestD = d }
+    }
+    return best
   }
 
   /**

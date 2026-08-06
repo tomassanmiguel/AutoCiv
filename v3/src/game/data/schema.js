@@ -484,6 +484,82 @@ export const EFFECT_KINDS = {
     describe: (e) => `A :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: unit permanently gains +${e.amount ?? 0} :attack: on a :crit:.`,
   },
 
+  // --- fortification theme ---------------------------------------------------
+  class_def_flat: {
+    label: 'Class — flat base defence',
+    hint: 'Adds raw flat :defense: to one class\'s base, folded in before the base-% layer so it STACKS with %-based def rather than being swallowed. :defense: is hit points.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'amount', label: 'Defence', min: 0, default: 3 },
+    ],
+    describe: (e) => `+${e.amount ?? 0} raw base :defense: to :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units.`,
+  },
+  class_taunt_range_flat: {
+    label: 'Class — +taunt range',
+    hint: 'Increases a class\'s taunt range — how far it pulls enemies onto itself. Fortifications taunt intrinsically (base range 2).',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'amount', label: 'Taunt range', min: 0, default: 1 },
+    ],
+    describe: (e) => `+${e.amount ?? 0} taunt :range: to :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units.`,
+  },
+  class_taunt_range_bonus_on_terrain: {
+    label: 'Class — +taunt range on terrain',
+    hint: 'Extra taunt range while a unit of the class stands on the chosen terrain.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'terrain', label: 'Terrain', options: TERRAIN_KEYS, default: 'space' },
+      { key: 'amount', label: 'Taunt range', min: 0, default: 5 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units on ${terrainLabel(e?.terrain)} gain +${e.amount ?? 0} taunt :range:.`,
+  },
+  retaliate_flat_damage_on_class_attacked: {
+    label: 'Class — retaliate when attacked',
+    hint: 'Whenever a unit of the class is attacked, the attacker takes this much flat damage back. Additive across every tech of this kind held.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'amount', label: 'Damage', min: 0, default: 10 },
+    ],
+    describe: (e) => `Attacking a :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: deals ${e.amount ?? 0} damage back to the attacker.`,
+  },
+  building_effect_level_bonus_adjacent_to_class: {
+    label: 'Class — +building effect level nearby',
+    hint: 'Buildings adjacent to a unit of the class gain effect levels; each effect level scales the building\'s magnitudes by +25% (additive, on top of paid upgrade levels).',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'amount', label: 'Effect levels', min: 0, default: 1 },
+    ],
+    describe: (e) => `Buildings adjacent to a :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: gain +${e.amount ?? 0} effect level.`,
+  },
+  class_self_tile_yield_bonus: {
+    label: 'Class — +yield to its own tile',
+    hint: 'A unit of the class adds a flat resource to the yield of the tile it stands on (the unit equivalent of a building\'s self-tile bonus).',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'food' },
+      { key: 'amount', label: 'Amount', default: 3 },
+    ],
+    describe: (e) => `A tile with a :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: on it produces +${e.amount ?? 0} :${e.resource}:.`,
+  },
+  end_of_combat_def_earned_for_class_and_adjacent: {
+    label: 'Class — earned defence at combat end',
+    hint: 'At the end of each combat, every unit of the class AND every unit adjacent to one permanently gains flat :defense: (kept across combats, in the earned-flat slot).',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'amount', label: 'Defence', min: 0, default: 4 },
+    ],
+    describe: (e) => `At combat end, :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units and their neighbours permanently gain +${e.amount ?? 0} :defense:.`,
+  },
+  class_gains_pct_of_commander_effect: {
+    label: 'Class — share of commander effect (STUB)',
+    hint: 'A unit of the class gains a % of a commander\'s effect. Commander units do not exist yet, so this is WIRED BUT INERT until they land.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'pct', label: 'Percent', min: 0, default: 25 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain ${e.pct ?? 0}% of a commander's effect (not yet active).`,
+  },
+
   // --- buildings -------------------------------------------------------------
   // A TECH effect: queue a specific building for placement (mirrors grant_unit,
   // but for a named building id rather than a class).

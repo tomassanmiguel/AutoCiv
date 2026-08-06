@@ -40,6 +40,12 @@ export const UNIT_DEFS = Object.fromEntries(UNIT_CLASS_DEFS.map((c) => [c.id, {
   blurb: c.description,
   placement: new Set(c.placement),
   movement: new Set(c.movement),
+  // Intrinsic taunt range: how far the class pulls enemies onto itself. Only
+  // fortifications taunt today (base 2); techs widen it. 0 = does not taunt.
+  taunt: c.taunt ?? 0,
+  // A fortification is a structure and cannot be placed on a building tile
+  // (other classes share a tile with a building freely).
+  blockedByBuilding: c.id === 'fortification',
 }]))
 
 export const UNIT_LIST = Object.values(UNIT_DEFS)
@@ -119,16 +125,19 @@ export function unitStats(def, wave, mods, level = 1, extra = null) {
   // The flat (tech-wide + formation) folds into the base before the base-%; the
   // earned flat sits AFTER it, before the ordinary-%. See docs/design.md.
   const atkFlat = (mods?.unitAtkFlat ?? 0) + (extra?.atkFlat ?? 0)
-  const defFlat = (mods?.unitDefFlat ?? 0) + (extra?.defFlat ?? 0)
+  // `classDefFlat` is a per-class raw addition to the same flat slot (Masonry
+  // etc.): folded into the base before the base-%, so it stacks with %-based def
+  // rather than being swallowed by it.
+  const defFlat = (mods?.unitDefFlat ?? 0) + (mods?.classDefFlat?.[def.type] ?? 0) + (extra?.defFlat ?? 0)
 
   const baseAtk = ((def.atk + atkFlat) * (1 + (mods?.unitAtkBasePct ?? 0)) + (extra?.earnedAtk ?? 0)) *
     (1 + (mods?.unitAtkPct ?? 0))
 
   // Defence IS hit points, and runs the identical formula. Unlike attack there
   // is no zero case: every unit has hit points, including the ones that never
-  // strike — a wall is nothing BUT hit points.
-  const baseDef = (def.def + defFlat) *
-    (1 + (mods?.unitDefBasePct ?? 0)) *
+  // strike — a wall is nothing BUT hit points. The EARNED-DEF slot (Defensive
+  // Tactics) mirrors earned-atk: after the base-%, before the ordinary-%.
+  const baseDef = ((def.def + defFlat) * (1 + (mods?.unitDefBasePct ?? 0)) + (extra?.earnedDef ?? 0)) *
     (1 + (mods?.unitDefPct ?? 0))
 
   return {

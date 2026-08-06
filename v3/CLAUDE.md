@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **70 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **85 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -415,9 +415,18 @@ validator rejects a group that spans branches or eras (the choice could never be
 with a single member (not a choice).
 
 **Intrinsic class behaviour is never a tech.** Fortifications taunt, never move and never attack;
-command units never attack. Those live in `UNIT_CLASS_BASE`, not in a tech. Relatedly, **classes
+command units never attack. Those live in the class base fields, not in a tech. Relatedly, **classes
 are granted, not unlocked** — "Mud Brick" hands you a fortification rather than switching
 fortifications on.
+
+**TAUNT is implemented** (`combat.js`). A class with a base **`taunt`** range (fortifications: **2**;
+a `content.unitClasses` field) pulls enemies onto itself: an enemy within a fortification's taunt
+range (`_pieceTauntRange` = base + `classTauntRangeFlat` + on-terrain bonus) heads for it instead
+of the palace (`_moveToward` in `_enemyMove`) and, once in reach, must strike it before any other
+target (`_taunterFor` in `_enemyAttack`). **Retaliation** (`retaliateOnClassAttacked`) is applied in
+`_dealBlow` — attacking a fortification deals flat damage back to the attacker. A fortification
+**cannot share a tile with a building** (`def.blockedByBuilding` in `canPlaceUnit`); every other
+class can. See docs/design.md § 12c.
 
 #### The editor (`/editor.html`, `src/editor/`)
 A second Vite entry on the same dev server. Filters by era and quadrant, **sortable columns**
@@ -495,15 +504,17 @@ Implemented today:
   on every unit, **stacking**. Nothing is stored on the unit; `unitStats` reads `mods` at call
   time, so a tech improves units placed long before it was taken.
 
-  ⚠️ **BOTH STATS ARE TWO LAYERS** (atk is now THREE — see the earned slot), and mixing them
-  up is the easy mistake:
+  ⚠️ **BOTH STATS ARE NOW THREE LAYERS** (each has an earned slot), and mixing them up is the
+  easy mistake:
   ```
-  atk = ((base + unitAtkFlat) × (1 + unitAtkBasePct) + EARNED) × (1 + unitAtkPct)
-  def =  (base + unitDefFlat) × (1 + unitDefBasePct)          × (1 + unitDefPct)   // def IS hit points
+  atk = ((base + unitAtkFlat)          × (1 + unitAtkBasePct) + EARNED_ATK) × (1 + unitAtkPct)
+  def =  (base + unitDefFlat + classDefFlat[cls]) × (1 + unitDefBasePct) + EARNED_DEF) × (1 + unitDefPct)
   ```
-  `EARNED` is the per-unit permanent earned-flat (Marksmanship), passed into `unitStats` via
-  `extra.earnedAtk`, kept on the unit INSTANCE (`t.unit.earnedAtk`) across combats — sits after
-  the base-% and before the ordinary-%.
+  `EARNED_ATK`/`EARNED_DEF` are per-unit permanent earned-flats — Marksmanship (atk) and Defensive
+  Tactics (def) — passed into `unitStats` via `extra.earnedAtk`/`extra.earnedDef`, kept on the unit
+  INSTANCE (`t.unit.earnedAtk`/`t.unit.earnedDef`) across combats, sitting after the base-% and
+  before the ordinary-%. **`classDefFlat[cls]`** is a per-class raw addition to the def flat slot
+  (Masonry etc.), scoped to one class — folded in before the base-% so it stacks with %-based def.
   Additive within a layer, multiplicative between. A **base modifier** raises the base itself,
   so Siege (base 20) gains 3.3× what Ranged (base 6) does from the same tech — with a FLAT
   line every class converged on ~285 attack and the classes stopped meaning anything. The
@@ -524,9 +535,15 @@ Implemented today:
   (terrain/has-unit filters), `radius_city_yield_bonus_per_citizen`,
   `yield_growth_per_wave_survived`, `yield_growth_per_nearby_unit_death`,
   `radius_yield_bonus_per_building_age`, `self_yield_bonus_per_distance_to_nearest_building`,
-  `radius_yield_from_other_base_yields`. These are **CONTINUOUS** — `buildingBonuses(world, era)`
+  `radius_yield_from_other_base_yields`. These are **CONTINUOUS** — `buildingBonuses(world, mods, era)`
   in `world/territory.js` folds them into `territoryYield` every tick, keyed off each building
   instance's run state. See **Content buildings**.
+- **EFFECT LEVEL** — every building's effect magnitudes scale by **+25% per level, additive**.
+  Effective level = paid **upgrade level** + **bonus effect levels**, the same currency;
+  `building_effect_level_bonus_adjacent_to_class` (Castle Towns) grants bonus levels to buildings
+  adjacent to a class. `buildingBonuses` computes `1 + 0.25·(effLevel − 1)` per building and scales
+  every `add`. This is the first thing that makes a **gold upgrade** actually raise a content
+  building's effects.
 - **`unit_crit_chance_pct`** — +crit chance for player units, summed flat (`mods.unitCritChancePct`).
   **Every unit (player AND enemy) already crits at a fixed 5% base** (`BASE_CRIT_CHANCE`); the tech
   chance adds on top for players. Capped at 100% at roll time. **One dial only**: the multiplier is
@@ -539,6 +556,14 @@ Implemented today:
   `connectionProd` (Maglev). See § City connections.
 - **ranged theme (20 kinds)** — poison, preloaded shots, shot chaining, range/placement
   grants, class-scoped crit, and the earned-flat atk slot. See § Ranged combat below.
+- **fortification theme (8 kinds)** — `class_def_flat` (per-class raw flat def, folded into the
+  same slot as `unitDefFlat`), `class_taunt_range_flat` + `class_taunt_range_bonus_on_terrain`,
+  `retaliate_flat_damage_on_class_attacked`, `building_effect_level_bonus_adjacent_to_class`
+  (the **effect-level** lever — see below), `class_self_tile_yield_bonus` (unit twin of a building's
+  self-tile bonus, resolved in `territoryYield`), `end_of_combat_def_earned_for_class_and_adjacent`
+  (mirrors the earned-atk slot with an **earned-DEF** slot, `t.unit.earnedDef`), and
+  `class_gains_pct_of_commander_effect` (⚠️ **STUB** — commanders don't exist; the mod is stored but
+  no code reads it). See § Fortifications below.
 
 An effect param is a **number**, a **choice** (`options`), or a **bool** (`type:'bool'`, a
 checkbox — used by `road_network`'s Maglev rider). An effect may also have **no params** at all
@@ -763,9 +788,11 @@ legal controlled tile and it pays out **every tick**. Each carries a **placement
 (multi-select, same as wonders — and a non-empty list **overrides** the default open-void
 exclusion, so a Space Telescope goes on space) and an **effects** list drawn from the 8 building
 effect kinds. Unlike a tech's one-shot effect, these are **CONTINUOUS**: `buildingBonuses(world,
-era)` in `world/territory.js` walks `world.terr.buildings`, evaluates each effect (self-tile,
-radius, per-citizen, or a run-state growth term), and `territoryYield` adds the result to the
-owning tiles' yield every tick (only for **visible** tiles).
+mods, era)` in `world/territory.js` walks `world.terr.buildings`, evaluates each effect (self-tile,
+radius, per-citizen, or a run-state growth term) scaled by the building's **effect-level** multiplier,
+and `territoryYield` adds the result to the owning tiles' yield every tick (only for **visible**
+tiles). `territoryYield` also folds in any **`class_self_tile_yield_bonus`** — a unit adding to its
+own tile.
 - **Instance state** (`placeBuilding`): `{ key, level, builtEra, wavesSurvived, deathBonus }`.
   `wavesSurvived` ticks up in `endCombat`; `deathBonus` accumulates via the **unit-death hook**
   (`combat.js` `_onUnitDeath`, called wherever a piece dies — `_dealBlow`, `_poisonTick`) for

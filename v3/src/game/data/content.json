@@ -1476,6 +1476,298 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "mud_brick",
+      "name": "Mud Brick",
+      "era": 0,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Grants 1 :fort: fortification.",
+      "effects": [
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "watchtowers",
+      "name": "Watchtowers",
+      "era": 1,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications get +1 taunt range.",
+      "effects": [
+        {
+          "kind": "class_taunt_range_flat",
+          "unitClass": "fortification",
+          "amount": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "masonry",
+      "name": "Masonry",
+      "era": 2,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications get +3 raw base :defense:. Grants 1 :fort: fortification.",
+      "effects": [
+        {
+          "kind": "class_def_flat",
+          "unitClass": "fortification",
+          "amount": 3
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "moats",
+      "name": "Moats",
+      "era": 3,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Whenever an attacker attacks a fortification, they take 10 damage.",
+      "effects": [
+        {
+          "kind": "retaliate_flat_damage_on_class_attacked",
+          "unitClass": "fortification",
+          "amount": 10
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "beaconing",
+      "name": "Beaconing",
+      "era": 3,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Grants 1 :fort: fortification. Fortifications gain 25% of one commander’s effect.",
+      "effects": [
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        },
+        {
+          "kind": "class_gains_pct_of_commander_effect",
+          "unitClass": "fortification",
+          "pct": 25
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "castles",
+      "name": "Castles",
+      "era": 4,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications get +5 raw base :defense:. Grants 1 :fort: fortification.",
+      "effects": [
+        {
+          "kind": "class_def_flat",
+          "unitClass": "fortification",
+          "amount": 5
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "castle_towns",
+      "name": "Castle Towns",
+      "era": 4,
+      "icon": "/sprites/ui/building.png",
+      "description": "Buildings adjacent to a fortification gain +1 effect level.",
+      "effects": [
+        {
+          "kind": "building_effect_level_bonus_adjacent_to_class",
+          "unitClass": "fortification",
+          "amount": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "corvee_garrisons",
+      "name": "Corvee Garrisons",
+      "era": 5,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Tiles with a fortification on them produce +3 :food:.",
+      "effects": [
+        {
+          "kind": "class_self_tile_yield_bonus",
+          "unitClass": "fortification",
+          "resource": "food",
+          "amount": 3
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "defensive_tactics",
+      "name": "Defensive Tactics",
+      "era": 5,
+      "icon": "/sprites/icons/defense.png",
+      "description": "At the end of combat, all fortifications and all units adjacent to a fortification permanently gain +4 :defense:.",
+      "effects": [
+        {
+          "kind": "end_of_combat_def_earned_for_class_and_adjacent",
+          "unitClass": "fortification",
+          "amount": 4
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "star_forts",
+      "name": "Star Forts",
+      "era": 6,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications get +7 raw base :defense:. Grants 1 :fort: fortification.",
+      "effects": [
+        {
+          "kind": "class_def_flat",
+          "unitClass": "fortification",
+          "amount": 7
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "barbed_wire",
+      "name": "Barbed Wire",
+      "era": 7,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Whenever an attacker attacks a fortification, they take 30 damage.",
+      "effects": [
+        {
+          "kind": "retaliate_flat_damage_on_class_attacked",
+          "unitClass": "fortification",
+          "amount": 30
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "planetary_defenses",
+      "name": "Planetary Defenses",
+      "era": 10,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications may be placed in space. Fortifications in space gain +5 taunt range.",
+      "effects": [
+        {
+          "kind": "class_placement_terrain_add",
+          "unitClass": "fortification",
+          "terrain": "space"
+        },
+        {
+          "kind": "class_taunt_range_bonus_on_terrain",
+          "unitClass": "fortification",
+          "terrain": "space",
+          "amount": 5
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "shield_generator",
+      "name": "Shield Generator",
+      "era": 11,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications get +9 raw base :defense:. Grants 1 :fort: fortification.",
+      "effects": [
+        {
+          "kind": "class_def_flat",
+          "unitClass": "fortification",
+          "amount": 9
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "reflector_shields",
+      "name": "Reflector Shields",
+      "era": 12,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Whenever an attacker attacks a fortification, they take 50 damage.",
+      "effects": [
+        {
+          "kind": "retaliate_flat_damage_on_class_attacked",
+          "unitClass": "fortification",
+          "amount": 50
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "impervious_construction",
+      "name": "Impervious Construction",
+      "era": 13,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Fortifications get +11 raw base :defense:. Grants 1 :fort: fortification.",
+      "effects": [
+        {
+          "kind": "class_def_flat",
+          "unitClass": "fortification",
+          "amount": 11
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "fortification",
+          "count": 1
+        }
+      ],
+      "quadrant": "military",
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [
@@ -6060,7 +6352,8 @@
         "fallout"
       ],
       "movement": [],
-      "description": "INTRINSIC: never attacks, never moves, and taunts every enemy in reach. A wall with hit points."
+      "description": "INTRINSIC: never attacks, never moves, and taunts every enemy in reach. A wall with hit points.",
+      "taunt": 2
     }
   ]
 }

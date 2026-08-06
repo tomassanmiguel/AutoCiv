@@ -340,6 +340,14 @@ Currently implemented:
 | **`unit_crit_chance_pct`** | +% chance for a unit's hit to crit (double damage) |
 | **`unit_speed`** | +combat :speed: on every unit that can move |
 | **`grant_unit`** | queues N units of a CLASS to place on the map |
+| **`class_def_flat`** | +raw flat :defense: to one class's base (stacks with %-based def) |
+| **`class_taunt_range_flat`** | +taunt range for a class (see § Fortifications) |
+| **`class_taunt_range_bonus_on_terrain`** | +taunt range while the class stands on a terrain |
+| **`retaliate_flat_damage_on_class_attacked`** | attacking the class deals flat damage back |
+| **`building_effect_level_bonus_adjacent_to_class`** | buildings adjacent to the class gain effect levels |
+| **`class_self_tile_yield_bonus`** | a unit of the class adds +resource to its own tile's yield |
+| **`end_of_combat_def_earned_for_class_and_adjacent`** | at combat end, the class + its neighbours earn permanent :defense: |
+| **`class_gains_pct_of_commander_effect`** | ⚠️ STUB — inert until commander units exist |
 | **`grant_building`** | grants a BUILDING (by id) to place on the map (see § Buildings) |
 | **`self_tile_yield_bonus`** | +resource on the building's own tile |
 | **`radius_tile_yield_bonus`** | +resource per tile in radius (optional terrain / has-unit filter) |
@@ -459,7 +467,45 @@ atk = ((base + flat) × (1 + base%) + earned) × (1 + ordinary%)
 `flat` (tech-wide + Formations) folds into the base before the base-% line; the
 **earned** flat sits *after* it, before the ordinary-%. It is a per-unit permanent
 accumulator kept on the unit instance across combats — distinct from the tech-wide
-flat — and is what Marksmanship feeds.
+flat — and is what Marksmanship feeds. **Defence has the same earned slot**, fed by
+Defensive Tactics at end of combat.
+
+## 12c. Fortification theme
+
+Fortifications are the wall class: **never attack, never move, and TAUNT**. Taunt is
+an intrinsic **range** (base **2**) that pulls enemies onto the wall — an enemy within
+a fortification's taunt range heads for it instead of flowing to the palace, and once
+in reach must strike it before any other target. Soaking blows is the whole job.
+
+The theme's techs work these levers:
+- **flat base :defense:** (`class_def_flat`) — a raw addition to the class's flat slot,
+  folded in **before** the base-% so it stacks with %-based def rather than being
+  swallowed. This is Masonry → Castles → … climbing the wall's hit points.
+- **taunt range** (`class_taunt_range_flat`, and `class_taunt_range_bonus_on_terrain`
+  for a terrain-scoped bump like Planetary Defenses in space).
+- **retaliation** (`retaliate_flat_damage_on_class_attacked`) — attacking a fortification
+  deals flat damage straight back to the attacker; additive across the techs held.
+- **earned :defense:** (`end_of_combat_def_earned_for_class_and_adjacent`) — at combat
+  end, the class AND its neighbours permanently gain flat def via the earned slot.
+- **self-tile yield** (`class_self_tile_yield_bonus`) — a unit of the class adds a flat
+  resource to its own tile, the unit twin of a building's `self_tile_yield_bonus`.
+- **effect level** (`building_effect_level_bonus_adjacent_to_class`) — see below.
+
+**Placement:** a fortification is a structure and **cannot share a tile with a building**
+(every other class can, once buildings exist). It can be placed anywhere its terrain set
+allows, widened by `class_placement_terrain_add` like any class.
+
+**A commander rider is stubbed.** `class_gains_pct_of_commander_effect` (Beaconing) is
+wired but **inert** — commander units do not exist yet, so there is no aura value to read.
+
+### Effect level — a general building lever
+
+A building's **effect level** scales **all** its effect magnitudes by **+25% per level,
+additive**. Effective level = its **paid upgrade level** (gold upgrades) **plus** any
+**bonus effect levels** — the two are the same currency, so a bonus level is worth exactly
+a paid one. `building_effect_level_bonus_adjacent_to_class` (Castle Towns) grants bonus
+effect levels to every building adjacent to a unit of the class. So a Shrine (+3 :progress:)
+next to a fortification with Castle Towns runs at level 2 → ×1.25 → +3.75.
 
 ## 13. Road network
 

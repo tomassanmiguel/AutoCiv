@@ -129,6 +129,16 @@ function freshMods() {
     unitAtkEarnedOnClassCrit: {},     // class -> permanent +atk per crit (earned-flat)
     classPlacementAdd: {},            // class -> Set of extra placement terrain
 
+    // --- fortification theme ---
+    classDefFlat: {},                 // class -> raw flat :defense: added to its base
+    classTauntRangeFlat: {},          // class -> +taunt range
+    classTauntRangeOnTerrain: {},     // class -> { terrain -> +taunt range while on it }
+    retaliateOnClassAttacked: {},     // class -> flat damage to an attacker of this class
+    buildingEffectLevelAdjacentClass: {}, // class -> +building effect level for adjacent buildings
+    classSelfTileYield: {},           // class -> { resource -> amount added to its own tile }
+    endCombatEarnedDefClass: {},      // class -> permanent +def to it + neighbours at combat end
+    classGainsCommanderPct: {},       // class -> % of a commander's effect (STUB — no source yet)
+
     // --- ranged theme: poison ---
     rangedPoisonApply: 0,             // stacks a ranged hit applies
     rangedPoisonSlow: { amount: 0, min: 0 },
@@ -1010,6 +1020,38 @@ export class GameManager {
         break
       case 'class_placement_terrain_add':
         (this.mods.classPlacementAdd[f.unitClass] ??= new Set()).add(f.terrain)
+        break
+
+      // --- fortification theme ---
+      case 'class_def_flat':
+        this.mods.classDefFlat[f.unitClass] = (this.mods.classDefFlat[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_taunt_range_flat':
+        this.mods.classTauntRangeFlat[f.unitClass] = (this.mods.classTauntRangeFlat[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_taunt_range_bonus_on_terrain': {
+        const byTerr = (this.mods.classTauntRangeOnTerrain[f.unitClass] ??= {})
+        byTerr[f.terrain] = (byTerr[f.terrain] ?? 0) + (f.amount ?? 0)
+        break
+      }
+      case 'retaliate_flat_damage_on_class_attacked':
+        this.mods.retaliateOnClassAttacked[f.unitClass] = (this.mods.retaliateOnClassAttacked[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'building_effect_level_bonus_adjacent_to_class':
+        this.mods.buildingEffectLevelAdjacentClass[f.unitClass] = (this.mods.buildingEffectLevelAdjacentClass[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_self_tile_yield_bonus': {
+        const byRes = (this.mods.classSelfTileYield[f.unitClass] ??= {})
+        byRes[f.resource] = (byRes[f.resource] ?? 0) + (f.amount ?? 0)
+        break
+      }
+      case 'end_of_combat_def_earned_for_class_and_adjacent':
+        this.mods.endCombatEarnedDefClass[f.unitClass] = (this.mods.endCombatEarnedDefClass[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_gains_pct_of_commander_effect':
+        // STUB: commander units do not exist, so there is no aura value to read.
+        // Wire the mod so authoring works; it is inert until commanders land.
+        this.mods.classGainsCommanderPct[f.unitClass] = (this.mods.classGainsCommanderPct[f.unitClass] ?? 0) + (f.pct ?? 0)
         break
 
       // --- ranged: poison ---
