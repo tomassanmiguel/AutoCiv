@@ -547,9 +547,9 @@ export default function HexMap() {
                 acting={combat.acting?.side === 'enemy' && combat.acting.id === e.id} />
             ) })}
             {combat.events.map((ev) => { const c = centerOf(ev.q, ev.r); return (
-              <div key={ev.id} className={`combat-float ${ev.kind}`}
-                style={{ left: c.x, top: c.y, fontSize: HEX_W * 0.26 }}>
-                {ev.kind === 'raze' ? `${ev.amount} razed!` : `−${ev.amount}`}
+              <div key={ev.id} className={`combat-float ${ev.kind}${ev.crit ? ' crit' : ''}`}
+                style={{ left: c.x, top: c.y, fontSize: HEX_W * (ev.crit ? 0.32 : 0.26) }}>
+                {ev.kind === 'raze' ? `${ev.amount} razed!` : `−${ev.amount}${ev.crit ? ' CRIT' : ''}`}
               </div>
             ) })}
           </>

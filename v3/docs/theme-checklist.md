@@ -27,7 +27,20 @@
 ## 1. Critical Hits
 *We will add a crit mechanic.*
 
-_Not yet discussed._
+*Decided: kept to one dial. Each tech grants a flat +10% crit chance to all units,
+additive, universal (no class restriction). Crit damage multiplier is a fixed engine
+constant (2×), not something techs scale — chance is the only lever. All eight sit in the
+Military branch as single-effect techs (no `grant_unit` rider) and are spread across the
+eras, opening with a two-part Stone→Bronze arc.*
+
+- [ ] **Flint Knapping** *(Stone)* — +10% crit chance to all units.
+- [ ] **Sharpening** *(Bronze)* — +10% crit chance to all units.
+- [ ] **Anatomy** *(Classical)* — +10% crit chance to all units.
+- [ ] **Fencing** *(Renaissance)* — +10% crit chance to all units.
+- [ ] **Rifling** *(Steam)* — +10% crit chance to all units.
+- [ ] **Smart Munitions** *(Solar)* — +10% crit chance to all units.
+- [ ] **Atomic Precision** *(Liminite)* — +10% crit chance to all units.
+- [ ] **Precognition** *(Ascension)* — +10% crit chance to all units.
 
 ## 2. Ranged Units
 

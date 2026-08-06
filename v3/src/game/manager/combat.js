@@ -35,6 +35,12 @@ import { makeRng, shuffle } from '../world/noise.js'
 // combat-local constant. Re-exported here because the combat UI reads it.
 export { WAVE_COUNT as MAX_WAVES } from '../data/cycle.js'
 
+/**
+ * The crit multiplier is a FIXED ENGINE CONSTANT — no tech touches it. Techs only
+ * ever add crit CHANCE (`mods.unitCritChancePct`); a landed crit always doubles.
+ */
+export const CRIT_MULT = 2
+
 export const PHASE_LABEL = {
   'enemy-move': 'Enemies move',
   'player-move': 'Defenders move',
@@ -106,6 +112,11 @@ class CombatMixin {
 
     const maxHp = PALACE.def + (this.mods?.palaceDef ?? 0)
     this.palaceHp = Math.min(this.palaceHp ?? maxHp, maxHp)
+
+    // A seeded stream for crit rolls, so a wave plays out the same way twice
+    // (and the balance sim stays deterministic). Kept off the serialized combat
+    // blob because it is a function, not state to copy.
+    this._critRng = makeRng((this.seed ^ (wave * 0x9e3779b1)) >>> 0)
 
     this.combat = {
       ...this.combat,
@@ -581,7 +592,16 @@ class CombatMixin {
   _strike(attacker, target) {
     if (!target) return false
     const c = this.combat
-    target.hp -= attacker.atk
+    // CRIT: a player unit's blow may double. Chance is read LIVE from mods (like
+    // atk/def) and capped at 100%; the multiplier is fixed. The palace is not a
+    // unit and enemies do not crit — both carry no `side: 'player'`.
+    let dmg = attacker.atk
+    let crit = false
+    if (attacker.side === 'player' && dmg > 0) {
+      const chance = Math.min(1, this.mods?.unitCritChancePct ?? 0)
+      if (chance > 0 && this._critRng() < chance) { dmg *= CRIT_MULT; crit = true }
+    }
+    target.hp -= dmg
     // Its own monotonic counter, bumped HERE rather than reusing `beat`: the
     // beat counter only advances after the action resolves, which left the card
     // comparing against a stale value and the lunge never played.
@@ -590,7 +610,7 @@ class CombatMixin {
     attacker.lastAttackDir = this._dirTo(attacker, target)
     c.events.push({
       id: `${c.actionSeq}-${target.id ?? 'palace'}`,
-      q: target.q, r: target.r, amount: attacker.atk,
+      q: target.q, r: target.r, amount: dmg, crit,
       kind: target === c.palace ? 'palace' : 'damage',
     })
     if (target.hp <= 0 && target !== c.palace) {

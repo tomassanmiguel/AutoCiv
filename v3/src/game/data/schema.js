@@ -243,6 +243,13 @@ export const EFFECT_KINDS = {
     describe: (e) => `+${e.amount ?? 0}% base :defense: to all units.`,
   },
 
+  unit_crit_chance_pct: {
+    label: 'All units — crit chance %',
+    hint: 'Chance for a unit\'s attack to CRIT and deal double damage. A single flat dial: chances from every tech ADD (no base/ordinary layering), and the crit multiplier itself is a fixed engine constant no tech touches. Capped at 100%.',
+    params: [{ key: 'amount', label: 'Percent', min: 0, default: 10 }],
+    describe: (e) => `+${e.amount ?? 0}% :crit: chance to all units.`,
+  },
+
   grant_unit: {
     label: 'Grant units of a class',
     hint: 'Queues units to place on the map. The CLASS is what is granted, not a named unit — which unit it becomes is resolved at placement time from the best one you have unlocked, so a grant queued before an upgrade still benefits from it.',
@@ -349,6 +356,7 @@ export const ICON_TOKENS = {
   defense: '/sprites/icons/defense.png',
   speed: '/sprites/icons/speed.png',
   range: '/sprites/icons/range.png',
+  crit: '/sprites/icons/attack.png', // placeholder — no dedicated crit icon yet
   melee: '/sprites/ui/melee.png',
   ranged: '/sprites/ui/ranged.png',
   cavalry: '/sprites/ui/cavalry.png',

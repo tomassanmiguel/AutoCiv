@@ -560,6 +560,134 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "flint_knapping",
+      "name": "Flint Knapping",
+      "quadrant": "military",
+      "era": 0,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "sharpening",
+      "name": "Sharpening",
+      "quadrant": "military",
+      "era": 1,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "anatomy",
+      "name": "Anatomy",
+      "quadrant": "military",
+      "era": 3,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "fencing",
+      "name": "Fencing",
+      "quadrant": "military",
+      "era": 5,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "rifling",
+      "name": "Rifling",
+      "quadrant": "military",
+      "era": 7,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "smart_munitions",
+      "name": "Smart Munitions",
+      "quadrant": "military",
+      "era": 10,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "atomic_precision",
+      "name": "Atomic Precision",
+      "quadrant": "military",
+      "era": 12,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "precognition",
+      "name": "Precognition",
+      "quadrant": "military",
+      "era": 14,
+      "icon": "/sprites/icons/attack.png",
+      "description": "+10% :crit: chance to all units.",
+      "effects": [
+        {
+          "kind": "unit_crit_chance_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [],

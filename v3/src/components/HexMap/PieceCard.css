@@ -154,6 +154,12 @@
 }
 .combat-float.damage { color: #ff9a8a; }
 .combat-float.palace { color: #ffd76a; }
+/* A crit hits harder and says so — brighter, with a glow. */
+.combat-float.crit {
+  color: #ffe08a;
+  letter-spacing: 0.03em;
+  text-shadow: 0 2px 4px #000, 0 0 10px rgba(255, 180, 60, 0.9);
+}
 /* A raze names what was lost rather than a number — it is not damage. */
 .combat-float.raze {
   color: #ff7a4a;

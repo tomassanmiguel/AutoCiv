@@ -37,7 +37,7 @@ starts the dev server and opens the game. The editor is at `/editor.html`.
 - The tech and building pools were **cleared to empty on purpose** and are being
   rebuilt **one wired tech at a time**: a tech goes in only when the effect it
   needs exists in the engine. The backlog holds the 385 parked rows.
-- In play right now: **17 techs · 0 buildings ·
+- In play right now: **35 techs · 0 buildings ·
   5 wonders · 3 tier unlocks.**
 - Iron is the terminal era for now, so nothing advances out of it and it carries
   no threshold.
@@ -315,6 +315,7 @@ Currently implemented:
 |---|---|
 | **`unit_atk_base_pct`** | a % of BASE :attack: on every unit — a base modifier |
 | **`unit_def_base_pct`** | the same, for :defense: (which is hit points) |
+| **`unit_crit_chance_pct`** | +% chance for a unit's hit to crit (double damage) |
 | **`unit_speed`** | +combat :speed: on every unit that can move |
 | **`grant_unit`** | queues N units of a CLASS to place on the map |
 | **`reposition_range`** | +free reposition distance (see § Repositioning) |
@@ -323,6 +324,11 @@ Currently implemented:
 | **`reposition_teleport`** | reposition distance ignores terrain (straight-line) |
 | **`formation`** | +atk/+def per friendly unit in reposition range, at combat start |
 | **`road_network`** | raises the gold every connection-route tile earns (see § Road network) |
+
+**Crit is one dial on purpose.** `unit_crit_chance_pct` adds crit *chance* only,
+summed flat across every held tech and capped at 100%; the crit *multiplier* is a
+fixed engine constant (`CRIT_MULT` = 2×), untouched by any tech. Only player
+units crit — not the palace, not enemies.
 
 `grant_unit` names a **class**, never a named unit — there is only one unit per
 class, and its stat line is read live, so a grant queued before an upgrade still

@@ -119,6 +119,10 @@ function freshMods() {
     unitDefFlat: 0,
     unitDefBasePct: 0,
     unitDefPct: 0,
+    // CRIT is a single flat dial: chances from every tech ADD (no layering), and
+    // the multiplier is a fixed engine constant (`CRIT_MULT` in combat). Read
+    // live at attack resolution; capped at 100% there.
+    unitCritChancePct: 0,
     // Combat movement (+acts). Zero-movement classes ignore it.
     unitSpeed: 0,
     // Per-unit FORMATION flat: +atk / +def for each other friendly unit inside
@@ -947,6 +951,11 @@ export class GameManager {
       // The same, for hit points. UNITS ONLY — the palace has its own line.
       case 'unit_def_base_pct':
         this.mods.unitDefBasePct += (f.amount ?? 0) / 100
+        break
+      // Crit CHANCE only — a flat additive dial. The 2× multiplier is fixed in
+      // the combat engine and no tech touches it.
+      case 'unit_crit_chance_pct':
+        this.mods.unitCritChancePct += (f.amount ?? 0) / 100
         break
       // A CLASS grant, never a named unit: which unit it becomes is resolved by
       // `grantDef` at placement time from the best one unlocked, so a grant
