@@ -4295,5 +4295,287 @@
         "description": "Tundra only. Gives +1 upgrade level to every unit and building in range 1."
       }
     ]
-  }
+  },
+  "unitClasses": [
+    {
+      "id": "melee",
+      "name": "Melee",
+      "icon": "/sprites/ui/melee.png",
+      "atk": 7,
+      "def": 22,
+      "range": 1,
+      "speed": 1,
+      "placement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "movement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "description": "Slow, but strong. Closes with the nearest enemy and holds the line."
+    },
+    {
+      "id": "ranged",
+      "name": "Ranged",
+      "icon": "/sprites/ui/ranged.png",
+      "atk": 6,
+      "def": 12,
+      "range": 2,
+      "speed": 0,
+      "placement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "movement": [],
+      "description": "Least :defense: and :attack: of anything that fights. Never advances — it shoots from where you put it."
+    },
+    {
+      "id": "cavalry",
+      "name": "Cavalry",
+      "icon": "/sprites/ui/cavalry.png",
+      "atk": 8,
+      "def": 16,
+      "range": 1,
+      "speed": 2,
+      "placement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "movement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "description": "Fast, not as strong. Reaches a breach in a single turn."
+    },
+    {
+      "id": "siege",
+      "name": "Siege",
+      "icon": "/sprites/ui/siege.png",
+      "atk": 20,
+      "def": 18,
+      "range": 3,
+      "speed": 0,
+      "placement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "movement": [],
+      "description": "Heavy hitter with a long reach and a blast radius of 1. Does not move once placed."
+    },
+    {
+      "id": "naval",
+      "name": "Naval",
+      "icon": "/sprites/ui/boat.png",
+      "atk": 10,
+      "def": 28,
+      "range": 2,
+      "speed": 2,
+      "placement": [
+        "coast",
+        "ocean",
+        "river",
+        "exosea"
+      ],
+      "movement": [
+        "coast",
+        "ocean",
+        "river",
+        "exosea"
+      ],
+      "description": "Water only, in both senses: it is built on water and it never leaves it."
+    },
+    {
+      "id": "aerial",
+      "name": "Aerial",
+      "icon": "/sprites/ui/aerial.png",
+      "atk": 12,
+      "def": 22,
+      "range": 1,
+      "speed": 4,
+      "placement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "movement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout",
+        "coast",
+        "ocean",
+        "river",
+        "exosea"
+      ],
+      "description": "Very fast, and crosses water freely. Planet-bound until a tech grants it space."
+    },
+    {
+      "id": "astral",
+      "name": "Astral",
+      "icon": "/sprites/ui/astral.png",
+      "atk": 14,
+      "def": 26,
+      "range": 3,
+      "speed": 2,
+      "placement": [
+        "space",
+        "deep_space",
+        "battlefield",
+        "asteroid",
+        "moon",
+        "lunar_crater",
+        "mars",
+        "mars_ice",
+        "exomoon",
+        "planet",
+        "star",
+        "singularity"
+      ],
+      "movement": [
+        "space",
+        "deep_space",
+        "battlefield",
+        "asteroid",
+        "moon",
+        "lunar_crater",
+        "mars",
+        "mars_ice",
+        "exomoon",
+        "planet",
+        "star",
+        "singularity"
+      ],
+      "description": "Space only — the void and the bodies in it. Cannot come down to a planet until a tech lets it."
+    },
+    {
+      "id": "command",
+      "name": "Command",
+      "icon": "/sprites/ui/utility.png",
+      "atk": 0,
+      "def": 24,
+      "range": 0,
+      "speed": 1,
+      "placement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "movement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "description": "INTRINSIC: never attacks. Buffs every friendly unit inside its radius of 2."
+    },
+    {
+      "id": "fortification",
+      "name": "Fortification",
+      "icon": "/sprites/ui/defense.png",
+      "atk": 0,
+      "def": 60,
+      "range": 0,
+      "speed": 0,
+      "placement": [
+        "plains",
+        "forest",
+        "hills",
+        "desert",
+        "tundra",
+        "island",
+        "exoplains",
+        "exohills",
+        "exodesert",
+        "exotundra",
+        "fallout"
+      ],
+      "movement": [],
+      "description": "INTRINSIC: never attacks, never moves, and taunts every enemy in reach. A wall with hit points."
+    }
+  ]
 }

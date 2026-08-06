@@ -21,6 +21,8 @@
 // row still carries a written `description` for the player; the effects are what
 // the game actually runs.
 
+import { TERRAIN } from '../world/terrain.js'
+
 /** The 15 eras. The index IS the era number, everywhere. */
 export const ERAS = [
   'Stone', 'Bronze', 'Iron', 'Classical', 'Medieval', 'Renaissance',
@@ -73,33 +75,77 @@ export const REVEAL_STAGES = [
 // Units
 // ---------------------------------------------------------------------------
 
+/**
+ * The nine classes. ONE UNIT PER CLASS: there is no ladder of named units — a
+ * class has a single stat line and the techs you take raise it, so every unit of
+ * that class on the board improves together. "Create a melee unit" means *place
+ * one more*.
+ *
+ * ⚠️ THE STAT LINES ARE CONTENT, not code: they live in `content.unitClasses`
+ * and are authored at /editor.html. This array is only the canonical ORDER and
+ * the set of legal keys.
+ *
+ * Some behaviour is INTRINSIC to a class and is never granted by a tech —
+ * fortifications taunt and never move; command units never attack. That is
+ * expressed as data too: a class that never moves simply has no movement
+ * terrain.
+ */
 export const UNIT_CLASSES = [
   'melee', 'ranged', 'cavalry', 'siege', 'naval', 'aerial', 'astral',
   'command', 'fortification',
 ]
 
+// ---------------------------------------------------------------------------
+// Terrain — the vocabulary for placement and movement
+// ---------------------------------------------------------------------------
+
 /**
- * ONE UNIT PER CLASS. There is no ladder of named units: a class has a single
- * stat line and the techs you take raise it, so every unit of that class on the
- * board improves together. "Create a melee unit" means *place one more*.
- *
- * Some behaviour is INTRINSIC to a class and is never granted by a tech —
- * fortifications taunt and never move; command units never attack. A tech that
- * appeared to "unlock" that behaviour was a mis-encoding.
- *
- * ⚠️ THESE NUMBERS ARE PLACEHOLDERS, replaced by a balance pass.
+ * Every terrain, derived from the registry rather than re-listed. A second list
+ * would drift the first time a terrain is added.
  */
-export const UNIT_CLASS_BASE = {
-  melee: { atk: 7, def: 22, range: 1, speed: 1, note: 'Slow, but strong.' },
-  ranged: { atk: 6, def: 12, range: 2, speed: 0, note: 'Least defence and damage; never advances.' },
-  cavalry: { atk: 8, def: 16, range: 1, speed: 2, note: 'Fast, not as strong.' },
-  fortification: { atk: 0, def: 60, range: 0, speed: 0, note: 'INTRINSIC: never attacks, never moves, taunts every enemy in reach.' },
-  siege: { atk: 20, def: 18, range: 3, speed: 0, blast: 1, note: 'Heavy hitter, slow attacks, splash damage.' },
-  naval: { atk: 10, def: 28, range: 2, speed: 2, note: 'Water access.' },
-  aerial: { atk: 12, def: 22, range: 1, speed: 4, note: 'Very fast. Planet-bound until a tech grants space.' },
-  astral: { atk: 14, def: 26, range: 3, speed: 2, note: 'Space only.' },
-  command: { atk: 0, def: 24, range: 0, speed: 1, radius: 2, note: 'INTRINSIC: never attacks. Buffs every friendly unit inside its radius.' },
+export const TERRAIN_KEYS = Object.keys(TERRAIN)
+export const terrainLabel = (k) => TERRAIN[k]?.name ?? k
+
+const where = (fn) => TERRAIN_KEYS.filter((k) => fn(TERRAIN[k], k))
+const has = (...keys) => keys.filter((k) => TERRAIN[k])
+
+/**
+ * SHORTCUTS for the terrain checklist. Each is just a set of terrain keys — a
+ * group is a way to tick twelve boxes at once, never a thing stored on a row.
+ * What gets saved is always the explicit list, so a group's definition can
+ * change later without silently redefining content already authored against it.
+ *
+ * The first four are derived from the registry; the regional ones are listed,
+ * because "which body is this" is not something the registry records.
+ */
+export const TERRAIN_GROUPS = {
+  'Ground': where((d) => d.domain === 'land' && d.passable),
+  'Water': where((d) => d.domain === 'water'),
+  'Space': where((d) => d.domain === 'space'),
+  'Impassable': where((d) => !d.passable),
+  'Open void': has('space', 'deep_space', 'battlefield'),
+  'Celestial bodies': has('asteroid', 'moon', 'lunar_crater', 'mars', 'mars_mountain', 'mars_ice', 'exomoon', 'planet', 'star', 'singularity'),
+  'Earth': has('plains', 'forest', 'hills', 'desert', 'tundra', 'mountain', 'island', 'fallout', 'coast', 'ocean', 'river'),
+  'Moon': has('moon', 'lunar_crater'),
+  'Mars': has('mars', 'mars_mountain', 'mars_ice'),
+  'Exoplanet': has('exoplains', 'exohills', 'exomountain', 'exodesert', 'exotundra', 'exosea'),
+  'Outer galaxy': has('planet', 'star', 'singularity'),
 }
+export const TERRAIN_GROUP_NAMES = Object.keys(TERRAIN_GROUPS)
+
+/**
+ * A new unit class. Stats are placeholders; a balance pass replaces them.
+ *
+ * ⚠️ `id` must be one of `UNIT_CLASSES` — the engine indexes units by class key,
+ * so the id is not free text and the editor does not let you rename it.
+ */
+export const blankUnitClass = () => ({
+  id: '', name: '', icon: '/sprites/ui/unit.png',
+  atk: 5, def: 20, range: 1, speed: 1,
+  placement: [...TERRAIN_GROUPS.Ground],
+  movement: [...TERRAIN_GROUPS.Ground],
+  description: '',
+})
 
 // ---------------------------------------------------------------------------
 // Rules that shape how the written descriptions are to be read
@@ -148,15 +194,6 @@ export const ICONS = [
  *
  * ⚠️ Read the note at the top of this file before adding to it.
  */
-/**
- * Unit classes an effect may GRANT today.
- *
- * ⚠️ The design has nine (`UNIT_CLASSES` above); `data/units.js` implements four.
- * Offering the other five would author a grant the engine cannot place, so they
- * are deliberately absent until units exist for them.
- */
-export const GRANTABLE_CLASSES = ['melee', 'ranged', 'cavalry', 'defense']
-
 export const EFFECT_KINDS = {
   unit_atk: {
     // `label` renders inside a <select>, which cannot hold an icon — so it is
@@ -171,12 +208,12 @@ export const EFFECT_KINDS = {
     label: 'Grant units of a class',
     hint: 'Queues units to place on the map. The CLASS is what is granted, not a named unit — which unit it becomes is resolved at placement time from the best one you have unlocked, so a grant queued before an upgrade still benefits from it.',
     params: [
-      { key: 'unitClass', label: 'Class', options: GRANTABLE_CLASSES, default: 'melee' },
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
       { key: 'count', label: 'How many', min: 1, default: 1 },
     ],
     describe: (e) => {
       const n = e.count ?? 1
-      return `Grants ${n} :${e.unitClass === 'defense' ? 'fort' : e.unitClass}: unit${n === 1 ? '' : 's'} to place.`
+      return `Grants ${n} :${e.unitClass === 'fortification' ? 'fort' : e.unitClass}: unit${n === 1 ? '' : 's'} to place.`
     },
   },
 }
@@ -367,6 +404,36 @@ export function validateContent(content) {
   }
   for (const t of content.tierUnlocks ?? []) {
     if (!(t.era >= 0 && t.era < ERAS.length)) out.push(`tier unlock ${t.id}: era ${t.era} out of range`)
+  }
+
+  // --- unit classes ---------------------------------------------------------
+  // Every class in UNIT_CLASSES must exist exactly once: the engine indexes
+  // units BY CLASS KEY, so a missing one is a grant that resolves to nothing.
+  const classes = content.unitClasses ?? []
+  const seenClass = new Set()
+  for (const c of classes) {
+    if (!UNIT_CLASSES.includes(c.id)) { out.push(`unit class "${c.id}" is not one of ${UNIT_CLASSES.join(', ')}`); continue }
+    if (seenClass.has(c.id)) out.push(`duplicate unit class "${c.id}"`)
+    seenClass.add(c.id)
+    for (const stat of ['atk', 'def', 'range', 'speed']) {
+      if (!Number.isFinite(c[stat]) || c[stat] < 0) out.push(`unit class ${c.id}: ${stat} must be a number ≥ 0`)
+    }
+    if (!(c.def > 0)) out.push(`unit class ${c.id}: def is hit points — it must be above 0`)
+    for (const field of ['placement', 'movement']) {
+      if (!Array.isArray(c[field])) { out.push(`unit class ${c.id}: ${field} must be a list`); continue }
+      for (const k of c[field]) if (!TERRAIN[k]) out.push(`unit class ${c.id}: unknown terrain "${k}" in ${field}`)
+    }
+    // A class you can never create is dead content; a class that cannot move is
+    // legitimate (fortifications never move) and so is NOT an error.
+    if (Array.isArray(c.placement) && c.placement.length === 0) {
+      out.push(`unit class ${c.id}: no placement terrain — it could never be created`)
+    }
+    if (c.speed > 0 && Array.isArray(c.movement) && c.movement.length === 0) {
+      out.push(`unit class ${c.id}: has speed ${c.speed} but no movement terrain — one of the two is wrong`)
+    }
+  }
+  for (const k of UNIT_CLASSES) {
+    if (!seenClass.has(k)) out.push(`unit class "${k}" is missing — the engine indexes units by class key`)
   }
   return out
 }

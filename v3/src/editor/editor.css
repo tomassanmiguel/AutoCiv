@@ -404,3 +404,87 @@ body {
   cursor: pointer;
 }
 .ed-wired.on { color: #d9c168; border-color: rgba(217, 193, 104, 0.35); background: rgba(217, 193, 104, 0.1); }
+
+/* --- unit classes: terrain sets --------------------------------------------
+   The full checklist is always visible. With thirty terrains and two
+   independent sets per class, a collapsed summary would hide exactly the detail
+   you opened the row to check. */
+.ed-terr-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  margin-top: 0.9rem;
+}
+.ed-terr-pair .ed-desc-label em { color: var(--e-dim); font-weight: 400; }
+
+.ed-terr-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+/* Group buttons are SHORTCUTS, never stored. `on` = every box in the group is
+   ticked (clicking clears them); `part` = some are. */
+.ed-terr-group {
+  padding: 0.15rem 0.5rem;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--e-line);
+  background: #12151d;
+  color: var(--e-dim);
+  cursor: pointer;
+}
+.ed-terr-group:hover { color: var(--e-text); border-color: #4a5162; }
+.ed-terr-group.part { color: #d9c168; border-color: rgba(217, 193, 104, 0.4); }
+.ed-terr-group.on {
+  color: #101318;
+  background: #d9c168;
+  border-color: #d9c168;
+}
+.ed-terr-group.clear { color: #b06b66; }
+.ed-terr-count { margin-left: auto; font-size: 11px; color: var(--e-dim); }
+
+.ed-terr-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+  gap: 0.1rem 0.4rem;
+}
+.ed-terr-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 11px;
+  color: var(--e-dim);
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+  border-radius: 3px;
+}
+.ed-terr-item:hover { background: #161a23; }
+.ed-terr-item.on { color: var(--e-text); }
+.ed-terr-item input { accent-color: #d9c168; }
+
+/* Base stats, and the cell that opens the terrain sets. */
+.ed-stat {
+  width: 100%;
+  padding: 0.25rem 0.35rem;
+  background: #0c0e14;
+  border: 1px solid var(--e-line);
+  border-radius: 4px;
+  color: var(--e-text);
+  text-align: center;
+}
+.ed-terr-cell {
+  width: 100%;
+  padding: 0.25rem;
+  border-radius: 4px;
+  border: 1px solid var(--e-line);
+  background: #12151d;
+  color: var(--e-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.ed-terr-cell:hover, .ed-terr-cell.on { color: var(--e-text); border-color: #4a5162; }
+/* 0 movement terrain is a REAL, correct value for a fortification — say so
+   rather than showing a bare "0 terrain" that reads as unfinished. */
+.ed-terr-cell.never { color: #8a7fb0; font-style: italic; }

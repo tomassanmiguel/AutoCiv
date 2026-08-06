@@ -207,21 +207,44 @@ techs raise it — every unit of that class already on the board improves with i
 **"Create a melee unit" means place one more melee unit on the map**, at whatever
 the class currently is.
 
-The nine classes, with **placeholder** starting values (balance replaces these):
+**The stat lines are CONTENT**, not code: `content.unitClasses`, authored on the
+editor's **Unit classes** tab. `schema.js` holds only the canonical list of nine
+keys. `def` is hit points.
 
 | class | atk | def | range | speed | notes |
 |---|---|---|---|---|---|
 | melee | 7 | 22 | 1 | 1 | Slow, but strong |
-| ranged | 6 | 12 | 2 | 0 | Least defence and damage |
+| ranged | 6 | 12 | 2 | 0 | Least defence and damage; never moves |
 | cavalry | 8 | 16 | 1 | 2 | Fast, not as strong |
-| fortification | 0 | 60 | 0 | 0 | No attack; taunts |
-| siege | 20 | 18 | 3 | 0 | Slow attacks, **blast radius 1** |
-| naval | 10 | 28 | 2 | 2 | Water access |
-| aerial | 12 | 22 | 1 | 4 | Very fast; planet-bound until unlocked |
+| fortification | 0 | 60 | 0 | 0 | No attack; never moves; taunts |
+| siege | 20 | 18 | 3 | 0 | Slow attacks, **blast radius 1**; never moves |
+| naval | 10 | 28 | 2 | 2 | Water only |
+| aerial | 12 | 22 | 1 | 4 | Very fast; crosses water; planet-bound until unlocked |
 | astral | 14 | 26 | 3 | 2 | Space only |
 | command | 0 | 24 | 0 | 1 | No attack; **command radius 2** |
 
-`def` is hit points.
+*(Placeholders, pending a balance pass. The table above is a snapshot — the file
+is the truth.)*
+
+### Placement and movement are TERRAIN SETS
+
+Each class carries two lists of terrain keys:
+
+- **placement** — where a unit of it may be **created**. Naval is water-only in
+  the strict sense: built on water, and nowhere else.
+- **movement** — where it may **stand and walk**. An **empty** movement list is
+  how "never moves" is said: fortifications, ranged and siege all have one, so
+  that intrinsic behaviour is data rather than a special case in the engine.
+
+The two are independent on purpose, and that is what makes the late-game
+unlocks expressible: **aerial** starts able to move over water but not into
+space, and **astral** starts unable to come down to a planet. A tech that
+"grants aerial units space" is one that adds terrain to a movement list.
+
+A **group** in the editor — Ground, Water, Space, Earth, Mars, Celestial bodies,
+… — is only a shortcut for ticking many boxes at once. What is stored is always
+the explicit list, so redefining a group later can never silently redefine
+content authored against it.
 
 ## 7. Vision is not a tech
 
@@ -290,10 +313,9 @@ Currently implemented:
 | **`unit_atk`** | flat :attack: on every unit, stacking |
 | **`grant_unit`** | queues N units of a CLASS to place on the map |
 
-`grant_unit` names a **class**, never a named unit — which unit it becomes is
-resolved at placement time from the best one unlocked, so a grant queued before
-an upgrade still benefits from it. Only the four classes `data/units.js`
-implements are offerable; the design's other five have no units yet.
+`grant_unit` names a **class**, never a named unit — there is only one unit per
+class, and its stat line is read live, so a grant queued before an upgrade still
+benefits from it. All nine classes are offerable.
 
 > An earlier version carried a full effect vocabulary — ~16 ops, targets,
 > scales, filters, triggers and 50 named rule keys — and all 654 effects were

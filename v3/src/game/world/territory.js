@@ -442,11 +442,18 @@ export function canPlaceBuilding(world, t) {
  * May a granted UNIT stand here? Same as a building, but one may sit underneath
  * it — and never on the palace tile, where combat's occupancy map already holds
  * the palace and would shadow the unit.
+ *
+ * `def` is the unit CLASS being placed; its `placement` terrain set is the rule
+ * that keeps a naval unit at sea and everything else off it. Passing no def
+ * falls back to "any passable ground you control", which is what the palace
+ * garrison and the debug paths want.
  */
-export function canPlaceUnit(world, t) {
-  return !!t && t.controlled && visible(world, t) && !t.unit
-    && !(t.q === 0 && t.r === 0)
-    && isPassable(t.terrain) && !NEVER.has(t.terrain)
+export function canPlaceUnit(world, t, def = null) {
+  if (!t || !t.controlled || !visible(world, t) || t.unit) return false
+  if (t.q === 0 && t.r === 0) return false
+  if (NEVER.has(t.terrain)) return false
+  if (def) return def.placement.has(t.terrain)
+  return isPassable(t.terrain)
 }
 
 export function placeBuilding(world, t, key) {
@@ -457,8 +464,8 @@ export function placeBuilding(world, t, key) {
   return true
 }
 
-export function placeUnit(world, t, key) {
-  if (!canPlaceUnit(world, t)) return false
+export function placeUnit(world, t, key, def = null) {
+  if (!canPlaceUnit(world, t, def)) return false
   // `destroyed` is the repairable state: the unit fell in combat and stands as a
   // ruin on its tile until gold brings it back. hp comes from live stats at
   // combat start, so it is not stored.

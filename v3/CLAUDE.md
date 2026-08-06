@@ -371,8 +371,10 @@ this is the implementer's summary:
   furthest track. This is why there are no vision techs. **The reveal era also grants the
   EXPANSION PERMISSIONS** (`data/cycle.js` `EXPANSION_UNLOCKS`), each pinned to the era whose
   notch actually uncovers the ground it refers to.
-- **One unit per class, nine classes.** No named-unit ladder: techs raise the class's stat line
-  and every unit of it already on the board improves. `UNIT_CLASS_BASE` holds placeholder stats.
+- **One unit per class, nine classes**, and the class list is **content** (`content.unitClasses`,
+  the editor's Unit classes tab). No named-unit ladder: techs raise the class's stat line and
+  every unit of it already on the board improves. Each class carries **placement** and
+  **movement** terrain sets — see below.
 
 #### A row is prose PLUS a short list of effects
 A row carries a **`description`** — prose with `:token:` markup for icons ("+2 :food:", "grants
@@ -403,6 +405,15 @@ a column spec, row expansion for the effect editor, and a Feasibility tab that c
 cells dead-end a run — bounded to `activeEras`, so the twelve unbuilt eras don't drown the
 signal. Building and wonder **placement is multi-select** — the rules compose, so "coastal AND
 not adjacent to ocean" is two entries rather than a bespoke enum member.
+
+**The Unit classes tab is a FIXED SET** — nine rows, no add and no delete, and the `id` is not
+renameable, because the engine indexes units by class key. Its expanded row swaps the effect
+editor for two **terrain checklists** (placement / movement). The group buttons above each list
+(Ground, Water, Space, Earth, Mars, Celestial bodies, …) are **shortcuts only**: clicking one
+ticks or unticks its boxes, and what gets saved is always the explicit terrain list — so
+redefining a group later can never silently redefine content authored against it. `TERRAIN_KEYS`
+is derived from the terrain registry rather than re-listed, so a new terrain appears
+automatically.
 
 **The Backlog tab is out-of-scope content, not a graveyard.** Rows there are read-only until
 restored (edit after bringing something back, never before), they are excluded from validation
@@ -463,10 +474,8 @@ Implemented today:
   `unitStats` reads `mods.unitAtk` at call time, so a tech improves units placed long before
   it was taken. The palace is armed by it too.
 - **`grant_unit`** — queues N units of a CLASS onto `this.grants`, each opening its own
-  placement selection. A class, never a named unit: `grantDef` resolves it at placement time
-  via `bestOfType`, so a grant queued before an upgrade still benefits from it. Only the four
-  classes `data/units.js` implements are offerable (`GRANTABLE_CLASSES`) — offering the
-  design's other five would author a grant the engine cannot place.
+  placement selection. Stats are read live at placement, so a grant queued before an upgrade
+  still benefits from it. All nine classes are offerable.
 
 An effect param is a **number**, or a **choice** if it declares `options`. Two input types is
 all the registry has needed; both the editor and the validator branch on `p.options`.
@@ -645,10 +654,21 @@ per-neighbour bonus keyed to terrain / control / improvements / cities / other b
 That is the whole design — *where* you put it matters more than which one you got. A Lumber
 Camp in deep forest pays several times what one on the plains does.
 
-**Units** (`data/units.js`) come in four flavours: **melee, ranged, cavalry, and defensive
-construction**. A construction (Mud Brick Wall, Palisade, Stone Wall) has `atk: 0` and
-`acts: 0` — it never moves and never strikes, it just soaks a lane. The Watchtower is the one
-construction that shoots back.
+**Units** (`data/units.js`) are **one per class, nine classes, generated from
+`content.unitClasses`**. `units.js` holds no unit data of its own any more — it turns the
+content rows into defs (`acts` = the class's speed, `def` = hit points) and computes live
+stats. ⚠️ There used to be thirteen NAMED units with `bestOfType` picking the strongest
+unlocked one; that contradicted one-unit-per-class and meant two datasets describing the same
+thing, so it was deleted. Don't reintroduce named units.
+
+**Placement and movement are TERRAIN KEY SETS on the class**, and both are enforced:
+- `canPlaceUnit(world, tile, def)` — where a unit may be **created**. This is what keeps naval
+  units at sea and everything else off it. Passing no def falls back to any passable ground.
+- `_playerWalkable(tile, def)` / `unitReachCells` — where it may **stand and walk**. An
+  **empty movement set means never moves**, which is how fortifications/ranged/siege express
+  that intrinsic behaviour as data rather than as engine special cases.
+- Combat caches **one enemy-proximity field per CLASS** (`_moveFields`), not one per unit: a
+  naval route is nothing like a melee route, but there are only nine classes.
 
 **Where the army comes from is a deliberate split:**
 - **Territory** raises the *line*: each city musters one melee levy per wave, capped at

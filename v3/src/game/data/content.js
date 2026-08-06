@@ -17,7 +17,7 @@
 // The import attribute is required by Node's ESM loader (the sims run this file
 // directly, unbundled); Vite honours it too.
 import raw from './content.json' with { type: 'json' }
-import { QUADRANTS, thresholdFor } from './schema.js'
+import { QUADRANTS, thresholdFor, UNIT_CLASSES } from './schema.js'
 
 export const CONTENT = raw
 
@@ -31,6 +31,15 @@ export const WONDERS = (raw.wonders ?? []).map((w) => ({ ...w, isWonder: true })
 export const DRAFTABLE = [...TECHS, ...WONDERS]
 export const BUILDINGS = raw.buildings ?? []
 export const TIER_UNLOCKS = raw.tierUnlocks ?? []
+
+/**
+ * The nine unit classes, in the schema's canonical order regardless of how the
+ * file happens to be sorted. `data/units.js` turns these into the unit defs the
+ * engine uses — this is the ONLY definition of a unit's base stat line.
+ */
+export const UNIT_CLASS_DEFS = UNIT_CLASSES
+  .map((k) => (raw.unitClasses ?? []).find((c) => c.id === k))
+  .filter(Boolean)
 
 const BY_ID = new Map(DRAFTABLE.map((d) => [d.id, d]))
 export const draftableById = (id) => BY_ID.get(id) ?? null

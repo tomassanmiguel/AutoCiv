@@ -50,7 +50,7 @@ const TURN_CAP = 300
 // at 0.45, strength 1 wins ~95% of the time, strength 2 ~40%, strength 3 ~20%.
 const DEFENCE_RATIO = 0.45
 const MAX_GARRISON = 60
-const MIX = [['warrior', 0.5], ['slinger', 0.3], ['rider', 0.2]]
+const MIX = [['melee', 0.5], ['ranged', 0.3], ['cavalry', 0.2]]
 
 class CombatMixin {
   // --- setup ---------------------------------------------------------------
@@ -244,10 +244,16 @@ class CombatMixin {
     return domainCanTraverse(domain, tile.terrain)
   }
 
-  /** Where a player unit may stand/walk: revealed, passable land. */
-  _playerWalkable(tile) {
-    return !!tile && this._combatCells.has(key(tile.q, tile.r)) &&
-      isLand(tile.terrain) && isPassable(tile.terrain) && !(tile.q === 0 && tile.r === 0)
+  /**
+   * Where a player unit may stand/walk: inside the combat area, and on terrain
+   * ITS OWN CLASS can move over. Passing no def falls back to passable land,
+   * which is what the scratch garrison's placement scan wants.
+   */
+  _playerWalkable(tile, def = null) {
+    if (!tile || !this._combatCells.has(key(tile.q, tile.r))) return false
+    if (tile.q === 0 && tile.r === 0) return false
+    if (def) return def.movement.has(tile.terrain)
+    return isLand(tile.terrain) && isPassable(tile.terrain)
   }
 
   /**
@@ -336,7 +342,7 @@ class CombatMixin {
       c.units = c.units.filter((u) => !u.dead)
       if (this._checkEnd()) return null
       c.turn++
-      this._moveField = null
+      this._moveFields = null
       c.queue = this._buildQueue()
       if (!c.queue.length) { c.result = 'stalemate'; if (c.scratch) this.setSpeed('paused'); return null }
     }
@@ -428,10 +434,18 @@ class CombatMixin {
   //     Returns whether it actually moved.
   _playerMove(u) {
     if (u.acts <= 0) return false
+    const def = UNIT_DEFS[u.key]
+    if (!def?.movement.size) return false
     // Cached for the phase: enemies do not move during it, so one multi-source
     // BFS serves every defender instead of one sweep each.
-    if (!this._moveField) this._moveField = this._enemyProximityField()
-    const field = this._moveField
+    //
+    // ONE FIELD PER CLASS, not per unit: a naval unit's route is nothing like a
+    // melee unit's, but there are only nine classes, so this is at most nine
+    // BFS sweeps a turn rather than one per defender.
+    if (!this._moveFields) this._moveFields = new Map()
+    const sig = u.key
+    if (!this._moveFields.has(sig)) this._moveFields.set(sig, this._enemyProximityField(def))
+    const field = this._moveFields.get(sig)
     const occ = this._occupancy()
     let moved = false
     for (let s = 0; s < u.acts; s++) {
@@ -457,8 +471,8 @@ class CombatMixin {
     return moved
   }
 
-  /** Distance-to-nearest-enemy over player-walkable ground. */
-  _enemyProximityField() {
+  /** Distance-to-nearest-enemy over ground THIS CLASS can walk. */
+  _enemyProximityField(def = null) {
     const field = new Map()
     let frontier = []
     for (const e of this.combat.enemies) {
@@ -474,7 +488,7 @@ class CombatMixin {
         for (const n of neighbors(cur.q, cur.r)) {
           const nk = key(n.q, n.r)
           if (field.has(nk)) continue
-          if (!this._playerWalkable(this.world.tiles.get(nk))) continue
+          if (!this._playerWalkable(this.world.tiles.get(nk), def)) continue
           field.set(nk, step)
           next.push(n)
         }

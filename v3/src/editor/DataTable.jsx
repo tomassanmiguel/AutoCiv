@@ -3,6 +3,7 @@ import {
   ERAS, QUADRANTS, thresholdFor, PLACEMENTS, PLACEMENT_KEYS, WONDER_TIERS,
   ICON_TOKEN_KEYS, unknownTokens,
   EFFECT_KINDS, EFFECT_KEYS, blankEffect, describeEffect, describeEffects,
+  TERRAIN_KEYS, TERRAIN_GROUPS, TERRAIN_GROUP_NAMES, terrainLabel,
 } from '../game/data/schema.js'
 import Tokens from './Tokens.jsx'
 
@@ -14,7 +15,7 @@ import Tokens from './Tokens.jsx'
  * The row expands to author the DESCRIPTION — a long piece of prose with
  * `:token:` icon markup never fits in a cell, and the preview needs room.
  */
-export default function DataTable({ rows, totalRows, columns, problemsById, techOptions, groupOptions, readOnly, onRestore, onPatch, onRename, onDelete, onDuplicate }) {
+export default function DataTable({ rows, totalRows, columns, problemsById, techOptions, groupOptions, readOnly, detail = 'description', fixedRows = false, onRestore, onPatch, onRename, onDelete, onDuplicate }) {
   const [open, setOpen] = useState(null)
   // Default: era outward, then branch, then alphabetical — how you read a draft
   // pool, one tier at a time.
@@ -82,7 +83,9 @@ export default function DataTable({ rows, totalRows, columns, problemsById, tech
                   </td>
                 ))}
                 <td className="ed-actions">
-                  {onRestore ? (
+                  {/* A fixed-set table (the unit classes) has no add, duplicate
+                      or delete: the engine indexes those rows by key. */}
+                  {fixedRows ? null : onRestore ? (
                     <button className="ed-restore" title="Bring this back into scope"
                       onClick={() => onRestore(row.id)}>↩ restore</button>
                   ) : (
@@ -106,11 +109,37 @@ export default function DataTable({ rows, totalRows, columns, problemsById, tech
                       readOnly={readOnly}
                       onChange={(description) => onPatch(row.id, { description })}
                     />
-                    <EffectEditor
-                      row={row}
-                      readOnly={readOnly}
-                      onChange={(effects) => onPatch(row.id, { effects })}
-                    />
+                    {/* A unit CLASS has terrain sets instead of effects: it is a
+                        stat line the techs modify, not a thing that fires. */}
+                    {detail === 'unitClass' ? (
+                      <div className="ed-terr-pair">
+                        <div>
+                          <label className="ed-desc-label">Placement — where it may be created</label>
+                          <TerrainPicker
+                            value={row.placement}
+                            readOnly={readOnly}
+                            onChange={(placement) => onPatch(row.id, { placement })}
+                          />
+                        </div>
+                        <div>
+                          <label className="ed-desc-label">
+                            Movement — where it may stand and walk
+                            {(row.movement ?? []).length === 0 && <em> · empty means it never moves</em>}
+                          </label>
+                          <TerrainPicker
+                            value={row.movement}
+                            readOnly={readOnly}
+                            onChange={(movement) => onPatch(row.id, { movement })}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <EffectEditor
+                        row={row}
+                        readOnly={readOnly}
+                        onChange={(effects) => onPatch(row.id, { effects })}
+                      />
+                    )}
                     <div className="ed-id">id: <code>{row.id}</code></div>
                   </td>
                 </tr>
@@ -310,6 +339,18 @@ function Cell({ col, row, techOptions, groupOptions, readOnly, onPatch, onRename
     case 'name':
       return <NameCell row={row} onRename={onRename} />
 
+    // A plain label that does NOT rewrite the row's id — for rows whose id is
+    // fixed by the engine (the unit classes).
+    case 'text':
+      return (
+        <input
+          className="ed-name"
+          value={v ?? ''}
+          readOnly={readOnly}
+          onChange={(e) => onPatch(row.id, { [col.key]: e.target.value })}
+        />
+      )
+
     case 'era':
       return (
         <select className="ed-sel" value={v ?? 0} onChange={(e) => onPatch(row.id, { era: Number(e.target.value) })}>
@@ -361,6 +402,37 @@ function Cell({ col, row, techOptions, groupOptions, readOnly, onPatch, onRename
       )
     }
 
+    // A base stat. Kept as a plain number cell rather than a stepper: these get
+    // swept in a balance pass, and typing a value beats clicking to it.
+    case 'stat':
+      return (
+        <input
+          className="ed-stat"
+          type="number"
+          min={0}
+          value={v ?? 0}
+          readOnly={readOnly}
+          onChange={(e) => onPatch(row.id, { [col.key]: Number(e.target.value) })}
+        />
+      )
+
+    // The terrain sets are far too wide for a cell, so this is a COUNT that
+    // opens the row. "never moves" is called out because 0 is a real, correct
+    // value for a fortification and reads as an error otherwise.
+    case 'terrain': {
+      const n = (v ?? []).length
+      const never = n === 0 && col.key === 'movement'
+      return (
+        <button
+          className={`ed-terr-cell${isOpen ? ' on' : ''}${never ? ' never' : ''}`}
+          onClick={onToggle}
+          title={n ? (v ?? []).map(terrainLabel).join(', ') : 'nothing selected'}
+        >
+          {never ? 'never moves' : `${n} terrain`}
+        </button>
+      )
+    }
+
     case 'description':
       return (
         <button className={`ed-effects${isOpen ? ' on' : ''}`} onClick={onToggle}>
@@ -396,6 +468,69 @@ function NameCell({ row, onRename }) {
         if (e.key === 'Escape') { setDraft(row.name ?? ''); e.currentTarget.blur() }
       }}
     />
+  )
+}
+
+/**
+ * A SET OF TERRAIN — what a unit class may be created on, or move over.
+ *
+ * The full checklist is the truth and always visible: with thirty terrains and
+ * two independent sets per class, a summary chip would hide exactly the detail
+ * you opened the row to check.
+ *
+ * The GROUP buttons above it are shortcuts, nothing more. A group is never
+ * stored — clicking one ticks or unticks its boxes and what gets saved is the
+ * explicit list, so redefining a group later cannot silently redefine content
+ * already authored against it. A group whose boxes are all ticked shows as
+ * active and clicking it clears them, which is what makes overshooting cheap.
+ */
+function TerrainPicker({ value, readOnly, onChange }) {
+  const set = new Set(value ?? [])
+  const toggle = (k) => {
+    const next = new Set(set)
+    if (next.has(k)) next.delete(k); else next.add(k)
+    onChange(TERRAIN_KEYS.filter((t) => next.has(t)))
+  }
+  const toggleGroup = (name) => {
+    const group = TERRAIN_GROUPS[name]
+    const all = group.every((k) => set.has(k))
+    const next = new Set(set)
+    for (const k of group) { if (all) next.delete(k); else next.add(k) }
+    onChange(TERRAIN_KEYS.filter((t) => next.has(t)))
+  }
+
+  return (
+    <div className="ed-terr">
+      <div className="ed-terr-groups">
+        {TERRAIN_GROUP_NAMES.map((name) => {
+          const group = TERRAIN_GROUPS[name]
+          const all = group.length > 0 && group.every((k) => set.has(k))
+          const some = !all && group.some((k) => set.has(k))
+          return (
+            <button
+              key={name}
+              className={`ed-terr-group${all ? ' on' : some ? ' part' : ''}`}
+              disabled={readOnly}
+              title={all ? `Untick all ${group.length}` : `Tick all ${group.length}`}
+              onClick={() => toggleGroup(name)}
+            >{name}</button>
+          )
+        })}
+        <button className="ed-terr-group clear" disabled={readOnly} onClick={() => onChange([])}>
+          none
+        </button>
+        <span className="ed-terr-count">{set.size} of {TERRAIN_KEYS.length}</span>
+      </div>
+
+      <div className="ed-terr-list">
+        {TERRAIN_KEYS.map((k) => (
+          <label key={k} className={`ed-terr-item${set.has(k) ? ' on' : ''}`}>
+            <input type="checkbox" checked={set.has(k)} disabled={readOnly} onChange={() => toggle(k)} />
+            {terrainLabel(k)}
+          </label>
+        ))}
+      </div>
+    </div>
   )
 }
 

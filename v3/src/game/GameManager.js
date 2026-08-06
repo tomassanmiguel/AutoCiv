@@ -23,7 +23,7 @@
 //
 import { generateWorld } from './world/worldgen.js'
 import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
-import { terrainOf, isLand, isPassable } from './world/terrain.js'
+import { terrainOf, isPassable } from './world/terrain.js'
 import { key, neighbors, lengthOf, disc } from './hex/coords.js'
 import { initialResources, accrue } from './data/resources.js'
 import { QUADRANTS, OFFER_SIZE, ERAS } from './data/schema.js'
@@ -43,7 +43,7 @@ import {
 import {
   unitRepairCost, tileRepairCost, unitUpgradeCost, buildingUpgradeCost, rerollCost,
 } from './data/costs.js'
-import { PALACE, UNIT_DEFS, bestOfType, unitStats } from './data/units.js'
+import { PALACE, UNIT_DEFS, unitOfClass, unitStats } from './data/units.js'
 import { buildingDef } from './data/buildings.js'
 import { installCombat } from './manager/combat.js'
 
@@ -64,7 +64,7 @@ const GOLD_WEIGHT = 0.5
  * the web happened to offer a military node before the first wave — a coin flip
  * the player cannot influence, which is not a decision.
  */
-const STARTING_UNIT = 'warrior'
+const STARTING_CLASS = 'melee'
 const STARTING_UNITS = 1
 
 /**
@@ -360,8 +360,8 @@ export class GameManager {
 
   /**
    * Each city raises one levy, up to a cap set by how many cities you hold.
-   * The levy is always the best unlocked MELEE unit — the tech tree's ranged,
-   * cavalry and constructions stay things you have to be granted.
+   * The levy is always MELEE — ranged, cavalry and walls stay things the draft
+   * has to grant you.
    */
   _musterFromCities() {
     const cities = [...this.world.terr.cities]
@@ -372,10 +372,7 @@ export class GameManager {
     let room = cities.length * UNITS_PER_CITY_CAP - held
     if (room <= 0) return 0
 
-    const levy = [...this.mods.units]
-      .map((k) => UNIT_DEFS[k])
-      .filter((d) => d?.type === 'melee')
-      .sort((a, b) => (b.atk + b.def) - (a.atk + a.def))[0]
+    const levy = unitOfClass('melee')
     if (!levy) return 0
 
     let raised = 0
@@ -384,10 +381,10 @@ export class GameManager {
       for (let i = 0; i < MUSTER_PER_CITY && room > 0; i++) {
         // Nearest free ground to that city, so the levy defends its own home.
         const spot = [...this.world.terr.controlled]
-          .filter((t) => canPlaceUnit(this.world, t))
+          .filter((t) => canPlaceUnit(this.world, t, levy))
           .sort((a, b) => lengthOfDiff(a, city) - lengthOfDiff(b, city))[0]
         if (!spot) break
-        placeUnit(this.world, spot, levy.key)
+        placeUnit(this.world, spot, levy.key, levy)
         raised++
         room--
       }
@@ -398,12 +395,14 @@ export class GameManager {
 
   /** Ring the palace with the opening garrison, nearest tiles first. */
   _garrisonStart() {
-    this.mods.units.add(STARTING_UNIT)
+    const start = unitOfClass(STARTING_CLASS)
+    if (!start) return
+    this.mods.units.add(STARTING_CLASS)
     const spots = [...this.world.terr.controlled]
-      .filter((t) => canPlaceUnit(this.world, t))
+      .filter((t) => canPlaceUnit(this.world, t, start))
       .sort((a, b) => a.d - b.d)
     for (let i = 0; i < STARTING_UNITS && i < spots.length; i++) {
-      placeUnit(this.world, spots[i], STARTING_UNIT)
+      placeUnit(this.world, spots[i], STARTING_CLASS, start)
     }
   }
 
@@ -650,7 +649,9 @@ export class GameManager {
     if (!def) return null
     const s = unitStats(def, this.wave, this.mods, u.level ?? 1)
 
-    const walkable = (t) => !!t && isLand(t.terrain) && isPassable(t.terrain) &&
+    // The class's own movement terrain, so the preview matches what combat will
+    // actually let it do. A class with an empty movement set shows no blue.
+    const walkable = (t) => !!t && def.movement.has(t.terrain) &&
       t.revealStage <= this.stage && !(t.q === 0 && t.r === 0)
 
     const move = new Set()
@@ -720,9 +721,15 @@ export class GameManager {
   /** Legal tiles for the granted item at the head of the queue. */
   _placementTargets(item) {
     if (!item) return []
-    const ok = item.kind === 'building' ? canPlaceBuilding : canPlaceUnit
     const out = []
-    for (const t of this.world.terr.controlled) if (ok(this.world, t)) out.push(t)
+    if (item.kind === 'building') {
+      for (const t of this.world.terr.controlled) if (canPlaceBuilding(this.world, t)) out.push(t)
+      return out
+    }
+    // A unit's own class decides its ground — that is what keeps naval units at
+    // sea and everything else off it.
+    const def = this.grantDef(item)
+    for (const t of this.world.terr.controlled) if (canPlaceUnit(this.world, t, def)) out.push(t)
     return out
   }
 
@@ -751,7 +758,7 @@ export class GameManager {
   grantDef(item) {
     if (!item) return null
     if (item.kind === 'building') return buildingDef(item.key)
-    return item.key ? UNIT_DEFS[item.key] : bestOfType(item.type, this.mods.units)
+    return UNIT_DEFS[item.key ?? item.type] ?? null
   }
 
   /** Put the granted unit/building down. */
@@ -762,7 +769,7 @@ export class GameManager {
     if (!def) return false
     const ok = sel.item.kind === 'building'
       ? placeBuilding(this.world, tile, def.key)
-      : placeUnit(this.world, tile, def.key)
+      : placeUnit(this.world, tile, def.key, def)
     if (!ok) return false
     this.grants.shift()
     this.selection = null

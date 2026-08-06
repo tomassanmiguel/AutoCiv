@@ -12,6 +12,7 @@ const TABS = [
   { key: 'techs', label: 'Techs' },
   { key: 'buildings', label: 'Buildings' },
   { key: 'wonders', label: 'Wonders' },
+  { key: 'unitClasses', label: 'Unit classes' },
   { key: 'tierUnlocks', label: 'Tier unlocks' },
   { key: 'backlog', label: 'Backlog' },
   { key: 'feasibility', label: 'Feasibility' },
@@ -26,6 +27,8 @@ const EMPTY = {
   techs: [],
   buildings: [],
   wonders: [],
+  // The nine unit classes. Fixed set — you edit them, you do not add to them.
+  unitClasses: [],
   tierUnlocks: [],
   // Designed but out of the current build's scope. Same shape, restorable.
   backlog: { techs: [], buildings: [], wonders: [], tierUnlocks: [] },
@@ -281,11 +284,13 @@ export default function App() {
           <FilterBar
             filters={filters}
             setFilters={setFilters}
-            showQuadrant={tab !== 'buildings' && tab !== 'tierUnlocks'}
-            showEra
+            showQuadrant={tab !== 'buildings' && tab !== 'tierUnlocks' && tab !== 'unitClasses'}
+            showEra={tab !== 'unitClasses'}
             shown={filtered.length}
             total={rows.length}
-            onAdd={() => addRow(tab)}
+            // The nine classes are a FIXED SET — the engine indexes units by
+            // class key, so there is nothing to add and nothing to delete.
+            onAdd={tab === 'unitClasses' ? null : () => addRow(tab)}
           />
           <DataTable
             rows={filtered}
@@ -295,6 +300,8 @@ export default function App() {
             techOptions={techOptions}
             groupOptions={groupOptions}
             readOnly={tab === 'backlog'}
+            detail={tab === 'unitClasses' ? 'unitClass' : 'description'}
+            fixedRows={tab === 'unitClasses'}
             onRestore={tab === 'backlog' ? restore : null}
             onPatch={(id, patch) => patchRow(tab, id, patch)}
             onRename={(id, name) => renameRow(tab, id, name)}
@@ -343,6 +350,19 @@ const COLUMNS = {
     { key: 'placement', label: 'Placement', kind: 'placements', width: 200 },
     { key: 'group', label: 'Exclusive group', kind: 'group', width: 120 },
     { key: 'effects', label: 'Wired', kind: 'wired', width: 62 },
+    { key: 'description', label: 'Description', kind: 'description' },
+  ],
+  // The nine classes. `id` is NOT editable — the engine indexes units by class
+  // key, so renaming one would orphan every grant that names it.
+  unitClasses: [
+    { key: 'icon', label: '', kind: 'icon', width: 44, options: ICONS },
+    { key: 'name', label: 'Class', kind: 'text', width: 150 },
+    { key: 'atk', label: 'Atk', kind: 'stat', width: 62 },
+    { key: 'def', label: 'Def', kind: 'stat', width: 62 },
+    { key: 'speed', label: 'Spd', kind: 'stat', width: 62 },
+    { key: 'range', label: 'Rng', kind: 'stat', width: 62 },
+    { key: 'placement', label: 'Placement', kind: 'terrain', width: 110 },
+    { key: 'movement', label: 'Movement', kind: 'terrain', width: 110 },
     { key: 'description', label: 'Description', kind: 'description' },
   ],
   // No branch column: a tier unlock fires when ANY branch reaches its era.
@@ -407,7 +427,7 @@ function FilterBar({ filters, setFilters, showQuadrant, showEra, shown, total, o
       </label>
 
       <span className="ed-shown">{shown} of {total}</span>
-      <button className="ed-add" onClick={onAdd}>+ New</button>
+      {onAdd && <button className="ed-add" onClick={onAdd}>+ New</button>}
       {(filters.eras.length || filters.quadrants.length || filters.search || filters.issues || filters.rules) ? (
         <button className="ed-clear" onClick={() => setFilters({ eras: [], quadrants: [], search: '', issues: false, rules: false })}>
           clear
