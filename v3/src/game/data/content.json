@@ -46,8 +46,18 @@
       "quadrant": "military",
       "era": 0,
       "icon": "/sprites/icons/attack.png",
-      "description": "+3 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 3 }],
+      "description": "+3 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 3
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -57,8 +67,18 @@
       "quadrant": "military",
       "era": 1,
       "icon": "/sprites/icons/attack.png",
-      "description": "+5 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 5 }],
+      "description": "+5 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 5
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -68,8 +88,18 @@
       "quadrant": "military",
       "era": 2,
       "icon": "/sprites/icons/attack.png",
-      "description": "+7 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 7 }],
+      "description": "+7 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 7
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -79,8 +109,18 @@
       "quadrant": "military",
       "era": 4,
       "icon": "/sprites/icons/attack.png",
-      "description": "+11 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 11 }],
+      "description": "+11 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 11
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -90,8 +130,18 @@
       "quadrant": "military",
       "era": 6,
       "icon": "/sprites/icons/attack.png",
-      "description": "+17 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 17 }],
+      "description": "+17 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 17
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -101,8 +151,18 @@
       "quadrant": "military",
       "era": 8,
       "icon": "/sprites/icons/attack.png",
-      "description": "+27 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 27 }],
+      "description": "+27 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 27
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -112,8 +172,18 @@
       "quadrant": "military",
       "era": 10,
       "icon": "/sprites/icons/attack.png",
-      "description": "+42 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 42 }],
+      "description": "+42 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 42
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -123,8 +193,18 @@
       "quadrant": "military",
       "era": 12,
       "icon": "/sprites/icons/attack.png",
-      "description": "+65 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 65 }],
+      "description": "+65 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 65
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     },
@@ -134,8 +214,18 @@
       "quadrant": "military",
       "era": 13,
       "icon": "/sprites/icons/attack.png",
-      "description": "+100 :attack: to all units.",
-      "effects": [{ "kind": "unit_atk", "amount": 100 }],
+      "description": "+100 :attack: to all units. Grants 1 :melee: unit to place.",
+      "effects": [
+        {
+          "kind": "unit_atk",
+          "amount": 100
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
       "requires": [],
       "group": ""
     }

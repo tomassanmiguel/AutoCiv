@@ -42,7 +42,9 @@ export const stageForEra = (era) =>
 export const EXPANSION_UNLOCKS = [
   { key: 'tundra', era: 1, label: 'Cold Weathering', desc: 'Expand into tundra.' },
   { key: 'desert', era: 2, label: 'Irrigation', desc: 'Expand into desert.' },
-  { key: 'ocean', era: 5, label: 'Ocean Navigation', desc: 'Expand across open ocean, and onto a New World coast.' },
+  // Outposts are never on water, so this does not settle the sea — it lets you
+  // LAND: islands, and a first footing on the New World's border.
+  { key: 'ocean', era: 5, label: 'Ocean Navigation', desc: 'Settle islands, and land on the New World.' },
   { key: 'mountain', era: 6, label: 'Mountaineering', desc: 'Expand onto mountains (never cities).' },
   { key: 'asteroid', era: 7, label: 'Asteroid Mining', desc: 'Expand onto asteroids.' },
   { key: 'moon', era: 8, label: 'Lunar Landing', desc: 'Expand to a Moon border tile.' },

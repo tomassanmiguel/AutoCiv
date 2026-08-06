@@ -109,25 +109,45 @@ that spans pools, and a group of one.
 | resource | on crossing a threshold |
 |---|---|
 | **:food:** | **Expands automatically.** No prompt: the highest-yield available outpost is created, pushing your borders outward. |
+
 | **:production:** | **Prompts you to found a city** — *unless* you are holding an undrafted wonder, in which case you build the wonder instead. |
 | **:progress:** | Offers 3 advancements from the three current pools. |
 
 City founding **no longer depends on food**. Food buys ground; production builds
 on it.
 
-### Auto-expansion prefers ground you can build on
+### Where an outpost may go
 
-"Highest yield" needs one correction or the rule eats itself. Coast yields **3**
-while every early land terrain yields **2**, so a literal reading settles the
-entire coastline first — and **a city cannot be founded on water**. Measured: a
-run reached wave 4 with six outposts, no city site, and no way to ever get one.
+**AN OUTPOST IS NEVER ON WATER.** Water still yields once your border reaches it
+— control spreads onto it and it pays its :gold: — but it can never be settled,
+and so can never be built on. Crossing the sea is done by *landing*, not by
+settling a chain of ocean tiles.
 
-So the rule is: **land you could later build on wins first**; among those,
-highest yield; ties break **outward** (that is what "pushing your borders
-outward" means). Water is still settled once the land in reach is used up.
+**You may settle any tile you can SEE, if it is one of:**
 
-Food buys ground, production builds on it — and ground you can never build on is
-not ground.
+1. **adjacent** to ground you control — adjacency to the controlled border, so it
+   reaches one ring past your outposts;
+2. on the **border of a settleable region you have not entered** — the New World,
+   the Moon, Mars, the exoplanet. This is the only way in: you cannot appear in
+   the middle of Mars;
+3. an **isolated speck** — an island, asteroid, planet, star, singularity or the
+   exomoon. Nothing is ever adjacent to these, so the border rule would strand
+   them forever.
+
+Terrain gates (tundra, desert, mountain, and the off-world unlocks) still apply
+on top.
+
+### "Highest yield" counts :gold: at HALF
+
+:gold: is the only resource with **no threshold** — it buys repairs and upgrades
+rather than compounding into growth — so a raw sum overrates gold-heavy ground.
+At full weight desert (3 :gold:) outranked plains and hills; at half it does not.
+
+```
+score = :food: + :production: + :progress: + 0.5 × :gold:
+```
+
+Ties break **outward**, which is what "pushing your borders outward" means.
 
 ## 4. Wonders are drafted techs
 
@@ -165,15 +185,18 @@ The attack line, as authored, is lightly exponential across the whole game:
 | +3 | +5 | +7 | +11 | +17 | +27 | +42 | +65 | +100 |
 
 Taking all nine is **+277 attack**. They carry no prerequisites: skipping one
-costs you its number, not the rest of the line.
+costs you its number, not the rest of the line. **Each also grants a :melee:
+unit to place**, so the line is the army's size as well as its edge.
 
 The brief's own wording is the tell: it says *"increases all unit atk by 3"*,
 which is additive language. A tech that overwrote an earlier one would have had
 to say *"sets"*.
 
-- **Rural tile** — controlled, with no outpost and no city.
+- **Rural tile** — controlled, with no outpost and no city. Water is always this
+  and never more.
 - **Outpost** — a settled tile. Its yield is multiplied (×2 to start; Feudalism
-  and Quantum Logistics add to that factor). **Outposts have no citizens.**
+  and Quantum Logistics add to that factor). **Outposts have no citizens, and are
+  never on water.**
 - **City** — has a population of citizens. "Adjacent outposts or citizens" means
   *number of adjacent outposts + total population of adjacent cities*.
 
@@ -260,7 +283,17 @@ with no effects is written down and does nothing — which is fine and expected
 while the pool is being rebuilt; the editor's **Wired** column is how you see
 which is which.
 
-Currently implemented: **`unit_atk`** — flat :attack: on every unit, stacking.
+Currently implemented:
+
+| kind | what it does |
+|---|---|
+| **`unit_atk`** | flat :attack: on every unit, stacking |
+| **`grant_unit`** | queues N units of a CLASS to place on the map |
+
+`grant_unit` names a **class**, never a named unit — which unit it becomes is
+resolved at placement time from the best one unlocked, so a grant queued before
+an upgrade still benefits from it. Only the four classes `data/units.js`
+implements are offerable; the design's other five have no units yet.
 
 > An earlier version carried a full effect vocabulary — ~16 ops, targets,
 > scales, filters, triggers and 50 named rule keys — and all 654 effects were

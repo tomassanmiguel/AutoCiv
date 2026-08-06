@@ -30,16 +30,18 @@ export const CITY_START_POP = 1
 export const cityPopCost = (pop) => Math.round(CITY_POP_BASE * Math.pow(CITY_POP_GROWTH, pop - 1))
 
 // Which expansion unlock a terrain needs, if any.
+// ⚠️ No WATER terrain appears here, and that is not an oversight: an outpost can
+// never be on water at all (`canExpandOnto`), so a gate for ocean or exosea
+// would be dead configuration that reads as a rule.
 const TERRAIN_GATE = {
   island: 'ocean', // you need boats to reach one
   tundra: 'tundra', exotundra: 'tundra',
   desert: 'desert', exodesert: 'desert',
   mountain: 'mountain', exomountain: 'mountain',
-  ocean: 'ocean',
   asteroid: 'asteroid',
   moon: 'moon', lunar_crater: 'moon',
   mars: 'mars', mars_ice: 'mars', mars_mountain: 'mars',
-  exoplains: 'exoplanet', exohills: 'exoplanet', exosea: 'exoplanet', exomoon: 'exoplanet',
+  exoplains: 'exoplanet', exohills: 'exoplanet', exomoon: 'exoplanet',
   planet: 'planet', star: 'star', singularity: 'singularity',
 }
 
@@ -168,6 +170,12 @@ const isRegionBorder = (world, t) => (world.terr.borders[t.region] ?? []).includ
 export function canExpandOnto(world, t, unlocks) {
   if (!t || NEVER.has(t.terrain)) return false
   if (!visible(world, t)) return false
+  // AN OUTPOST IS NEVER ON WATER. Water still yields once your border reaches
+  // it — control spreads onto it and it pays its :gold: — but it can never be
+  // settled, and so can never be built on either. This replaces the old `ocean`
+  // TERRAIN_GATE path: crossing the sea is done by landing on a gated region's
+  // BORDER, not by settling a chain of ocean tiles.
+  if (isWater(t.terrain)) return false
   const gate = gateFor(t)
   if (gate && !unlocks.has(gate)) return false
   if (ALWAYS_REACHABLE.has(t.terrain)) return true
@@ -184,44 +192,46 @@ export function canExpandOnto(world, t, unlocks) {
 /**
  * Everything a single expansion could be spent on right now.
  *
- *  improve — a controlled, unimproved tile, OR a legal FOOTHOLD: the border of
- *            a gated region you have not entered, reachable without adjacency
- *            (that is what "expand across the ocean" buys you)
- *  city    — an improved tile that may become a city
+ * SETTLE ANYTHING YOU CAN SEE THAT TOUCHES YOU. Three ways in, and no others:
+ *
+ *  1. ADJACENT — a visible tile next to ground you control. Note this is
+ *     adjacency to the CONTROLLED border, not to an improvement, so it reaches
+ *     one ring further out than the old "must already be controlled" rule.
+ *  2. FOOTHOLD — the border of a gated region you have not entered yet (the
+ *     New World, the Moon, Mars, the exoplanet). This is the ONLY way in: you
+ *     cannot appear in the middle of Mars, and since outposts can no longer sit
+ *     on water you cannot walk a chain of ocean tiles there either.
+ *  3. SPECK — an isolated island/asteroid/star that nothing is ever adjacent to.
+ *     The border-first rule would strand these forever.
+ *
+ *  city — an improved tile that may become a city
  */
 export function expansionTargets(world, unlocks) {
   const improve = []
   const city = []
   const seen = new Set()
 
-  // Ordinary expansion: anything you already control that is not yet improved.
-  for (const t of world.terr.controlled) {
-    if (t.improved || seen.has(t)) continue
-    if (!canExpandOnto(world, t, unlocks)) continue
+  const offer = (t) => {
+    if (!t || t.improved || seen.has(t)) return
+    if (!canExpandOnto(world, t, unlocks)) return
     seen.add(t)
     improve.push(t)
   }
 
-  // Footholds: the border of a gated region you have not entered yet. This is
-  // the only expansion that ignores adjacency — it is what "expand across the
-  // ocean" actually buys.
+  // 1. Adjacent: the controlled tiles themselves, and everything touching them.
+  for (const t of world.terr.controlled) {
+    offer(t)
+    for (const n of neighbors(t.q, t.r)) offer(world.at(n.q, n.r))
+  }
+
+  // 2. Footholds: the border of a gated region you have not entered yet.
   for (const [region, gate] of Object.entries(GATED_REGIONS)) {
     if (!unlocks.has(gate) || regionEntered(world, region)) continue
-    for (const t of world.terr.borders[region] ?? []) {
-      if (t.improved || seen.has(t)) continue
-      if (!canExpandOnto(world, t, unlocks)) continue
-      seen.add(t)
-      improve.push(t)
-    }
+    for (const t of world.terr.borders[region] ?? []) offer(t)
   }
 
-  // Isolated specks stay reachable for the whole run, not just the first time.
-  for (const t of world.terr.isolated) {
-    if (t.improved || seen.has(t)) continue
-    if (!canExpandOnto(world, t, unlocks)) continue
-    seen.add(t)
-    improve.push(t)
-  }
+  // 3. Isolated specks stay reachable for the whole run, not just the first time.
+  for (const t of world.terr.isolated) offer(t)
 
   for (const t of world.terr.improved) if (canFoundCity(world, t)) city.push(t)
   return { improve, city }

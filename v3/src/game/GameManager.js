@@ -51,6 +51,15 @@ import { installCombat } from './manager/combat.js'
 const PALACE_REGEN = 0.25
 
 /**
+ * What :gold: is worth when comparing one tile against another.
+ *
+ * HALF, because gold is the only resource with no threshold: it buys repairs and
+ * upgrades rather than compounding into growth, so a raw sum overrates
+ * gold-heavy ground.
+ */
+const GOLD_WEIGHT = 0.5
+
+/**
  * What you start with. Without this, surviving era 0 depends entirely on whether
  * the web happened to offer a military node before the first wave — a coin flip
  * the player cannot influence, which is not a decision.
@@ -257,28 +266,25 @@ export class GameManager {
    * highest-yield outpost available, with no prompt. An outpost DOUBLES the
    * tile's yield, so the best tile to settle is simply the best tile.
    *
-   * ⚠️ WITH ONE CORRECTION, and it is load-bearing. Coast yields 3 while every
-   * early land terrain yields 2, so a literal "highest yield" rule settles the
-   * entire coastline before it ever touches land — and a city cannot be founded
-   * on water. Left literal, a run reaches wave 4 with six outposts, no city
-   * site, and no way to ever get one. So GROUND YOU CAN BUILD ON WINS FIRST:
-   * food buys ground, production builds on it, and ground you can never build on
-   * is not ground.
+   * ⚠️ :gold: COUNTS HALF. It is the only resource with no threshold — it buys
+   * repairs and upgrades rather than compounding into growth — so a raw sum
+   * overrates gold-heavy ground. At full weight, desert (3 :gold:) outranked
+   * plains and hills; at half it does not.
    *
-   * Water is still settled once the land in reach is used up.
+   * Ties break OUTWARD, since the design's word for what food buys is "pushing
+   * your borders outward" and hugging the palace is the opposite of that.
+   *
+   * Water needs no special case here: an outpost can never be on it
+   * (`canExpandOnto`), so it is never in `targets` at all.
    */
   _autoExpand() {
     const targets = expansionTargets(this.world, this.unlocks).improve
     if (!targets.length) return false
     const yieldOf = (t) => {
       const y = terrainOf(t.terrain).yields
-      return y.food + y.production + y.gold + y.progress
+      return y.food + y.production + y.progress + y.gold * GOLD_WEIGHT
     }
-    const buildable = targets.filter((t) => isLand(t.terrain) && isPassable(t.terrain))
-    const pool = buildable.length ? buildable : targets
-    // Ties break OUTWARD — the design's word for what food buys is "pushing your
-    // borders outward", and hugging the palace is the opposite of that.
-    const best = pool.reduce((a, b) => {
+    const best = targets.reduce((a, b) => {
       const d = yieldOf(b) - yieldOf(a)
       return d > 0 || (d === 0 && b.d > a.d) ? b : a
     })
@@ -803,6 +809,15 @@ export class GameManager {
       // long before the tech was taken.
       case 'unit_atk':
         this.mods.unitAtk += f.amount ?? 0
+        break
+      // A CLASS grant, never a named unit: which unit it becomes is resolved by
+      // `grantDef` at placement time from the best one unlocked, so a grant
+      // queued before an upgrade still benefits from it. Each queued item opens
+      // its own placement selection.
+      case 'grant_unit':
+        for (let i = 0; i < (f.count ?? 1); i++) {
+          this.grants.push({ kind: 'unit', type: f.unitClass })
+        }
         break
       default:
         // Unreachable via valid content; loud rather than silent if it happens.

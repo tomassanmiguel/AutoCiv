@@ -457,9 +457,19 @@ producing an offer.
 editor's **Wired** column shows at a glance which rows the engine actually runs. A row with
 no effects is written down and does nothing — normal while the pool is being rebuilt.
 
-Implemented today: **`unit_atk`** — flat :attack: on every unit, **stacking**. Nothing is
-stored on the unit; `unitStats` reads `mods.unitAtk` at call time, so a tech improves units
-placed long before it was taken. The palace is armed by it too.
+Implemented today:
+
+- **`unit_atk`** — flat :attack: on every unit, **stacking**. Nothing is stored on the unit;
+  `unitStats` reads `mods.unitAtk` at call time, so a tech improves units placed long before
+  it was taken. The palace is armed by it too.
+- **`grant_unit`** — queues N units of a CLASS onto `this.grants`, each opening its own
+  placement selection. A class, never a named unit: `grantDef` resolves it at placement time
+  via `bestOfType`, so a grant queued before an upgrade still benefits from it. Only the four
+  classes `data/units.js` implements are offerable (`GRANTABLE_CLASSES`) — offering the
+  design's other five would author a grant the engine cannot place.
+
+An effect param is a **number**, or a **choice** if it declares `options`. Two input types is
+all the registry has needed; both the editor and the validator branch on `p.options`.
 
 ⚠️ **The weapon/armour TIER ladder was deleted** (`WEAPON_TIERS`, `ARMOR_TIERS`, `bestTier`).
 It replaced rather than stacked, contradicting the design's central rule, and it
@@ -570,20 +580,30 @@ Each threshold resource does something DIFFERENT, and only two of the three stop
 
 `_restartTimer` is gated on `!selection`, exactly as v2's selections were.
 
-⚠️ **`_autoExpand` prefers ground you can BUILD on**, then highest yield, ties breaking
-outward. Coast out-yields every early land tile and cities cannot stand on water, so a literal
-"highest yield" rule settled the whole coastline and left a run with **no city site and no
-route to one**. See `docs/design.md` §3 — it is a design decision, not an implementation
-detail, and it is recorded there.
+`_autoExpand` scores `food + production + progress + 0.5·gold` (`GOLD_WEIGHT`), ties breaking
+outward. ⚠️ **Gold counts HALF** because it is the only resource with no threshold — it buys
+repairs and upgrades rather than compounding — and at full weight desert outranked plains and
+hills. Water needs no special case: an outpost can never be on it, so it is never a target.
 
 ## Territory & expansion (`world/territory.js`)
 
 Two depths, and they are now driven by DIFFERENT resources:
 
-- **Settle** (:food:, automatic) — improve a controlled tile: its yield **doubles** and all six
-  neighbours become controlled. This is what makes the *next* expansion possible.
+- **Settle** (:food:, automatic) — improve a tile: its yield **doubles** and all six neighbours
+  become controlled. This is what makes the *next* expansion possible.
 - **Found city** (:production:, prompted) — upgrade an improvement: no new ground, but the
   city's population compounds and adds to production/gold/progress on top of the tile's yield.
+
+⚠️ **AN OUTPOST IS NEVER ON WATER** (`canExpandOnto`). Water is still controlled and still
+pays its :gold: — it just cannot be settled, and therefore cannot be built on. No water
+terrain appears in `TERRAIN_GATE` any more; a gate there would be dead config reading as a
+rule.
+
+**What may be settled** (`expansionTargets`) is anything VISIBLE that is one of:
+**adjacent** to the controlled border (one ring past your outposts — this used to require the
+tile to already be controlled), the **border of a gated region you have not entered**
+(the only way onto the New World, Moon, Mars, exoplanet), or an **isolated speck** that
+nothing is ever adjacent to.
 
 Rules: cities never adjacent to another city, never on mountains, **never on water** (a city
 may sit beside water and take the growth bonus, but is founded on land), and only where there
@@ -637,9 +657,8 @@ construction that shoots back.
   around wave 5 regardless of play.
 - **The draft** gives *quality* — stacking +:attack: today, and the arms a levy never is
   (bows, horses, walls) once those effect kinds exist.
-- You **start** with a single Warrior. ⚠️ **Nothing in the pool grants a unit or a building
-  yet** — no effect kind does that — so the army is city levies and the board holds no
-  buildings. That is the content shortfall, not a bug.
+- You **start** with a single Warrior, and every +:attack: tech grants a :melee: unit on top.
+  ⚠️ **Nothing grants a BUILDING yet** — no effect kind does — so the board holds none.
 
 Placement reuses the expansion affordance: legal tiles pulse, you click one. Units never stand
 on the palace tile (combat's occupancy map holds the palace there and would shadow them).

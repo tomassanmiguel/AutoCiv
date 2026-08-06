@@ -148,6 +148,15 @@ export const ICONS = [
  *
  * ⚠️ Read the note at the top of this file before adding to it.
  */
+/**
+ * Unit classes an effect may GRANT today.
+ *
+ * ⚠️ The design has nine (`UNIT_CLASSES` above); `data/units.js` implements four.
+ * Offering the other five would author a grant the engine cannot place, so they
+ * are deliberately absent until units exist for them.
+ */
+export const GRANTABLE_CLASSES = ['melee', 'ranged', 'cavalry', 'defense']
+
 export const EFFECT_KINDS = {
   unit_atk: {
     // `label` renders inside a <select>, which cannot hold an icon — so it is
@@ -156,6 +165,19 @@ export const EFFECT_KINDS = {
     hint: 'Flat :attack: on every unit you control, present and future. Stacks with every other +:attack: tech — there is no weapon tier.',
     params: [{ key: 'amount', label: 'Attack', min: 0, default: 3 }],
     describe: (e) => `+${e.amount ?? 0} :attack: to all units.`,
+  },
+
+  grant_unit: {
+    label: 'Grant units of a class',
+    hint: 'Queues units to place on the map. The CLASS is what is granted, not a named unit — which unit it becomes is resolved at placement time from the best one you have unlocked, so a grant queued before an upgrade still benefits from it.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: GRANTABLE_CLASSES, default: 'melee' },
+      { key: 'count', label: 'How many', min: 1, default: 1 },
+    ],
+    describe: (e) => {
+      const n = e.count ?? 1
+      return `Grants ${n} :${e.unitClass === 'defense' ? 'fort' : e.unitClass}: unit${n === 1 ? '' : 's'} to place.`
+    },
   },
 }
 export const EFFECT_KEYS = Object.keys(EFFECT_KINDS)
@@ -317,7 +339,14 @@ export function validateContent(content) {
       const spec = EFFECT_KINDS[e?.kind]
       if (!spec) { out.push(`${row.id}: unknown effect kind "${e?.kind}" — nothing in the engine runs it`); continue }
       for (const p of spec.params) {
-        if (!Number.isFinite(e[p.key])) out.push(`${row.id}: effect ${e.kind} needs a number for "${p.key}"`)
+        // A param with `options` is a choice; anything else is a number.
+        if (p.options) {
+          if (!p.options.includes(e[p.key])) {
+            out.push(`${row.id}: effect ${e.kind} has "${p.key}" = "${e[p.key]}" — must be one of ${p.options.join(', ')}`)
+          }
+        } else if (!Number.isFinite(e[p.key])) {
+          out.push(`${row.id}: effect ${e.kind} needs a number for "${p.key}"`)
+        }
       }
     }
   }

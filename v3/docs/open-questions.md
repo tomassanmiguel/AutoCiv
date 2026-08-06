@@ -8,20 +8,17 @@ techs yet to be invented.
 > **parked in the backlog** and does not block the current slice. The section
 > marked *"In the microcosm"* is what actually matters this week.
 
-## DECIDED: auto-expansion prefers buildable ground
+## DECIDED: what "highest-yield outpost" means
 
 **Q:** ":food: creates the highest-yield available outpost" — highest yield by
 what measure?
 
-**Decided while implementing it, because the literal reading does not work.**
-Coast yields 3, every early land terrain yields 2, so "highest total yield"
-settles the whole coastline first — and a city cannot be founded on water. A
-measured run reached wave 4 with six outposts, no city site, and no route to one.
+**Answered by the designer:** :gold: counts at **half**, and **outposts can never
+be on water**. Both are in [`design.md`](design.md) §3.
 
-The rule as built: **land you could build on wins first**, then highest yield,
-ties breaking outward. Water is settled once the land in reach is used up.
-Recorded in [`design.md`](design.md) §3. **Overturn it if the intent was
-different** — it is one comparator in `GameManager._autoExpand`.
+An interim rule that preferred buildable ground has been **removed**: it existed
+only to stop the auto-expansion settling nothing but coastline, and the no-water
+rule now does that outright.
 
 ## In the microcosm — the gaps that block the playable slice
 

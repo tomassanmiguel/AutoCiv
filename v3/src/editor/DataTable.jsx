@@ -224,16 +224,29 @@ function EffectEditor({ row, readOnly, onChange }) {
               ))}
             </select>
 
+            {/* A param with `options` is a choice; everything else is a number.
+                Two input types is all the registry has ever needed. */}
             {(spec?.params ?? []).map((p) => (
               <label key={p.key} className="ed-fx-param">
                 {p.label}
-                <input
-                  type="number"
-                  min={p.min}
-                  value={e[p.key] ?? ''}
-                  readOnly={readOnly}
-                  onChange={(ev) => patch(i, { [p.key]: Number(ev.target.value) })}
-                />
+                {p.options ? (
+                  <select
+                    className="ed-sel"
+                    value={e[p.key] ?? ''}
+                    disabled={readOnly}
+                    onChange={(ev) => patch(i, { [p.key]: ev.target.value })}
+                  >
+                    {p.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    min={p.min}
+                    value={e[p.key] ?? ''}
+                    readOnly={readOnly}
+                    onChange={(ev) => patch(i, { [p.key]: Number(ev.target.value) })}
+                  />
+                )}
               </label>
             ))}
 
