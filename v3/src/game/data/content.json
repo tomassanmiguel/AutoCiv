@@ -1559,7 +1559,7 @@
       "name": "Beaconing",
       "era": 3,
       "icon": "/sprites/icons/defense.png",
-      "description": "Grants 1 :fort: fortification. Fortifications gain 25% of one commander’s effect.",
+      "description": "Grants 1 :fort: fortification. Fortifications gain 25% of the commander ZOC upgrade-level bonus.",
       "effects": [
         {
           "kind": "grant_unit",
@@ -1567,8 +1567,9 @@
           "count": 1
         },
         {
-          "kind": "class_gains_pct_of_commander_effect",
+          "kind": "class_gains_pct_of_zoc_upgrade_level",
           "unitClass": "fortification",
+          "sourceClass": "commander",
           "pct": 25
         }
       ],
@@ -1783,6 +1784,218 @@
       "effects": [
         {
           "kind": "palimpsest"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "leadership",
+      "name": "Leadership",
+      "quadrant": "military",
+      "era": 1,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "tactics",
+      "name": "Tactics",
+      "quadrant": "military",
+      "era": 3,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Commanders grant +1 additional upgrade level in their ZOC. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_upgrade_level_bonus",
+          "unitClass": "commander",
+          "amount": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "admiralty",
+      "name": "Admiralty",
+      "quadrant": "military",
+      "era": 5,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Commanders may be placed anywhere you control. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_placement_unrestricted",
+          "unitClass": "commander"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "corps",
+      "name": "Corps",
+      "quadrant": "military",
+      "era": 6,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Commanders grant +2 additional upgrade level in their ZOC. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_upgrade_level_bonus",
+          "unitClass": "commander",
+          "amount": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "battlefield_medicine",
+      "name": "Battlefield Medicine",
+      "quadrant": "military",
+      "era": 7,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Units in the command radius heal 5% of their :defense: every time they act. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_heal_on_act_pct",
+          "unitClass": "commander",
+          "pct": 5
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "jingoism",
+      "name": "Jingoism",
+      "quadrant": "military",
+      "era": 8,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Commanders grant +3 additional upgrade level in their ZOC. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_upgrade_level_bonus",
+          "unitClass": "commander",
+          "amount": 3
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "combined_arms",
+      "name": "Combined Arms",
+      "quadrant": "military",
+      "era": 9,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Commanders grant +25% :crit: chance to units in their ZOC. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_crit_chance_pct",
+          "unitClass": "commander",
+          "amount": 25
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "hybridism",
+      "name": "Hybridism",
+      "quadrant": "military",
+      "era": 12,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Buildings in the command radius also receive upgrade levels from commanders. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_upgrade_level_applies_to_buildings",
+          "unitClass": "commander"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "psyionic_linking",
+      "name": "Psyionic Linking",
+      "quadrant": "military",
+      "era": 13,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Commanders grant +4 additional upgrade level in their ZOC. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_upgrade_level_bonus",
+          "unitClass": "commander",
+          "amount": 4
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "multiversal_command",
+      "name": "Multiversal Command",
+      "quadrant": "military",
+      "era": 14,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Units in the command radius act twice per turn. Grants 1 :commander: unit.",
+      "effects": [
+        {
+          "kind": "class_zoc_double_turn",
+          "unitClass": "commander"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "commander",
+          "count": 1
         }
       ],
       "requires": [],
@@ -6314,13 +6527,13 @@
       "description": "Space only — the void and the bodies in it. Cannot come down to a planet until a tech lets it."
     },
     {
-      "id": "command",
-      "name": "Command",
+      "id": "commander",
+      "name": "Commander",
       "icon": "/sprites/ui/utility.png",
       "atk": 0,
       "def": 24,
       "range": 0,
-      "speed": 1,
+      "speed": 0,
       "placement": [
         "plains",
         "forest",
@@ -6334,20 +6547,10 @@
         "exotundra",
         "fallout"
       ],
-      "movement": [
-        "plains",
-        "forest",
-        "hills",
-        "desert",
-        "tundra",
-        "island",
-        "exoplains",
-        "exohills",
-        "exodesert",
-        "exotundra",
-        "fallout"
-      ],
-      "description": "INTRINSIC: never attacks. Buffs every friendly unit inside its radius of 2."
+      "movement": [],
+      "description": "INTRINSIC: never attacks or moves. Projects a zone of control (radius 2) that treats every unit inside it as +1 upgrade level (more with techs).",
+      "zoc": 2,
+      "zocBonus": 1
     },
     {
       "id": "fortification",

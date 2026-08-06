@@ -166,7 +166,12 @@ class CombatMixin {
     let id = 0
     for (let i = 0; i < placed.length; i++) {
       const { t, def } = placed[i]
-      const level = t.unit.level ?? 1
+      const baseLevel = t.unit.level ?? 1
+      // COMMANDER ZOC: units inside a commander's radius fight as several upgrade
+      // levels higher — a LIVE bonus, never written to the stored level. Read here
+      // (combat.units is not built yet, so `_zocSources` reads the board) and
+      // re-read each turn for movers (`_syncZocStats`).
+      const level = baseLevel + this._effectiveLevelBonus(def.key, t.q, t.r)
       // `extra` = per-unit formation flat + the persistent EARNED-flats
       // (Marksmanship's atk, Defensive Tactics' def), kept across combats.
       const extra = { ...formation[i], earnedAtk: t.unit.earnedAtk ?? 0, earnedDef: t.unit.earnedDef ?? 0 }
@@ -188,8 +193,8 @@ class CombatMixin {
         dead: false, lastAttackSeq: null, lastAttackDir: null,
         // Ranged-theme per-unit combat state.
         preload: 0, poisonEscalator: 0,
-        // Kept so a mid-combat earned-atk gain can be recomputed exactly.
-        _extra: extra, _level: level,
+        // Kept so a mid-combat re-sync (earned-atk gain, ZOC move) recomputes exactly.
+        _extra: extra, _level: level, _baseLevel: baseLevel,
       }
 
       // Banked shots at combat start (Quivers / Volley Fire).
@@ -200,6 +205,92 @@ class CombatMixin {
       units.push(piece)
     }
     return units
+  }
+
+  // --- commander ZONE OF CONTROL --------------------------------------------
+  //
+  // A commander projects a ZOC (intrinsic radius). Units inside it are treated as
+  // several UPGRADE LEVELS higher — the same counter a gold upgrade raises, but a
+  // live, position-dependent modifier that is never written to `unit.level`. The
+  // bonus is applied at combat start (above) and re-read each turn for movers, so
+  // a unit that walks out of the radius loses it. The riders (heal / crit / double
+  // turn) share the same membership test.
+
+  /** Classes that project a ZOC (have a `zoc` radius). Commander today. */
+  _zocClasses() {
+    const out = []
+    for (const k in UNIT_DEFS) if ((UNIT_DEFS[k].zoc ?? 0) > 0) out.push(k)
+    return out
+  }
+
+  /** A class's per-unit ZOC upgrade-level bonus: intrinsic base + techs. */
+  _zocUpgradeBonus(cls) {
+    return (UNIT_DEFS[cls]?.zocBonus ?? 0) + (this.mods.classZocUpgradeBonus[cls] ?? 0)
+  }
+
+  /** Living units of `cls` — combat pieces once fighting, else the board. */
+  _zocSources(cls) {
+    const cu = this.combat.units
+    if (this.combat.active && cu.length) return cu.filter((u) => u.type === cls && !u.dead)
+    const out = []
+    for (const t of this.world.terr.controlled) {
+      if (t.unit?.key === cls && !t.unit.destroyed) out.push({ q: t.q, r: t.r })
+    }
+    return out
+  }
+
+  /** Is (q,r) inside any living `cls` unit's ZOC? */
+  _inClassZoc(cls, q, r) {
+    const radius = UNIT_DEFS[cls]?.zoc ?? 0
+    if (radius <= 0) return false
+    for (const s of this._zocSources(cls)) if (distance(q, r, s.q, s.r) <= radius) return true
+    return false
+  }
+
+  /** Aggregate ZOC effect at (q,r): extra upgrade levels + heal/crit/double riders. */
+  _zocFlagsAt(q, r) {
+    const m = this.mods
+    let level = 0, heal = 0, crit = 0, double = false
+    for (const cls of this._zocClasses()) {
+      if (!this._inClassZoc(cls, q, r)) continue
+      level += this._zocUpgradeBonus(cls)
+      heal = Math.max(heal, m.classZocHealPct[cls] ?? 0)
+      crit += m.classZocCritPct[cls] ?? 0
+      if (m.classZocDoubleTurn[cls]) double = true
+    }
+    return { level, heal, crit, double }
+  }
+
+  /** The live upgrade-level bonus a unit of `key` at (q,r) receives. */
+  _effectiveLevelBonus(key, q, r) {
+    let b = this._zocFlagsAt(q, r).level
+    // Beaconing: a class gains a floored % of a source class's ZOC upgrade bonus,
+    // globally (not position-dependent) — read live off the techs held.
+    const share = this.mods.classGainsZocUpgrade[key]
+    if (share) b += Math.floor((share.pct / 100) * this._zocUpgradeBonus(share.sourceClass))
+    return b
+  }
+
+  /**
+   * Re-apply the live ZOC upgrade level to units that MOVE (melee/cavalry), each
+   * turn. Non-movers keep their combat-start stats — their position is fixed, so
+   * their ZOC bonus (and their fort-adjacency / ranged-range bonuses) never change.
+   * HP is scaled by the preserved ratio so a full unit stays full.
+   */
+  _syncZocStats() {
+    if (!this._zocClasses().length) return
+    for (const u of this.combat.units) {
+      if (u.dead) continue
+      const def = UNIT_DEFS[u.key]
+      if (!def?.movement.size) continue
+      const level = (u._baseLevel ?? 1) + this._effectiveLevelBonus(u.key, u.q, u.r)
+      const s = unitStats(def, this.wave, this.mods, level, u._extra)
+      const ratio = u.maxHp > 0 ? u.hp / u.maxHp : 1
+      u.atk = s.atk
+      u.maxHp = s.def
+      u.hp = Math.max(1, Math.round(ratio * s.def))
+      u.acts = s.acts
+    }
   }
 
   /**
@@ -220,7 +311,9 @@ class CombatMixin {
     if (i < 0) return null
     const { t, def } = placed[i]
     const m = this.mods
-    const level = t.unit.level ?? 1
+    // Include the live commander-ZOC upgrade bonus so the card shows true stats.
+    const zocBonus = this._effectiveLevelBonus(def.key, t.q, t.r)
+    const level = (t.unit.level ?? 1) + zocBonus
     const formation = this._formationFlats(placed)[i]
     const extra = { ...formation, earnedAtk: t.unit.earnedAtk ?? 0, earnedDef: t.unit.earnedDef ?? 0 }
     const s = unitStats(def, this.wave, m, level, extra)
@@ -239,7 +332,7 @@ class CombatMixin {
       atkBasePct: m.unitAtkBasePct ?? 0, defBasePct: m.unitDefBasePct ?? 0,
       earnedAtk: t.unit.earnedAtk ?? 0, earnedDef: t.unit.earnedDef ?? 0,
       formationAtk: formation.atkFlat, formationDef: formation.defFlat,
-      classDefFlat: m.classDefFlat?.[def.key] ?? 0, fortAdj,
+      classDefFlat: m.classDefFlat?.[def.key] ?? 0, fortAdj, zoc: zocBonus,
     }
   }
 
@@ -472,8 +565,20 @@ class CombatMixin {
     const byFront = c.enemies.filter((e) => !e.dead)
       .sort((a, b) => this._distToPalace(a) - this._distToPalace(b))
     for (const e of byFront) q.push({ phase: 'enemy-move', side: 'enemy', id: e.id })
-    for (const u of c.units) if (!u.dead && u.acts > 0) q.push({ phase: 'player-move', side: 'player', id: u.id })
-    for (const u of c.units) if (!u.dead) q.push({ phase: 'player-attack', side: 'player', id: u.id })
+    // A commander ZOC with `double_turn` (Multiversal Command) gives its units a
+    // SECOND move and attack — doubling every per-act trigger downstream (heal,
+    // preload discharge, poison, retaliation exposure) for free, because they all
+    // hang off the extra beats.
+    for (const u of c.units) {
+      if (u.dead || u.acts <= 0) continue
+      q.push({ phase: 'player-move', side: 'player', id: u.id })
+      if (this._zocFlagsAt(u.q, u.r).double) q.push({ phase: 'player-move', side: 'player', id: u.id })
+    }
+    for (const u of c.units) {
+      if (u.dead) continue
+      q.push({ phase: 'player-attack', side: 'player', id: u.id })
+      if (this._zocFlagsAt(u.q, u.r).double) q.push({ phase: 'player-attack', side: 'player', id: u.id })
+    }
     q.push({ phase: 'player-attack', side: 'palace', id: 'palace' })
     for (const e of byFront) q.push({ phase: 'enemy-attack', side: 'enemy', id: e.id })
     return q
@@ -516,6 +621,8 @@ class CombatMixin {
       if (this._checkEnd()) return null
       c.turn++
       this._moveFields = null
+      // Re-apply the live commander ZOC upgrade level to movers before the turn.
+      this._syncZocStats()
       c.queue = this._buildQueue()
       if (!c.queue.length) { c.result = 'stalemate'; if (c.scratch) this.setSpeed('paused'); return null }
     }
@@ -535,11 +642,15 @@ class CombatMixin {
       // A defensive construction has atk 0: it never strikes, it only soaks.
       // Ranged units run the whole poison/chain/preload flow; everyone else lands
       // a single blow on the lowest-HP enemy in reach.
-      case 'player-attack':
+      case 'player-attack': {
         visible = piece.type === 'ranged'
           ? this._rangedAttack(piece)
           : piece.atk > 0 && this._strike(piece, this._lowestHpWithin(c.enemies, piece, piece.range))
+        // Battlefield Medicine: acting inside a commander ZOC heals a % of max HP.
+        const heal = this._zocFlagsAt(piece.q, piece.r).heal
+        if (heal && !piece.dead && piece.hp < piece.maxHp) this._healPiece(piece, Math.max(1, Math.round(piece.maxHp * heal / 100)))
         break
+      }
       case 'enemy-attack': visible = this._enemyAttack(piece); break
       default: break
     }
@@ -777,7 +888,9 @@ class CombatMixin {
     if (allowCrit && base > 0 && (attacker.side === 'player' || attacker.side === 'enemy')) {
       let chance = BASE_CRIT_CHANCE
       if (attacker.side === 'player') {
+        // Three crit sources: universal, class-scoped, and ZOC-scoped (Combined Arms).
         chance += (this.mods?.unitCritChancePct ?? 0) + (this.mods?.classCritChance?.[attacker.type] ?? 0)
+          + this._zocFlagsAt(attacker.q, attacker.r).crit
       }
       chance = Math.min(1, chance)
       if (this._critRng() < chance) { base *= CRIT_MULT; crit = true }
@@ -814,6 +927,17 @@ class CombatMixin {
     c.actionSeq = (c.actionSeq ?? 0) + 1
     c.events.push({ id: `${c.actionSeq}-retal-${attacker.id}`, q: attacker.q, r: attacker.r, amount, crit: false, kind: 'damage' })
     if (attacker.hp <= 0) { attacker.hp = 0; attacker.dead = true; this._onUnitDeath(attacker) }
+  }
+
+  /** Heal a piece, capped at max HP, with a floating green number (ZOC medicine). */
+  _healPiece(piece, amount) {
+    const before = piece.hp
+    piece.hp = Math.min(piece.maxHp, piece.hp + amount)
+    const healed = piece.hp - before
+    if (healed <= 0) return
+    const c = this.combat
+    c.actionSeq = (c.actionSeq ?? 0) + 1
+    c.events.push({ id: `${c.actionSeq}-heal-${piece.id}`, q: piece.q, r: piece.r, amount: healed, crit: false, kind: 'heal' })
   }
 
   /**

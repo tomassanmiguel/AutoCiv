@@ -92,7 +92,7 @@ export const REVEAL_STAGES = [
  */
 export const UNIT_CLASSES = [
   'melee', 'ranged', 'cavalry', 'siege', 'naval', 'aerial', 'astral',
-  'command', 'fortification',
+  'commander', 'fortification',
 ]
 
 // ---------------------------------------------------------------------------
@@ -234,6 +234,9 @@ export const ICONS = [
  *
  * ⚠️ Read the note at the top of this file before adding to it.
  */
+/** The icon token for a unit class ('fortification' renders as :fort:). */
+const zocTok = (e) => (e?.unitClass === 'fortification' ? 'fort' : e?.unitClass ?? 'commander')
+
 export const EFFECT_KINDS = {
   unit_atk_base_pct: {
     // `label` renders inside a <select>, which cannot hold an icon — so it is
@@ -557,14 +560,64 @@ export const EFFECT_KINDS = {
     ],
     describe: (e) => `At combat end, :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units and their neighbours permanently gain +${e.amount ?? 0} :defense:.`,
   },
-  class_gains_pct_of_commander_effect: {
-    label: 'Class — share of commander effect (STUB)',
-    hint: 'A unit of the class gains a % of a commander\'s effect. Commander units do not exist yet, so this is WIRED BUT INERT until they land.',
+  // --- commander theme (ZONE OF CONTROL) -------------------------------------
+  // A commander projects a ZOC (intrinsic radius); units inside it are treated as
+  // several UPGRADE LEVELS higher — a live, position-dependent stat boost, never a
+  // permanent write. These techs grow that bonus and add riders inside the ZOC.
+  class_zoc_upgrade_level_bonus: {
+    label: 'Class — +ZOC upgrade level',
+    hint: 'A unit of the class grants this many ADDITIONAL live upgrade levels to units inside its ZOC (on top of the intrinsic base). Stacks additively across techs.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'commander' },
+      { key: 'amount', label: 'Upgrade levels', min: 0, default: 1 },
+    ],
+    describe: (e) => `:${zocTok(e)}: grants +${e.amount ?? 0} upgrade level to units in its ZOC.`,
+  },
+  class_zoc_double_turn: {
+    label: 'Class — ZOC units act twice',
+    hint: 'Units inside the class\'s ZOC take TWO actions per turn — doubling every per-act effect (attacks, healing, preload discharge, poison, retaliation exposure).',
+    params: [{ key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'commander' }],
+    describe: (e) => `Units in a :${zocTok(e)}: ZOC act twice per turn.`,
+  },
+  class_zoc_heal_on_act_pct: {
+    label: 'Class — ZOC heal on act',
+    hint: 'Units inside the class\'s ZOC heal this % of their max :defense: each time they act.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'commander' },
+      { key: 'pct', label: 'Percent', min: 0, default: 5 },
+    ],
+    describe: (e) => `Units in a :${zocTok(e)}: ZOC heal ${e.pct ?? 0}% :defense: whenever they act.`,
+  },
+  class_zoc_crit_chance_pct: {
+    label: 'Class — ZOC crit chance',
+    hint: 'Units inside the class\'s ZOC gain this much :crit: chance (a third crit source alongside the universal and class-scoped dials).',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'commander' },
+      { key: 'amount', label: 'Percent', min: 0, default: 25 },
+    ],
+    describe: (e) => `Units in a :${zocTok(e)}: ZOC gain +${e.amount ?? 0}% :crit: chance.`,
+  },
+  class_zoc_upgrade_level_applies_to_buildings: {
+    label: 'Class — ZOC upgrade level hits buildings',
+    hint: 'The class\'s ZOC upgrade-level bonus ALSO applies to buildings inside the radius, as building effect level (+25% per level to their effects).',
+    params: [{ key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'commander' }],
+    describe: (e) => `Buildings in a :${zocTok(e)}: ZOC gain its upgrade level as building effect level.`,
+  },
+  class_placement_unrestricted: {
+    label: 'Class — may be placed anywhere',
+    hint: 'Removes the class\'s placement-terrain restriction: a unit of it may be created on any tile you control.',
+    params: [{ key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'commander' }],
+    describe: (e) => `:${zocTok(e)}: units may be placed on any controlled tile.`,
+  },
+  class_gains_pct_of_zoc_upgrade_level: {
+    label: 'Class — share of a ZOC upgrade level',
+    hint: 'A unit of `unitClass` gains this % of `sourceClass`\'s current ZOC upgrade-level bonus as its own live upgrade level (floored). Read live off the techs held.',
     params: [
       { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'fortification' },
+      { key: 'sourceClass', label: 'Source class', options: UNIT_CLASSES, default: 'commander' },
       { key: 'pct', label: 'Percent', min: 0, default: 25 },
     ],
-    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain ${e.pct ?? 0}% of a commander's effect (not yet active).`,
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain ${e.pct ?? 0}% of :${e?.sourceClass === 'commander' ? 'commander' : e?.sourceClass}: ZOC upgrade level.`,
   },
 
   // --- unique -----------------------------------------------------------------
@@ -710,6 +763,7 @@ export const ICON_TOKENS = {
   aerial: '/sprites/ui/aerial.png',
   astral: '/sprites/ui/astral.png',
   utility: '/sprites/ui/utility.png',
+  commander: '/sprites/ui/utility.png',
   fort: '/sprites/ui/defense.png',
   policy: '/sprites/ui/policy.png',
   pop: '/sprites/ui/pop.png',

@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **85 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **96 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -566,9 +566,17 @@ Implemented today:
   `retaliate_flat_damage_on_class_attacked`, `building_effect_level_bonus_adjacent_to_class`
   (the **effect-level** lever — see below), `class_self_tile_yield_bonus` (unit twin of a building's
   self-tile bonus, resolved in `territoryYield`), `end_of_combat_def_earned_for_class_and_adjacent`
-  (mirrors the earned-atk slot with an **earned-DEF** slot, `t.unit.earnedDef`), and
-  `class_gains_pct_of_commander_effect` (⚠️ **STUB** — commanders don't exist; the mod is stored but
-  no code reads it). See § Fortifications below.
+  (mirrors the earned-atk slot with an **earned-DEF** slot, `t.unit.earnedDef`). See § Fortifications.
+- **commander theme (7 kinds) — ZONE OF CONTROL.** A commander (class `commander`, atk 0, never
+  moves, `zoc`=2 radius, `zocBonus`=1 base) treats units in its radius as several **upgrade levels**
+  higher — a LIVE, position-dependent modifier (`_effectiveLevelBonus` in combat.js), never written
+  to `unit.level`. `class_zoc_upgrade_level_bonus` grows it; `class_zoc_double_turn` (2nd move+attack
+  beat, doubles per-act triggers), `class_zoc_heal_on_act_pct`, `class_zoc_crit_chance_pct` (3rd crit
+  source) are ZOC riders; `class_zoc_upgrade_level_applies_to_buildings` (Hybridism) feeds the bonus
+  to buildings as **effect level** (unit upgrade level and building effect level are the SAME
+  counter); `class_placement_unrestricted` (Admiralty) drops the terrain rule; and
+  `class_gains_pct_of_zoc_upgrade_level` (Beaconing) gives a fortification a floored % of the bonus.
+  See § Commanders below.
 
 An effect param is a **number**, a **choice** (`options`), or a **bool** (`type:'bool'`, a
 checkbox — used by `road_network`'s Maglev rider). An effect may also have **no params** at all
@@ -669,6 +677,17 @@ generate, then watch it play out at 2/6/12/30 beats per second (or Step / Resolv
   state lives on the piece (`preload`, `poisonEscalator`); permanent per-unit state lives on the
   tile instance (`t.unit.earnedAtk`, `t.unit.stationaryCombats` — the latter reset by
   repositioning). See § Ranged theme in design.md for the full behaviour.
+- **COMMANDER ZONE OF CONTROL** (`_zocFlagsAt`, `_effectiveLevelBonus`, `_syncZocStats`): a
+  commander unit projects a ZOC (radius from `UNIT_DEFS.commander.zoc`). Units inside are treated
+  as `zocBonus + Σ techs` upgrade levels higher — applied at combat start (`_playerArmy`) and
+  **re-synced each turn for movers** (non-movers have fixed positions, so their bonus is fixed;
+  re-syncing them would also drop their fort-adjacency/ranged-range bonuses). HP is scaled by the
+  preserved ratio on re-sync. `_zocSources` reads combat pieces while fighting, the board otherwise
+  (so `_playerArmy`, running before `combat.units` is assigned, correctly reads placed commanders).
+  Riders: `_buildQueue` adds a second move+attack beat for ZOC units under **double-turn**;
+  `_runOneBeat`'s player-attack heals via `_healPiece` under **heal-on-act**; `_dealBlow` adds the
+  ZOC **crit** chance. Beaconing's fortification share is folded into `_effectiveLevelBonus`
+  (global, floored). Hybridism's building crossover lives in territory.js `bonusEffectLevels`.
 
 
 ---
@@ -715,10 +734,11 @@ be built right now** — a drafted wonder just stays held until production is re
 
 Two depths, and they are now driven by DIFFERENT resources:
 
-- **Settle** (:food:, automatic) — improve a tile: its yield **doubles** and all six neighbours
+- **Settle** (:food:, a manual pick) — improve a tile: its yield **doubles** and all six neighbours
   become controlled. This is what makes the *next* expansion possible.
-- **Found city** (:production:, prompted) — upgrade an improvement: no new ground, but the
-  city's population compounds and adds to production/gold/progress on top of the tile's yield.
+- **Found city** (:food:, the other resolution of the same expand choice) — upgrade an improvement:
+  no new ground, but the city's population compounds and adds to production/gold/progress on top of
+  the tile's yield.
 
 ⚠️ **AN OUTPOST IS NEVER ON WATER** (`canExpandOnto`). Water is still controlled and still
 pays its :gold: — it just cannot be settled, and therefore cannot be built on. No water

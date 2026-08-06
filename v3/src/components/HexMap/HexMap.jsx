@@ -821,7 +821,9 @@ export default function HexMap() {
             {combat.events.map((ev) => { const c = centerOf(ev.q, ev.r); return (
               <div key={ev.id} className={`combat-float ${ev.kind}${ev.crit ? ' crit' : ''}`}
                 style={{ left: c.x, top: c.y, fontSize: HEX_W * (ev.crit ? 0.32 : 0.26) }}>
-                {ev.kind === 'raze' ? `${ev.amount} razed!` : `−${ev.amount}${ev.crit ? ' CRIT' : ''}`}
+                {ev.kind === 'raze' ? `${ev.amount} razed!`
+                  : ev.kind === 'heal' ? `+${ev.amount}`
+                    : `−${ev.amount}${ev.crit ? ' CRIT' : ''}`}
               </div>
             ) })}
           </>
@@ -915,6 +917,7 @@ function TileTip({ game, tile, battlefield }) {
                   {s.range > 0 && <span className="hex-tip-yield"><IconText>{`:range: ${Number.isFinite(s.range) ? s.range : '∞'}`}</IconText></span>}
                   {s.acts > 0 && <span className="hex-tip-yield"><IconText>{`:speed: ${s.acts}`}</IconText></span>}
                   {s.taunt > 0 && <span className="hex-tip-yield">taunt {s.taunt}</span>}
+                  {s.zoc > 0 && <span className="hex-tip-yield">+{s.zoc} ZOC lvl</span>}
                 </div>
                 <div className="hex-tip-gear">
                   <StatLine label="Base" atk={s.baseAtk} def={s.baseDef} />

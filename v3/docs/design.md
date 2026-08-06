@@ -338,7 +338,13 @@ Currently implemented:
 | **`building_effect_level_bonus_adjacent_to_class`** | buildings adjacent to the class gain effect levels |
 | **`class_self_tile_yield_bonus`** | a unit of the class adds +resource to its own tile's yield |
 | **`end_of_combat_def_earned_for_class_and_adjacent`** | at combat end, the class + its neighbours earn permanent :defense: |
-| **`class_gains_pct_of_commander_effect`** | ⚠️ STUB — inert until commander units exist |
+| **`class_zoc_upgrade_level_bonus`** | +live upgrade levels to units in the class's ZOC (see § Commanders) |
+| **`class_zoc_double_turn`** | units in the ZOC act twice per turn |
+| **`class_zoc_heal_on_act_pct`** | units in the ZOC heal %:defense: whenever they act |
+| **`class_zoc_crit_chance_pct`** | units in the ZOC gain +% :crit: chance |
+| **`class_zoc_upgrade_level_applies_to_buildings`** | the ZOC upgrade level also raises building effect level |
+| **`class_placement_unrestricted`** | the class may be placed on any controlled tile |
+| **`class_gains_pct_of_zoc_upgrade_level`** | a class gains a floored % of another's ZOC upgrade bonus (Beaconing) |
 | **`palimpsest`** | at each combat end, recover a random unchosen tech from an earlier era |
 | **`grant_building`** | grants a BUILDING (by id) to place on the map (see § Buildings) |
 | **`self_tile_yield_bonus`** | +resource on the building's own tile |
@@ -493,8 +499,35 @@ The theme's techs work these levers:
 (every other class can, once buildings exist). It can be placed anywhere its terrain set
 allows, widened by `class_placement_terrain_add` like any class.
 
-**A commander rider is stubbed.** `class_gains_pct_of_commander_effect` (Beaconing) is
-wired but **inert** — commander units do not exist yet, so there is no aura value to read.
+**Beaconing** ties into commanders: a fortification gains a floored **25% of the commander
+ZOC upgrade-level bonus** as its own live upgrade level (`class_gains_pct_of_zoc_upgrade_level`,
+read live off the commander techs held) — see § Commanders.
+
+## 12d. Commanders (ZONE OF CONTROL)
+
+A **commander** is a stationary command post — atk 0, **never attacks or moves** — that
+projects a **zone of control**: an intrinsic radius (**2**) around it. Every unit inside the
+ZOC is treated as several **UPGRADE LEVELS** higher — the *same* counter a gold upgrade
+raises, but a **live, position-dependent** modifier that is **never written to the unit's
+stored level**. Walk out of the radius and the bonus is gone; the real level (and what it
+costs to actually upgrade) is untouched.
+
+- The bonus is **base 1** (granted the moment you hold a commander, zero techs) plus every
+  `class_zoc_upgrade_level_bonus` tech, summed. It is applied at combat start and **re-read
+  each turn for units that move**, so a melee advancing out of the ZOC loses it mid-fight.
+- **Unit upgrade level and building effect level are the same underlying counter**, applied
+  to different targets. `class_zoc_upgrade_level_applies_to_buildings` (Hybridism) hands the
+  commander's ZOC bonus to **buildings** in range as **building effect level** (+25%/level).
+- The ZOC also carries riders for units inside it: **heal on act** (Battlefield Medicine),
+  **+crit chance** (Combined Arms — a *third* crit source after universal and class-scoped),
+  and **act twice per turn** (Multiversal Command). ⚠️ The double turn is a second move+attack
+  beat, so it **doubles every per-act trigger for free** — the heal, a ranged unit's poison
+  and banked-shot discharge — because they all hang off the extra beat.
+- **Admiralty** (`class_placement_unrestricted`) drops the commander's placement-terrain
+  restriction: it may go on any controlled tile.
+
+A quarter of an integer level is usually fractional; **Beaconing floors it** (`floor(pct/100 ×
+bonus)`), the safe default.
 
 ### Effect level — a general building lever
 

@@ -43,6 +43,10 @@ export const UNIT_DEFS = Object.fromEntries(UNIT_CLASS_DEFS.map((c) => [c.id, {
   // Intrinsic taunt range: how far the class pulls enemies onto itself. Only
   // fortifications taunt today (base 2); techs widen it. 0 = does not taunt.
   taunt: c.taunt ?? 0,
+  // ZONE OF CONTROL: the radius a commander projects, and the base upgrade-level
+  // bonus it grants units inside it (granted with zero techs). 0 = no ZOC.
+  zoc: c.zoc ?? 0,
+  zocBonus: c.zocBonus ?? 0,
   // A fortification is a structure and cannot be placed on a building tile
   // (other classes share a tile with a building freely).
   blockedByBuilding: c.id === 'fortification',

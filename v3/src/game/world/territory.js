@@ -19,6 +19,7 @@
 import { neighbors, key as hkey, lengthOf, disc } from '../hex/coords.js'
 import { terrainOf, isWater, isLand, isPassable, travelClass } from './terrain.js'
 import { buildingYield, buildingDef } from '../data/buildings.js'
+import { UNIT_DEFS } from '../data/units.js'
 
 // --- City growth knobs -----------------------------------------------------
 export const CITY_POP_BASE = 260      // food for pop 2
@@ -493,18 +494,34 @@ function distanceToNearestBuilding(world, t, buildings) {
   return Number.isFinite(best) ? best : 40
 }
 
-/** Bonus EFFECT LEVELS a building gets from adjacent units (Castle Towns). */
+/** Bonus EFFECT LEVELS a building gets from nearby units (Castle Towns / Hybridism). */
 function bonusEffectLevels(world, t, mods) {
-  const belc = mods?.buildingEffectLevelAdjacentClass
-  if (!belc) return 0
   let lv = 0
-  for (const cls in belc) {
-    const amt = belc[cls]
-    if (!amt) continue
-    if (neighbors(t.q, t.r).some((n) => {
-      const o = world.tiles.get(hkey(n.q, n.r))
-      return o?.unit && !o.unit.destroyed && o.unit.key === cls
-    })) lv += amt
+  // Castle Towns: buildings ADJACENT to a class gain effect levels.
+  const belc = mods?.buildingEffectLevelAdjacentClass
+  if (belc) {
+    for (const cls in belc) {
+      const amt = belc[cls]
+      if (!amt) continue
+      if (neighbors(t.q, t.r).some((n) => {
+        const o = world.tiles.get(hkey(n.q, n.r))
+        return o?.unit && !o.unit.destroyed && o.unit.key === cls
+      })) lv += amt
+    }
+  }
+  // Hybridism: a commander's ZOC upgrade bonus ALSO raises the effect level of
+  // buildings inside its radius (the same counter, applied to a building target).
+  const zocToBuildings = mods?.classZocUpgradeToBuildings
+  if (zocToBuildings) {
+    for (const cls in zocToBuildings) {
+      if (!zocToBuildings[cls]) continue
+      const radius = UNIT_DEFS[cls]?.zoc ?? 0
+      const bonus = (UNIT_DEFS[cls]?.zocBonus ?? 0) + (mods.classZocUpgradeBonus?.[cls] ?? 0)
+      if (radius <= 0 || bonus <= 0) continue
+      for (const c of world.terr.controlled) {
+        if (c.unit?.key === cls && !c.unit.destroyed && lengthOf(t.q - c.q, t.r - c.r) <= radius) { lv += bonus; break }
+      }
+    }
   }
   return lv
 }
@@ -696,7 +713,9 @@ export function canPlaceUnit(world, t, def = null) {
   // A unit and a building share a tile freely — EXCEPT a fortification, which is
   // a structure in its own right and cannot stand on top of a building.
   if (def?.blockedByBuilding && t.building) return false
-  if (def) return def.placement.has(t.terrain)
+  // `unrestricted` (Admiralty) drops the class's terrain restriction: anywhere
+  // passable you control is legal.
+  if (def) return def.unrestricted ? isPassable(t.terrain) : def.placement.has(t.terrain)
   return isPassable(t.terrain)
 }
 

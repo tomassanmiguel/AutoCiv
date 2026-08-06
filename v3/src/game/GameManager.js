@@ -118,7 +118,15 @@ function freshMods() {
     buildingEffectLevelAdjacentClass: {}, // class -> +building effect level for adjacent buildings
     classSelfTileYield: {},           // class -> { resource -> amount added to its own tile }
     endCombatEarnedDefClass: {},      // class -> permanent +def to it + neighbours at combat end
-    classGainsCommanderPct: {},       // class -> % of a commander's effect (STUB — no source yet)
+
+    // --- commander theme (ZONE OF CONTROL) ---
+    classZocUpgradeBonus: {},         // class -> ADDITIONAL ZOC upgrade levels (on top of class base)
+    classZocDoubleTurn: {},           // class -> units in its ZOC act twice per turn
+    classZocHealPct: {},              // class -> % max :defense: healed on act inside its ZOC
+    classZocCritPct: {},              // class -> +crit fraction inside its ZOC
+    classZocUpgradeToBuildings: {},   // class -> its ZOC upgrade level also raises building effect level
+    classPlacementUnrestricted: new Set(), // classes with no placement-terrain restriction
+    classGainsZocUpgrade: {},         // class -> { sourceClass, pct } (Beaconing: share of a ZOC bonus)
 
     // --- unique ---
     palimpsest: 0,                    // # of random prior-era techs to recover at each combat end
@@ -899,9 +907,15 @@ export class GameManager {
    * unchanged when nothing was added, so the common path allocates nothing.
    */
   _placeDef(def) {
-    const add = def && this.mods.classPlacementAdd[def.key]
-    if (!add || !add.size) return def
-    return { ...def, placement: new Set([...def.placement, ...add]) }
+    if (!def) return def
+    const unrestricted = this.mods.classPlacementUnrestricted.has(def.key)
+    const add = this.mods.classPlacementAdd[def.key]
+    if (!unrestricted && (!add || !add.size)) return def
+    return {
+      ...def,
+      unrestricted,
+      placement: add?.size ? new Set([...def.placement, ...add]) : def.placement,
+    }
   }
 
   /** Put the granted unit/building down. */
@@ -1029,10 +1043,27 @@ export class GameManager {
       case 'end_of_combat_def_earned_for_class_and_adjacent':
         this.mods.endCombatEarnedDefClass[f.unitClass] = (this.mods.endCombatEarnedDefClass[f.unitClass] ?? 0) + (f.amount ?? 0)
         break
-      case 'class_gains_pct_of_commander_effect':
-        // STUB: commander units do not exist, so there is no aura value to read.
-        // Wire the mod so authoring works; it is inert until commanders land.
-        this.mods.classGainsCommanderPct[f.unitClass] = (this.mods.classGainsCommanderPct[f.unitClass] ?? 0) + (f.pct ?? 0)
+      // --- commander theme (ZOC) ---
+      case 'class_zoc_upgrade_level_bonus':
+        this.mods.classZocUpgradeBonus[f.unitClass] = (this.mods.classZocUpgradeBonus[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_zoc_double_turn':
+        this.mods.classZocDoubleTurn[f.unitClass] = true
+        break
+      case 'class_zoc_heal_on_act_pct':
+        this.mods.classZocHealPct[f.unitClass] = (this.mods.classZocHealPct[f.unitClass] ?? 0) + (f.pct ?? 0)
+        break
+      case 'class_zoc_crit_chance_pct':
+        this.mods.classZocCritPct[f.unitClass] = (this.mods.classZocCritPct[f.unitClass] ?? 0) + (f.amount ?? 0) / 100
+        break
+      case 'class_zoc_upgrade_level_applies_to_buildings':
+        this.mods.classZocUpgradeToBuildings[f.unitClass] = true
+        break
+      case 'class_placement_unrestricted':
+        this.mods.classPlacementUnrestricted.add(f.unitClass)
+        break
+      case 'class_gains_pct_of_zoc_upgrade_level':
+        this.mods.classGainsZocUpgrade[f.unitClass] = { sourceClass: f.sourceClass, pct: f.pct ?? 0 }
         break
       case 'palimpsest':
         this.mods.palimpsest += 1
