@@ -470,9 +470,20 @@ no effects is written down and does nothing — normal while the pool is being r
 
 Implemented today:
 
-- **`unit_atk`** — flat :attack: on every unit, **stacking**. Nothing is stored on the unit;
-  `unitStats` reads `mods.unitAtk` at call time, so a tech improves units placed long before
-  it was taken. The palace is armed by it too.
+- **`unit_atk_base_pct`** — a percentage of BASE :attack: on every unit, **stacking**. Nothing
+  is stored on the unit; `unitStats` reads `mods` at call time, so a tech improves units placed
+  long before it was taken. The palace is armed through the same formula.
+
+  ⚠️ **ATTACK IS TWO LAYERS**, and mixing them up is the easy mistake:
+  ```
+  atk = (base + unitAtkFlat) × (1 + unitAtkBasePct) × (1 + unitAtkPct)
+  ```
+  Additive within a layer, multiplicative between. A **base modifier** raises the base itself,
+  so Siege (base 20) gains 3.3× what Ranged (base 6) does from the same tech — with a FLAT
+  line every class converged on ~285 attack and the classes stopped meaning anything.
+  `unitAtkFlat` is folded in first so a future "+2 :attack: on a kill" is multiplied by your
+  research instead of drowned by it. Only `unitAtkBasePct` has a producer today; the other two
+  are the slots the formula needs and are consumed correctly the moment an effect fills them.
 - **`grant_unit`** — queues N units of a CLASS onto `this.grants`, each opening its own
   placement selection. Stats are read live at placement, so a grant queued before an upgrade
   still benefits from it. All nine classes are offerable.

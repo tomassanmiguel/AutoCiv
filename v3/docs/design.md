@@ -162,31 +162,57 @@ Wonders keep their tier (I–IX) as a grouping and a rough power band.
 ## 5. Yields
 
 ```
-final = base × (1 + Σ percentage bonuses)
+final = base × (1 + Σ base modifiers) × (1 + Σ modifiers)
 ```
 
-**Percentages are ADDITIVE, never compounded.** Two +100% bonuses triple the
-base; they do not quadruple it. A flat "+N to base yield" raises `base` *before*
-the multiplier, which is what makes flat bonuses worth more than they look.
+**TWO LAYERS: additive WITHIN a layer, multiplicative BETWEEN them.**
+
+- A **base modifier** changes the quantity itself. "+25% base :attack:" makes the
+  unit's attack genuinely larger, so everything downstream sees the bigger
+  number.
+- An **ordinary modifier** is a bonus on top of whatever the base has become.
+
+Within either layer percentages **add**: +25% and +40% base is +65% base, never
+×1.25×1.40. A flat "+N" is folded into `base` *before* the first multiplier —
+which is what makes a flat bonus combo with your percentages instead of being
+washed out by them.
 
 ### Everything stacks. Nothing replaces.
 
-Two techs that touch the same quantity **both apply**. Obsidian (+3), Bronze (+5)
-and Iron (+7) leave a unit at **+15 attack**, not +7. Masonry, Castles, Star
-Forts and Magnetic Deflectors leave a fortification at **+75 defence**. There is
-no tier system anywhere — the weapon/armour tier ladder the engine used to carry
-was deleted for contradicting exactly this rule.
+Two techs that touch the same quantity **both apply**. Obsidian (+25%), Bronze
+(+40%) and Iron (+60%) leave a unit at **+125% base attack**, not +60%. Masonry,
+Castles, Star Forts and Magnetic Deflectors all count toward a fortification's
+defence. There is no tier system anywhere — the weapon/armour tier ladder the
+engine used to carry was deleted for contradicting exactly this rule.
 
-The attack line, as authored, is lightly exponential across the whole game:
+The attack line is a **base modifier**, lightly exponential across the game:
 
 | Obsidian | Bronze | Iron | Steel | Muskets | Automatic | Laser | Liminite | Tachyonics |
 |---|---|---|---|---|---|---|---|---|
 | Stone | Bronze | Iron | Medieval | Exploration | Modern | Solar | Liminite | Galactic |
-| +3 | +5 | +7 | +11 | +17 | +27 | +42 | +65 | +100 |
+| +25% | +40% | +60% | +100% | +160% | +250% | +400% | +600% | +1000% |
 
-Taking all nine is **+277 attack**. They carry no prerequisites: skipping one
-costs you its number, not the rest of the line. **Each also grants a :melee:
-unit to place**, so the line is the army's size as well as its edge.
+Taking all nine is **+2635% base attack — ×27.35**. They carry no prerequisites:
+skipping one costs you its percentage, not the rest of the line. **Each also
+grants a :melee: unit to place**, so the line is the army's size as well as its
+edge.
+
+**This is why they are base modifiers and not flat bonuses.** A flat line washed
+the classes out — every one of them converged on the same number, and a Siege
+unit ended the game hitting no harder than a Ranged one:
+
+| class | base | with the whole line | a flat +277 would give |
+|---|---|---|---|
+| ranged | 6 | **164** | 283 |
+| melee | 7 | **191** | 284 |
+| cavalry | 8 | **219** | 285 |
+| naval | 10 | **274** | 287 |
+| siege | 20 | **547** | 297 |
+
+A percentage of base keeps the 3.3 : 1 siege-to-ranged ratio intact for the whole
+run, and it means anything that later adds **flat** attack — on a kill, from a
+building — is multiplied by everything you have researched rather than drowned
+by it.
 
 The brief's own wording is the tell: it says *"increases all unit atk by 3"*,
 which is additive language. A tech that overwrote an earlier one would have had
@@ -310,7 +336,7 @@ Currently implemented:
 
 | kind | what it does |
 |---|---|
-| **`unit_atk`** | flat :attack: on every unit, stacking |
+| **`unit_atk_base_pct`** | a % of BASE :attack: on every unit — a base modifier |
 | **`grant_unit`** | queues N units of a CLASS to place on the map |
 
 `grant_unit` names a **class**, never a named unit — there is only one unit per

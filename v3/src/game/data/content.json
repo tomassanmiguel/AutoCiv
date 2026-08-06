@@ -46,11 +46,11 @@
       "quadrant": "military",
       "era": 0,
       "icon": "/sprites/icons/attack.png",
-      "description": "+3 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+25% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 3
+          "kind": "unit_atk_base_pct",
+          "amount": 25
         },
         {
           "kind": "grant_unit",
@@ -67,11 +67,11 @@
       "quadrant": "military",
       "era": 1,
       "icon": "/sprites/icons/attack.png",
-      "description": "+5 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+40% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 5
+          "kind": "unit_atk_base_pct",
+          "amount": 40
         },
         {
           "kind": "grant_unit",
@@ -88,11 +88,11 @@
       "quadrant": "military",
       "era": 2,
       "icon": "/sprites/icons/attack.png",
-      "description": "+7 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+60% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 7
+          "kind": "unit_atk_base_pct",
+          "amount": 60
         },
         {
           "kind": "grant_unit",
@@ -109,11 +109,11 @@
       "quadrant": "military",
       "era": 4,
       "icon": "/sprites/icons/attack.png",
-      "description": "+11 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+100% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 11
+          "kind": "unit_atk_base_pct",
+          "amount": 100
         },
         {
           "kind": "grant_unit",
@@ -130,11 +130,11 @@
       "quadrant": "military",
       "era": 6,
       "icon": "/sprites/icons/attack.png",
-      "description": "+17 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+160% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 17
+          "kind": "unit_atk_base_pct",
+          "amount": 160
         },
         {
           "kind": "grant_unit",
@@ -151,11 +151,11 @@
       "quadrant": "military",
       "era": 8,
       "icon": "/sprites/icons/attack.png",
-      "description": "+27 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+250% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 27
+          "kind": "unit_atk_base_pct",
+          "amount": 250
         },
         {
           "kind": "grant_unit",
@@ -172,11 +172,11 @@
       "quadrant": "military",
       "era": 10,
       "icon": "/sprites/icons/attack.png",
-      "description": "+42 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+400% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 42
+          "kind": "unit_atk_base_pct",
+          "amount": 400
         },
         {
           "kind": "grant_unit",
@@ -193,11 +193,11 @@
       "quadrant": "military",
       "era": 12,
       "icon": "/sprites/icons/attack.png",
-      "description": "+65 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+600% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 65
+          "kind": "unit_atk_base_pct",
+          "amount": 600
         },
         {
           "kind": "grant_unit",
@@ -214,11 +214,11 @@
       "quadrant": "military",
       "era": 13,
       "icon": "/sprites/icons/attack.png",
-      "description": "+100 :attack: to all units. Grants 1 :melee: unit to place.",
+      "description": "+1000% base :attack: to all units. Grants 1 :melee: unit to place.",
       "effects": [
         {
-          "kind": "unit_atk",
-          "amount": 100
+          "kind": "unit_atk_base_pct",
+          "amount": 1000
         },
         {
           "kind": "grant_unit",

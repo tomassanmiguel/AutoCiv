@@ -11,9 +11,9 @@
 // design's one-unit-per-class rule and meant two datasets describing the same
 // thing, so it was deleted. The stats now come from exactly one place.)
 //
-// Class modifiers are CIVILIZATION-WIDE and STACK: Obsidian (+3), Bronze (+5)
-// and Iron (+7) leave every unit at +15 attack. There is deliberately no weapon
-// or armour tier.
+// Class modifiers are CIVILIZATION-WIDE and STACK: Obsidian (+25%), Bronze
+// (+40%) and Iron (+60%) leave every unit at +125% BASE attack. There is
+// deliberately no weapon or armour tier.
 
 import { UNIT_CLASS_DEFS } from './content.js'
 
@@ -53,14 +53,25 @@ export const canMoveOn = (def, terrain) => !!def && def.movement.has(terrain)
 
 /**
  * A unit's kit, for the hover card: what your research has added on top of the
- * class's base line. This is where you watch a `unit_atk` tech land on a unit
+ * class's base line. This is where you watch a research tech land on a unit
  * that was placed twenty ticks ago. Rows worth nothing are omitted.
  */
 export function equipmentOf(def, mods) {
   const rows = []
-  const atk = mods?.unitAtk ?? 0
+  const basePct = mods?.unitAtkBasePct ?? 0
+  const pct = mods?.unitAtkPct ?? 0
   const hp = mods?.unitDef ?? 0
-  if (atk && def.atk > 0) rows.push({ slot: 'Research', name: 'Weaponry', bonus: `+${atk} :attack:` })
+  // Shown as a percentage AND as what it is worth on THIS class, because the
+  // whole point of a base modifier is that the same +% is worth more here than
+  // it is on a weaker class.
+  if (basePct && def.atk > 0) {
+    rows.push({
+      slot: 'Research',
+      name: `Weaponry +${Math.round(basePct * 100)}% base`,
+      bonus: `+${Math.round(def.atk * basePct)} :attack:`,
+    })
+  }
+  if (pct && def.atk > 0) rows.push({ slot: 'Research', name: 'Modifiers', bonus: `+${Math.round(pct * 100)}% :attack:` })
   if (hp) rows.push({ slot: 'Research', name: 'Armour', bonus: `+${hp} :defense:` })
   if (!def.movement.size) rows.push({ slot: 'Movement', name: 'Never moves', bonus: null })
   return rows
@@ -74,25 +85,38 @@ export const PALACE = {
 }
 
 /**
- * A unit's live stats: the class base, scaled by the WAVE it is fighting in and
- * by its own gold upgrade LEVEL, plus the flat civilization-wide bonuses your
- * research has stacked up (`mods.unitAtk` / `mods.unitDef`).
+ * A unit's live stats: the class base, raised by your research, then scaled by
+ * the WAVE it is fighting in and by its own gold upgrade LEVEL.
+ *
+ * ATTACK IS TWO LAYERS (`YIELD_MODEL` in schema.js):
+ *
+ *     atk = (base + flat) × (1 + Σ base modifiers) × (1 + Σ modifiers)
+ *
+ * A BASE MODIFIER raises the base itself, so a Siege unit (base 20) gains four
+ * times what a Ranged unit (base 5) does from the same tech — that is what stops
+ * the classes collapsing into each other by the late game. The flat term is
+ * folded in FIRST, so a "+2 :attack: on a kill" is multiplied by everything you
+ * have researched rather than being washed out by it.
  *
  * Stats are computed fresh every time, never stored on the tile — that is what
- * makes a +:attack: tech improve a unit placed long before it.
+ * makes a research tech improve a unit placed long before it.
  *
- * A class with no attack (a wall, a command unit) stays at zero: a flat bonus
- * must never turn one into something that strikes back.
+ * A class with no attack (a wall, a command unit) stays at zero: no bonus of any
+ * kind may turn one into something that strikes back.
  */
 export function unitStats(def, wave, mods, level = 1) {
   const s = Math.pow(1.18, wave) * (1 + 0.25 * (level - 1))
-  const atkBonus = mods?.unitAtk ?? 0
   const defBonus = mods?.unitDef ?? 0
+
+  const baseAtk = (def.atk + (mods?.unitAtkFlat ?? 0)) *
+    (1 + (mods?.unitAtkBasePct ?? 0)) *
+    (1 + (mods?.unitAtkPct ?? 0))
+
   return {
     ...def,
     level,
     def: Math.max(1, Math.round(def.def * s) + defBonus),
-    atk: def.atk === 0 ? 0 : Math.max(1, Math.round(def.atk * s) + atkBonus),
+    atk: def.atk === 0 ? 0 : Math.max(1, Math.round(baseAtk * s)),
     range: def.range,
     acts: def.acts,
   }

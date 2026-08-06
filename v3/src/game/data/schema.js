@@ -152,11 +152,23 @@ export const blankUnitClass = () => ({
 // ---------------------------------------------------------------------------
 
 /**
- * final = base × (1 + Σ percentage bonuses)
- * PERCENTAGES ARE ADDITIVE, never compounded — two +100% bonuses triple the
- * base. A flat "+N to base yield" raises `base` before the multiplier.
+ * TWO LAYERS. Percentages are additive WITHIN a layer and multiplicative
+ * BETWEEN them:
+ *
+ *     final = base × (1 + Σ base modifiers) × (1 + Σ modifiers)
+ *
+ * A BASE MODIFIER changes the quantity itself — "+25% base :attack:" makes the
+ * unit's attack genuinely larger, so everything downstream sees the bigger
+ * number. An ORDINARY MODIFIER is a bonus applied on top of whatever the base
+ * has become.
+ *
+ * Within either layer, percentages ADD: +25% and +40% base is +65% base, never
+ * ×1.25×1.40. A flat "+N" is folded into `base` before the first multiplier,
+ * which is what makes a flat bonus combo with the percentages rather than being
+ * washed out by them.
  */
-export const YIELD_MODEL = 'base × (1 + Σ percentages); percentages are additive'
+export const YIELD_MODEL =
+  'base × (1 + Σ base modifiers) × (1 + Σ modifiers); additive within a layer, multiplicative between'
 
 /**
  * BONUSES STACK. THEY DO NOT REPLACE. Bronze Working (+3), Iron Working (+6) and
@@ -195,13 +207,13 @@ export const ICONS = [
  * ⚠️ Read the note at the top of this file before adding to it.
  */
 export const EFFECT_KINDS = {
-  unit_atk: {
+  unit_atk_base_pct: {
     // `label` renders inside a <select>, which cannot hold an icon — so it is
     // plain words. `:token:` markup belongs in `hint` and `describe`.
-    label: 'All units — flat attack',
-    hint: 'Flat :attack: on every unit you control, present and future. Stacks with every other +:attack: tech — there is no weapon tier.',
-    params: [{ key: 'amount', label: 'Attack', min: 0, default: 3 }],
-    describe: (e) => `+${e.amount ?? 0} :attack: to all units.`,
+    label: 'All units — base attack %',
+    hint: 'A BASE MODIFIER: it raises every unit\'s base :attack: itself, so a Siege unit gains far more than a Ranged one and the classes keep their identity into the late game. Base modifiers add together, then the whole base is multiplied by the ordinary modifiers — see :attack: in the stat pipeline. Anything that adds flat :attack: (on a kill, from a building) is folded into the base FIRST, so it is multiplied by these too.',
+    params: [{ key: 'amount', label: 'Percent', min: 0, default: 25 }],
+    describe: (e) => `+${e.amount ?? 0}% base :attack: to all units.`,
   },
 
   grant_unit: {

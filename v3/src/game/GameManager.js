@@ -90,7 +90,7 @@ const lengthOfDiff = (a, b) => lengthOf(a.q - b.q, a.r - b.r)
  * there is never a second place a bonus could hide.
  *
  * ⚠️ Most of these fields have a consumer but no PRODUCER yet: the effect
- * registry currently holds a single kind (`unit_atk`), and the rest of the
+ * registry currently holds two kinds (`unit_atk_base_pct`, `grant_unit`), and the rest of the
  * mechanics get wired one at a time. They are the engine's own accumulator, not
  * a content vocabulary — see the note at the top of `data/schema.js`.
  */
@@ -100,8 +100,19 @@ function freshMods() {
     improved: null,         // extra yields on every improvement
     mult: { food: 0, production: 0, gold: 0, progress: 0 }, // ADDITIVE percentages
     threshold: { food: 1, production: 1, progress: 1 },     // multipliers, <1 is cheaper
-    // Flat, civilization-wide, and STACKING. There is no weapon or armour tier.
-    unitAtk: 0,
+    // Civilization-wide and STACKING. There is no weapon or armour tier.
+    //
+    // ATTACK IS TWO LAYERS (`YIELD_MODEL`):
+    //   atk = (base + unitAtkFlat) × (1 + unitAtkBasePct) × (1 + unitAtkPct)
+    //
+    // `unitAtkBasePct` raises the BASE itself, so a high-base class gains more
+    // from it than a low-base one and the classes keep their identity. Each sum
+    // is additive; the two layers multiply. ⚠️ Only `unitAtkBasePct` has a
+    // producer today — the other two are the slots the formula needs and are
+    // consumed correctly the moment an effect fills them.
+    unitAtkFlat: 0,
+    unitAtkBasePct: 0,
+    unitAtkPct: 0,
     unitDef: 0,
     units: new Set(),
     buildings: new Set(),
@@ -810,12 +821,14 @@ export class GameManager {
 
   _applyEffect(f) {
     switch (f.kind) {
-      // Flat attack on every unit, present and future. STACKS — Obsidian, Bronze
-      // and Iron together are +15, not +7. Nothing is stored on the units: their
-      // stats are computed from `mods` at read time, so this reaches units placed
+      // A BASE MODIFIER on every unit, present and future. Base modifiers ADD
+      // to each other — Obsidian, Bronze and Iron together are +125% base, not
+      // ×1.25×1.40×1.60 — and the summed base is then multiplied by the
+      // ordinary modifier layer. Nothing is stored on the units: their stats
+      // are computed from `mods` at read time, so this reaches units placed
       // long before the tech was taken.
-      case 'unit_atk':
-        this.mods.unitAtk += f.amount ?? 0
+      case 'unit_atk_base_pct':
+        this.mods.unitAtkBasePct += (f.amount ?? 0) / 100
         break
       // A CLASS grant, never a named unit: which unit it becomes is resolved by
       // `grantDef` at placement time from the best one unlocked, so a grant
