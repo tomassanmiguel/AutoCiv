@@ -110,9 +110,12 @@ function ActionBar({ side, actions, game, tile, onHover }) {
   )
 }
 
+// Verbs only — the label has to sit inside a tile's width, and the two-word
+// forms ("Upgrade Building") overflowed it. The target is already unambiguous
+// from POSITION: building gold renders ABOVE the tile, unit gold BELOW.
 const ACTION_LABEL = {
-  'repair-unit': 'Repair Unit',
+  'repair-unit': 'Repair',
   'rebuild': 'Rebuild',
-  'upgrade-unit': 'Upgrade Unit',
-  'upgrade-building': 'Upgrade Building',
+  'upgrade-unit': 'Upgrade',
+  'upgrade-building': 'Upgrade',
 }

@@ -925,8 +925,9 @@ building is a **name card** showing its real per-tick output from `GameManager.b
 (the summed effect contribution — content buildings no longer read as "idle"). Hovering either
 reveals its **gold actions** with prices, right on the thing being spent on. A tile can hold
 BOTH a unit and a building, so the two sets go **above vs below** the tile — building gold ABOVE,
-unit gold BELOW (`.tc-actions.above/.below`) — never overlapping, and each upgrade names its
-target ("Upgrade Unit" / "Upgrade Building").
+unit gold BELOW (`.tc-actions.above/.below`) — never overlapping, so the ABOVE/BELOW position is
+what names the target and the button labels stay short verbs ("Upgrade"/"Repair"/"Rebuild") that
+fit inside a tile's width.
 
 ⚠️ **The tile card is PHASE-DRIVEN** (`compact = game.phase === 'development'`). In **development**
 the economy is centre stage: the unit shrinks to a small icon with **no stat pills**, so
