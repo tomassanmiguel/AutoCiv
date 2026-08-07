@@ -176,26 +176,26 @@
   align-items: center;
   gap: 0.12em;
   /* Bridges the gap over the attack/defence pills without a pointer-events hole. */
-  padding: 0.5em 0.9em 0.3em;
+  padding: 0.45em 0.55em 0.25em;
   margin-top: -0.1em;
   pointer-events: auto;
 }
 /* Building gold ABOVE the tile, unit gold BELOW — a tile can hold both, so they
    must never stack. `below` keeps the default (top:100%); `above` flips up. */
 .tc-actions.below { top: 100%; }
-.tc-actions.above { top: auto; bottom: 100%; padding: 0.3em 0.9em 0.5em; }
+.tc-actions.above { top: auto; bottom: 100%; padding: 0.25em 0.55em 0.45em; }
 
 .tc-action {
   display: flex;
   align-items: center;
-  gap: 0.18em;
-  padding: 0.12em 0.4em;
+  gap: 0.22em;
+  padding: 0.15em 0.5em;
   border-radius: 5px;
   border: 1px solid rgba(216, 173, 78, 0.65);
   background: rgba(24, 20, 10, 0.96);
   color: #f0d894;
-  font-size: 0.78em;
-  line-height: 1.6;
+  font-size: 0.62em;
+  line-height: 1.25;
   white-space: nowrap;
   cursor: pointer;
 }
