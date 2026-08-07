@@ -96,6 +96,10 @@ class CombatMixin {
     // camp. They are already inside your frontier, so they do not have to march
     // in — which is exactly why clearing a camp by expanding onto it matters.
     enemies.push(...this._encampmentEnemies(wave, rng, enemies.length))
+    // Enemies have no crit techs, so every attacker fights at the base chance —
+    // stamped here (not in makeEnemy, which can't see BASE_CRIT_CHANCE without a
+    // circular import) so the on-card tooltip can show it like a player unit's.
+    for (const e of enemies) e.crit = e.atk > 0 ? BASE_CRIT_CHANCE : 0
     return enemies
   }
 
@@ -186,10 +190,15 @@ class CombatMixin {
 
       const range = def.key === 'ranged' ? this._rangedRange(t, placed, i, s.range) : s.range
 
+      // Total crit chance this unit fights at (base + universal + class + live
+      // ZOC), for the on-card tooltip. Only attackers can crit.
+      const crit = s.atk > 0
+        ? Math.min(1, BASE_CRIT_CHANCE + (m.unitCritChancePct ?? 0) + (m.classCritChance?.[def.key] ?? 0) + this._zocFlagsAt(t.q, t.r).crit)
+        : 0
       const piece = {
         id: id++, side: 'player', key: def.key, name: s.name, type: s.type,
         q: t.q, r: t.r, home: t,
-        hp, maxHp: hp, atk: s.atk, range, acts: s.acts,
+        hp, maxHp: hp, atk: s.atk, range, acts: s.acts, crit,
         dead: false, lastAttackSeq: null, lastAttackDir: null,
         // Ranged-theme per-unit combat state.
         preload: 0, poisonEscalator: 0,

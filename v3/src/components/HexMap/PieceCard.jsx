@@ -6,6 +6,7 @@ const STAT = {
   def: '/sprites/icons/defense.png',
   range: '/sprites/icons/range.png',
   speed: '/sprites/icons/speed.png',
+  crit: '/sprites/icons/crit.png',
 }
 const TYPE_ICON = {
   melee: '/sprites/ui/melee.png',
@@ -48,6 +49,7 @@ export default function PieceCard({ piece, turn, x, y, size, acting = false }) {
         <span><img src={STAT.def} alt="defense" />{piece.hp} / {piece.maxHp}</span>
         <span><img src={STAT.range} alt="range" />{piece.range}</span>
         {!isPalace && <span><img src={STAT.speed} alt="speed" />{piece.acts}</span>}
+        {piece.crit > 0 && <span><img src={STAT.crit} alt="crit" />{Math.round(piece.crit * 100)}%</span>}
       </div>
     </div>
   )
