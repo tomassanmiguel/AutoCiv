@@ -20,7 +20,7 @@
 // A combat ends when every enemy is dead (won), the palace falls (lost), or the
 // turn cap is hit (stalemate — a safety net, not a rule).
 
-import { key, neighbors, distance } from '../hex/coords.js'
+import { key, neighbors, distance, wedgeOf } from '../hex/coords.js'
 import {
   generateHost, domainCanTraverse, ENEMY_DOMAINS, ENEMY_TYPES,
   waveBudget, makeEnemy, rollTier,
@@ -197,6 +197,22 @@ class CombatMixin {
 
       const range = def.key === 'ranged' ? this._rangedRange(t, placed, i, s.range) : s.range
 
+      // MELEE combat-start flats: Legion (+per other same-class unit in the army)
+      // and Phalanx (+def per adjacent same-class unit). Fixed at combat start, the
+      // same way Formations are, and folded into a per-piece `bonus` that survives
+      // the ZOC re-sync. Discipline adds to the same slots each turn.
+      let bonusAtk = 0, bonusDef = 0
+      const perOther = m.classAtkDefPerOther[def.key]
+      if (perOther) {
+        let others = 0
+        for (let j = 0; j < placed.length; j++) if (j !== i && placed[j].def.key === def.key) others++
+        bonusAtk += others * (perOther.atk ?? 0)
+        bonusDef += others * (perOther.def ?? 0)
+      }
+      const perAdj = m.classDefPerAdjacent[def.key]
+      if (perAdj) bonusDef += this._countAdjacent(placed, i, def.key) * perAdj
+      hp += bonusDef
+
       // Total crit chance this unit fights at (base + universal + class + live ZOC
       // + per-unit earned via repair), for the on-card tooltip. Attackers only.
       const earnedCrit = t.unit.earnedCrit ?? 0
@@ -206,7 +222,10 @@ class CombatMixin {
       const piece = {
         id: id++, side: 'player', key: def.key, name: s.name, type: s.type,
         q: t.q, r: t.r, home: t,
-        hp, maxHp: hp, atk: s.atk, range, acts: s.acts, crit, earnedCrit,
+        hp, maxHp: hp, atk: s.atk + bonusAtk, range, acts: s.acts, crit, earnedCrit,
+        // Per-piece combat flats (Legion/Phalanx + Discipline growth) kept across
+        // the ZOC re-sync; reset next combat because pieces are rebuilt.
+        bonusAtk, bonusDef,
         dead: false, lastAttackSeq: null, lastAttackDir: null,
         // Ranged-theme per-unit combat state.
         preload: 0, poisonEscalator: 0,
@@ -318,6 +337,12 @@ class CombatMixin {
     // globally (not position-dependent) — read live off the techs held.
     const share = this.mods.classGainsZocUpgrade[key]
     if (share) b += Math.floor((share.pct / 100) * this._zocUpgradeBonus(share.sourceClass))
+    // Foreign Legion: a live upgrade-level bonus while standing OUTSIDE a region.
+    const outside = this.mods.classUpgradeOutsideRegion[key]
+    if (outside) {
+      const t = this.world.tiles.get(`${q},${r}`)
+      if (t && t.region !== outside.region) b += outside.amount
+    }
     return b
   }
 
@@ -336,9 +361,10 @@ class CombatMixin {
       const level = (u._baseLevel ?? 1) + this._effectiveLevelBonus(u.key, u.q, u.r)
       const s = unitStats(def, this.wave, this.mods, level, u._extra)
       const ratio = u.maxHp > 0 ? u.hp / u.maxHp : 1
-      u.atk = s.atk
-      u.maxHp = s.def
-      u.hp = Math.max(1, Math.round(ratio * s.def))
+      // Preserve the per-piece combat flats (Legion/Phalanx + Discipline growth).
+      u.atk = s.atk + (u.bonusAtk ?? 0)
+      u.maxHp = s.def + (u.bonusDef ?? 0)
+      u.hp = Math.max(1, Math.round(ratio * u.maxHp))
       u.acts = s.acts
     }
   }
@@ -608,6 +634,8 @@ class CombatMixin {
   _playerWalkable(tile, def = null) {
     if (!tile || !this._combatCells.has(key(tile.q, tile.r))) return false
     if (tile.q === 0 && tile.r === 0) return false
+    // Ascendancy: a class with unrestricted movement may walk onto any combat tile.
+    if (def && this.mods.classMovementUnrestricted.has(def.key)) return true
     if (def) return def.movement.has(tile.terrain)
     return isLand(tile.terrain) && isPassable(tile.terrain)
   }
@@ -654,23 +682,30 @@ class CombatMixin {
     // Front-most enemies act first, so a queue behind them does not deadlock.
     const byFront = c.enemies.filter((e) => !e.dead)
       .sort((a, b) => this._distToPalace(a) - this._distToPalace(b))
-    for (const e of byFront) q.push({ phase: 'enemy-move', side: 'enemy', id: e.id })
+    // STUN (Kyber Crystals): a stunned piece skips its WHOLE turn (move + attack)
+    // and burns one stun charge. Keyed by piece identity so player/enemy ids can't
+    // collide. Decremented once here, then both loops below skip it.
+    const stunned = new Set()
+    for (const p of [...byFront, ...c.units]) {
+      if (!p.dead && (p.stun ?? 0) > 0) { stunned.add(p); p.stun-- }
+    }
+    for (const e of byFront) { if (stunned.has(e)) continue; q.push({ phase: 'enemy-move', side: 'enemy', id: e.id }) }
     // A commander ZOC with `double_turn` (Multiversal Command) gives its units a
     // SECOND move and attack — doubling every per-act trigger downstream (heal,
     // preload discharge, poison, retaliation exposure) for free, because they all
     // hang off the extra beats.
     for (const u of c.units) {
-      if (u.dead || u.acts <= 0) continue
+      if (u.dead || u.acts <= 0 || stunned.has(u)) continue
       q.push({ phase: 'player-move', side: 'player', id: u.id })
       if (this._zocFlagsAt(u.q, u.r).double) q.push({ phase: 'player-move', side: 'player', id: u.id })
     }
     for (const u of c.units) {
-      if (u.dead) continue
+      if (u.dead || stunned.has(u)) continue
       q.push({ phase: 'player-attack', side: 'player', id: u.id })
       if (this._zocFlagsAt(u.q, u.r).double) q.push({ phase: 'player-attack', side: 'player', id: u.id })
     }
     q.push({ phase: 'player-attack', side: 'palace', id: 'palace' })
-    for (const e of byFront) q.push({ phase: 'enemy-attack', side: 'enemy', id: e.id })
+    for (const e of byFront) { if (stunned.has(e)) continue; q.push({ phase: 'enemy-attack', side: 'enemy', id: e.id }) }
     return q
   }
 
@@ -725,17 +760,23 @@ class CombatMixin {
     c.phase = beat.phase
     c.acting = { side: beat.side, id: beat.id }
 
+    // Turn-start effects fire once per turn, on the unit's first beat (Discipline
+    // growth, Healing Nanomachines). Guarded so a double-turn ZOC unit only fires
+    // them once. Enemies and the palace are unaffected.
+    if (beat.side === 'player') this._onUnitTurnStart(piece)
+
     let visible = false
     switch (beat.phase) {
       case 'enemy-move': visible = this._enemyMove(piece); break
       case 'player-move': visible = this._playerMove(piece); break
       // A defensive construction has atk 0: it never strikes, it only soaks.
-      // Ranged units run the whole poison/chain/preload flow; everyone else lands
-      // a single blow on the lowest-HP enemy in reach.
+      // Ranged units run the whole poison/chain/preload flow; melee (and every
+      // other attacking class) runs `_playerMeleeAttack` — primary blow plus the
+      // melee-theme riders (Kyber pull, Flamethrower arc).
       case 'player-attack': {
         visible = piece.type === 'ranged'
           ? this._rangedAttack(piece)
-          : piece.atk > 0 && this._strike(piece, this._lowestHpWithin(c.enemies, piece, piece.range))
+          : this._playerMeleeAttack(piece)
         // Battlefield Medicine: acting inside a commander ZOC heals a % of max HP.
         const heal = this._zocFlagsAt(piece.q, piece.r).heal
         if (heal && !piece.dead && piece.hp < piece.maxHp) this._healPiece(piece, Math.max(1, Math.round(piece.maxHp * heal / 100)))
@@ -978,6 +1019,102 @@ class CombatMixin {
     return best
   }
 
+  /**
+   * Turn-start effects, fired once per turn on a unit's first beat.
+   * - Discipline: permanent-this-combat +atk/+def growth (into the `bonus` slots,
+   *   so a ZOC re-sync keeps it).
+   * - Healing Nanomachines: heal a % of max :defense:.
+   */
+  _onUnitTurnStart(u) {
+    const c = this.combat
+    if (u._turnStamp === c.turn) return
+    u._turnStamp = c.turn
+    const m = this.mods
+    const g = m.classStatGrowth[u.type]
+    if (g && (g.atk || g.def)) {
+      u.bonusAtk = (u.bonusAtk ?? 0) + (g.atk ?? 0)
+      u.bonusDef = (u.bonusDef ?? 0) + (g.def ?? 0)
+      u.atk += g.atk ?? 0
+      u.maxHp += g.def ?? 0
+      u.hp += g.def ?? 0 // the growth heals, rather than just raising the cap
+    }
+    const hpct = m.classHealPctTurnStart[u.type]
+    if (hpct && u.hp < u.maxHp) this._healPiece(u, Math.max(1, Math.round(u.maxHp * hpct / 100)))
+  }
+
+  /**
+   * A non-ranged player unit's attack: the melee-theme flow.
+   *   Kyber Crystals — pull a distant enemy into reach (and stun it) first,
+   *   then a primary blow on the lowest-HP enemy in range,
+   *   then Flamethrowers — the same blow to every enemy in the facing arc.
+   * A unit with none of those techs just lands the single primary blow.
+   */
+  _playerMeleeAttack(u) {
+    if (u.atk <= 0) return false
+    const c = this.combat
+    const m = this.mods
+    const pull = m.classPullStun[u.type]
+    if (pull) this._tryPull(u, pull)
+    const primary = this._lowestHpWithin(c.enemies, u, u.range)
+    if (!primary) return false
+    const landed = this._strike(u, primary)
+    // FLAMETHROWERS: hit every other living enemy in range whose bearing from the
+    // unit falls in the same hex wedge as the primary target — the arc in front.
+    if (m.classArcAttack.has(u.type) && landed) {
+      const arc = wedgeOf(primary.q - u.q, primary.r - u.r)
+      for (const e of c.enemies) {
+        if (e.dead || e === primary) continue
+        if (distance(u.q, u.r, e.q, e.r) > u.range) continue
+        if (wedgeOf(e.q - u.q, e.r - u.r) !== arc) continue
+        this._dealBlow(u, e)
+      }
+    }
+    return landed
+  }
+
+  /**
+   * KYBER CRYSTALS: drag one enemy from within `pullRange` (but currently out of
+   * the unit's attack range) onto an empty tile adjacent to the unit, and stun it
+   * for `stunTurns`. Pulls the nearest such enemy; does nothing if none fits.
+   */
+  _tryPull(u, { pullRange, stunTurns }) {
+    const c = this.combat
+    let best = null, bestD = Infinity
+    for (const e of c.enemies) {
+      if (e.dead) continue
+      const d = distance(u.q, u.r, e.q, e.r)
+      if (d <= u.range || d > pullRange) continue
+      if (d < bestD) { best = e; bestD = d }
+    }
+    if (!best) return
+    const occ = this._occupancy()
+    for (const n of neighbors(u.q, u.r)) {
+      const k = key(n.q, n.r)
+      if (occ.has(k) || !this._combatCells.has(k)) continue
+      occ.delete(key(best.q, best.r))
+      best.q = n.q
+      best.r = n.r
+      best.stun = (best.stun ?? 0) + stunTurns
+      return
+    }
+  }
+
+  /**
+   * CHIVALRY: convert a piece to :melee: mid-combat, at full :defense:. The revert
+   * is automatic — combat pieces are rebuilt from the board each combat, so next
+   * combat the tile is a cavalry again. Recomputes the stat line as melee's.
+   */
+  _convertToMelee(u) {
+    u.key = 'melee'
+    u.type = 'melee'
+    const s = unitStats(UNIT_DEFS.melee, this.wave, this.mods, u._level ?? 1, u._extra)
+    u.maxHp = s.def + (u.bonusDef ?? 0)
+    u.hp = u.maxHp // "at full :defense:"
+    u.atk = s.atk + (u.bonusAtk ?? 0)
+    u.acts = s.acts
+    u.range = s.range
+  }
+
   /** @returns true if a blow landed (so the caller knows the beat was visible). */
   _strike(attacker, target) {
     return this._dealBlow(attacker, target).landed
@@ -996,24 +1133,45 @@ class CombatMixin {
   _dealBlow(attacker, target, { dmg = null, allowCrit = true, isPreload = false } = {}) {
     if (!target) return { landed: false, dealt: 0, crit: false }
     const c = this.combat
+    const m = this.mods
+    // CHIVALRY: a cavalry unit's FIRST hit each combat is prevented — it becomes a
+    // melee unit at full :defense: instead of taking the blow. (The enemy still
+    // "acted", so the beat is visible.)
+    if (target.side === 'player' && target.type === 'cavalry' && attacker.side === 'enemy'
+        && m.cavalryFirstHitConvert && !target._chivalryUsed) {
+      target._chivalryUsed = true
+      this._convertToMelee(target)
+      c.actionSeq = (c.actionSeq ?? 0) + 1
+      c.events.push({ id: `${c.actionSeq}-conv-${target.id}`, q: target.q, r: target.r, amount: 0, crit: false, kind: 'heal' })
+      return { landed: true, dealt: 0, crit: false }
+    }
     // CRIT: any unit's blow may double. Every unit — player OR enemy — has a base
     // chance; a player unit adds its universal AND its class crit techs (read
     // LIVE). Capped at 100%; the multiplier is fixed. The PALACE carries no
     // `side` and never crits.
     let base = dmg == null ? attacker.atk : dmg
+    // SUPER METH: the unit's own attack (not a chain) gains its missing :defense:.
+    if (dmg == null && attacker.side === 'player' && m.classAtkEqMissingDef.has(attacker.type)) {
+      base += Math.max(0, (attacker.maxHp ?? 0) - (attacker.hp ?? 0))
+    }
+    // PIKES / SAM: a class-vs-class damage multiplier on the blow.
+    if (attacker.side === 'player') {
+      const rules = m.classDamageMultVsClasses[attacker.type]
+      if (rules) for (const r of rules) if (r.targets.has(target.type)) base *= r.mult
+    }
     let crit = false
     if (allowCrit && base > 0 && (attacker.side === 'player' || attacker.side === 'enemy')) {
       let chance = BASE_CRIT_CHANCE
       if (attacker.side === 'player') {
         // FOUR crit sources: universal, class-scoped, ZOC-scoped (Combined Arms),
         // and the per-unit earned crit (Pyrrhic Tactics, banked on the piece).
-        chance += (this.mods?.unitCritChancePct ?? 0) + (this.mods?.classCritChance?.[attacker.type] ?? 0)
+        chance += (m.unitCritChancePct ?? 0) + (m.classCritChance?.[attacker.type] ?? 0)
           + this._zocFlagsAt(attacker.q, attacker.r).crit + (attacker.earnedCrit ?? 0)
       }
       chance = Math.min(1, chance)
       if (this._critRng() < chance) { base *= CRIT_MULT; crit = true }
     }
-    const dealt = base
+    const dealt = Math.round(base)
     target.hp -= dealt
     // Its own monotonic counter, bumped HERE rather than reusing `beat`: the beat
     // counter only advances after the action resolves.
@@ -1026,13 +1184,30 @@ class CombatMixin {
       kind: target === c.palace ? 'palace' : 'damage',
     })
     if (target.hp <= 0 && target !== c.palace) { target.hp = 0; target.dead = true; this._onUnitDeath(target) }
+    else if (target !== c.palace && attacker.side === 'player' && target.side === 'enemy') {
+      // TERMINATORS: execute an enemy left below a % of its max :defense:.
+      const pct = m.classExecuteBelowPct[attacker.type]
+      if (pct && target.hp <= (target.maxHp ?? 0) * pct / 100) { target.hp = 0; target.dead = true; this._onUnitDeath(target) }
+    }
     if (target === c.palace) c.palace.hp = Math.max(0, c.palace.hp)
+    // HUNTING: a player class gains a resource equal to the damage it dealt × ratio.
+    if (attacker.side === 'player' && dealt > 0) {
+      const gains = m.resourceOnClassDamage[attacker.type]
+      if (gains) for (const g of gains) if (this.resources[g.resource]) this.resources[g.resource].value += dealt * g.ratio
+    }
     // RETALIATION: attacking a unit of a retaliating class (a fortification, via
     // Moats / Barbed Wire) deals flat damage straight back to the attacker.
     // Additive across the techs held; applies even if the blow killed the target.
     if (target.side === 'player' && attacker.side === 'enemy') {
-      const back = this.mods?.retaliateOnClassAttacked?.[target.type] ?? 0
+      const back = m.retaliateOnClassAttacked?.[target.type] ?? 0
       if (back > 0) this._retaliate(attacker, back)
+      // RIPOSTE: a surviving unit counters with a chance equal to its OWN crit — it
+      // reuses whatever crit the unit already has, not a new roll type. The counter
+      // is a plain player→enemy blow, so it cannot itself trigger a riposte.
+      if (!target.dead && m.classCounterEqCrit.has(target.type) && (target.crit ?? 0) > 0
+          && !attacker.dead && this._critRng() < target.crit) {
+        this._dealBlow(target, attacker, { allowCrit: false })
+      }
     }
     if (crit && attacker.side === 'player') this._onPlayerCrit(attacker, dealt, isPreload)
     return { landed: true, dealt, crit }

@@ -2524,6 +2524,366 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "hunting",
+      "name": "Hunting",
+      "quadrant": "military",
+      "era": 0,
+      "icon": "/sprites/ui/melee.png",
+      "description": "Whenever a :melee: unit deals damage, gain that much :food:. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "resource_on_class_damage_dealt",
+          "unitClass": "melee",
+          "resource": "food",
+          "ratio": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "discipline",
+      "name": "Discipline",
+      "quadrant": "military",
+      "era": 1,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units gain +1 :attack: and +1 :defense: at the start of each of their turns in combat. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_stat_growth_per_turn_in_combat",
+          "unitClass": "melee",
+          "atkPerTurn": 1,
+          "defPerTurn": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "phalanx",
+      "name": "Phalanx",
+      "quadrant": "military",
+      "era": 2,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units get +2 :defense: for each adjacent :melee: unit. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_def_bonus_per_adjacent_class_unit",
+          "unitClass": "melee",
+          "defPerAdjacent": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "legion",
+      "name": "Legion",
+      "quadrant": "military",
+      "era": 3,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units get +1 :attack:/+1 :defense: for each other :melee: unit in your army. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_atkdef_bonus_per_other_class_unit",
+          "unitClass": "melee",
+          "atkPerOther": 1,
+          "defPerOther": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "pikes",
+      "name": "Pikes",
+      "quadrant": "military",
+      "era": 4,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units deal +100% damage to :cavalry: units. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_damage_mult_vs_classes",
+          "unitClass": "melee",
+          "targetClasses": [
+            "cavalry"
+          ],
+          "mult": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "chivalry",
+      "name": "Chivalry",
+      "quadrant": "military",
+      "era": 4,
+      "icon": "/sprites/ui/cavalry.png",
+      "description": "Grants a :cavalry: unit. The first hit it takes each combat is prevented, and it becomes a :melee: unit at full :defense: for the rest of that combat, reverting after.",
+      "effects": [
+        {
+          "kind": "grant_unit",
+          "unitClass": "cavalry",
+          "count": 1
+        },
+        {
+          "kind": "cavalry_first_hit_convert_to_melee_until_combat_end"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "riposte",
+      "name": "Riposte",
+      "quadrant": "military",
+      "era": 5,
+      "icon": "/sprites/ui/melee.png",
+      "description": "When a :melee: unit takes damage, it has a chance equal to its own :crit: chance to counter-attack. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_counter_attack_chance_eq_crit",
+          "unitClass": "melee"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "foreign_legion",
+      "name": "Foreign Legion",
+      "quadrant": "military",
+      "era": 7,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units stationed outside the Old World gain +2 upgrade level. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_upgrade_level_bonus_outside_region",
+          "unitClass": "melee",
+          "outsideRegion": "old_world",
+          "amount": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "flamethrowers",
+      "name": "Flamethrowers",
+      "quadrant": "military",
+      "era": 8,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units deal damage in an arc in front of them. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_arc_attack",
+          "unitClass": "melee"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "sam",
+      "name": "SAM",
+      "quadrant": "military",
+      "era": 9,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units deal +100% damage to :aerial: and :astral: units. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_damage_mult_vs_classes",
+          "unitClass": "melee",
+          "targetClasses": [
+            "aerial",
+            "astral"
+          ],
+          "mult": 2
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "healing_nanomachines",
+      "name": "Healing Nanomachines",
+      "quadrant": "military",
+      "era": 10,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units restore 3% of max :defense: at the start of each of their turns. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_heal_pct_at_turn_start",
+          "unitClass": "melee",
+          "pct": 3
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "super_meth",
+      "name": "Super Meth",
+      "quadrant": "military",
+      "era": 11,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units gain +:attack: equal to their currently missing :defense:. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "unit_atk_bonus_eq_missing_def",
+          "unitClass": "melee"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "terminators",
+      "name": "Terminators",
+      "quadrant": "military",
+      "era": 12,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units execute enemies below 10% :defense:. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_execute_below_pct_def",
+          "unitClass": "melee",
+          "pct": 10
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "kyber_crystals",
+      "name": "Kyber Crystals",
+      "quadrant": "military",
+      "era": 13,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units may pull an enemy from range 2 into melee range before attacking; doing so makes that enemy skip its next turn. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_pull_and_stun",
+          "unitClass": "melee",
+          "pullRange": 2,
+          "stunTurns": 1
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "ascendancy",
+      "name": "Ascendancy",
+      "quadrant": "military",
+      "era": 14,
+      "icon": "/sprites/ui/melee.png",
+      "description": ":melee: units gain +2 :speed:, +10 raw base :attack:, +10 raw base :defense:, +20% :crit: chance, and may be placed on and move onto any tile. Grants 1 :melee: unit.",
+      "effects": [
+        {
+          "kind": "class_speed_flat",
+          "unitClass": "melee",
+          "amount": 2
+        },
+        {
+          "kind": "class_atk_flat",
+          "unitClass": "melee",
+          "amount": 10
+        },
+        {
+          "kind": "class_def_flat",
+          "unitClass": "melee",
+          "amount": 10
+        },
+        {
+          "kind": "class_crit_chance_pct",
+          "unitClass": "melee",
+          "amount": 20
+        },
+        {
+          "kind": "class_placement_unrestricted",
+          "unitClass": "melee"
+        },
+        {
+          "kind": "class_movement_unrestricted",
+          "unitClass": "melee"
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [

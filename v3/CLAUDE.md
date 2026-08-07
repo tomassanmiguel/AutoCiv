@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **127 techs** · **19 buildings** · 6 wonders · 3 tier unlocks.
+> In play: **142 techs** · **19 buildings** · 6 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -614,6 +614,26 @@ Implemented today:
   `restoreTile`s a ruin once `wave − razedWave >= combats`; no gold, distinct from the spend-triggered
   repairs). And a BUILDING/WONDER effect: **`resource_output_per_razed_tile`** (Zion — its own tile
   makes `perTile × razedCount` of each listed resource each tick, via `evalBuildingEffects`).
+- **melee theme (16 kinds).** Class-scoped combat behaviour (mostly :melee:), and THREE genuinely
+  new systems. **(1) Skip-turn status** — a per-piece `stun` charge; `_buildQueue` skips a stunned
+  piece's whole turn (move + attack) and burns one charge. **(2) Facing / arc** — no stored facing;
+  derived live from the bearing to the target and the hex `wedgeOf` sector, so `class_arc_attack`
+  (Flamethrowers) hits every enemy in range in the primary's wedge. **(3) Temporary class conversion**
+  — `cavalry_first_hit_convert_to_melee_until_combat_end` (Chivalry) prevents a cavalry's first hit
+  and swaps its piece to :melee: at full def via `_convertToMelee`; the revert is automatic because
+  pieces are rebuilt from the board each combat. Damage-pipeline hooks in `_dealBlow`:
+  `class_damage_mult_vs_classes` (Pikes/SAM — one kind, class LIST), `unit_atk_bonus_eq_missing_def`
+  (Super Meth, live), `resource_on_class_damage_dealt` (Hunting), `class_execute_below_pct_def`
+  (Terminators), `class_counter_attack_chance_eq_crit` (Riposte — reuses the unit's OWN crit as the
+  proc, no new roll). Per-turn (`_onUnitTurnStart`): `class_stat_growth_per_turn_in_combat`
+  (Discipline — into a per-piece `bonusAtk`/`bonusDef` slot that survives the ZOC re-sync, reset each
+  combat) and `class_heal_pct_at_turn_start` (Nanomachines). Combat-start flats in `_playerArmy`:
+  `class_atkdef_bonus_per_other_class_unit` (Legion) and `class_def_bonus_per_adjacent_class_unit`
+  (Phalanx). `class_pull_and_stun` (Kyber) pulls a distant enemy into reach and stuns it.
+  `class_upgrade_level_bonus_outside_region` (Foreign Legion) folds a live level into
+  `_effectiveLevelBonus` (first effect to read a worldgen `t.region`). Ascendancy stacks
+  `class_atk_flat`/`class_speed_flat` (unitStats), `class_movement_unrestricted` (`_playerWalkable`),
+  and reuses `class_def_flat`/`class_crit_chance_pct`/`class_placement_unrestricted`.
 
 An effect param is a **number**, a **choice** (`options`), a **bool** (`type:'bool'`), a **building**
 id (`type:'building'`), or a **multi-select** (`type:'list'` with `options` — the new shape for

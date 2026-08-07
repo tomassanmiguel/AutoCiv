@@ -142,6 +142,9 @@ export const TERRAIN_GROUP_NAMES = Object.keys(TERRAIN_GROUPS)
 /** The four threshold/economy resources a yield effect may target. */
 export const RESOURCE_KEYS = ['food', 'production', 'gold', 'progress']
 
+/** Worldgen regions an effect may test against (Foreign Legion's "outside X"). */
+export const REGION_KEYS = ['old_world', 'new_world', 'island', 'exoplanet']
+
 /** City-connection tier names, indexed by tier. 0 = the default (no road tech). */
 export const CONNECTION_TIERS = ['Trail', 'Road', 'Railroad', 'Highway', 'Maglev']
 export const connectionTierName = (tier) => CONNECTION_TIERS[Math.min(tier, CONNECTION_TIERS.length - 1)] ?? 'Trail'
@@ -759,6 +762,145 @@ export const EFFECT_KINDS = {
       { key: 'resources', label: 'Resources', type: 'list', options: RESOURCE_KEYS, default: ['food', 'production', 'gold', 'progress'] },
     ],
     describe: (e) => `Each tick, produce ${e.perTile ?? 0} ${(e.resources ?? []).map((r) => `:${r}:`).join(' ') || 'resources'} per razed tile.`,
+  },
+
+  // --- melee theme ------------------------------------------------------------
+  // Class-scoped combat behaviour, mostly for :melee:. Several are LIVE reads
+  // (missing-def, army/adjacency counts, outside-region) — never stored on a unit.
+  class_atkdef_bonus_per_other_class_unit: {
+    label: 'Class — +atk/+def per other unit of a class',
+    hint: 'Each unit of the class gains flat :attack:/:defense: for every OTHER unit of a class anywhere in your army (counted at combat start). Legion.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'atkPerOther', label: 'Atk each', min: 0, default: 1 },
+      { key: 'defPerOther', label: 'Def each', min: 0, default: 1 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain +${e.atkPerOther ?? 0} :attack: / +${e.defPerOther ?? 0} :defense: per other unit of that class in your army.`,
+  },
+  class_def_bonus_per_adjacent_class_unit: {
+    label: 'Class — +def per adjacent same-class unit',
+    hint: 'Each unit of the class gains flat :defense: for every unit of the class adjacent to it (at combat start). Phalanx.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'defPerAdjacent', label: 'Def each', min: 0, default: 2 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain +${e.defPerAdjacent ?? 0} :defense: per adjacent unit of the same class.`,
+  },
+  class_counter_attack_chance_eq_crit: {
+    label: 'Class — counter-attack (chance = own crit)',
+    hint: 'When a unit of the class takes damage, it has a chance equal to its OWN current :crit: chance (from any source) to strike the attacker back. Riposte. No new roll type — it reads whatever crit the unit already has.',
+    params: [{ key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' }],
+    describe: (e) => `When attacked, a :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: unit counter-attacks with a chance equal to its :crit: chance.`,
+  },
+  class_heal_pct_at_turn_start: {
+    label: 'Class — heal at turn start',
+    hint: 'A unit of the class heals this % of its max :defense: at the start of each of its turns. Healing Nanomachines.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'pct', label: 'Percent', min: 0, default: 3 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units heal ${e.pct ?? 0}% max :defense: at the start of each turn.`,
+  },
+  unit_atk_bonus_eq_missing_def: {
+    label: 'Class — +atk equal to missing def',
+    hint: 'A unit of the class gains :attack: equal to its currently MISSING :defense: (max − current), read live at the moment it attacks. Super Meth.',
+    params: [{ key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' }],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain +:attack: equal to their missing :defense:.`,
+  },
+  class_stat_growth_per_turn_in_combat: {
+    label: 'Class — grows each turn in combat',
+    hint: 'A unit of the class gains flat :attack:/:defense: at the start of each of its turns THIS combat, resetting to 0 next combat. Discipline.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'atkPerTurn', label: 'Atk / turn', min: 0, default: 1 },
+      { key: 'defPerTurn', label: 'Def / turn', min: 0, default: 1 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain +${e.atkPerTurn ?? 0} :attack: / +${e.defPerTurn ?? 0} :defense: each turn (resets next combat).`,
+  },
+  class_damage_mult_vs_classes: {
+    label: 'Class — ×damage vs classes',
+    hint: 'A unit of the class deals a damage MULTIPLIER against any target of the listed classes. Pikes (vs cavalry), SAM (vs aerial/astral).',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'targetClasses', label: 'Vs classes', type: 'list', options: UNIT_CLASSES, default: ['cavalry'] },
+      { key: 'mult', label: 'Multiplier', min: 0, default: 2 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units deal ×${e.mult ?? 1} damage to ${(e.targetClasses ?? []).map((c) => `:${c === 'fortification' ? 'fort' : c}:`).join(' / ') || 'nothing'}.`,
+  },
+  resource_on_class_damage_dealt: {
+    label: 'Class — resource on damage dealt',
+    hint: 'Whenever a unit of the class deals damage, gain a resource equal to that damage × a ratio. Hunting.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'food' },
+      { key: 'ratio', label: '× damage', min: 0, default: 1 },
+    ],
+    describe: (e) => `When a :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: unit deals damage, gain :${e.resource}: = ${e.ratio ?? 0}× the damage.`,
+  },
+  class_upgrade_level_bonus_outside_region: {
+    label: 'Class — +upgrade level outside a region',
+    hint: 'A unit of the class gains a LIVE upgrade-level bonus while it stands OUTSIDE the named worldgen region. Foreign Legion.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'outsideRegion', label: 'Outside region', options: REGION_KEYS, default: 'old_world' },
+      { key: 'amount', label: 'Upgrade levels', min: 0, default: 2 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units gain +${e.amount ?? 0} upgrade level while outside the ${(e?.outsideRegion ?? '').replace(/_/g, ' ')}.`,
+  },
+  class_execute_below_pct_def: {
+    label: 'Class — execute low-def enemies',
+    hint: 'A unit of the class instantly kills any enemy it hits that is below this % of its max :defense:. Terminators.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'pct', label: 'Percent', min: 0, default: 10 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units execute enemies below ${e.pct ?? 0}% :defense:.`,
+  },
+  class_pull_and_stun: {
+    label: 'Class — pull an enemy and stun it',
+    hint: 'Before attacking, a unit of the class may pull an enemy from within pull range into melee reach; the pulled enemy skips its next turn(s). Kyber Crystals.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'pullRange', label: 'Pull range', min: 1, default: 2 },
+      { key: 'stunTurns', label: 'Stun turns', min: 1, default: 1 },
+    ],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units may pull an enemy from range ${e.pullRange ?? 0} into melee, stunning it for ${e.stunTurns ?? 0} turn(s).`,
+  },
+  class_arc_attack: {
+    label: 'Class — arc attack',
+    hint: 'A unit of the class hits EVERY enemy in the arc it faces (the hex sector toward its target), not just the primary target. Flamethrowers.',
+    params: [{ key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' }],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: attacks hit every enemy in the facing arc.`,
+  },
+  cavalry_first_hit_convert_to_melee_until_combat_end: {
+    label: 'Cavalry — first hit converts to melee',
+    hint: 'A :cavalry: unit\'s FIRST hit taken each combat is prevented; it becomes a :melee: unit at full :defense: for the rest of the combat, reverting after. Chivalry.',
+    params: [],
+    describe: () => 'A :cavalry: unit\'s first hit each combat is prevented and it becomes :melee: at full :defense: until combat end.',
+  },
+  class_speed_flat: {
+    label: 'Class — +speed',
+    hint: 'Adds raw base :speed: (combat movement) to a class. Unlike the universal +speed, this is class-scoped and applies even to a class that otherwise never moves.',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'amount', label: 'Speed', min: 0, default: 1 },
+    ],
+    describe: (e) => `+${e.amount ?? 0} :speed: to :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units.`,
+  },
+  class_atk_flat: {
+    label: 'Class — flat base attack',
+    hint: 'Adds raw flat :attack: to a class\'s base, folded in before the base-% layer so it STACKS with %-based atk (the attack twin of class flat defence).',
+    params: [
+      { key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' },
+      { key: 'amount', label: 'Attack', min: 0, default: 10 },
+    ],
+    describe: (e) => `+${e.amount ?? 0} raw base :attack: to :${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units.`,
+  },
+  class_movement_unrestricted: {
+    label: 'Class — may move onto any tile',
+    hint: 'Removes a class\'s movement-terrain restriction: a unit of it may move onto any tile in the combat area (the movement twin of unrestricted placement).',
+    params: [{ key: 'unitClass', label: 'Class', options: UNIT_CLASSES, default: 'melee' }],
+    describe: (e) => `:${e?.unitClass === 'fortification' ? 'fort' : e?.unitClass}: units may move onto any tile.`,
   },
 
   // --- unique -----------------------------------------------------------------

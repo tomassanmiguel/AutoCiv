@@ -646,3 +646,41 @@ planet/asteroid tile at combat start (it fights that combat only). And the **Zio
 wonder (tier VIII) produces :food:/:production:/:gold:/:progress: each tick equal to
 the number of razed tiles — the more of your empire is in ruins, the more it pays,
 which is the whole razed-tile registry read as an economy.
+
+## 15. Melee theme
+
+The :melee: line is deep combat behaviour — most techs raise how the front line
+FIGHTS rather than its raw numbers. Three genuinely new engine systems underpin it,
+each reusable by later themes:
+
+- **A skip-turn status.** The first status besides poison's damage-over-time: a
+  per-piece charge that makes the turn queue skip that piece's whole turn (move and
+  attack) once, then clear. Kyber Crystals applies it by pulling an enemy in.
+- **Facing.** Units have no stored facing; it is derived live from the direction to
+  whatever they are striking, and "the arc in front" is that hex sector. Flamethrowers
+  hit every enemy in the arc.
+- **Temporary class conversion.** Chivalry's cavalry, on its first hit taken, becomes
+  a :melee: unit at full :defense: for the rest of the combat and reverts after — the
+  first effect to change a unit's class mid-fight.
+
+The rest are class-scoped riders, all reading LIVE where they can:
+- **Legion / Phalanx** — +atk/+def per other same-class unit in the army / per adjacent
+  same-class unit (fixed at combat start, like Formations).
+- **Discipline** — +atk/+def each turn this combat, reset next combat.
+- **Riposte** — on taking damage, a counter-attack at a chance equal to the unit's OWN
+  crit chance. It deliberately reuses whatever crit the unit has from any source
+  (Critical Hits, Ranged, Commander, Repairs), rather than adding a new roll.
+- **Super Meth** — +:attack: equal to missing :defense:, read the instant it attacks.
+- **Pikes / SAM** — one class-vs-class damage multiplier kind (×2 vs cavalry; ×2 vs
+  aerial/astral), not two bespoke ones.
+- **Hunting** — gain a resource equal to the damage a class deals.
+- **Foreign Legion** — a live upgrade-level bonus while standing outside a named region
+  (the Old World). The first tech to read the worldgen region boundary from the effect layer.
+- **Terminators** — execute enemies left below a % of their max :defense:.
+- **Healing Nanomachines** — heal a % of max :defense: each turn.
+- **Ascendancy** — the capstone: flat speed/atk/def, crit, and unrestricted placement AND
+  movement, so late :melee: goes anywhere and hits like a wall.
+
+Pikes/SAM's damage multiplier and the counter/execute/heal are the model for future
+"class does X in combat" techs; add class-scoped mods and hook `_dealBlow` / the turn
+start, don't special-case a unit.

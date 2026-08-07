@@ -150,6 +150,24 @@ function freshMods() {
     autoRepairAfterCombats: 0,        // Rapid Reconstruction: 0 = off; else auto-repair a ruin N combats after razing
     spawnMercTerrains: new Set(),     // Planetary Partisanship: spawn a merc on razed tiles of these terrains
 
+    // --- melee theme (class-scoped combat behaviour) ---
+    classAtkFlat: {},                 // class -> raw flat :attack: added to its base
+    classSpeedFlat: {},               // class -> flat :speed:
+    classMovementUnrestricted: new Set(), // classes that may move onto any tile
+    classAtkDefPerOther: {},          // class -> { atk, def } per OTHER same-class unit in the army (Legion)
+    classDefPerAdjacent: {},          // class -> +def per adjacent same-class unit (Phalanx)
+    classCounterEqCrit: new Set(),    // classes that counter-attack at their own crit chance (Riposte)
+    classHealPctTurnStart: {},        // class -> % max def healed at each turn start
+    classAtkEqMissingDef: new Set(),  // classes whose atk gains their missing def (Super Meth)
+    classStatGrowth: {},              // class -> { atk, def } gained per turn this combat (Discipline)
+    classDamageMultVsClasses: {},     // class -> [{ targets:Set, mult }] (Pikes / SAM)
+    resourceOnClassDamage: {},        // class -> [{ resource, ratio }] (Hunting)
+    classUpgradeOutsideRegion: {},    // class -> { region, amount } live level while outside region (Foreign Legion)
+    classExecuteBelowPct: {},         // class -> % max def below which it executes (Terminators)
+    classPullStun: {},                // class -> { pullRange, stunTurns } (Kyber Crystals)
+    classArcAttack: new Set(),        // classes that hit the whole facing arc (Flamethrowers)
+    cavalryFirstHitConvert: false,    // Chivalry: cavalry's first hit prevented → becomes melee this combat
+
     // --- unique ---
     palimpsest: 0,                    // # of random prior-era techs to recover at each combat end
 
@@ -1234,6 +1252,69 @@ export class GameManager {
         break
       // `resource_output_per_razed_tile` is a BUILDING/WONDER effect, evaluated in
       // territory.js `evalBuildingEffects` — not folded into mods here.
+
+      // --- melee theme ---
+      case 'class_atk_flat':
+        this.mods.classAtkFlat[f.unitClass] = (this.mods.classAtkFlat[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_speed_flat':
+        this.mods.classSpeedFlat[f.unitClass] = (this.mods.classSpeedFlat[f.unitClass] ?? 0) + (f.amount ?? 0)
+        break
+      case 'class_movement_unrestricted':
+        this.mods.classMovementUnrestricted.add(f.unitClass)
+        break
+      case 'class_atkdef_bonus_per_other_class_unit': {
+        const cur = (this.mods.classAtkDefPerOther[f.unitClass] ??= { atk: 0, def: 0 })
+        cur.atk += f.atkPerOther ?? 0
+        cur.def += f.defPerOther ?? 0
+        break
+      }
+      case 'class_def_bonus_per_adjacent_class_unit':
+        this.mods.classDefPerAdjacent[f.unitClass] = (this.mods.classDefPerAdjacent[f.unitClass] ?? 0) + (f.defPerAdjacent ?? 0)
+        break
+      case 'class_counter_attack_chance_eq_crit':
+        this.mods.classCounterEqCrit.add(f.unitClass)
+        break
+      case 'class_heal_pct_at_turn_start':
+        this.mods.classHealPctTurnStart[f.unitClass] = (this.mods.classHealPctTurnStart[f.unitClass] ?? 0) + (f.pct ?? 0)
+        break
+      case 'unit_atk_bonus_eq_missing_def':
+        this.mods.classAtkEqMissingDef.add(f.unitClass)
+        break
+      case 'class_stat_growth_per_turn_in_combat': {
+        const cur = (this.mods.classStatGrowth[f.unitClass] ??= { atk: 0, def: 0 })
+        cur.atk += f.atkPerTurn ?? 0
+        cur.def += f.defPerTurn ?? 0
+        break
+      }
+      case 'class_damage_mult_vs_classes':
+        (this.mods.classDamageMultVsClasses[f.unitClass] ??= []).push({
+          targets: new Set(f.targetClasses ?? []), mult: f.mult ?? 1,
+        })
+        break
+      case 'resource_on_class_damage_dealt':
+        (this.mods.resourceOnClassDamage[f.unitClass] ??= []).push({ resource: f.resource, ratio: f.ratio ?? 0 })
+        break
+      case 'class_upgrade_level_bonus_outside_region':
+        // Last one wins the region; amounts add if several name the same region.
+        this.mods.classUpgradeOutsideRegion[f.unitClass] = {
+          region: f.outsideRegion,
+          amount: (this.mods.classUpgradeOutsideRegion[f.unitClass]?.region === f.outsideRegion
+            ? this.mods.classUpgradeOutsideRegion[f.unitClass].amount : 0) + (f.amount ?? 0),
+        }
+        break
+      case 'class_execute_below_pct_def':
+        this.mods.classExecuteBelowPct[f.unitClass] = Math.max(this.mods.classExecuteBelowPct[f.unitClass] ?? 0, f.pct ?? 0)
+        break
+      case 'class_pull_and_stun':
+        this.mods.classPullStun[f.unitClass] = { pullRange: f.pullRange ?? 1, stunTurns: f.stunTurns ?? 1 }
+        break
+      case 'class_arc_attack':
+        this.mods.classArcAttack.add(f.unitClass)
+        break
+      case 'cavalry_first_hit_convert_to_melee_until_combat_end':
+        this.mods.cavalryFirstHitConvert = true
+        break
 
       case 'palimpsest':
         this.mods.palimpsest += 1

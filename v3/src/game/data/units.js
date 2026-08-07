@@ -131,7 +131,9 @@ export function unitStats(def, wave, mods, level = 1, extra = null) {
   //   atk = ((base + flat) × (1 + basePct) + EARNED) × (1 + ordinaryPct)
   // The flat (tech-wide + formation) folds into the base before the base-%; the
   // earned flat sits AFTER it, before the ordinary-%. See docs/design.md.
-  const atkFlat = (mods?.unitAtkFlat ?? 0) + (extra?.atkFlat ?? 0)
+  // `classAtkFlat` is the attack twin of `classDefFlat` — a per-class raw addition
+  // to the flat slot (Ascendancy), folded in before the base-% so it stacks.
+  const atkFlat = (mods?.unitAtkFlat ?? 0) + (mods?.classAtkFlat?.[def.type] ?? 0) + (extra?.atkFlat ?? 0)
   // `classDefFlat` is a per-class raw addition to the same flat slot (Masonry
   // etc.): folded into the base before the base-%, so it stacks with %-based def
   // rather than being swallowed by it.
@@ -154,7 +156,8 @@ export function unitStats(def, wave, mods, level = 1, extra = null) {
     atk: def.atk === 0 ? 0 : Math.max(1, Math.round(baseAtk * s)),
     range: def.range,
     // +speed from research, but a class with no movement terrain still can't
-    // move — the extra step has nowhere to go.
-    acts: def.acts + (def.movement.size ? (mods?.unitSpeed ?? 0) : 0),
+    // move — the extra step has nowhere to go. `classSpeedFlat` (Ascendancy) is
+    // class-scoped and applies on top (a class made mobile also gains its speed).
+    acts: def.acts + (def.movement.size ? (mods?.unitSpeed ?? 0) : 0) + (mods?.classSpeedFlat?.[def.type] ?? 0),
   }
 }
