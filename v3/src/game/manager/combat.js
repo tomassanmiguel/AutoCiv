@@ -328,8 +328,13 @@ class CombatMixin {
     }
     const range = def.key === 'ranged' ? this._rangedRange(t, placed, i, s.range) : s.range
     const taunt = this._pieceTauntRange({ key: def.key, type: def.key, q: t.q, r: t.r })
+    // Total crit chance a player unit fights at: base + universal + class-scoped +
+    // the live ZOC crit (Combined Arms), capped at 100%. Only shown for attackers.
+    const crit = s.atk > 0
+      ? Math.min(1, BASE_CRIT_CHANCE + (m.unitCritChancePct ?? 0) + (m.classCritChance?.[def.key] ?? 0) + this._zocFlagsAt(t.q, t.r).crit)
+      : 0
     return {
-      key: def.key, name: def.name, atk: s.atk, def: hp, range, acts: s.acts, taunt, level,
+      key: def.key, name: def.name, atk: s.atk, def: hp, range, acts: s.acts, taunt, level, crit,
       // breakdown for the tooltip
       baseAtk: def.atk, baseDef: def.def,
       atkBasePct: m.unitAtkBasePct ?? 0, defBasePct: m.unitDefBasePct ?? 0,

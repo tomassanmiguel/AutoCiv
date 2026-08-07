@@ -912,10 +912,12 @@ when a FULL badge is shown (prep/combat) — in development the small icon leave
 `unitBoardStats` returns null for it, so the card must not gate the badge on stats.
 
 **The tile hover card** (`TileTip`) is the read-the-numbers surface, mirroring the enemy
-`PieceCard` tooltip: for a **player unit** it shows the live atk/def/range/taunt plus a
-`StatLine` breakdown (base → research % → class flat → formation → earned → adj-ranged); for a
-**city** it shows food income and ticks to the next pop (`GameManager.cityInfo` →
-`cityGrowthInfo`); for a **building** its live `makes:` output.
+`PieceCard` tooltip: for a **player unit** it shows the live atk/def/range/speed/**crit%**/taunt
+plus a `StatLine` breakdown (base → research % → class flat → formation → earned → adj-ranged);
+for a **city/palace** and an **outpost** (improved tile) it shows what they are + city food
+income and ticks to the next pop (`GameManager.cityInfo` → `cityGrowthInfo`); for a **building**
+its live `makes:` output. Crit % on a unit is the total live chance (base 5% + universal + class +
+ZOC), from `unitBoardStats.crit`, shown only for attackers.
 
 **Hovering a unit paints its reach** (`GameManager.unitReachCells`): BLUE = ground it can walk
 to this turn, RED = what it can strike from where it stands, AMBER = what it could strike after

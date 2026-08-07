@@ -586,14 +586,16 @@ export default function HexMap() {
   const markerEls = useMemo(() => shown.map((t) => {
     const k = `${t.q},${t.r}`
     if (known.bfSet.has(k)) return null
-    // The outpost pip shows for ANY improved, city-less tile — even one with a
-    // unit or building on it — pinned to a corner so it is never covered.
+    // The outpost pip shows for any improved, city-less tile. It sits CENTRED by
+    // default; only when a unit or building shares the tile does it tuck into the
+    // corner so the centred card doesn't cover it.
     const dot = t.improved && !t.city
     if (!dot && !t.city && !t.encampment) return null
+    const dotCornered = dot && (t.unit || t.building)
     const c = centerOf(t.q, t.r)
     return (
       <div key={`m${k}`} className="hex-marker-anchor" style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H }}>
-        {dot && <span className="hex-improved" />}
+        {dot && <span className={`hex-improved${dotCornered ? ' cornered' : ''}`} />}
         {/* When a FULL unit badge stands on a city (prep/combat), tuck the pop pip
             into the corner so the centred badge does not swallow it. In development
             the unit is a small icon, so the pip stays centred and prominent. */}
@@ -886,17 +888,26 @@ function TileTip({ game, tile, battlefield }) {
       {tile.q === 0 && tile.r === 0 && <div className="hex-tip-note palace">Your palace stands here.</div>}
       {tile.city && (() => {
         const ci = game.cityInfo(tile)
-        if (!ci) return null
+        const palace = tile.city.palace
         return (
           <div className="hex-tip-note build">
-            <b>City</b> — population {ci.pop}
-            <div className="hex-tip-sub">
-              +{ci.rate.toFixed(1)} :food:/tick · next pop in {Number.isFinite(ci.ticks) ? `${ci.ticks} tick${ci.ticks === 1 ? '' : 's'}` : '—'}
-              {' '}({Math.floor(ci.food)}/{ci.cost} :food:)
-            </div>
+            <b>{palace ? 'Palace' : 'City'}</b> — {palace
+              ? 'your seat of power; its population compounds and adds to production, gold and progress. If it falls, the run ends.'
+              : 'grows population on nearby food; each citizen adds to this tile’s production, gold and progress. Cities also link into your road network.'}
+            {ci && (
+              <div className="hex-tip-sub">
+                population {ci.pop} · +{ci.rate.toFixed(1)} :food:/tick · next pop in {Number.isFinite(ci.ticks) ? `${ci.ticks} tick${ci.ticks === 1 ? '' : 's'}` : '—'}
+                {' '}({Math.floor(ci.food)}/{ci.cost} :food:)
+              </div>
+            )}
           </div>
         )
       })()}
+      {tile.improved && !tile.city && (
+        <div className="hex-tip-note build">
+          <b>Outpost</b> — a settled tile: its yield is DOUBLED and it holds your border. Found a city here (or upgrade it) as you expand.
+        </div>
+      )}
       {bDef && (
         <div className="hex-tip-note build">
           <b>{bDef.name}</b> — <IconText>{buildingEffectText(bDef)}</IconText>
@@ -918,6 +929,7 @@ function TileTip({ game, tile, battlefield }) {
                   <span className="hex-tip-yield"><IconText>{`:defense: ${s.def}`}</IconText></span>
                   {s.range > 0 && <span className="hex-tip-yield"><IconText>{`:range: ${Number.isFinite(s.range) ? s.range : '∞'}`}</IconText></span>}
                   {s.acts > 0 && <span className="hex-tip-yield"><IconText>{`:speed: ${s.acts}`}</IconText></span>}
+                  {s.crit > 0 && <span className="hex-tip-yield"><IconText>{`:crit: ${Math.round(s.crit * 100)}%`}</IconText></span>}
                   {s.taunt > 0 && <span className="hex-tip-yield">taunt {s.taunt}</span>}
                   {s.zoc > 0 && <span className="hex-tip-yield">+{s.zoc} ZOC lvl</span>}
                 </div>

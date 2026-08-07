@@ -172,18 +172,20 @@
 }
 
 /* An improvement (outpost) is a small dot; a city replaces it with a population
-   pip. Pinned to the BOTTOM-RIGHT corner (absolute, out of the grid flow) so a
-   unit badge or building card centred on the same tile never covers it. */
+   pip. CENTRED by default (grid); tucked to the bottom-right corner only when a
+   unit/building shares the tile, so the centred card cannot cover it. */
 .hex-improved {
-  position: absolute;
-  bottom: 8%;
-  right: 8%;
   width: 15%;
   aspect-ratio: 1;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff2c4, #c9a22e);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 0 1.5px rgba(60, 44, 10, 0.7);
   pointer-events: none;
+}
+.hex-improved.cornered {
+  position: absolute;
+  bottom: 8%;
+  right: 8%;
 }
 .hex-city {
   display: grid;
