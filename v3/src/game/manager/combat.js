@@ -28,7 +28,8 @@ import {
 import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
 import { buildingDef } from '../data/buildings.js'
 import { isPassable, isLand } from '../world/terrain.js'
-import { razeTile, radiusUpgradeLevelAt } from '../world/territory.js'
+import { razeTile, restoreTile, radiusUpgradeLevelAt } from '../world/territory.js'
+import { tileRepairCost } from '../data/costs.js'
 import { repositionField } from '../world/reposition.js'
 import { makeRng, shuffle } from '../world/noise.js'
 
@@ -125,6 +126,14 @@ class CombatMixin {
     // blob because it is a function, not state to copy.
     this._critRng = makeRng((this.seed ^ (wave * 0x9e3779b1)) >>> 0)
 
+    const units = scratch
+      ? this._scratchGarrison(wave, makeRng((this.seed ^ (wave * 40503)) >>> 0))
+      : this._playerArmy()
+    // PLANETARY PARTISANSHIP: temporary mercenaries hold currently-razed ground of
+    // the given terrains. They fight this combat only (no `home`, so endCombat
+    // never writes them back to a tile).
+    if (!scratch && this.mods?.spawnMercTerrains?.size) units.push(...this._mercenaryPieces(wave, units.length))
+
     this.combat = {
       ...this.combat,
       wave, strength, scratch,
@@ -133,9 +142,7 @@ class CombatMixin {
       result: null,
       queue: [], phase: null, acting: null,
       enemies,
-      units: scratch
-        ? this._scratchGarrison(wave, makeRng((this.seed ^ (wave * 40503)) >>> 0))
-        : this._playerArmy(),
+      units,
       palace: {
         ...PALACE, hp: this.palaceHp, maxHp, q: 0, r: 0,
         // ⚠️ THE PALACE IS NOT A UNIT. Unit research does not touch it — neither
@@ -190,15 +197,16 @@ class CombatMixin {
 
       const range = def.key === 'ranged' ? this._rangedRange(t, placed, i, s.range) : s.range
 
-      // Total crit chance this unit fights at (base + universal + class + live
-      // ZOC), for the on-card tooltip. Only attackers can crit.
+      // Total crit chance this unit fights at (base + universal + class + live ZOC
+      // + per-unit earned via repair), for the on-card tooltip. Attackers only.
+      const earnedCrit = t.unit.earnedCrit ?? 0
       const crit = s.atk > 0
-        ? Math.min(1, BASE_CRIT_CHANCE + (m.unitCritChancePct ?? 0) + (m.classCritChance?.[def.key] ?? 0) + this._zocFlagsAt(t.q, t.r).crit)
+        ? Math.min(1, BASE_CRIT_CHANCE + (m.unitCritChancePct ?? 0) + (m.classCritChance?.[def.key] ?? 0) + this._zocFlagsAt(t.q, t.r).crit + earnedCrit)
         : 0
       const piece = {
         id: id++, side: 'player', key: def.key, name: s.name, type: s.type,
         q: t.q, r: t.r, home: t,
-        hp, maxHp: hp, atk: s.atk, range, acts: s.acts, crit,
+        hp, maxHp: hp, atk: s.atk, range, acts: s.acts, crit, earnedCrit,
         dead: false, lastAttackSeq: null, lastAttackDir: null,
         // Ranged-theme per-unit combat state.
         preload: 0, poisonEscalator: 0,
@@ -214,6 +222,36 @@ class CombatMixin {
       units.push(piece)
     }
     return units
+  }
+
+  /**
+   * PLANETARY PARTISANSHIP: a mercenary for every currently-razed tile of one of
+   * the flagged terrains. A merc is a melee-class combat piece with NO `home` —
+   * so endCombat skips it and it disbands when the fight ends, leaving no trace on
+   * the board. It holds the razed ground (its class can't move off space, which is
+   * fine for a partisan) and strikes any enemy that comes into reach.
+   */
+  _mercenaryPieces(wave, startId) {
+    const terrains = this.mods.spawnMercTerrains
+    const def = UNIT_DEFS.melee
+    if (!def || !terrains?.size) return []
+    const m = this.mods
+    const out = []
+    let id = startId
+    for (const t of this.world.terr.ruins) {
+      if (!terrains.has(t.terrain)) continue
+      const s = unitStats(def, wave, m, 1)
+      out.push({
+        id: id++, side: 'player', key: def.key, name: `${def.name} (mercenary)`, type: def.key,
+        q: t.q, r: t.r, home: null, mercenary: true,
+        hp: s.def, maxHp: s.def, atk: s.atk, range: s.range, acts: s.acts,
+        crit: s.atk > 0 ? Math.min(1, BASE_CRIT_CHANCE + (m.unitCritChancePct ?? 0) + (m.classCritChance?.[def.key] ?? 0)) : 0,
+        earnedCrit: 0,
+        dead: false, lastAttackSeq: null, lastAttackDir: null,
+        preload: 0, poisonEscalator: 0,
+      })
+    }
+    return out
   }
 
   // --- commander ZONE OF CONTROL --------------------------------------------
@@ -338,9 +376,9 @@ class CombatMixin {
     const range = def.key === 'ranged' ? this._rangedRange(t, placed, i, s.range) : s.range
     const taunt = this._pieceTauntRange({ key: def.key, type: def.key, q: t.q, r: t.r })
     // Total crit chance a player unit fights at: base + universal + class-scoped +
-    // the live ZOC crit (Combined Arms), capped at 100%. Only shown for attackers.
+    // the live ZOC crit + per-unit earned (Pyrrhic Tactics), capped. Attackers only.
     const crit = s.atk > 0
-      ? Math.min(1, BASE_CRIT_CHANCE + (m.unitCritChancePct ?? 0) + (m.classCritChance?.[def.key] ?? 0) + this._zocFlagsAt(t.q, t.r).crit)
+      ? Math.min(1, BASE_CRIT_CHANCE + (m.unitCritChancePct ?? 0) + (m.classCritChance?.[def.key] ?? 0) + this._zocFlagsAt(t.q, t.r).crit + (t.unit.earnedCrit ?? 0))
       : 0
     return {
       key: def.key, name: def.name, atk: s.atk, def: hp, range, acts: s.acts, taunt, level, crit,
@@ -489,6 +527,15 @@ class CombatMixin {
       this._applyEndOfCombatUpgrades()
       // PALIMPSEST: recover random prior-era advancements now the wave is won.
       this._grantPalimpsest()
+      // RAPID RECONSTRUCTION: razed tiles repair themselves for free once enough
+      // combats have passed. `this.wave` is still the wave that just fought, so a
+      // ruin razed THIS combat (razedWave === wave) is at "0 combats since".
+      const after = this.mods?.autoRepairAfterCombats ?? 0
+      if (after > 0) {
+        for (const t of [...this.world.terr.ruins]) {
+          if (t.ruin && this.wave - (t.ruin.razedWave ?? this.wave) >= after) restoreTile(this.world, t)
+        }
+      }
       this.palaceHp = Math.max(0, c.palace?.hp ?? this.palaceHp)
       this.world.terr.version++
     }
@@ -764,8 +811,27 @@ class CombatMixin {
       e.r = best.r
       occ.set(key(e.q, e.r), e)
       moved = true
+      if (this._scorch(e)) break // razed ground may kill it mid-advance
     }
     return visible || moved
+  }
+
+  /**
+   * SCORCHED EARTH: an enemy that steps onto a razed tile takes flat damage. Fires
+   * for ANY enemy entering, not just the one that razed it. Returns true if the
+   * enemy died, so a move loop can stop advancing a corpse.
+   */
+  _scorch(e) {
+    const amt = this.mods?.damageEnemyEnteringRazed ?? 0
+    if (!amt) return false
+    const t = this.world.tiles.get(key(e.q, e.r))
+    if (!t?.ruin) return false
+    e.hp -= amt
+    const c = this.combat
+    c.events.push({ id: `scorch-${c.actionSeq}-${e.id}`, q: e.q, r: e.r, amount: amt, kind: 'damage' })
+    c.actionSeq++
+    if (e.hp <= 0) { e.hp = 0; e.dead = true; this._onUnitDeath(e); return true }
+    return false
   }
 
   /** Greedy step toward a target tile (used by taunt), stopping in attack reach. */
@@ -789,6 +855,7 @@ class CombatMixin {
       e.r = best.r
       occ.set(key(e.q, e.r), e)
       moved = true
+      if (this._scorch(e)) break // razed ground may kill it mid-advance
     }
     return moved
   }
@@ -887,7 +954,14 @@ class CombatMixin {
     const t = this.world.tiles.get(key(e.q, e.r))
     const what = razeTile(this.world, t)
     if (!what) return false
+    // Stamp the wave it was razed, so "combats since razed" (Rapid Reconstruction)
+    // and any repair-cost read (Insurance) are computable from the ruin alone.
+    if (t.ruin) t.ruin.razedWave = this.wave
     this.combat.razed++
+    // INSURANCE: gain gold = a fraction of what it would cost to repair this ruin,
+    // the instant it is razed.
+    const pct = this.mods?.goldOnRazePct ?? 0
+    if (pct > 0) this.resources.gold.value += tileRepairCost(this.wave, what) * pct
     this.combat.events.push({ id: `raze-${this.combat.actionSeq}-${key(t.q, t.r)}`, q: t.q, r: t.r, kind: 'raze', amount: what })
     this.combat.actionSeq++
     this._knownCache = null
@@ -931,9 +1005,10 @@ class CombatMixin {
     if (allowCrit && base > 0 && (attacker.side === 'player' || attacker.side === 'enemy')) {
       let chance = BASE_CRIT_CHANCE
       if (attacker.side === 'player') {
-        // Three crit sources: universal, class-scoped, and ZOC-scoped (Combined Arms).
+        // FOUR crit sources: universal, class-scoped, ZOC-scoped (Combined Arms),
+        // and the per-unit earned crit (Pyrrhic Tactics, banked on the piece).
         chance += (this.mods?.unitCritChancePct ?? 0) + (this.mods?.classCritChance?.[attacker.type] ?? 0)
-          + this._zocFlagsAt(attacker.q, attacker.r).crit
+          + this._zocFlagsAt(attacker.q, attacker.r).crit + (attacker.earnedCrit ?? 0)
       }
       chance = Math.min(1, chance)
       if (this._critRng() < chance) { base *= CRIT_MULT; crit = true }

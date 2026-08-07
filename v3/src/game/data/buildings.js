@@ -89,15 +89,15 @@ export const BUILDING_LIST = Object.values(BUILDING_DEFS)
  * A BUILT WONDER occupies the tile's building slot, so every path that renders
  * or values a building has to be able to resolve it.
  *
- * A wonder carries no yield clauses. What it does is content, wired one effect
- * at a time — so this is a name, an icon and the authored description, and
- * deliberately nothing more. `buildingYield` returns zero for it until an effect
- * kind exists that pays out.
+ * A wonder carries no adjacency yield clauses, but it DOES carry its authored
+ * `effects` — so a built wonder feeds the continuous building-effect pass
+ * (`evalBuildingEffects`) exactly like a content building. Zion's per-razed-tile
+ * output is that path. `buildingYield` still returns zero (no base/per clauses).
  */
 export const WONDER_BUILDINGS = Object.fromEntries(
   WONDERS.map((w) => [w.id, {
     key: w.id, name: w.name, icon: w.icon ?? '/sprites/ui/wonder.png',
-    wonder: true, tier: w.tier, blurb: w.description,
+    wonder: true, tier: w.tier, blurb: w.description, effects: w.effects ?? [],
   }]),
 )
 

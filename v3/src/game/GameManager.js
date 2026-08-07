@@ -26,10 +26,11 @@ import { STAGE_COUNT, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { terrainOf, isPassable } from './world/terrain.js'
 import { key, neighbors, disc } from './hex/coords.js'
 import { initialResources, accrue } from './data/resources.js'
-import { QUADRANTS, OFFER_SIZE, ERAS, connectionTierName } from './data/schema.js'
+import { QUADRANTS, OFFER_SIZE, ERAS, connectionTierName, WONDER_TIERS } from './data/schema.js'
 import {
   initialDraft, drawOffers, recordPick, branchPool, branchProgress,
   revealEraOf, draftableById, randomPriorTech,
+  nextWonderTier, wondersForTier, wonderTierIndex,
 } from './data/content.js'
 import {
   TICKS_PER_WAVE, WAVE_COUNT, stageForEra, unlocksForEra, EXPANSION_UNLOCKS,
@@ -137,6 +138,18 @@ function freshMods() {
     buildingUpgradeCostMult: 1,
     recursiveUpgrade: false,          // a paid upgrade grants one more free (non-re-triggering) level
 
+    // --- repairs & razed ground ---
+    // Repairing a unit permanently grants these (Pyrrhic Tactics); critChance is
+    // a FRACTION and is a fourth crit source (per-unit, earned via repair).
+    repairEarnedStats: { atk: 0, def: 0, critChance: 0 },
+    unitRepairCostMult: 1,            // MULTIPLICATIVE unit-repair cost discount
+    goldOnRazePct: 0,                 // Insurance: gold = this fraction of a razed tile's repair cost
+    resourceOnRepairByClass: [],      // [{ classes:Set, resource, mult }] — resource = mult × repaired unit's atk
+    damageEnemyEnteringRazed: 0,      // Scorched Earth: flat damage to any enemy entering a razed tile
+    upgradeLevelOnRepair: 0,          // Creative Destruction: +level when a unit/building is repaired
+    autoRepairAfterCombats: 0,        // Rapid Reconstruction: 0 = off; else auto-repair a ruin N combats after razing
+    spawnMercTerrains: new Set(),     // Planetary Partisanship: spawn a merc on razed tiles of these terrains
+
     // --- unique ---
     palimpsest: 0,                    // # of random prior-era techs to recover at each combat end
 
@@ -229,7 +242,7 @@ export class GameManager {
     this.resources = initialResources()
     // { type: 'progress' | 'city' | 'wonder' | 'placement', ... }
     this.selection = null
-    this.pending = { progress: 0, food: 0 }
+    this.pending = { progress: 0, food: 0, production: 0 }
     this.log = []
 
     this.phase = 'development' // 'development' | 'combat'
@@ -315,10 +328,12 @@ export class GameManager {
 
     // Each threshold resource does something different. See `docs/design.md` §3.
     // :progress: offers advancements; :food: opens a manual expansion (settle an
-    // outpost OR found a city). :production: is currently INERT — it accrues and
-    // crosses levels but does nothing (it will build wonders later).
+    // outpost OR found a city); :production: reaches into the next WONDER TIER to
+    // build one. Once every tier is exhausted, a production crossing converts into
+    // a progress advancement instead (handled in `_openNextSelection`).
     if (gained.progress > 0) this.pending.progress += gained.progress
     if (gained.food > 0) this.pending.food += gained.food
+    if (gained.production > 0) this.pending.production += gained.production
 
     this.tick++
     if (this.tick >= TICKS_PER_WAVE) this._startPrep()
@@ -520,7 +535,14 @@ export class GameManager {
     return out
   }
 
-  get heldWonder() { return this.draft.heldWonder }
+  /** The tier index the next :production: threshold offers, or -1 if all built. */
+  get nextWonderTier() { return nextWonderTier(this.draft) }
+
+  /** The Roman-numeral name of the next wonder tier, or null when none remain. */
+  get nextWonderTierName() {
+    const ti = nextWonderTier(this.draft)
+    return ti >= 0 ? WONDER_TIERS[ti] : null
+  }
 
   /** Expansion permissions, granted by the reveal era. */
   get unlocks() {
@@ -572,6 +594,24 @@ export class GameManager {
         return
       }
     }
+    // :production: builds a WONDER from the next tier. Each crossing reaches the
+    // lowest tier that still holds an unbuilt wonder and offers its wonders as a
+    // choice; once every tier is exhausted the crossing becomes a progress
+    // advancement instead (excess production → progress).
+    while (this.pending.production > 0) {
+      this.pending.production--
+      const ti = nextWonderTier(this.draft)
+      const offers = ti >= 0 ? wondersForTier(this.draft, ti) : []
+      if (offers.length) {
+        this.selection = { type: 'wonder', stage: 'choose', offers, tier: ti }
+        this._restartTimer()
+        return
+      }
+      this.pending.progress++ // no wonders left anywhere — spend it on progress
+    }
+    // A production→progress conversion above may have queued a progress offer;
+    // re-enter to open it (production is now drained, so this cannot loop).
+    if (!this.selection && this.pending.progress > 0) this._openNextSelection()
   }
 
   _drawProgressOffers(exclude = null) {
@@ -608,18 +648,36 @@ export class GameManager {
   }
 
   /**
-   * Build the held wonder. Drafting a wonder does not build it — this does, and
-   * clearing `heldWonder` is what lets wonders back into the offer.
+   * A :production: wonder choice, stage one: pick WHICH wonder of the offered tier
+   * to build, then advance to placing it. The other wonders of that tier are gone
+   * once one is chosen (the same "what you skip is lost" rule as the draft).
+   */
+  chooseWonder(row) {
+    const sel = this.selection
+    if (sel?.type !== 'wonder' || sel.stage !== 'choose') return false
+    if (!sel.offers.some((o) => o.id === row.id)) return false
+    this.selection = { type: 'wonder', stage: 'place', wonder: row, tier: sel.tier }
+    this._emit()
+    return true
+  }
+
+  /**
+   * Build the chosen wonder on `tile` (stage two). Marks it built, advances the
+   * wonder-tier pointer past its tier, and records it so the panel can show it.
+   * The wonder's effects run as BUILDING effects (via its def), so nothing is
+   * folded into `mods` here.
    */
   buildWonderAt(tile) {
     const sel = this.selection
-    if (sel?.type !== 'wonder') return false
-    if (!placeBuilding(this.world, tile, sel.wonder.id)) return false
+    if (sel?.type !== 'wonder' || sel.stage !== 'place') return false
+    if (!placeBuilding(this.world, tile, sel.wonder.id, buildingDef(sel.wonder.id), this.revealEra)) return false
     tile.building.wonder = true
-    this.draft.heldWonder = null
+    this.draft.taken.add(sel.wonder.id)
+    this.draft.wonderTier = wonderTierIndex(sel.wonder) + 1
     this.log.push({ wave: this.wave, text: `Built ${sel.wonder.name}.` })
     this.selection = null
     this._knownCache = null
+    this.world.terr.version++
     this._openNextSelection()
     this._restartTimer()
     this._emit()
@@ -679,7 +737,8 @@ export class GameManager {
     if (!t || !t.controlled || !this.canSpend) return out
     const g = this.resources.gold.value
     if (t.unit?.destroyed) {
-      const cost = unitRepairCost(this.wave)
+      // Repair-cost discounts are MULTIPLICATIVE, like every other cost cut.
+      const cost = Math.round(unitRepairCost(this.wave) * this.mods.unitRepairCostMult)
       out.push({ kind: 'repair-unit', label: `Repair ${UNIT_NAME(t.unit.key)}`, cost, afford: g >= cost })
     } else if (t.unit) {
       // Cost-reduction techs are MULTIPLICATIVE (mods.unitUpgradeCostMult).
@@ -701,8 +760,8 @@ export class GameManager {
     const action = this.tileActions(t).find((a) => a.kind === kind)
     if (!action || !this._spend(action.cost)) return false
     switch (kind) {
-      case 'repair-unit': repairUnit(this.world, t); break
-      case 'rebuild': restoreTile(this.world, t); break
+      case 'repair-unit': repairUnit(this.world, t); this._onRepairUnit(t); break
+      case 'rebuild': restoreTile(this.world, t); this._onRebuild(t); break
       // Recursive Self-Improvement: a PAID upgrade grants one more free level. It
       // is a plain increment (not a re-invocation), so it can never cascade.
       case 'upgrade-unit': t.unit.level = (t.unit.level ?? 1) + 1 + (this.mods.recursiveUpgrade ? 1 : 0); break
@@ -713,6 +772,43 @@ export class GameManager {
     this._knownCache = null
     this._emit()
     return true
+  }
+
+  /**
+   * Repair-triggered effects (Pyrrhic Tactics / Black Box / Legitimate Salvage /
+   * Creative Destruction). All fire on a GOLD-SPEND repair of a unit — auto-repair
+   * of razed ground is a separate, free path that does not trigger these.
+   */
+  _onRepairUnit(t) {
+    const u = t.unit
+    if (!u) return
+    const m = this.mods
+    const es = m.repairEarnedStats
+    // Pyrrhic Tactics: permanent earned atk / def / crit, stacking per repair.
+    if (es.atk) u.earnedAtk = (u.earnedAtk ?? 0) + es.atk
+    if (es.def) u.earnedDef = (u.earnedDef ?? 0) + es.def
+    if (es.critChance) u.earnedCrit = (u.earnedCrit ?? 0) + es.critChance
+    // Creative Destruction: a free upgrade level on repair.
+    if (m.upgradeLevelOnRepair) u.level = (u.level ?? 1) + m.upgradeLevelOnRepair
+    // Black Box / Legitimate Salvage: resource = mult × the unit's attack, for a
+    // matching class. Added to the stock; a threshold it crosses resolves on the
+    // next development tick (repairs happen in dev/prep).
+    if (m.resourceOnRepairByClass.length) {
+      const def = UNIT_DEFS[u.key]
+      if (def) {
+        const s = unitStats(def, this.wave, m, u.level ?? 1, { earnedAtk: u.earnedAtk ?? 0, earnedDef: u.earnedDef ?? 0 })
+        for (const r of m.resourceOnRepairByClass) {
+          if (r.classes.has(u.key) && this.resources[r.resource]) this.resources[r.resource].value += r.mult * s.atk
+        }
+      }
+    }
+  }
+
+  /** Rebuilding razed ground: Creative Destruction upgrades a rebuilt building. */
+  _onRebuild(t) {
+    if (t.building && this.mods.upgradeLevelOnRepair) {
+      t.building.level = (t.building.level ?? 1) + this.mods.upgradeLevelOnRepair
+    }
   }
 
   get repairTargets() { return repairTargets(this.world) }
@@ -846,16 +942,15 @@ export class GameManager {
   /**
    * Take one of the three offered advancements.
    *
-   * A WONDER is not built here — it is held, and the next :production: threshold
-   * builds it. Everything else applies immediately.
+   * Only techs are offered here — WONDERS are built by :production: thresholds
+   * (see `chooseWonder` / `buildWonderAt`), never drafted in the progress pool.
    */
   chooseOffer(row) {
     if (this.selection?.type !== 'progress') return false
     if (!this.selection.offers.some((o) => o.id === row.id)) return false
 
     const { advanced } = recordPick(this.draft, row)
-    if (row.isWonder) this.draft.heldWonder = row
-    else this._applyEffects(row)
+    this._applyEffects(row)
     // Advancing a branch is what opens the map — the reveal follows research.
     if (advanced) this._syncReveal()
     this.log.push({ wave: this.wave, text: `Researched ${row.name}.` })
@@ -1104,6 +1199,41 @@ export class GameManager {
           if (bt.building) bt.building.level = (bt.building.level ?? 1) + (f.amount ?? 0)
         }
         break
+
+      // --- repairs & razed ground ---
+      case 'unit_earned_stats_on_repair':
+        this.mods.repairEarnedStats.atk += f.atk ?? 0
+        this.mods.repairEarnedStats.def += f.def ?? 0
+        this.mods.repairEarnedStats.critChance += (f.critChance ?? 0) / 100
+        break
+      case 'unit_repair_cost_mult_pct':
+        this.mods.unitRepairCostMult *= 1 - (f.pctReduction ?? 0) / 100
+        break
+      case 'gold_on_tile_razed_pct_of_repair_cost':
+        this.mods.goldOnRazePct += (f.pct ?? 0) / 100
+        break
+      case 'resource_on_repair_class_mult_atk':
+        this.mods.resourceOnRepairByClass.push({
+          classes: new Set(f.unitClasses ?? []), resource: f.resource, mult: f.mult ?? 0,
+        })
+        break
+      case 'damage_enemy_entering_razed_tile':
+        this.mods.damageEnemyEnteringRazed += f.amount ?? 0
+        break
+      case 'upgrade_level_on_repair':
+        this.mods.upgradeLevelOnRepair += f.amount ?? 0
+        break
+      case 'razed_tile_auto_repair_after_combats':
+        // The SOONEST any tech would repair it wins, if several are held.
+        this.mods.autoRepairAfterCombats = this.mods.autoRepairAfterCombats
+          ? Math.min(this.mods.autoRepairAfterCombats, f.combats ?? 1)
+          : (f.combats ?? 1)
+        break
+      case 'spawn_mercenary_on_razed_terrain_at_combat_start':
+        for (const t of f.terrains ?? []) this.mods.spawnMercTerrains.add(t)
+        break
+      // `resource_output_per_razed_tile` is a BUILDING/WONDER effect, evaluated in
+      // territory.js `evalBuildingEffects` — not folded into mods here.
 
       case 'palimpsest':
         this.mods.palimpsest += 1

@@ -615,6 +615,13 @@ function evalBuildingEffects(world, mods, era, t, buildings, add) {
           put(o, 'progress', y.food + y.production + y.gold) // "other" base yields = everything but progress
         }
         break
+      case 'resource_output_per_razed_tile': {
+        // ZION: each tick, produce perTile of each listed resource for every
+        // currently-razed tile in the empire (the whole razed-tile registry).
+        const n = world.terr.ruins.size
+        if (n) for (const res of f.resources ?? []) put(t, res, (f.perTile ?? 0) * n)
+        break
+      }
       default:
         break
     }
@@ -835,6 +842,20 @@ export function repairUnit(world, t) {
   t.unit.destroyed = false
   world.terr.version++
   return true
+}
+
+/**
+ * THE RAZED-TILE REGISTRY. `world.terr.ruins` is the live set of razed tiles;
+ * this reads its current count, optionally filtered to a set of terrains (a
+ * Set or an array). Read by Zion (all ruins) and Planetary Partisanship
+ * (planet/asteroid only) alike — one registry, many consumers.
+ */
+export function razedCount(world, terrains = null) {
+  if (!terrains) return world.terr.ruins.size
+  const set = terrains instanceof Set ? terrains : new Set(terrains)
+  let n = 0
+  for (const t of world.terr.ruins) if (set.has(t.terrain)) n++
+  return n
 }
 
 /** Everything on the board that gold could currently fix. */

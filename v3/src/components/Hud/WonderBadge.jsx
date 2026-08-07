@@ -3,31 +3,32 @@ import InfoTip from '../common/InfoTip.jsx'
 import './WonderBadge.css'
 
 /**
- * A drafted-but-unbuilt wonder, with how close :production: is to building it.
+ * The :production: → wonder track. Production no longer founds cities or sits
+ * inert: each threshold reaches into the next WONDER TIER and lets you build one.
+ * This badge shows how close the next threshold is and what it will offer — or,
+ * once every tier is built, that production now feeds :progress: instead.
  *
- * It earns permanent screen space because holding one CHANGES TWO RULES at once
- * and both are invisible otherwise: your next :production: threshold builds this
- * instead of founding a city, and no further wonder can be offered until it is
- * standing. Without the badge a player would just see cities stop appearing.
+ * It earns permanent screen space because the rule is otherwise invisible: a
+ * player would just see production fill and nothing happen.
  */
 export default function WonderBadge() {
   const game = useGame()
-  const w = game.heldWonder
-  if (!w) return null
+  const tier = game.nextWonderTierName // Roman numeral, or null when all built
 
   const stock = game.resources.production
   const need = stock.threshold * (game.mods.threshold.production ?? 1)
   const pct = Math.max(0, Math.min(1, stock.value / need))
 
+  const label = tier ? `Wonder · Tier ${tier}` : 'Production → Progress'
+  const tip = tier
+    ? `Your next :production: threshold offers a Tier ${tier} wonder to build.`
+    : 'Every wonder tier is built — :production: now converts into :progress: advancements.'
+
   return (
-    <InfoTip
-      className="wonder-badge"
-      title={w.name}
-      text={`${w.description} — built at your next :production: threshold, instead of founding a city. No other wonder can be offered until it stands.`}
-    >
-      <img src={w.icon} alt="" />
+    <InfoTip className="wonder-badge" title={label} text={tip}>
+      <img src="/sprites/ui/wonder.png" alt="" />
       <div className="wb-body">
-        <span className="wb-name">{w.name}</span>
+        <span className="wb-name">{label}</span>
         <div className="wb-bar"><div className="wb-fill" style={{ width: `${pct * 100}%` }} /></div>
       </div>
       <span className="wb-pct">{Math.floor(pct * 100)}%</span>

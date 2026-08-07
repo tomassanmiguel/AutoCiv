@@ -108,7 +108,8 @@ export default function HexMap() {
       return s
     }
     if (sel?.type === 'city') return cityAimSet
-    if (sel?.type === 'wonder') return new Set(game.wonderTargets.map((x) => `${x.q},${x.r}`))
+    // A wonder aims on the map only in its PLACE stage; the choose stage is an overlay.
+    if (sel?.type === 'wonder' && sel.stage === 'place') return new Set(game.wonderTargets.map((x) => `${x.q},${x.r}`))
     return null
   })()
   // Ground you own that is full — marked so "one per tile" is a visible rule
@@ -123,7 +124,7 @@ export default function HexMap() {
       else game.settleAt(t)
     }
     else if (sel?.type === 'city') game.foundCityAt(t)
-    else if (sel?.type === 'wonder') game.buildWonderAt(t)
+    else if (sel?.type === 'wonder' && sel.stage === 'place') game.buildWonderAt(t)
   }
 
   const viewportRef = useRef(null)

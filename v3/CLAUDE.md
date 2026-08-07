@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **118 techs** · **19 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **127 techs** · **19 buildings** · 6 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -383,10 +383,15 @@ this is the implementer's summary:
   difficulty. Combat is the **wave** ladder — 30 waves, one combat each, scaling on its own.
   The two clocks never touch.
 - **:food: opens a manual expand choice** (settle an outpost OR found a city); **:progress:
-  offers 3 techs**; **:production: is inert for now** (it will build wonders/cities later).
-- **Wonders are drafted like techs** — era, quadrant, and an entry in the offer. Taking one does
-  not build it; the next :production: threshold does. You are never offered a second while one
-  is unbuilt.
+  offers 3 techs**; **:production: builds a WONDER** from the next tier.
+- **Wonders are a :production:-driven TIER track, NOT drafted with techs.** Each :production:
+  threshold reaches into the lowest WONDER TIER (I…IX) that still holds an unbuilt wonder and offers
+  its wonders as a choice; you pick one, place it, and the pointer (`draft.wonderTier`) advances past
+  it — the rest of that tier are gone. Once every tier is exhausted, a production crossing **converts
+  into a :progress: advancement** instead ("excess production → progress"). Tier is decoupled from
+  era (Zion is a futuristic wonder parked at tier VIII). ⚠️ This REPLACED the "wonders drafted like
+  techs, held, built by production" model — `draft.heldWonder` is gone; `content.js` `nextWonderTier`
+  / `wondersForTier` drive the offer, and `offerable` now excludes wonders from the :progress: pool.
 - **`tierUnlocks` are VISIBILITY ONLY**, one per era, and are **not per-branch**: a notch fires
   when **any** branch reaches its era (`revealEra = max(branch eras)`), so the map follows your
   furthest track. This is why there are no vision techs. **The reveal era also grants the
@@ -591,10 +596,29 @@ Implemented today:
   `_applyEndOfCombatUpgrades`), and `radius_upgrade_level_bonus` — a LIVE upgrade-level aura for units
   AND buildings, folded into unit `_effectiveLevelBonus` and building `bonusEffectLevels` via the
   shared `radiusUpgradeLevelAt` (territory.js). See § Upgrades in design.md.
+- **repairs & razed-ground theme (9 kinds).** Repairing and razed tiles become a resource in their
+  own right, read off the **razed-tile registry** (`world.terr.ruins`; each ruin stamped `razedWave`,
+  and `territory.js razedCount(world, terrains?)` counts it, terrain-filterable). Gold-spend REPAIR
+  triggers (in `doTileAction` → `_onRepairUnit`/`_onRebuild`): **`unit_earned_stats_on_repair`**
+  (Pyrrhic Tactics — permanent per-unit `earnedAtk`/`earnedDef`/`earnedCrit`, the FOURTH crit source,
+  read in `_dealBlow`/`_playerArmy`/`unitBoardStats`), **`unit_repair_cost_mult_pct`** (MULTIPLICATIVE),
+  **`resource_on_repair_class_mult_atk`** (one kind with a class LIST — Black Box astral/aerial,
+  Legitimate Salvage astral — resource = mult × the unit's atk), **`upgrade_level_on_repair`**
+  (Creative Destruction — +level on a unit OR building repair). RAZE triggers (combat `_raze`):
+  **`gold_on_tile_razed_pct_of_repair_cost`** (Insurance — reads the live `tileRepairCost` at the
+  instant of razing). COMBAT: **`damage_enemy_entering_razed_tile`** (Scorched Earth — `_scorch`
+  fires on ANY enemy stepping onto a ruin, every enemy not just the razer); **`spawn_mercenary_on_
+  razed_terrain_at_combat_start`** (Planetary Partisanship — `_mercenaryPieces` spawns a melee MERC,
+  `home:null`, on razed planet/asteroid tiles; it fights this combat only and endCombat skips it).
+  FREE auto-repair: **`razed_tile_auto_repair_after_combats`** (Rapid Reconstruction — `endCombat`
+  `restoreTile`s a ruin once `wave − razedWave >= combats`; no gold, distinct from the spend-triggered
+  repairs). And a BUILDING/WONDER effect: **`resource_output_per_razed_tile`** (Zion — its own tile
+  makes `perTile × razedCount` of each listed resource each tick, via `evalBuildingEffects`).
 
-An effect param is a **number**, a **choice** (`options`), or a **bool** (`type:'bool'`, a
-checkbox — used by `road_network`'s Maglev rider). An effect may also have **no params** at all
-(`reposition_teleport` is a flag). The editor and validator branch on those three shapes.
+An effect param is a **number**, a **choice** (`options`), a **bool** (`type:'bool'`), a **building**
+id (`type:'building'`), or a **multi-select** (`type:'list'` with `options` — the new shape for
+Repairs' class/terrain/resource lists; editor renders it as chips). An effect may also have **no
+params** at all (`reposition_teleport` is a flag). The editor and validator branch on those shapes.
 
 ⚠️ **The weapon/armour TIER ladder was deleted** (`WEAPON_TIERS`, `ARMOR_TIERS`, `bestTier`).
 It replaced rather than stacked, contradicting the design's central rule, and it
@@ -731,7 +755,7 @@ Each threshold resource does something DIFFERENT:
 |---|---|
 | **:progress:** | offers three advancements (`ProgressOffer`) — **pauses** |
 | **:food:** | opens a manual **expand** choice (`BuildPrompt`) — **pauses** |
-| **:production:** | ⚠️ **INERT for now** — accrues and crosses levels but does nothing (it will build wonders later) |
+| **:production:** | offers a WONDER from the next tier to build (`WonderOffer` → place) — **pauses**; once all tiers are built, converts to a :progress: advancement instead |
 
 `_restartTimer` is gated on `!selection`, exactly as v2's selections were.
 
@@ -741,8 +765,9 @@ selection lights two disjoint sets and you click one: a **settle** tile (green,
 neighbours) or a **city** tile (gold, `game.cityTargets` → `foundCityAt`, an existing
 improvement whose population compounds). Skip forfeits the expansion. HexMap's aiming carries
 both sets (`cityAimSet` colours/dispatches the city tiles apart from settle tiles). `_autoExpand`
-and its `GOLD_WEIGHT` scoring are **gone**. ⚠️ Because :production: is inert, **held wonders can't
-be built right now** — a drafted wonder just stays held until production is re-enabled.
+and its `GOLD_WEIGHT` scoring are **gone**. ⚠️ **:production: now builds wonders** (see the wonder
+tier track above) — a production crossing opens `WonderOffer`, and once every tier is built it
+converts to a :progress: advancement.
 
 ## Territory & expansion (`world/territory.js`)
 
@@ -952,9 +977,9 @@ term (`prev + X·n·G^n`, `THRESHOLD_GROWTH = 1.09`): the linear rule alone grow
 in the level while output grows *exponentially* — more tiles, each worth more, multiplied by
 the web — so it fell behind and the game turned into an offer every couple of ticks.
 
-**:progress: and :food: stop the clock** (an advancement offer / a manual expand choice);
-**:production: is inert**, so it never pauses. (Food used to auto-expand silently; it is a
-manual choice again by design.)
+**All three threshold resources stop the clock**: :progress: (an advancement offer), :food: (a
+manual expand choice), and :production: (a wonder choice, or a :progress: advancement once all
+wonder tiers are built). (Food used to auto-expand silently; it is a manual choice again by design.)
 
 ⚠️ **The threshold ladder and the wave budget are COUPLED.** Raising thresholds means fewer
 progress offers → fewer unit grants → a smaller army. Retune `BUDGET_BASE`/`BUDGET_GROWTH` in
@@ -997,6 +1022,12 @@ its tile as `destroyed`. Both are **repair bills, not erasures**, which is what 
 something to do. ⚠️ **A razed city comes back one pop SMALLER, permanently** (`razeTile` stores
 `max(1, pop-1)` in the ruin) — and, being a ruin, grows no population at all until gold rebuilds
 it (it is out of the growth set).
+
+⚠️ **`world.terr.ruins` IS the razed-tile registry** — a live set consumed by the Repairs theme
+(see § Effects): its count (terrain-filterable via `razedCount`) drives Zion and Planetary
+Partisanship, each ruin is stamped `razedWave` for "combats since razed" (Rapid Reconstruction),
+and its `tileRepairCost` is readable before any repair is paid (Insurance). An enemy stepping onto
+a ruin can be damaged (Scorched Earth). Do not add a second razed-tile accounting anywhere.
 
 ## Gold (`data/costs.js`, `components/Tile/TilePanel`)
 

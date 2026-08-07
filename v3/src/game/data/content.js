@@ -17,7 +17,7 @@
 // The import attribute is required by Node's ESM loader (the sims run this file
 // directly, unbundled); Vite honours it too.
 import raw from './content.json' with { type: 'json' }
-import { QUADRANTS, thresholdFor, UNIT_CLASSES } from './schema.js'
+import { QUADRANTS, thresholdFor, UNIT_CLASSES, WONDER_TIERS } from './schema.js'
 
 export const CONTENT = raw
 
@@ -59,11 +59,35 @@ export function initialDraft() {
   const branchTaken = {}
   for (const q of QUADRANTS) { branchEra[q] = 0; branchTaken[q] = 0 }
   return {
-    taken: new Set(),   // ids of every tech AND wonder drafted
+    taken: new Set(),   // ids of every tech drafted AND wonder built
     branchEra,          // per branch: which era's pool it draws from
     branchTaken,        // per branch: how many taken AT the current era
-    heldWonder: null,   // drafted but not yet built
+    // WONDERS are no longer drafted like techs. They are a separate track built
+    // by :production: thresholds, offered by TIER: each threshold reaches into the
+    // lowest tier that still has an unbuilt wonder. This is the pointer past the
+    // tiers already resolved.
+    wonderTier: 0,
   }
+}
+
+/** A wonder's tier as a 0-based index (I → 0 … IX → 8). */
+export const wonderTierIndex = (w) => Math.max(0, WONDER_TIERS.indexOf(w.tier))
+
+/**
+ * The lowest tier index at or beyond `draft.wonderTier` that still holds an
+ * unbuilt wonder — what the NEXT :production: threshold offers. -1 when every
+ * tier is exhausted (from then on, production converts to progress).
+ */
+export function nextWonderTier(draft) {
+  for (let ti = draft.wonderTier ?? 0; ti < WONDER_TIERS.length; ti++) {
+    if (WONDERS.some((w) => wonderTierIndex(w) === ti && !draft.taken.has(w.id))) return ti
+  }
+  return -1
+}
+
+/** The unbuilt wonders of a tier — the choices a :production: threshold offers. */
+export function wondersForTier(draft, ti) {
+  return WONDERS.filter((w) => wonderTierIndex(w) === ti && !draft.taken.has(w.id))
 }
 
 /** Group names already committed to — every other member of them is barred. */
@@ -79,11 +103,11 @@ function lockedGroups(taken) {
 /** Is this row a legal offer right now? */
 function offerable(d, draft, locked) {
   if (draft.taken.has(d.id)) return false
+  // WONDERS are built by :production: thresholds (offered by tier), not drafted in
+  // the :progress: pool — so they never appear here.
+  if (d.isWonder) return false
   if (d.era !== draft.branchEra[d.quadrant]) return false
   if (d.group && locked.has(d.group)) return false
-  // One unbuilt wonder at a time — otherwise they queue behind each other and a
-  // :production: threshold stops being a choice.
-  if (d.isWonder && draft.heldWonder) return false
   for (const r of d.requires ?? []) if (!draft.taken.has(r)) return false
   return true
 }

@@ -2351,6 +2351,179 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "pyrrhic_tactics",
+      "name": "Pyrrhic Tactics",
+      "quadrant": "military",
+      "era": 3,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Whenever you repair a unit, it permanently gains +2 :attack:, +2 :defense:, and +10% :crit: chance.",
+      "effects": [
+        {
+          "kind": "unit_earned_stats_on_repair",
+          "atk": 2,
+          "def": 2,
+          "critChance": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "levee_en_masse",
+      "name": "Levee en Masse",
+      "quadrant": "military",
+      "era": 6,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Unit repair cost −50%. Grants 2 :melee: units immediately.",
+      "effects": [
+        {
+          "kind": "unit_repair_cost_mult_pct",
+          "pctReduction": 50
+        },
+        {
+          "kind": "grant_unit",
+          "unitClass": "melee",
+          "count": 2
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "insurance",
+      "name": "Insurance",
+      "quadrant": "economy",
+      "era": 7,
+      "icon": "/sprites/ui/gold.png",
+      "description": "Whenever a tile is razed, gain :gold: equal to 50% of its repair cost.",
+      "effects": [
+        {
+          "kind": "gold_on_tile_razed_pct_of_repair_cost",
+          "pct": 50
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "black_box",
+      "name": "Black Box",
+      "quadrant": "military",
+      "era": 9,
+      "icon": "/sprites/ui/aerial.png",
+      "description": "Grants an :aerial: unit. Whenever you repair an :astral: or :aerial: unit, gain :progress: equal to 3× its :attack:.",
+      "effects": [
+        {
+          "kind": "grant_unit",
+          "unitClass": "aerial",
+          "count": 1
+        },
+        {
+          "kind": "resource_on_repair_class_mult_atk",
+          "unitClasses": [
+            "astral",
+            "aerial"
+          ],
+          "resource": "progress",
+          "mult": 3
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "scorched_earth",
+      "name": "Scorched Earth",
+      "quadrant": "military",
+      "era": 8,
+      "icon": "/sprites/icons/defense.png",
+      "description": "Whenever an enemy enters a razed tile, they take 50 damage.",
+      "effects": [
+        {
+          "kind": "damage_enemy_entering_razed_tile",
+          "amount": 50
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "creative_destruction",
+      "name": "Creative Destruction",
+      "quadrant": "society",
+      "era": 8,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Whenever you repair a unit or building, it gains 1 upgrade level for free.",
+      "effects": [
+        {
+          "kind": "upgrade_level_on_repair",
+          "amount": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "rapid_reconstruction",
+      "name": "Rapid Reconstruction",
+      "quadrant": "economy",
+      "era": 10,
+      "icon": "/sprites/ui/building.png",
+      "description": "Razed tiles automatically repair themselves at the end of the next combat.",
+      "effects": [
+        {
+          "kind": "razed_tile_auto_repair_after_combats",
+          "combats": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "legitimate_salvage",
+      "name": "Legitimate Salvage",
+      "quadrant": "military",
+      "era": 12,
+      "icon": "/sprites/ui/astral.png",
+      "description": "Grants an :astral: unit. Whenever you repair an :astral: unit, gain :production: equal to 5× its :attack:.",
+      "effects": [
+        {
+          "kind": "grant_unit",
+          "unitClass": "astral",
+          "count": 1
+        },
+        {
+          "kind": "resource_on_repair_class_mult_atk",
+          "unitClasses": [
+            "astral"
+          ],
+          "resource": "production",
+          "mult": 5
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "planetary_partisanship",
+      "name": "Planetary Partisanship",
+      "quadrant": "military",
+      "era": 13,
+      "icon": "/sprites/ui/astral.png",
+      "description": "At the start of combat, create a mercenary on every currently-razed planet and asteroid tile.",
+      "effects": [
+        {
+          "kind": "spawn_mercenary_on_razed_terrain_at_combat_start",
+          "terrains": [
+            "planet",
+            "asteroid"
+          ]
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [
@@ -2720,6 +2893,30 @@
       "era": 1,
       "quadrant": "society",
       "description": "Gain +5 progress per tick. Increase by +5 after each combat this survives; reset if razed.",
+      "group": ""
+    },
+    {
+      "id": "zion",
+      "name": "Zion",
+      "tier": "VIII",
+      "placement": [],
+      "icon": "/sprites/ui/wonder.png",
+      "requires": [],
+      "era": 11,
+      "quadrant": "society",
+      "description": "Each tick, produce :food:, :production:, :gold:, and :progress: equal to the number of currently-razed tiles in your empire.",
+      "effects": [
+        {
+          "kind": "resource_output_per_razed_tile",
+          "perTile": 1,
+          "resources": [
+            "food",
+            "production",
+            "gold",
+            "progress"
+          ]
+        }
+      ],
       "group": ""
     }
   ],

@@ -281,6 +281,29 @@ function EffectEditor({ row, readOnly, onChange, buildingOptions = [] }) {
                       {buildingOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </>
+                ) : p.type === 'list' ? (
+                  <>
+                    {p.label}
+                    <span className="ed-fx-list">
+                      {p.options.map((o) => {
+                        const sel = Array.isArray(e[p.key]) && e[p.key].includes(o)
+                        return (
+                          <label key={o} className={`ed-fx-chip${sel ? ' on' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={sel}
+                              disabled={readOnly}
+                              onChange={(ev) => {
+                                const cur = Array.isArray(e[p.key]) ? e[p.key] : []
+                                patch(i, { [p.key]: ev.target.checked ? [...cur, o] : cur.filter((x) => x !== o) })
+                              }}
+                            />
+                            {o}
+                          </label>
+                        )
+                      })}
+                    </span>
+                  </>
                 ) : p.options ? (
                   <>
                     {p.label}

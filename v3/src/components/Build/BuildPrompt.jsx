@@ -18,8 +18,9 @@ import './BuildPrompt.css'
 export default function BuildPrompt() {
   const game = useGame()
   const sel = game.selection
-  // 'wonder' kept for when :production: is re-enabled; 'city' is folded into 'expand'.
-  if (sel?.type === 'wonder') return <WonderPrompt game={game} wonder={sel.wonder} />
+  // A wonder's PLACE stage uses this bottom prompt; its CHOOSE stage is a separate
+  // overlay (WonderOffer). 'city' is folded into 'expand'.
+  if (sel?.type === 'wonder' && sel.stage === 'place') return <WonderPrompt game={game} wonder={sel.wonder} />
   if (sel?.type !== 'expand') return null
 
   const settle = game.expandTargets

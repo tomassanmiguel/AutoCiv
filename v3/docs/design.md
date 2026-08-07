@@ -110,12 +110,11 @@ that spans pools, and a group of one.
 |---|---|
 | **:food:** | **Opens a manual EXPAND choice** — settle an outpost on a border tile (green, pushes your borders outward) OR found a city on an existing improvement (gold). You pick the tile; you may also Skip. |
 | **:progress:** | Offers 3 advancements from the three current pools. |
-| **:production:** | ⚠️ **INERT for now.** It accrues and crosses levels but does nothing; its future job is to build wonders. |
+| **:production:** | **Builds a WONDER** from the next tier (see §4). Once every tier is built, a production crossing converts into a :progress: advancement instead. |
 
 Both outpost-settling and city-founding are paid by :food: now — the two are the
 two resolutions of one expand choice. (Outpost placement used to be automatic;
-it is a manual pick again.) Because :production: is inert, a drafted **wonder
-stays held** until production is re-enabled.
+it is a manual pick again.)
 
 ### Where an outpost may go
 
@@ -138,17 +137,21 @@ settling a chain of ocean tiles.
 Terrain gates (tundra, desert, mountain, and the off-world unlocks) still apply
 on top.
 
-## 4. Wonders are drafted techs
+## 4. Wonders are a :production: tier track
 
-A wonder appears in the advancement offer like any other card, with an era and a
-quadrant. Taking one does not build it — a future :production: threshold will
-build it and let you place it on the map. **Until :production: is re-enabled, a
-drafted wonder simply stays held** (and no second wonder is offered while one is
-held, so drafting a wonder now parks that slot).
+Wonders are **NOT drafted with techs.** They are built by :production: thresholds,
+organised by **TIER (I–IX)** — a power band decoupled from era (a futuristic wonder
+like Zion is simply parked at a high tier).
 
-**You are never offered a wonder while you already hold an unbuilt one.**
+Each :production: threshold **reaches into the lowest tier that still holds an
+unbuilt wonder** and offers that tier's wonders as a choice. You pick one, place it
+on the map, and the tier pointer advances **past** that tier — the rest of that
+tier's wonders are gone (the same "what you skip is lost" rule as the draft). Empty
+tiers are skipped.
 
-Wonders keep their tier (I–IX) as a grouping and a rough power band.
+**Excess production → progress.** Once every tier is built (or exhausted), a
+:production: crossing has nothing to build, so it **converts into a :progress:
+advancement** instead — production never becomes dead weight.
 
 ## 5. Yields
 
@@ -606,3 +609,40 @@ also gives each route tile :production: equal to its :gold:. Each also carries a
 **tier**, and the most advanced held tier NAMES the routes — **Trail** (the default
 with no road tech) → **Road** → **Railroad** → **Highway** → **Maglev** — shown as a
 tag on connection tiles.
+
+## 14. Repairs, and razed ground as a resource
+
+Losing ground is already a **repair bill, not an erasure** (§ the wave): a razed
+tile leaves a **ruin** and a fallen unit stands **destroyed**, both rebuilt with
+gold. This theme turns that around — repairing, and the razed tiles themselves,
+become something you can BUILD AROUND.
+
+**The razed-tile registry.** The set of ruins is a first-class, queryable thing:
+its **live count** (filterable by terrain — planet/asteroid only, for Planetary
+Partisanship), a **"combats since razed"** stamp per ruin (Rapid Reconstruction),
+and a **repair cost computable before it is paid** (Insurance reads 50% of it the
+instant a tile is razed). One registry, consumed by both techs and the Zion wonder.
+
+**Repair-triggered effects** all fire when you spend gold to repair:
+- **Pyrrhic Tactics** — a repaired unit permanently gains +2 :attack:, +2
+  :defense:, +10% :crit:, stacking per repair. That crit is a **fourth flavour** of
+  crit chance (per-unit, earned via repair) on top of universal / class / ZOC.
+- **Levee en Masse** — unit repair cost −50% (multiplicative, the standard for
+  cost discounts).
+- **Black Box** / **Legitimate Salvage** — repairing a unit of a listed class
+  grants a resource equal to a multiple of its :attack: (astral/aerial → :progress:
+  ×3; astral → :production: ×5). One effect kind with a class LIST, not two.
+- **Creative Destruction** — a repaired unit or building gains an upgrade level
+  free (the same level counter as a paid upgrade).
+
+**Rapid Reconstruction** is the exception: a razed tile repairs itself **for free,
+automatically**, once N combats have passed since it was razed — a different model
+from every gold-spend repair above.
+
+**Razed ground fights back and grows.** **Scorched Earth** damages any enemy that
+steps onto a razed tile (every enemy, not just the one that razed it).
+**Planetary Partisanship** spawns a temporary **mercenary** on every razed
+planet/asteroid tile at combat start (it fights that combat only). And the **Zion**
+wonder (tier VIII) produces :food:/:production:/:gold:/:progress: each tick equal to
+the number of razed tiles — the more of your empire is in ruins, the more it pays,
+which is the whole razed-tile registry read as an economy.

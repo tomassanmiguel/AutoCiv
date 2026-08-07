@@ -143,8 +143,14 @@ function run(seed, waveCount) {
           if (c) g.foundCityAt(c); else g.skipSelection()
         }
       } else if (sel.type === 'wonder') {
-        const t = g.wonderTargets[0]
-        if (t) g.buildWonderAt(t); else g.skipSelection()
+        // Two stages: choose which wonder of the offered tier, then place it.
+        if (sel.stage === 'choose') {
+          const pick = sel.offers[0]
+          if (pick) g.chooseWonder(pick); else g.skipSelection()
+        } else {
+          const t = g.wonderTargets[0]
+          if (t) g.buildWonderAt(t); else g.skipSelection()
+        }
       } else {
         g.skipSelection()
       }
@@ -181,7 +187,7 @@ function run(seed, waveCount) {
     ...s,
     taken: g.draft.taken.size,
     branches: g.branches,
-    heldWonder: g.heldWonder?.name ?? null,
+    nextWonderTierName: g.nextWonderTierName ?? null,
     units: [...g.world.terr.controlled].filter((t) => t.unit && !t.unit.destroyed).length,
     gold: Math.floor(g.resources.gold.value),
     prompts: st.prompts ?? 0,
@@ -267,7 +273,7 @@ console.log(`  ---`)
 console.log(`  all units          : +${Math.round(m.unitAtkBasePct * 100)}% base atk, +${Math.round(m.unitDefBasePct * 100)}% base def`)
 console.log(`  units unlocked     : ${[...m.units].join(', ') || 'none'}`)
 console.log(`  buildings unlocked : ${[...m.buildings].join(', ') || 'none'}`)
-console.log(`  wonder held unbuilt: ${r0.heldWonder ?? 'none'}`)
+console.log(`  next wonder tier   : ${r0.nextWonderTierName ?? 'all built → progress'}`)
 console.log(`  multipliers        : ${Object.entries(m.mult).filter(([, v]) => v).map(([k, v]) => `${k} +${Math.round(v * 100)}%`).join(', ') || 'none'}`)
 console.log(`  settle unlocked    : ${[...m.settle].join(', ') || 'none'}`)
 

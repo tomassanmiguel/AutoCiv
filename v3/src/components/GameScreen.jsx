@@ -10,6 +10,7 @@ import ProgressPanel from './Progress/ProgressPanel.jsx'
 import CombatPanel from './Combat/CombatPanel.jsx'
 import ProgressOffer from './Progress/ProgressOffer.jsx'
 import BuildPrompt from './Build/BuildPrompt.jsx'
+import WonderOffer from './Build/WonderOffer.jsx'
 import PrepBanner from './Prep/PrepBanner.jsx'
 import PlacementPrompt from './Placement/PlacementPrompt.jsx'
 import DefeatOverlay from './Hud/DefeatOverlay.jsx'
@@ -50,6 +51,7 @@ export default function GameScreen({ seed, civ, difficulty, audio, onExit }) {
             <WonderBadge />
           </div>
           <BuildPrompt />
+          <WonderOffer />
           <PrepBanner />
           <PlacementPrompt />
           <CombatPanel />

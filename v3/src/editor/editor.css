@@ -493,3 +493,9 @@ body {
 .ed-fx-param.bool { flex-direction: row; }
 .ed-fx-param.bool input { accent-color: #d9c168; }
 .ed-fx-flag { font-size: 11px; color: #6d7488; font-style: italic; }
+
+/* A multi-select (type:'list') effect param: a wrapping row of small chips. */
+.ed-fx-list { display: inline-flex; flex-wrap: wrap; gap: 0.15rem 0.4rem; max-width: 30rem; }
+.ed-fx-chip { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 10px; color: var(--e-dim); }
+.ed-fx-chip.on { color: #e7dca6; }
+.ed-fx-chip input { accent-color: #d9c168; }

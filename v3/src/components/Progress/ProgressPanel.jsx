@@ -20,7 +20,6 @@ export default function ProgressPanel({ onClose }) {
   const game = useGame()
   const branches = game.branches
   const taken = game.takenRows
-  const held = game.heldWonder
 
   return (
     <div className="pp-backdrop" onClick={onClose}>
@@ -33,17 +32,6 @@ export default function ProgressPanel({ onClose }) {
           </span>
           <button className="pp-close" onClick={onClose} aria-label="Close">✕</button>
         </header>
-
-        {held && (
-          <div className="pp-wonder">
-            <img src={held.icon} alt="" />
-            <div>
-              <b>{held.name}</b> is drafted but unbuilt — your next
-              {' '}<img className="pp-inline" src="/sprites/icons/production.png" alt="production" />
-              {' '}threshold builds it instead of founding a city.
-            </div>
-          </div>
-        )}
 
         <div className="pp-cols">
           {branches.map((b) => {

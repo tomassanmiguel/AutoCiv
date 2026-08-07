@@ -690,6 +690,77 @@ export const EFFECT_KINDS = {
     describe: (e) => `Units and buildings in range ${e.radius ?? 0} gain +${e.amount ?? 0} live upgrade level.`,
   },
 
+  // --- repairs & razed ground -------------------------------------------------
+  // Repairing (units/ground) and razed tiles become a resource in their own
+  // right. A "razed tile registry" (`world.terr.ruins`, each ruin stamped with
+  // the wave it was razed) is read LIVE by several of these — counts, terrain
+  // filters, and a per-ruin "combats since razed".
+  unit_earned_stats_on_repair: {
+    label: 'Repair — unit earns permanent stats',
+    hint: 'Each time you repair a unit it PERMANENTLY gains flat :attack:, :defense: and :crit: chance, stacking per repair. The crit is a FOURTH crit source — per-unit, earned via repair — alongside universal / class / ZOC.',
+    params: [
+      { key: 'atk', label: 'Attack', min: 0, default: 2 },
+      { key: 'def', label: 'Defence', min: 0, default: 2 },
+      { key: 'critChance', label: 'Crit %', min: 0, default: 10 },
+    ],
+    describe: (e) => `Repairing a unit permanently grants +${e.atk ?? 0} :attack:, +${e.def ?? 0} :defense:, +${e.critChance ?? 0}% :crit: chance.`,
+  },
+  unit_repair_cost_mult_pct: {
+    label: 'Unit repair cost −%',
+    hint: 'Cuts the :gold: cost of repairing a unit. MULTIPLICATIVE across every held instance (the convention for all cost discounts).',
+    params: [{ key: 'pctReduction', label: 'Percent off', min: 0, default: 50 }],
+    describe: (e) => `Unit repair cost −${e.pctReduction ?? 0}%.`,
+  },
+  gold_on_tile_razed_pct_of_repair_cost: {
+    label: 'Raze — gold = % of repair cost',
+    hint: 'The instant a tile is razed, gain :gold: equal to a % of what it would cost to repair — read from the live repair cost at the moment of razing.',
+    params: [{ key: 'pct', label: 'Percent', min: 0, default: 50 }],
+    describe: (e) => `When a tile is razed, gain :gold: = ${e.pct ?? 0}% of its repair cost.`,
+  },
+  resource_on_repair_class_mult_atk: {
+    label: 'Repair — resource from a class',
+    hint: 'Repairing a unit of one of the listed classes grants a resource equal to a multiple of its :attack:. One kind with a class LIST, rather than a bespoke effect per class.',
+    params: [
+      { key: 'unitClasses', label: 'Classes', type: 'list', options: UNIT_CLASSES, default: ['astral'] },
+      { key: 'resource', label: 'Resource', options: RESOURCE_KEYS, default: 'progress' },
+      { key: 'mult', label: '× attack', min: 0, default: 3 },
+    ],
+    describe: (e) => `Repairing a ${(e.unitClasses ?? []).map((c) => `:${c === 'fortification' ? 'fort' : c}:`).join(' / ') || 'unit'} grants :${e.resource}: = ${e.mult ?? 0}× its :attack:.`,
+  },
+  damage_enemy_entering_razed_tile: {
+    label: 'Razed ground damages enemies',
+    hint: 'Any enemy that moves onto a razed tile takes flat damage — fires for EVERY enemy entering, not just whoever razed it. Additive across techs.',
+    params: [{ key: 'amount', label: 'Damage', min: 0, default: 50 }],
+    describe: (e) => `An enemy entering a razed tile takes ${e.amount ?? 0} damage.`,
+  },
+  upgrade_level_on_repair: {
+    label: 'Repair → free upgrade level',
+    hint: 'Repairing a unit OR building grants it upgrade levels for free — the same counter a paid upgrade raises.',
+    params: [{ key: 'amount', label: 'Levels', min: 0, default: 1 }],
+    describe: (e) => `Repairing a unit or building grants +${e.amount ?? 0} upgrade level.`,
+  },
+  razed_tile_auto_repair_after_combats: {
+    label: 'Razed tiles auto-repair',
+    hint: 'A razed tile repairs itself for FREE once this many combats have passed since it was razed (no :gold:, fires automatically at combat end). A different execution model from every other repair effect, which are gold-spend-triggered.',
+    params: [{ key: 'combats', label: 'Combats', min: 1, default: 1 }],
+    describe: (e) => `Razed tiles auto-repair ${e.combats ?? 1} combat${(e.combats ?? 1) === 1 ? '' : 's'} after being razed.`,
+  },
+  spawn_mercenary_on_razed_terrain_at_combat_start: {
+    label: 'Mercenaries on razed terrain',
+    hint: 'At combat start, spawn a temporary MERCENARY on every currently-razed tile of one of the listed terrains. Mercenaries fight this one combat and disband when it ends.',
+    params: [{ key: 'terrains', label: 'Terrains', type: 'list', options: TERRAIN_KEYS, default: ['planet', 'asteroid'] }],
+    describe: (e) => `At combat start, spawn a mercenary on every razed ${(e.terrains ?? []).map((t) => terrainLabel(t)).join(' / ') || 'tile'} tile.`,
+  },
+  resource_output_per_razed_tile: {
+    label: 'Wonder — output per razed tile',
+    hint: 'A BUILDING / WONDER effect: each tick, the building produces `perTile` of each listed resource for every currently-razed tile in your empire.',
+    params: [
+      { key: 'perTile', label: 'Per tile', min: 0, default: 1 },
+      { key: 'resources', label: 'Resources', type: 'list', options: RESOURCE_KEYS, default: ['food', 'production', 'gold', 'progress'] },
+    ],
+    describe: (e) => `Each tick, produce ${e.perTile ?? 0} ${(e.resources ?? []).map((r) => `:${r}:`).join(' ') || 'resources'} per razed tile.`,
+  },
+
   // --- unique -----------------------------------------------------------------
   palimpsest: {
     label: 'Palimpsest — recover a lost advancement',
@@ -798,7 +869,8 @@ export const EFFECT_KEYS = Object.keys(EFFECT_KINDS)
 /** A new effect row, with each param at its declared default. */
 export const blankEffect = (kind = EFFECT_KEYS[0]) => {
   const out = { kind }
-  for (const p of EFFECT_KINDS[kind]?.params ?? []) out[p.key] = p.default
+  // Clone array defaults (type:'list') so two effects never share one list.
+  for (const p of EFFECT_KINDS[kind]?.params ?? []) out[p.key] = Array.isArray(p.default) ? [...p.default] : p.default
   return out
 }
 
@@ -963,6 +1035,12 @@ export function validateContent(content) {
           if (typeof e[p.key] !== 'boolean') out.push(`${row.id}: effect ${e.kind} needs true/false for "${p.key}"`)
         } else if (p.type === 'building') {
           if (!buildingIds.has(e[p.key])) out.push(`${row.id}: effect ${e.kind} names building "${e[p.key]}" which does not exist`)
+        } else if (p.type === 'list') {
+          // A multi-select: an array, each entry one of the declared options.
+          if (!Array.isArray(e[p.key])) out.push(`${row.id}: effect ${e.kind} needs a list for "${p.key}"`)
+          else for (const v of e[p.key]) {
+            if (!p.options.includes(v)) out.push(`${row.id}: effect ${e.kind} "${p.key}" has "${v}" — must be one of ${p.options.join(', ')}`)
+          }
         } else if (p.options) {
           if (!p.options.includes(e[p.key])) {
             out.push(`${row.id}: effect ${e.kind} has "${p.key}" = "${e[p.key]}" — must be one of ${p.options.join(', ')}`)
