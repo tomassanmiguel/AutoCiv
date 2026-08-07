@@ -346,6 +346,13 @@ Currently implemented:
 | **`class_placement_unrestricted`** | the class may be placed on any controlled tile |
 | **`class_gains_pct_of_zoc_upgrade_level`** | a class gains a floored % of another's ZOC upgrade bonus (Beaconing) |
 | **`signal_range_bonus`** | +civ-wide signal range — every commander ZOC and building radius reaches further |
+| **`unit_upgrade_cost_mult_pct`** | unit upgrade cost −% (multiplicative across techs) |
+| **`building_upgrade_cost_mult_pct`** | building upgrade cost −% (multiplicative) |
+| **`upgrade_level_value_bonus_pct`** | +points to the shared per-upgrade-level % constant |
+| **`recursive_upgrade_on_pay`** | a paid upgrade grants one more free level (non-cascading) |
+| **`burst_upgrade_all_units`** / **`burst_upgrade_all_buildings`** | one-time permanent +level to all held units/buildings |
+| **`end_of_combat_upgrade_random_adjacent_unit`** / **`_building`** | building: permanently +1 a random adjacent unit/building at combat end |
+| **`radius_upgrade_level_bonus`** | building: LIVE +upgrade level to units AND buildings in radius (+signal) |
 | **`palimpsest`** | at each combat end, recover a random unchosen tech from an earlier era |
 | **`grant_building`** | grants a BUILDING (by id) to place on the map (see § Buildings) |
 | **`self_tile_yield_bonus`** | +resource on the building's own tile |
@@ -529,6 +536,30 @@ costs to actually upgrade) is untouched.
 
 A quarter of an integer level is usually fractional; **Beaconing floors it** (`floor(pct/100 ×
 bonus)`), the safe default.
+
+## 12f. Upgrades
+
+Unit **upgrade level** and building **effect level** are ONE concept: a level scales
+the target by a **shared per-level %** — default **25%**, additive with itself, applied
+as an ordinary-layer bonus (a unit's atk+def, a building's effect magnitudes).
+`upgrade_level_value_bonus_pct` (Schematics +5, Radical Perfection +10) adds points to
+that one constant, so it lifts every level on every unit and building at once.
+
+**Two kinds of level gain, never confused:**
+- **Permanent** — a paid gold upgrade, a burst (`burst_upgrade_all_*`), an end-of-combat
+  building upgrade (Armory/Guildhall), or a Recursive Self-Improvement free level. These
+  WRITE the target's stored `level`.
+- **Live** — a commander ZOC and the upgrade-aura buildings (Courthouse/Radio Tower/Hive
+  Nexus, `radius_upgrade_level_bonus`). A read-time bonus that vanishes the instant the
+  target leaves range; the stored level is untouched. These auras apply to **both** units
+  and buildings, and their radius reads the Communications signal range.
+
+**Recursive Self-Improvement** grants one *extra* free level per paid upgrade as a plain
+increment (system-initiated), so it can never cascade into itself.
+
+**Cost discounts are MULTIPLICATIVE** — `×(1 − pct/100)` per tech, unlike the additive
+convention for yields/stats. This is the intended default for every future cost discount
+(repairs, rerolls, mercenaries), not just these upgrade techs.
 
 ## 12e. Communications (signal range)
 

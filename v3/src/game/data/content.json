@@ -2080,6 +2080,277 @@
       ],
       "requires": [],
       "group": ""
+    },
+    {
+      "id": "military_tradition",
+      "name": "Military Tradition",
+      "quadrant": "military",
+      "era": 2,
+      "icon": "/sprites/icons/attack.png",
+      "description": "Unit upgrade cost −10%.",
+      "effects": [
+        {
+          "kind": "unit_upgrade_cost_mult_pct",
+          "pctReduction": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "professional_army",
+      "name": "Professional Army",
+      "quadrant": "military",
+      "era": 3,
+      "icon": "/sprites/icons/attack.png",
+      "description": "Unit upgrade cost −10%.",
+      "effects": [
+        {
+          "kind": "unit_upgrade_cost_mult_pct",
+          "pctReduction": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "concrete",
+      "name": "Concrete",
+      "quadrant": "economy",
+      "era": 3,
+      "icon": "/sprites/ui/building.png",
+      "description": "Building upgrade cost −10%.",
+      "effects": [
+        {
+          "kind": "building_upgrade_cost_mult_pct",
+          "pctReduction": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "law",
+      "name": "Law",
+      "quadrant": "economy",
+      "era": 3,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Courthouse.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "courthouse"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "blacksmithing",
+      "name": "Blacksmithing",
+      "quadrant": "military",
+      "era": 4,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Armory.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "armory"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "guilds",
+      "name": "Guilds",
+      "quadrant": "economy",
+      "era": 5,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Guildhall.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "guildhall"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "modernization",
+      "name": "Modernization",
+      "quadrant": "economy",
+      "era": 7,
+      "icon": "/sprites/ui/building.png",
+      "description": "Building upgrade cost −10%.",
+      "effects": [
+        {
+          "kind": "building_upgrade_cost_mult_pct",
+          "pctReduction": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "radio",
+      "name": "Radio",
+      "quadrant": "economy",
+      "era": 7,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Radio Tower.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "radio_tower"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "replaceable_parts",
+      "name": "Replaceable Parts",
+      "quadrant": "military",
+      "era": 8,
+      "icon": "/sprites/icons/attack.png",
+      "description": "Unit upgrade cost −10%.",
+      "effects": [
+        {
+          "kind": "unit_upgrade_cost_mult_pct",
+          "pctReduction": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "new_deal",
+      "name": "New Deal",
+      "quadrant": "economy",
+      "era": 8,
+      "icon": "/sprites/ui/building.png",
+      "description": "Immediately upgrade every building you currently hold, once.",
+      "effects": [
+        {
+          "kind": "burst_upgrade_all_buildings",
+          "amount": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "total_war",
+      "name": "Total War",
+      "quadrant": "military",
+      "era": 8,
+      "icon": "/sprites/icons/attack.png",
+      "description": "Immediately upgrade every unit you currently hold, once.",
+      "effects": [
+        {
+          "kind": "burst_upgrade_all_units",
+          "amount": 1
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "schematics",
+      "name": "Schematics",
+      "quadrant": "society",
+      "era": 9,
+      "icon": "/sprites/ui/utility.png",
+      "description": "The per-upgrade-level bonus for units and buildings increases by 5 percentage points.",
+      "effects": [
+        {
+          "kind": "upgrade_level_value_bonus_pct",
+          "amount": 5
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "retrofitter_foundry",
+      "name": "Retrofitter Foundry",
+      "quadrant": "economy",
+      "era": 11,
+      "icon": "/sprites/ui/building.png",
+      "description": "Building upgrade cost −10%.",
+      "effects": [
+        {
+          "kind": "building_upgrade_cost_mult_pct",
+          "pctReduction": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "forced_evolution",
+      "name": "Forced Evolution",
+      "quadrant": "military",
+      "era": 12,
+      "icon": "/sprites/icons/attack.png",
+      "description": "Unit upgrade cost −10%.",
+      "effects": [
+        {
+          "kind": "unit_upgrade_cost_mult_pct",
+          "pctReduction": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "radical_perfection",
+      "name": "Radical Perfection",
+      "quadrant": "society",
+      "era": 13,
+      "icon": "/sprites/ui/utility.png",
+      "description": "The per-upgrade-level bonus for units and buildings increases by a further 10 percentage points.",
+      "effects": [
+        {
+          "kind": "upgrade_level_value_bonus_pct",
+          "amount": 10
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "hive_mind",
+      "name": "Hive Mind",
+      "quadrant": "economy",
+      "era": 13,
+      "icon": "/sprites/ui/building.png",
+      "description": "Unlocks the Hive Nexus.",
+      "effects": [
+        {
+          "kind": "grant_building",
+          "buildingId": "hive_nexus"
+        }
+      ],
+      "requires": [],
+      "group": ""
+    },
+    {
+      "id": "recursive_self_improvement",
+      "name": "Recursive Self-Improvement",
+      "quadrant": "society",
+      "era": 14,
+      "icon": "/sprites/ui/utility.png",
+      "description": "Whenever you pay to upgrade a unit or building, it is upgraded an additional time for free.",
+      "effects": [
+        {
+          "kind": "recursive_upgrade_on_pay"
+        }
+      ],
+      "requires": [],
+      "group": ""
     }
   ],
   "buildings": [
@@ -2316,6 +2587,72 @@
           "kind": "self_tile_yield_bonus",
           "resource": "progress",
           "amount": 500
+        }
+      ]
+    },
+    {
+      "id": "armory",
+      "name": "Armory",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "At the end of combat, upgrade one random adjacent unit.",
+      "effects": [
+        {
+          "kind": "end_of_combat_upgrade_random_adjacent_unit"
+        }
+      ]
+    },
+    {
+      "id": "guildhall",
+      "name": "Guildhall",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "At the end of combat, upgrade one random adjacent building.",
+      "effects": [
+        {
+          "kind": "end_of_combat_upgrade_random_adjacent_building"
+        }
+      ]
+    },
+    {
+      "id": "courthouse",
+      "name": "Courthouse",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "Buildings and units in range 1 gain +1 upgrade level.",
+      "effects": [
+        {
+          "kind": "radius_upgrade_level_bonus",
+          "amount": 1,
+          "radius": 1
+        }
+      ]
+    },
+    {
+      "id": "radio_tower",
+      "name": "Radio Tower",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "Buildings and units in range 1 gain +2 upgrade level.",
+      "effects": [
+        {
+          "kind": "radius_upgrade_level_bonus",
+          "amount": 2,
+          "radius": 1
+        }
+      ]
+    },
+    {
+      "id": "hive_nexus",
+      "name": "Hive Nexus",
+      "placement": [],
+      "icon": "/sprites/ui/building.png",
+      "description": "Buildings and units in range 1 gain +4 upgrade level.",
+      "effects": [
+        {
+          "kind": "radius_upgrade_level_bonus",
+          "amount": 4,
+          "radius": 1
         }
       ]
     }

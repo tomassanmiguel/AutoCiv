@@ -119,7 +119,10 @@ export const PALACE = {
  * kind may turn one into something that strikes back.
  */
 export function unitStats(def, wave, mods, level = 1, extra = null) {
-  const s = Math.pow(1.18, wave) * (1 + 0.25 * (level - 1))
+  // The per-LEVEL value is a shared, tunable constant (Schematics / Radical
+  // Perfection raise it) — the SAME one buildings use for their effect level.
+  const perLevel = mods?.upgradeLevelValue ?? 0.25
+  const s = Math.pow(1.18, wave) * (1 + perLevel * (level - 1))
 
   // `extra` carries PER-UNIT modifiers — Formations (`atkFlat`/`defFlat`) and the
   // EARNED-FLAT slot (`earnedAtk`, e.g. Marksmanship, permanent across combats).

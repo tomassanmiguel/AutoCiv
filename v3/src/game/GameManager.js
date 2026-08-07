@@ -131,6 +131,12 @@ function freshMods() {
     // --- communications ---
     signalRangeBonus: 0,              // civ-wide: added to every commander ZOC radius AND building radius
 
+    // --- upgrades ---
+    upgradeLevelValue: 0.25,          // shared per-level % (unit atk/def AND building effect magnitudes)
+    unitUpgradeCostMult: 1,           // MULTIPLICATIVE across cost-reduction techs
+    buildingUpgradeCostMult: 1,
+    recursiveUpgrade: false,          // a paid upgrade grants one more free (non-re-triggering) level
+
     // --- unique ---
     palimpsest: 0,                    // # of random prior-era techs to recover at each combat end
 
@@ -676,14 +682,15 @@ export class GameManager {
       const cost = unitRepairCost(this.wave)
       out.push({ kind: 'repair-unit', label: `Repair ${UNIT_NAME(t.unit.key)}`, cost, afford: g >= cost })
     } else if (t.unit) {
-      const cost = unitUpgradeCost(this.wave, t.unit.level ?? 1)
+      // Cost-reduction techs are MULTIPLICATIVE (mods.unitUpgradeCostMult).
+      const cost = Math.round(unitUpgradeCost(this.wave, t.unit.level ?? 1) * this.mods.unitUpgradeCostMult)
       out.push({ kind: 'upgrade-unit', label: `Upgrade ${UNIT_NAME(t.unit.key)}`, cost, afford: g >= cost, level: t.unit.level ?? 1 })
     }
     if (t.ruin) {
       const cost = tileRepairCost(this.wave, t.ruin.kind)
       out.push({ kind: 'rebuild', label: `Rebuild ${t.ruin.kind}`, cost, afford: g >= cost })
     } else if (t.building) {
-      const cost = buildingUpgradeCost(this.wave, t.building.level ?? 1)
+      const cost = Math.round(buildingUpgradeCost(this.wave, t.building.level ?? 1) * this.mods.buildingUpgradeCostMult)
       out.push({ kind: 'upgrade-building', label: `Upgrade ${buildingDef(t.building.key)?.name ?? t.building.key}`, cost, afford: g >= cost, level: t.building.level ?? 1 })
     }
     return out
@@ -696,8 +703,10 @@ export class GameManager {
     switch (kind) {
       case 'repair-unit': repairUnit(this.world, t); break
       case 'rebuild': restoreTile(this.world, t); break
-      case 'upgrade-unit': t.unit.level = (t.unit.level ?? 1) + 1; break
-      case 'upgrade-building': t.building.level = (t.building.level ?? 1) + 1; break
+      // Recursive Self-Improvement: a PAID upgrade grants one more free level. It
+      // is a plain increment (not a re-invocation), so it can never cascade.
+      case 'upgrade-unit': t.unit.level = (t.unit.level ?? 1) + 1 + (this.mods.recursiveUpgrade ? 1 : 0); break
+      case 'upgrade-building': t.building.level = (t.building.level ?? 1) + 1 + (this.mods.recursiveUpgrade ? 1 : 0); break
       default: return false
     }
     this.world.terr.version++
@@ -1071,6 +1080,31 @@ export class GameManager {
       case 'signal_range_bonus':
         this.mods.signalRangeBonus += f.amount ?? 0
         break
+
+      // --- upgrades ---
+      case 'unit_upgrade_cost_mult_pct':
+        this.mods.unitUpgradeCostMult *= 1 - (f.pctReduction ?? 0) / 100
+        break
+      case 'building_upgrade_cost_mult_pct':
+        this.mods.buildingUpgradeCostMult *= 1 - (f.pctReduction ?? 0) / 100
+        break
+      case 'upgrade_level_value_bonus_pct':
+        this.mods.upgradeLevelValue += (f.amount ?? 0) / 100
+        break
+      case 'recursive_upgrade_on_pay':
+        this.mods.recursiveUpgrade = true
+        break
+      case 'burst_upgrade_all_units':
+        for (const t of this.world.terr.controlled) {
+          if (t.unit && !t.unit.destroyed) t.unit.level = (t.unit.level ?? 1) + (f.amount ?? 0)
+        }
+        break
+      case 'burst_upgrade_all_buildings':
+        for (const bt of this.world.terr.buildings) {
+          if (bt.building) bt.building.level = (bt.building.level ?? 1) + (f.amount ?? 0)
+        }
+        break
+
       case 'palimpsest':
         this.mods.palimpsest += 1
         break

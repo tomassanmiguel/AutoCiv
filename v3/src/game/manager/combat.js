@@ -28,7 +28,7 @@ import {
 import { UNIT_DEFS, PALACE, unitStats } from '../data/units.js'
 import { buildingDef } from '../data/buildings.js'
 import { isPassable, isLand } from '../world/terrain.js'
-import { razeTile } from '../world/territory.js'
+import { razeTile, radiusUpgradeLevelAt } from '../world/territory.js'
 import { repositionField } from '../world/reposition.js'
 import { makeRng, shuffle } from '../world/noise.js'
 
@@ -265,6 +265,8 @@ class CombatMixin {
   /** The live upgrade-level bonus a unit of `key` at (q,r) receives. */
   _effectiveLevelBonus(key, q, r) {
     let b = this._zocFlagsAt(q, r).level
+    // Courthouse / Radio Tower / Hive Nexus: a building's upgrade aura in range.
+    b += radiusUpgradeLevelAt(this.world, this.mods, q, r)
     // Beaconing: a class gains a floored % of a source class's ZOC upgrade bonus,
     // globally (not position-dependent) — read live off the techs held.
     const share = this.mods.classGainsZocUpgrade[key]
@@ -469,6 +471,8 @@ class CombatMixin {
           }
         }
       }
+      // ARMORY / GUILDHALL: permanently upgrade one random adjacent unit/building.
+      this._applyEndOfCombatUpgrades()
       // PALIMPSEST: recover random prior-era advancements now the wave is won.
       this._grantPalimpsest()
       this.palaceHp = Math.max(0, c.palace?.hp ?? this.palaceHp)
@@ -477,6 +481,30 @@ class CombatMixin {
     this.combat = { ...this.combat, active: false }
     this._knownCache = null
     this._emit()
+  }
+
+  /**
+   * ARMORY / GUILDHALL: at combat end, each such building PERMANENTLY upgrades one
+   * random adjacent unit / building (a real +1 to the stored level).
+   */
+  _applyEndOfCombatUpgrades() {
+    const pickAdj = (bt, pred) => {
+      const opts = neighbors(bt.q, bt.r).map((n) => this.world.at(n.q, n.r)).filter(pred)
+      return opts.length ? opts[Math.floor(Math.random() * opts.length)] : null
+    }
+    for (const bt of this.world.terr.buildings) {
+      const def = buildingDef(bt.building?.key)
+      if (!def?.effects) continue
+      for (const f of def.effects) {
+        if (f.kind === 'end_of_combat_upgrade_random_adjacent_unit') {
+          const o = pickAdj(bt, (x) => x?.unit && !x.unit.destroyed)
+          if (o) o.unit.level = (o.unit.level ?? 1) + 1
+        } else if (f.kind === 'end_of_combat_upgrade_random_adjacent_building') {
+          const o = pickAdj(bt, (x) => x?.building && x !== bt)
+          if (o) o.building.level = (o.building.level ?? 1) + 1
+        }
+      }
+    }
   }
 
   /** BFS outward from the palace over everything this domain can cross. */

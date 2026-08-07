@@ -522,6 +522,28 @@ function bonusEffectLevels(world, t, mods) {
       }
     }
   }
+  // Courthouse / Radio Tower / Hive Nexus: a building's upgrade aura raises the
+  // effect level of buildings (and units) in range — a LIVE, non-permanent read.
+  lv += radiusUpgradeLevelAt(world, mods, t.q, t.r)
+  return lv
+}
+
+/**
+ * The LIVE upgrade-level bonus a target at (q,r) receives from every building
+ * with a `radius_upgrade_level_bonus` effect whose radius (+ signal range) covers
+ * it. Applies to units AND buildings — a read-time bonus, never stored.
+ */
+export function radiusUpgradeLevelAt(world, mods, q, r) {
+  const sig = mods?.signalRangeBonus ?? 0
+  let lv = 0
+  for (const bt of world.terr.buildings) {
+    const def = buildingDef(bt.building?.key)
+    if (!def?.effects) continue
+    for (const f of def.effects) {
+      if (f.kind !== 'radius_upgrade_level_bonus') continue
+      if (lengthOf(q - bt.q, r - bt.r) <= (f.radius ?? 0) + sig) lv += f.amount ?? 0
+    }
+  }
   return lv
 }
 
@@ -544,7 +566,8 @@ function evalBuildingEffects(world, mods, era, t, buildings, add) {
   const def = buildingDef(t.building?.key)
   if (!def?.effects) return
   const effLevel = (t.building.level ?? 1) + bonusEffectLevels(world, t, mods)
-  const mult = 1 + 0.25 * (effLevel - 1)
+  // Same shared per-level constant units use (Schematics / Radical Perfection).
+  const mult = 1 + (mods?.upgradeLevelValue ?? 0.25) * (effLevel - 1)
   const put = (tile, res, amt) => { if (amt && res) add(tile, res, amt * mult) }
   // COMMUNICATIONS: every building RADIUS reaches `signalRangeBonus` further.
   const sig = mods?.signalRangeBonus ?? 0

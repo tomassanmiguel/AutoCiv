@@ -628,6 +628,68 @@ export const EFFECT_KINDS = {
     describe: (e) => `+${e.amount ?? 0} signal :range: (commander ZOCs and building radii reach further).`,
   },
 
+  // --- upgrades ---------------------------------------------------------------
+  // Unit "upgrade level" and building "effect level" are ONE counter, scaled by a
+  // shared per-level %. These techs cut upgrade costs, raise that %, or hand out
+  // levels; the building effects (below) grant LIVE or permanent levels.
+  unit_upgrade_cost_mult_pct: {
+    label: 'Unit upgrade cost −%',
+    hint: 'Cuts the gold cost of upgrading a unit. MULTIPLICATIVE across every held instance (the convention for all cost discounts).',
+    params: [{ key: 'pctReduction', label: 'Percent off', min: 0, default: 10 }],
+    describe: (e) => `Unit upgrade cost −${e.pctReduction ?? 0}%.`,
+  },
+  building_upgrade_cost_mult_pct: {
+    label: 'Building upgrade cost −%',
+    hint: 'Cuts the gold cost of upgrading a building. MULTIPLICATIVE across every held instance.',
+    params: [{ key: 'pctReduction', label: 'Percent off', min: 0, default: 10 }],
+    describe: (e) => `Building upgrade cost −${e.pctReduction ?? 0}%.`,
+  },
+  upgrade_level_value_bonus_pct: {
+    label: 'Per-level value +points',
+    hint: 'Adds percentage points to the SHARED per-upgrade-level constant (default 25%) — raising the value of every level on every unit and building at once.',
+    params: [{ key: 'amount', label: 'Points', min: 0, default: 5 }],
+    describe: (e) => `Each upgrade level is worth +${e.amount ?? 0} more percentage points (units & buildings).`,
+  },
+  recursive_upgrade_on_pay: {
+    label: 'Paid upgrade → one free',
+    hint: 'Whenever you PAY to upgrade a unit or building, it gains one more level for free. The free level is a plain increment (system-initiated), so it never cascades.',
+    params: [],
+    describe: () => 'A paid upgrade grants one additional free level to the same target.',
+  },
+  burst_upgrade_all_units: {
+    label: 'One-time — upgrade all units',
+    hint: 'A ONE-TIME permanent +level to every unit you hold when this is taken.',
+    params: [{ key: 'amount', label: 'Levels', min: 1, default: 1 }],
+    describe: (e) => `Immediately upgrade every unit you hold by +${e.amount ?? 0}, once.`,
+  },
+  burst_upgrade_all_buildings: {
+    label: 'One-time — upgrade all buildings',
+    hint: 'A ONE-TIME permanent +level to every building you hold when this is taken.',
+    params: [{ key: 'amount', label: 'Levels', min: 1, default: 1 }],
+    describe: (e) => `Immediately upgrade every building you hold by +${e.amount ?? 0}, once.`,
+  },
+  end_of_combat_upgrade_random_adjacent_unit: {
+    label: 'Building — upgrade an adjacent unit at combat end',
+    hint: 'At the end of each combat, one random adjacent unit is PERMANENTLY upgraded +1 level.',
+    params: [],
+    describe: () => 'At combat end, permanently upgrade one random adjacent unit.',
+  },
+  end_of_combat_upgrade_random_adjacent_building: {
+    label: 'Building — upgrade an adjacent building at combat end',
+    hint: 'At the end of each combat, one random adjacent building is PERMANENTLY upgraded +1 level.',
+    params: [],
+    describe: () => 'At combat end, permanently upgrade one random adjacent building.',
+  },
+  radius_upgrade_level_bonus: {
+    label: 'Building — live upgrade level in radius',
+    hint: 'Units AND buildings in radius (+ signal range) gain a LIVE upgrade-level bonus — read at resolution time, gone the moment the target leaves range. Never a permanent write.',
+    params: [
+      { key: 'amount', label: 'Upgrade levels', min: 0, default: 1 },
+      { key: 'radius', label: 'Radius', min: 0, default: 1 },
+    ],
+    describe: (e) => `Units and buildings in range ${e.radius ?? 0} gain +${e.amount ?? 0} live upgrade level.`,
+  },
+
   // --- unique -----------------------------------------------------------------
   palimpsest: {
     label: 'Palimpsest — recover a lost advancement',

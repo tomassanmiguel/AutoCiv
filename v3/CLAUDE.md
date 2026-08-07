@@ -24,7 +24,7 @@
 > 385 designed rows are **parked in `content.backlog`** (nothing deleted; the editor's
 > Backlog tab restores them). Widening the era range should be a **data** change.
 >
-> In play: **101 techs** · **14 buildings** · 5 wonders · 3 tier unlocks.
+> In play: **118 techs** · **19 buildings** · 5 wonders · 3 tier unlocks.
 
 > **Status: PLAYABLE PROTOTYPE.** The whole loop runs end to end — map, the two clocks,
 > territory economy with **automatic :food: expansion** and **auto-wiring city connections**,
@@ -579,8 +579,18 @@ Implemented today:
   See § Commanders below.
 - **`signal_range_bonus`** (Communications) — a single civ-wide `mods.signalRangeBonus`, summed. It
   widens ONLY commander ZOC radii (`_inClassZoc`) and building radii (`evalBuildingEffects`'s `disc_`
-  + Hybridism's reach) — each reads `radius + signalRangeBonus`. Fortification taunt and ranged range
-  deliberately do NOT read it.
+  + Hybridism's reach + `radiusUpgradeLevelAt`) — each reads `radius + signalRangeBonus`. Fortification
+  taunt and ranged range deliberately do NOT read it.
+- **upgrades theme (9 kinds).** Unit upgrade LEVEL and building effect LEVEL share ONE per-level
+  constant, `mods.upgradeLevelValue` (default 0.25), used by `unitStats` and `evalBuildingEffects`;
+  `upgrade_level_value_bonus_pct` raises it. **Cost discounts are MULTIPLICATIVE**
+  (`mods.unitUpgradeCostMult` / `buildingUpgradeCostMult`, applied in `tileActions`) — the default
+  for all future cost discounts. `recursive_upgrade_on_pay` makes `doTileAction` add one extra free
+  level (plain increment, no cascade). `burst_upgrade_all_*` write +level to all held units/buildings
+  in `_applyEffect`. Building effects: `end_of_combat_upgrade_random_adjacent_*` (permanent +1 in
+  `_applyEndOfCombatUpgrades`), and `radius_upgrade_level_bonus` — a LIVE upgrade-level aura for units
+  AND buildings, folded into unit `_effectiveLevelBonus` and building `bonusEffectLevels` via the
+  shared `radiusUpgradeLevelAt` (territory.js). See § Upgrades in design.md.
 
 An effect param is a **number**, a **choice** (`options`), or a **bool** (`type:'bool'`, a
 checkbox — used by `road_network`'s Maglev rider). An effect may also have **no params** at all
