@@ -122,7 +122,8 @@ export const GALAXY_SHAPE = { base: 30, max: 40, spread: 2.2 }
 export const FEATURELESS_OUTER_RINGS = 1
 
 // Earth's opening stages walk outward from the palace before the whole Old
-// World is charted.
-export const LOCAL_RADIUS = 3
+// World is charted. LOCAL_RADIUS also gates island spacing (islands never sit
+// inside it), so a wider Local view is guaranteed island- and New-World-free.
+export const LOCAL_RADIUS = 4
 export const NEARBY_RADIUS = 6
 export const DISTANT_RADIUS = 9

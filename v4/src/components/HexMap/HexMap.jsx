@@ -5,10 +5,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { SQRT3, fromPixel, key } from '../../game/hex/coords.js'
-import { spriteUrl, terrainOf } from '../../game/world/terrain.js'
+import { spriteUrl, terrainOf, RES_ICON } from '../../game/world/terrain.js'
 import { UNIT_DEFS } from '../../game/data/units.js'
 import PieceCard from './PieceCard.jsx'
 import TileCard from './TileCard.jsx'
+import IconText from '../common/IconText.jsx'
 import './HexMap.css'
 
 const HEX_SIZE = 54
@@ -163,6 +164,15 @@ export default function HexMap() {
     x: 1.5 * q * HEX_SIZE - layout.minX,
     y: SQRT3 * (r + q / 2) * HEX_SIZE - layout.minY,
   })
+
+  // At sea = on water or open space (embarked), but not the muster ring.
+  const isAtSea = (q, r) => {
+    if (known.bfSet.has(key(q, r))) return false
+    const t = game.world.at(q, r)
+    if (!t) return false
+    const d = terrainOf(t.terrain)
+    return d.domain === 'water' || t.terrain === 'space' || t.terrain === 'deep_space'
+  }
 
   // --- Camera (verbatim from v3) --------------------------------------------
   const updateView = () => {
@@ -402,6 +412,25 @@ export default function HexMap() {
           )
         })}
 
+        {/* Hovering a city paints what each surrounding tile yields to it. */}
+        {!combat.active && hover?.city && game.cityRadiusTiles(hover.city).map((t) => {
+          if (t === hover) return null
+          const y = terrainOf(t.terrain).yields
+          const items = []
+          if (y.food > 0) items.push(['food', y.food])
+          if (y.gold > 0) items.push(['gold', y.gold])
+          if (y.progress > 0) items.push(['progress', y.progress])
+          if (!items.length) return null
+          const c = centerOf(t.q, t.r)
+          return (
+            <div key={`cy${key(t.q, t.r)}`} className="city-yield" style={{ left: c.x, top: c.y, fontSize: HEX_W * 0.15 }}>
+              {items.map(([res, v]) => (
+                <span key={res} className={`cy-res ${res}`}><img src={RES_ICON[res]} alt={res} />{v}</span>
+              ))}
+            </div>
+          )
+        })}
+
         {/* Muster preview: the wave standing on the battlefield ring during prep. */}
         {!combat.active && game.pendingWave && game.pendingWave.enemies.map((e) => {
           const c = centerOf(e.q, e.r)
@@ -419,13 +448,21 @@ export default function HexMap() {
               <PieceCard key={`u${u.id}`} piece={u} turn={combat.actionSeq} x={c.x} y={c.y} size={HEX_W * 0.74} />
             ) })}
             {combat.enemies.map((e) => { const c = centerOf(e.q, e.r); return (
-              <PieceCard key={`e${e.id}`} piece={e} turn={combat.actionSeq} x={c.x} y={c.y} size={HEX_W * 0.74} />
+              <PieceCard key={`e${e.id}`} piece={e} turn={combat.actionSeq} x={c.x} y={c.y} size={HEX_W * 0.74}
+                embarked={isAtSea(e.q, e.r)} />
             ) })}
-            {combat.events.map((ev) => { const c = centerOf(ev.q, ev.r); return (
-              <div key={ev.id} className={`combat-float ${ev.kind}`} style={{ left: c.x, top: c.y, fontSize: HEX_W * 0.26 }}>
-                {ev.kind === 'heal' ? `+${ev.amount}` : `−${ev.amount}`}
-              </div>
-            ) })}
+            {combat.events.map((ev) => {
+              const c = centerOf(ev.q, ev.r)
+              const isRes = ev.kind === 'gold' || ev.kind === 'progress' || ev.kind === 'food'
+              const dx = ev.kind === 'gold' ? -HEX_W * 0.18 : ev.kind === 'progress' ? HEX_W * 0.18 : 0
+              return (
+                <div key={ev.id} className={`combat-float ${ev.kind}`} style={{ left: c.x + dx, top: c.y, fontSize: HEX_W * (isRes ? 0.2 : 0.26) }}>
+                  {isRes ? <><img src={RES_ICON[ev.kind]} alt="" />+{ev.amount}</>
+                    : ev.kind === 'heal' ? `+${ev.amount}`
+                      : `−${ev.amount}`}
+                </div>
+              )
+            })}
           </>
         )}
       </div>
@@ -460,17 +497,21 @@ function TileTip({ game, tile, battlefield }) {
         {y.food === 0 && y.gold === 0 && y.progress === 0 && <span className="hex-tip-none">no yield</span>}
         {!def.passable && <span className="hex-tip-warn">impassable</span>}
       </div>
-      {def.note && <div className="hex-tip-note">{def.note}</div>}
+      {def.note && <div className="hex-tip-note"><IconText>{def.note}</IconText></div>}
       {info && (
         <div className="hex-tip-note build">
           <b>{info.palace ? 'Palace' : 'City'}</b> — pop {info.pop} · def {info.maxHp}
-          <div className="hex-tip-sub">makes +{info.gold} gold · +{info.progress} progress / cooldown · +{info.food} food/wave → pop</div>
+          <div className="hex-tip-sub">
+            <IconText>{`makes +${info.gold} :gold: · +${info.progress} :progress: / cooldown · +${info.food} :food:/wave → pop`}</IconText>
+          </div>
         </div>
       )}
       {uDef && (
         <div className="hex-tip-note unit">
           <b>{uDef.name}</b> — {uDef.blurb}
-          <div className="hex-tip-sub">atk {uStats.atk} · def {uStats.def} · range {uStats.range}</div>
+          <div className="hex-tip-sub">
+            <IconText>{`:attack: ${uStats.atk} · :defense: ${uStats.def} · :range: ${uStats.range}`}</IconText>
+          </div>
         </div>
       )}
     </div>

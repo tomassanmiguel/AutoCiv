@@ -93,14 +93,12 @@ export class GameManager {
   }
 
   _giveStartingArmy() {
-    // Start with two melee units on passable land tiles beside the palace.
-    let placed = 0
+    // Start with a single melee unit on a passable land tile beside the palace.
     for (const n of neighbors(0, 0)) {
-      if (placed >= 2) break
       const t = this.world.at(n.q, n.r)
       if (t && !t.city && !t.unit && canPlaceUnit(UNIT_DEFS.melee, t.terrain)) {
         t.unit = { id: this._id(), cls: 'melee' }
-        placed++
+        return
       }
     }
   }
@@ -334,6 +332,13 @@ export class GameManager {
       // No city within CITY_MIN_SPACING of another city/palace.
       for (const { city } of this.allCities()) {
         if (distance(t.q, t.r, city.q, city.r) < CITY_MIN_SPACING) return false
+      }
+      // Not on a map EXTREMITY: every neighbour must exist and be revealed (so
+      // the tile is interior to the known world, not on the frontier edge where
+      // its yield radius spills into the battlefield).
+      for (const n of neighbors(t.q, t.r)) {
+        const o = this.world.at(n.q, n.r)
+        if (!o || o.revealStage > this.stage) return false
       }
       // Must have food in reach to grow.
       return this.cityRadiusTiles({ q: t.q, r: t.r }).some((x) => terrainOf(x.terrain).yields.food > 0)

@@ -5,7 +5,7 @@
 export const STARTING_GOLD = 120
 export const PALACE_START_POP = 10
 export const CITY_START_POP = 1
-export const CITY_MIN_SPACING = 4       // min hex distance between any two cities/palace
+export const CITY_MIN_SPACING = 3       // min hex distance between any two cities/palace
 export const CITY_YIELD_RADIUS = 1      // tiles a city harvests (disc); upgradeable to 3 later
 export const MAX_CITY_YIELD_RADIUS = 3
 

@@ -47,6 +47,17 @@
 
 /* The hover cue is a separate lightweight overlay (one node) drawn over the
    hovered hex. */
+/* On-tile card (unit / city), centred on its hex. Absolute so its inline
+   left/top (the hex CENTRE) actually position it; without this it collapses to
+   static and every card stacks at the content's top-left corner. */
+.tile-card-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  pointer-events: none;
+}
+.tile-card-anchor.hovered { z-index: 9; }
+
 .hex-hover-cue {
   position: absolute;
   clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
@@ -348,3 +359,20 @@
   stroke: rgba(0, 0, 0, 0.75);
   stroke-width: 3;
 }
+
+/* City-hover yield icons, drawn on each surrounding tile the city harvests. */
+.city-yield {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 0.2em;
+  z-index: 4;
+  pointer-events: none;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.cy-res { display: inline-flex; align-items: center; gap: 0.08em; text-shadow: 0 0.08em 0.18em rgba(0, 0, 0, 0.95); }
+.cy-res img { width: 0.95em; height: 0.95em; object-fit: contain; }
+.cy-res.food { color: #9be08a; }
+.cy-res.gold { color: #f2cf6a; }
+.cy-res.progress { color: #7ff0b0; }

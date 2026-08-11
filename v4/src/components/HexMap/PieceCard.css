@@ -47,10 +47,36 @@
   background: linear-gradient(160deg, rgba(80, 22, 18, 0.96), rgba(30, 8, 8, 0.96));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
 }
-.piece-card.palace-card {
-  border-color: #e6c877;
-  background: radial-gradient(circle at 40% 30%, rgba(216, 173, 78, 0.45), rgba(28, 22, 8, 0.97));
-  box-shadow: 0 0 18px rgba(216, 173, 78, 0.45);
+.piece-card.city {
+  border-color: #d8b45a;
+  background: linear-gradient(160deg, rgba(70, 56, 20, 0.96), rgba(28, 22, 10, 0.96));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.piece-card.palace {
+  border-color: #f2cf6a;
+  background: radial-gradient(circle at 40% 30%, rgba(216, 173, 78, 0.5), rgba(28, 22, 8, 0.97));
+  box-shadow: 0 0 18px rgba(216, 173, 78, 0.5);
+}
+
+/* The class SYMBOL — a small inverted silhouette at the top of the card. */
+.pc-icon {
+  width: 40%;
+  max-width: 18px;
+  height: 14px;
+  object-fit: contain;
+  margin: 0 auto 1px;
+  display: block;
+  filter: invert(1) brightness(1.2);
+}
+
+/* Embarked (at sea): a watery marker + a blue dashed wash so it reads as exposed. */
+.piece-card.embarked { outline: 1.5px dashed #6fc6ff; outline-offset: 1px; }
+.pc-embark {
+  position: absolute;
+  top: 0; left: 1px;
+  font-size: 9px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.8));
 }
 
 /* The piece taking this beat — a bright ring so it is obvious who is acting. */
@@ -83,9 +109,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.piece-card.palace-card .pc-name {
+.piece-card.palace .pc-name {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 10px;
   color: #f2dda4;
 }
 
@@ -113,7 +139,25 @@
   transition: width 0.25s linear;
 }
 .piece-card.enemy .pc-hpbar > span { background: #ff8a7a; }
-.piece-card.palace-card .pc-hpbar > span { background: #f0d987; }
+.piece-card.palace .pc-hpbar > span,
+.piece-card.city .pc-hpbar > span { background: #f0d987; }
+
+/* Cooldown bar: fills as the piece approaches its next act. Amber, below the HP
+   bar so the two read as distinct (green = health, amber = "about to act"). */
+.pc-cdbar {
+  height: 2.5px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.pc-cdbar > span {
+  display: block;
+  height: 100%;
+  background: #ffcf6a;
+  transition: width 0.1s linear;
+}
+.piece-card.enemy .pc-cdbar > span { background: #ffb08a; }
 
 /* Faint type watermark in the corner. */
 .pc-type {
@@ -152,7 +196,15 @@
   pointer-events: none;
   animation: float-up 0.9s ease-out forwards;
 }
-.combat-float.damage { color: #ff9a8a; }
+.combat-float.damage,
+.combat-float.dmg { color: #ff9a8a; }
+.combat-float.gold { color: #f2cf6a; }
+.combat-float.progress { color: #7ff0b0; }
+.combat-float.food { color: #9be08a; }
+.combat-float img {
+  width: 0.9em; height: 0.9em; object-fit: contain;
+  vertical-align: -0.12em; margin-right: 0.06em;
+}
 .combat-float.palace { color: #ffd76a; }
 /* Poison ticks read as a sickly green, distinct from a normal hit. */
 .combat-float.poison { color: #a6e05a; font-size: 0.85em; }

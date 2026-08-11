@@ -6,8 +6,8 @@
 // reads on the board.
 //
 // Enemies march the SHORTEST path to the palace, ROUTING AROUND player pieces
-// (occupied/impassable tiles are not walkable) via a per-domain flow field from
-// the palace. They attack a target only when one is in range — units before
+// (occupied/impassable tiles are not walkable) via a flow field from the palace.
+// They attack a target only when one is in range — units before
 // cities, lowest def first (Raiders veer to cities). Embarked enemies (on water
 // or open space) cannot attack and are exposed; naval/aerial/astral units are
 // the only ones that can strike them. Player units are stationary towers; cavalry
@@ -16,9 +16,13 @@
 import { key, neighbors, distance } from '../hex/coords.js'
 import { makeRng } from '../world/noise.js'
 import { terrainOf, dmgTakenMult, rangeBonusOf, hpDrainFrac } from '../world/terrain.js'
-import { generateHost, domainCanTraverse } from '../data/enemies.js'
+import { generateHost, enemyTraversable } from '../data/enemies.js'
 import { UNIT_DEFS } from '../data/units.js'
 import { CITY_YIELD_CD, PALACE_ATTACK_CD, COMBAT_MAX_TICKS, COMBAT_STALE_TICKS } from '../data/config.js'
+
+// How long (in ticks) a floating number lives, so its CSS animation plays out
+// instead of being cleared the very next tick.
+const FLOAT_LIFE_TICKS = 20
 
 export function installCombat(GM) {
   const P = GM.prototype
@@ -40,41 +44,37 @@ export function installCombat(GM) {
   }
 
   // --- Wave muster ----------------------------------------------------------
-  P._computeReachSets = function () {
-    // Per-domain reachable set from the palace over KNOWN traversable terrain,
-    // ignoring unit blockers (muster happens before combat). Used to reject
-    // spawns a domain could never path in from.
-    const sets = {}
-    for (const domain of ['default', 'amphibious', 'astral']) {
-      const seen = new Set([key(0, 0)])
-      let frontier = [{ q: 0, r: 0 }]
-      while (frontier.length) {
-        const next = []
-        for (const t of frontier) {
-          for (const n of neighbors(t.q, t.r)) {
-            const nk = key(n.q, n.r)
-            if (seen.has(nk)) continue
-            const o = this.world.at(n.q, n.r)
-            if (!o || !this.isKnown(n.q, n.r)) continue
-            if (!domainCanTraverse(domain, o.terrain)) continue
-            seen.add(nk)
-            next.push(n)
-          }
+  P._computeReachSet = function () {
+    // Reachable set from the palace over KNOWN traversable terrain, ignoring unit
+    // blockers (muster happens before combat). Rejects spawns nothing could path
+    // in from. One set now — enemies have no domains (all cross land/water/void).
+    const seen = new Set([key(0, 0)])
+    let frontier = [{ q: 0, r: 0 }]
+    while (frontier.length) {
+      const next = []
+      for (const t of frontier) {
+        for (const n of neighbors(t.q, t.r)) {
+          const nk = key(n.q, n.r)
+          if (seen.has(nk)) continue
+          const o = this.world.at(n.q, n.r)
+          if (!o || !this.isKnown(n.q, n.r)) continue
+          if (!enemyTraversable(o.terrain)) continue
+          seen.add(nk)
+          next.push(n)
         }
-        frontier = next
       }
-      sets[domain] = seen
+      frontier = next
     }
-    this._reachSets = sets
+    this._reachSet = seen
   }
 
   P._prepareWave = function () {
-    this._computeReachSets()
+    this._computeReachSet()
     const spawns = this.known.all
       .filter((t) => this.known.bfSet.has(key(t.q, t.r)))
       .map((t) => ({ q: t.q, r: t.r, terrain: t.terrain }))
     const rng = makeRng((this.world.seed ^ (this.wave * 2246822519)) >>> 0)
-    const reachable = (domain, q, r) => (this._reachSets[domain] ?? this._reachSets.default).has(key(q, r))
+    const reachable = (q, r) => this._reachSet.has(key(q, r))
     const enemies = generateHost(this.wave, spawns, reachable, rng, 1)
     this.pendingWave = { enemies }
   }
@@ -157,9 +157,10 @@ export function installCombat(GM) {
     return b
   }
 
-  P._fieldFor = function (domain) {
-    if (!this._fields || this._fieldsDirty) { this._fields = {}; this._blocked = this._computeBlocked(); this._fieldsDirty = false }
-    if (this._fields[domain]) return this._fields[domain]
+  P._field = function () {
+    if (this._fieldCache && !this._fieldsDirty) return this._fieldCache
+    this._blocked = this._computeBlocked()
+    this._fieldsDirty = false
     const field = new Map([[key(0, 0), 0]])
     let frontier = [{ q: 0, r: 0 }]
     while (frontier.length) {
@@ -171,7 +172,7 @@ export function installCombat(GM) {
           if (field.has(nk)) continue
           const o = this.world.at(n.q, n.r)
           if (!o || !this.isKnown(n.q, n.r)) continue
-          if (!domainCanTraverse(domain, o.terrain)) continue
+          if (!enemyTraversable(o.terrain)) continue
           if (this._blocked.has(nk)) continue
           field.set(nk, d + 1)
           next.push(n)
@@ -179,7 +180,7 @@ export function installCombat(GM) {
       }
       frontier = next
     }
-    this._fields[domain] = field
+    this._fieldCache = field
     return field
   }
 
@@ -189,7 +190,9 @@ export function installCombat(GM) {
     if (!c.active || this.selection || this.won || this.defeated) return
     c.ticks++
     if (c.ticks > COMBAT_MAX_TICKS) { this._endCombat(true); return }
-    c.events = []
+    // Prune expired floats (keep recent ones so their animation completes) rather
+    // than clearing every tick, which would flash them for a single frame.
+    if (c.events.length) c.events = c.events.filter((e) => c.ticks - e.tick < FLOAT_LIFE_TICKS)
 
     for (const e of c.enemies) {
       if (e.dead) continue
@@ -217,8 +220,10 @@ export function installCombat(GM) {
 
   // --- Damage ---------------------------------------------------------------
   P._pushEvent = function (kind, q, r, amount, crit = false) {
-    this.combat.events.push({ id: `${this.combat.actionSeq++}`, kind, q, r, amount: Math.round(amount), crit })
-    this.combat.lastEventTick = this.combat.ticks
+    this.combat.events.push({ id: `${this.combat.actionSeq++}`, kind, q, r, amount: Math.round(amount), crit, tick: this.combat.ticks })
+    // Only real combat activity (damage / razing) counts against the stalemate
+    // timer — resource + heal floats must not keep a stalled combat alive.
+    if (kind === 'dmg' || kind === 'raze') this.combat.lastEventTick = this.combat.ticks
   }
 
   P._dealDamage = function (attacker, target, tq, tr) {
@@ -297,7 +302,7 @@ export function installCombat(GM) {
   }
 
   P._enemyMove = function (e) {
-    const field = this._fieldFor(e.domain)
+    const field = this._field()
     const here = field.get(key(e.q, e.r))
     const cands = []
     let best = null
@@ -306,7 +311,7 @@ export function installCombat(GM) {
       const nk = key(n.q, n.r)
       const o = this.world.at(n.q, n.r)
       if (!o || !this.isKnown(n.q, n.r)) continue
-      if (!domainCanTraverse(e.domain, o.terrain)) continue
+      if (!enemyTraversable(o.terrain)) continue
       if (this._blocked.has(nk)) continue          // a player piece is there
       if (this._liveEnemyAt(n.q, n.r, e.id)) continue // don't stack on another enemy
       if (nk === key(0, 0)) continue                // never step onto the palace (attack it instead)
@@ -389,7 +394,11 @@ export function installCombat(GM) {
   // --- City yield -----------------------------------------------------------
   P._cityYield = function (ci) {
     if (ci.dead) return
-    this.gold += this.cityGold(ci.cityRef)
-    this._addProgress(this.cityProgress(ci.cityRef))
+    const g = this.cityGold(ci.cityRef)
+    const p = this.cityProgress(ci.cityRef)
+    this.gold += g
+    if (g > 0) this._pushEvent('gold', ci.q, ci.r, g)
+    if (p > 0) this._pushEvent('progress', ci.q, ci.r, p)
+    this._addProgress(p) // may open a draft; do it after pushing the float
   }
 }
