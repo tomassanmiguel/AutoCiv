@@ -129,8 +129,10 @@ pop.
 - A city **not defeated** during the wave **survives** → gains Σ-food pop at resolve.
 - A city **defeated** (HP taken to 0) stops emitting for the rest of that combat and, at resolve,
   **loses ⌈pop / 2⌉**. It is removed only if pop hits **0** (**destroyed**).
-- City **HP resets each wave** (cities "heal" between waves). **Units do not** — unit death is
-  permanent (§7).
+- **Every piece starts each combat at full HP** (there is no repair, so carrying damage forward
+  would be an unrecoverable death spiral). The asymmetry is at **resolve**: a defeated **city**
+  persists at reduced pop and fights again next wave, while a defeated **unit** is **removed
+  permanently** (§7) — that permanence is what makes keeping the army alive a real constraint.
 
 **The palace is a city** — your first, your starting income, and your loss condition. It attacks,
 has higher base def, and **never takes the ⌈pop/2⌉ loss** (that would snowball an unrecoverable
