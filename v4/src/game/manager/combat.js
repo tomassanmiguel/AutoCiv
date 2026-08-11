@@ -13,7 +13,7 @@
 // the only ones that can strike them. Player units are stationary towers; cavalry
 // attacks then retreats one step.
 
-import { key, neighbors, distance } from '../hex/coords.js'
+import { key, neighbors, distance, toPixel } from '../hex/coords.js'
 import { makeRng } from '../world/noise.js'
 import { terrainOf, dmgTakenMult, rangeBonusOf, hpDrainFrac } from '../world/terrain.js'
 import { generateHost, enemyTraversable } from '../data/enemies.js'
@@ -230,8 +230,16 @@ export function installCombat(GM) {
     const terr = this.world.at(tq, tr)?.terrain ?? 'plains'
     const dmg = attacker.atk * dmgTakenMult(terr)
     target.hp -= dmg
+    // Attack direction as a NORMALIZED SCREEN vector (hex q/r do not map to screen
+    // x/y), so the bash actually points at the target. `attackedAtTick` lets the
+    // UI delay any same-tick slide until the bash has played.
     attacker.lastAttackSeq = this.combat.actionSeq
-    attacker.lastAttackDir = { q: tr === attacker.r ? Math.sign(tq - attacker.q) : 0, r: Math.sign(tr - attacker.r) }
+    const a = toPixel(attacker.q, attacker.r, 1)
+    const b = toPixel(tq, tr, 1)
+    const dx = b.x - a.x, dy = b.y - a.y
+    const len = Math.hypot(dx, dy) || 1
+    attacker.lastAttackDir = { x: dx / len, y: dy / len }
+    attacker.attackedAtTick = this.combat.ticks
     this._pushEvent('dmg', tq, tr, dmg)
     if (target.hp <= 0) this._onPieceDeath(target)
   }

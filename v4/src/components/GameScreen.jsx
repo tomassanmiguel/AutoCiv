@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GameManager } from '../game/GameManager.js'
 import { GameProvider, useGame } from '../game/react/GameProvider.jsx'
-import { SPEED_TICKS, COMBAT_INTERVAL_MS } from '../game/data/config.js'
+import { SPEED_TPS, COMBAT_INTERVAL_MS } from '../game/data/config.js'
 import { STAGES } from '../game/world/regions.js'
 import HexMap from './HexMap/HexMap.jsx'
 import AudioController from './AudioController.jsx'
@@ -23,14 +23,18 @@ const SPEEDS = [
 export default function GameScreen({ seed, audio, onExit }) {
   const [manager] = useState(() => new GameManager(seed))
 
-  // The combat clock: advance the running combat by `speed` ticks per interval.
-  // It runs only during combat, never in prep, and pauses for a draft.
+  // The combat clock: a fractional accumulator advances the running combat at
+  // SPEED_TPS[speed] ticks/sec. It runs only during combat and pauses for a draft.
   useEffect(() => {
+    let acc = 0
     const iv = setInterval(() => {
       const g = manager
-      if (g.phase !== 'combat' || g.selection || g.won || g.defeated) return
-      const n = SPEED_TICKS[g.speed] ?? 0
-      for (let i = 0; i < n && g.phase === 'combat' && !g.selection && !g.won && !g.defeated; i++) g.combatTick()
+      if (g.phase !== 'combat' || g.selection || g.won || g.defeated) { acc = 0; return }
+      acc += (SPEED_TPS[g.speed] ?? 0) * (COMBAT_INTERVAL_MS / 1000)
+      let guard = 0
+      while (acc >= 1 && guard++ < 200 && g.phase === 'combat' && !g.selection && !g.won && !g.defeated) {
+        g.combatTick(); acc -= 1
+      }
     }, COMBAT_INTERVAL_MS)
     return () => clearInterval(iv)
   }, [manager])

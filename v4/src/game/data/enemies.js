@@ -60,8 +60,8 @@ export function makeEnemy(id, cls, wave, cell) {
 
 // Budget growth OUTPACES per-enemy HP growth, so a host grows in BODIES as waves
 // rise rather than staying a handful of ever-fatter units.
-const BUDGET_BASE = 25
-const BUDGET_GROWTH = 1.28
+const BUDGET_BASE = 50
+const BUDGET_GROWTH = 1.3
 
 /** HP budget a wave may spend. `strength` is a UI/debug multiplier. */
 export function waveBudget(wave, strength = 1) {

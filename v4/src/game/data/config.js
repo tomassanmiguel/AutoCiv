@@ -16,14 +16,15 @@ export const PALACE_ATK = 18
 export const PALACE_RANGE = 2
 
 // --- Cooldowns (in ticks) — distinct per class is how speed reads on-board --
-export const CITY_YIELD_CD = 16
+export const CITY_YIELD_CD = 15
 export const PALACE_ATTACK_CD = 6
 
 // --- Combat clock ----------------------------------------------------------
-// The clock only runs during combat. Each real interval advances the combat
-// clock by `speed` ticks; a piece acts when its cooldown timer reaches 0.
-export const COMBAT_INTERVAL_MS = 110
-export const SPEED_TICKS = { paused: 0, slow: 1, normal: 2, fast: 4 }
+// The clock only runs during combat. A fractional accumulator in GameScreen
+// advances the combat clock at SPEED_TPS[speed] ticks PER SECOND, so 'slow' can
+// be genuinely slow (well under one tick per frame) and easy to read.
+export const COMBAT_INTERVAL_MS = 55
+export const SPEED_TPS = { paused: 0, slow: 2, normal: 6, fast: 14 }
 export const DEFAULT_SPEED = 'fast'
 // Safety cap so a stalemate (enemies walled out, player has no offense) can't
 // loop forever — combat resolves as a survival if it runs this long.

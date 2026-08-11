@@ -23,15 +23,17 @@ function iconFor(piece) {
  * Shows the class SYMBOL, name, atk/hp, an HP bar and a COOLDOWN bar (progress to
  * its next act). Coloured by flavour (player class), red (enemy) or gold (city).
  */
-export default function PieceCard({ piece, turn, x, y, size, acting = false, embarked = false }) {
+export default function PieceCard({ piece, x, y, size, acting = false, embarked = false, slideDelay = false }) {
   const side = piece.side
   const isCity = side === 'city' || side === 'palace'
   const def = side === 'player' ? UNIT_DEFS[piece.cls] : null
   const color = def?.flavor ?? (side === 'enemy' ? '#d85a5a' : '#e6c15a')
   const icon = iconFor(piece)
   const canAttackEmbarked = piece.embarkAttack
-  const attacking = piece.lastAttackSeq != null && piece.lastAttackSeq === turn
-  const dir = piece.lastAttackDir ?? { q: 0, r: -1 }
+  // The bash replays whenever `lastAttackSeq` changes (the keyed wrapper remounts),
+  // so it fires on every attack — not only for the last attacker of the tick.
+  const hasAttacked = piece.lastAttackSeq != null
+  const dir = piece.lastAttackDir ?? { x: 0, y: -1 }
 
   const cdMax = piece.cd ?? piece.yieldCd ?? 0
   const cdCur = piece.cd != null ? piece.cdTimer : piece.yieldTimer
@@ -55,12 +57,12 @@ export default function PieceCard({ piece, turn, x, y, size, acting = false, emb
   return (
     <InfoTip
       className="pc-anchor"
-      style={{ left: x, top: y, width: size, height: size * 0.78 }}
+      style={{ left: x, top: y, width: size, height: size * 0.78, transitionDelay: slideDelay ? 'var(--bash-dur)' : '0s' }}
       title={piece.name}
       text={tip}
     >
-      <div className={`pc-lunge${attacking ? ' attacking' : ''}`} key={piece.lastAttackSeq ?? 0}
-        style={{ '--lx': dir.q ?? 0, '--ly': dir.r ?? 0 }}>
+      <div className={`pc-lunge${hasAttacked ? ' attacking' : ''}`} key={piece.lastAttackSeq ?? 'idle'}
+        style={{ '--lx': dir.x ?? 0, '--ly': dir.y ?? 0 }}>
         <div
           className={`piece-card ${side}${piece.dead ? ' dead' : ''}${isCity ? ' city-card' : ''}${acting ? ' acting' : ''}${embarked ? ' embarked' : ''}`}
           style={{ '--flavor': color }}

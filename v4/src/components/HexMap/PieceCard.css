@@ -1,24 +1,27 @@
 /* Sits centred on its hex. Position comes from the parent (left/top), which is
    CSS-transitioned so a piece SLIDES when the turn moves it. */
 .pc-anchor {
+  --bash-dur: 0.34s;
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 5;
   pointer-events: auto;
-  /* left/top are animated, so a piece SLIDES to its new hex when a turn moves
-     it — far simpler than a FLIP, since the pieces are absolutely positioned. */
-  transition: left 0.22s ease-out, top 0.22s ease-out;
+  /* left/top are animated, so a piece SLIDES to its new hex when it moves. The
+     inline transition-delay (set when the piece attacked this tick) holds the
+     slide until the bash has played, so attack and move read as two beats. */
+  transition: left 0.32s ease-out, top 0.32s ease-out;
 }
 .pc-anchor:hover { z-index: 9; }
 
-/* Remounts on each attack (keyed by lastAttackSeq) so the thrust replays. */
+/* Remounts on each attack (keyed by lastAttackSeq) so the thrust replays. A
+   pronounced lunge toward the target (--lx/--ly is a normalized screen vector). */
 .pc-lunge { width: 100%; height: 100%; }
 .pc-lunge.attacking {
-  animation: pc-thrust 0.42s cubic-bezier(0.3, 0, 0.2, 1);
+  animation: pc-thrust var(--bash-dur, 0.34s) cubic-bezier(0.34, 0, 0.3, 1);
 }
 @keyframes pc-thrust {
   0%   { transform: translate(0, 0); }
-  28%  { transform: translate(calc(var(--lx) * 34%), calc(var(--ly) * 34%)); }
+  40%  { transform: translate(calc(var(--lx) * 58%), calc(var(--ly) * 58%)); }
   100% { transform: translate(0, 0); }
 }
 

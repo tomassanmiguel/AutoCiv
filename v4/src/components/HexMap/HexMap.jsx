@@ -434,22 +434,23 @@ export default function HexMap() {
         {/* Muster preview: the wave standing on the battlefield ring during prep. */}
         {!combat.active && game.pendingWave && game.pendingWave.enemies.map((e) => {
           const c = centerOf(e.q, e.r)
-          return <div key={`p${e.id}`} className="muster"><PieceCard piece={e} turn={0} x={c.x} y={c.y} size={HEX_W * 0.7} /></div>
+          return <div key={`p${e.id}`} className="muster"><PieceCard piece={e} x={c.x} y={c.y} size={HEX_W * 0.7} /></div>
         })}
 
         {/* Combat layer. */}
         {combat.active && (
           <>
             {combat.cities.map((ci) => { const c = centerOf(ci.q, ci.r); return (
-              <PieceCard key={`ci${ci.id}`} piece={ci} turn={combat.actionSeq} x={c.x} y={c.y} size={HEX_W * (ci.palace ? 0.84 : 0.74)}
-                acting={combat.acting?.id === ci.id} />
+              <PieceCard key={`ci${ci.id}`} piece={ci} x={c.x} y={c.y} size={HEX_W * (ci.palace ? 0.84 : 0.74)}
+                acting={combat.acting?.id === ci.id} slideDelay={ci.attackedAtTick === combat.ticks} />
             ) })}
             {combat.units.map((u) => { const c = centerOf(u.q, u.r); return (
-              <PieceCard key={`u${u.id}`} piece={u} turn={combat.actionSeq} x={c.x} y={c.y} size={HEX_W * 0.74} />
+              <PieceCard key={`u${u.id}`} piece={u} x={c.x} y={c.y} size={HEX_W * 0.74}
+                slideDelay={u.attackedAtTick === combat.ticks} />
             ) })}
             {combat.enemies.map((e) => { const c = centerOf(e.q, e.r); return (
-              <PieceCard key={`e${e.id}`} piece={e} turn={combat.actionSeq} x={c.x} y={c.y} size={HEX_W * 0.74}
-                embarked={isAtSea(e.q, e.r)} />
+              <PieceCard key={`e${e.id}`} piece={e} x={c.x} y={c.y} size={HEX_W * 0.74}
+                embarked={isAtSea(e.q, e.r)} slideDelay={e.attackedAtTick === combat.ticks} />
             ) })}
             {combat.events.map((ev) => {
               const c = centerOf(ev.q, ev.r)
@@ -500,7 +501,10 @@ function TileTip({ game, tile, battlefield }) {
       {def.note && <div className="hex-tip-note"><IconText>{def.note}</IconText></div>}
       {info && (
         <div className="hex-tip-note build">
-          <b>{info.palace ? 'Palace' : 'City'}</b> — pop {info.pop} · def {info.maxHp}
+          <b>{info.palace ? 'Palace' : 'City'}</b> — pop {info.pop}
+          <div className="hex-tip-body">
+            <IconText>{`:defense: ${info.maxHp}${info.atk > 0 ? ` · :attack: ${info.atk} · :range: ${info.range}` : ''}`}</IconText>
+          </div>
           <div className="hex-tip-sub">
             <IconText>{`makes +${info.gold} :gold: · +${info.progress} :progress: / cooldown · +${info.food} :food:/wave → pop`}</IconText>
           </div>
