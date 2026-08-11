@@ -7,6 +7,13 @@
   font-family: Inter, system-ui, sans-serif;
 }
 
+/* The carried HexMap viewport is `flex: 1` (it lived in a flex column in v3).
+   Here it is a direct child of the absolute game-screen, so pin it to fill. */
+.game-screen .hexmap-viewport {
+  position: absolute;
+  inset: 0;
+}
+
 /* --- Top bar ------------------------------------------------------------ */
 .top-bar {
   position: absolute;
