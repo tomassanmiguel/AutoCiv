@@ -76,7 +76,7 @@ function TopBar() {
       <div className="tb-group tb-speed">
         {SPEEDS.map((s) => (
           <button key={s.key} className={`tb-speed-btn${game.speed === s.key ? ' active' : ''}`}
-            onClick={() => game.setSpeed(s.key)} disabled={game.phase !== 'combat'}>{s.glyph}</button>
+            onClick={() => game.setSpeed(s.key)}>{s.glyph}</button>
         ))}
       </div>
     </div>

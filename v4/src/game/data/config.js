@@ -24,7 +24,7 @@ export const PALACE_ATTACK_CD = 6
 // clock by `speed` ticks; a piece acts when its cooldown timer reaches 0.
 export const COMBAT_INTERVAL_MS = 110
 export const SPEED_TICKS = { paused: 0, slow: 1, normal: 2, fast: 4 }
-export const DEFAULT_SPEED = 'normal'
+export const DEFAULT_SPEED = 'fast'
 // Safety cap so a stalemate (enemies walled out, player has no offense) can't
 // loop forever — combat resolves as a survival if it runs this long.
 export const COMBAT_MAX_TICKS = 1500
