@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { GameManager } from '../game/GameManager.js'
 import { GameProvider, useGame } from '../game/react/GameProvider.jsx'
-import { SPEED_TPS, COMBAT_INTERVAL_MS } from '../game/data/config.js'
+import { SPEED_TPS, COMBAT_INTERVAL_MS, COMBAT_END_LINGER_MS } from '../game/data/config.js'
 import { STAGES } from '../game/world/regions.js'
 import HexMap from './HexMap/HexMap.jsx'
 import AudioController from './AudioController.jsx'
@@ -25,14 +25,24 @@ export default function GameScreen({ seed, audio, onExit }) {
 
   // The combat clock: a fractional accumulator advances the running combat at
   // SPEED_TPS[speed] ticks/sec. It runs only during combat and pauses for a draft.
+  // At combat end the board LINGERS for COMBAT_END_LINGER_MS so the last death
+  // animation plays before resolveCombat() resets to prep.
   useEffect(() => {
+    manager.setDeferResolve(true)
     let acc = 0
+    let lingerMs = 0
     const iv = setInterval(() => {
       const g = manager
+      if (g.combat.finishing) {
+        lingerMs += COMBAT_INTERVAL_MS
+        if (lingerMs >= COMBAT_END_LINGER_MS) { lingerMs = 0; g.resolveCombat() }
+        return
+      }
+      lingerMs = 0
       if (g.phase !== 'combat' || g.selection || g.won || g.defeated) { acc = 0; return }
       acc += (SPEED_TPS[g.speed] ?? 0) * (COMBAT_INTERVAL_MS / 1000)
       let guard = 0
-      while (acc >= 1 && guard++ < 200 && g.phase === 'combat' && !g.selection && !g.won && !g.defeated) {
+      while (acc >= 1 && guard++ < 200 && g.phase === 'combat' && !g.selection && !g.won && !g.defeated && !g.combat.finishing) {
         g.combatTick(); acc -= 1
       }
     }, COMBAT_INTERVAL_MS)

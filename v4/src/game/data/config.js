@@ -26,6 +26,10 @@ export const PALACE_ATTACK_CD = 6
 export const COMBAT_INTERVAL_MS = 55
 export const SPEED_TPS = { paused: 0, slow: 2, normal: 6, fast: 14 }
 export const DEFAULT_SPEED = 'fast'
+// Real-time pause at the end of a combat so the last death animation plays out
+// before the board resets to prep. Only the UI defers; the headless sim resolves
+// immediately (GameManager.deferResolve).
+export const COMBAT_END_LINGER_MS = 700
 // Safety cap so a stalemate (enemies walled out, player has no offense) can't
 // loop forever — combat resolves as a survival if it runs this long.
 export const COMBAT_MAX_TICKS = 1500

@@ -9,8 +9,36 @@
   pointer-events: none;
 }
 
-/* The flavour-rimmed badge holding a class symbol (unit) or a building/crown
-   symbol (city/palace). Sized in `em` so it scales with the camera. */
+/* --- City / palace: ONE cohesive panel (icon + pop, then a yields row) --- */
+.city-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.14em;
+  padding: 0.24em 0.42em 0.3em;
+  border-radius: 0.55em;
+  background: linear-gradient(160deg, rgba(46, 40, 22, 0.97), rgba(22, 20, 12, 0.98));
+  border: 0.14em solid #d8b45a;
+  box-shadow: 0 0.15em 0.5em rgba(0, 0, 0, 0.6);
+  line-height: 1;
+}
+.city-card.palace {
+  border-color: #f2cf6a;
+  background: radial-gradient(circle at 50% 22%, rgba(92, 72, 28, 0.96), rgba(24, 20, 10, 0.98));
+  box-shadow: 0 0 0.6em rgba(242, 207, 106, 0.5);
+}
+.cc-head { display: flex; align-items: center; gap: 0.34em; }
+.cc-type { width: 1.25em; height: 1.25em; object-fit: contain; } /* inverted by index.css */
+.cc-pop { display: flex; align-items: center; gap: 0.14em; font-weight: 800; color: #fff; font-size: 1.05em; }
+.cc-pop img { width: 0.95em; height: 0.95em; object-fit: contain; }
+.cc-yields { display: flex; gap: 0.36em; }
+.cc-y { display: flex; align-items: center; gap: 0.1em; font-weight: 700; font-size: 0.84em; }
+.cc-y img { width: 0.85em; height: 0.85em; object-fit: contain; }
+.cc-y.food { color: #9be08a; }
+.cc-y.gold { color: #f2cf6a; }
+.cc-y.progress { color: #7ff0b0; }
+
+/* --- Unit: flavour-rimmed badge with class symbol + atk/def corners --- */
 .tc-badge {
   position: relative;
   width: 2.4em;
@@ -23,32 +51,8 @@
   border: 0.16em solid var(--flavor, #7f8db0);
   box-shadow: 0 0.1em 0.5em rgba(0, 0, 0, 0.55);
 }
-.tc-badge.city {
-  --flavor: #e6c15a;
-  border-radius: 0.5em;
-  width: 2.6em;
-  height: 2.2em;
-}
-.city-tc.palace .tc-badge.city { --flavor: #f2cf6a; box-shadow: 0 0 0.7em rgba(242, 207, 106, 0.5); }
 .tc-icon { width: 1.5em; height: 1.5em; object-fit: contain; }
 
-.tc-pop {
-  position: absolute;
-  right: -0.35em;
-  bottom: -0.35em;
-  min-width: 1.2em;
-  padding: 0 0.25em;
-  height: 1.2em;
-  border-radius: 0.7em;
-  background: #1a2740;
-  border: 0.12em solid #e6c15a;
-  color: #fff;
-  font-size: 0.72em;
-  font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-}
-
-/* Atk bottom-left, def bottom-right — read by position. */
 .tc-stat {
   position: absolute;
   bottom: 0.05em;
@@ -60,17 +64,5 @@
 .tc-stat.atk { left: 0.15em; color: #ffd0a8; }
 .tc-stat.def { right: 0.15em; color: #bfe3ff; }
 
-.tc-cyield {
-  position: absolute;
-  bottom: -0.2em;
-  display: flex; gap: 0.3em;
-  font-size: 0.72em; font-weight: 700;
-}
-.tc-res { display: flex; align-items: center; gap: 0.1em; text-shadow: 0 0.08em 0.16em rgba(0, 0, 0, 0.9); }
-.tc-res img { width: 0.85em; height: 0.85em; }
-.tc-res.food { color: #9be08a; }
-.tc-res.gold { color: #f2cf6a; }
-.tc-res.progress { color: #7ff0b0; }
-
-/* Development view shrinks a unit to just its badge, no stat pills. */
+/* Development view shrinks a unit to just its badge. */
 .unit-tc.compact .tc-badge { width: 1.7em; height: 1.7em; }

@@ -32,6 +32,7 @@ export function installCombat(GM) {
       active: false,
       units: [], enemies: [], cities: [], palace: null,
       events: [], acting: null, actionSeq: 0, ticks: 0, lastEventTick: 0,
+      finishing: false, result: null,
       defeatedCities: new Set(),
     }
   }
@@ -185,9 +186,29 @@ export function installCombat(GM) {
   }
 
   // --- The tick -------------------------------------------------------------
+  // End of combat. In the UI (deferResolve) the pieces LINGER so the last death
+  // animation plays; GameScreen calls resolveCombat after a real-time delay. The
+  // headless sim resolves immediately.
+  P._finishOrEnd = function (survived) {
+    if (this.deferResolve && this.combat.active && !this.combat.finishing) {
+      this.combat.finishing = true
+      this.combat.result = survived
+      this._emit()
+    } else if (!this.combat.finishing) {
+      this._endCombat(survived)
+    }
+  }
+
+  P.resolveCombat = function () {
+    if (!this.combat.finishing) return
+    const survived = this.combat.result
+    this.combat.finishing = false
+    this._endCombat(survived)
+  }
+
   P.combatTick = function () {
     const c = this.combat
-    if (!c.active || this.selection || this.won || this.defeated) return
+    if (!c.active || c.finishing || this.selection || this.won || this.defeated) return
     c.ticks++
     if (c.ticks > COMBAT_MAX_TICKS) { this._endCombat(true); return }
     // Prune expired floats (keep recent ones so their animation completes) rather
@@ -210,11 +231,11 @@ export function installCombat(GM) {
       if (this.selection) break // a draft opened; pause here
     }
 
-    if (this.combat.palace && this.combat.palace.dead) { this._endCombat(false); return }
-    if (c.enemies.every((e) => e.dead)) { this._endCombat(true); return }
+    if (this.combat.palace && this.combat.palace.dead) { this._finishOrEnd(false); return }
+    if (c.enemies.every((e) => e.dead)) { this._finishOrEnd(true); return }
     // Stalemate: nothing has taken damage for a long stretch (an enemy is walled
     // off and unreachable). Resolve as a survival rather than flooding economy.
-    if (c.ticks - c.lastEventTick > COMBAT_STALE_TICKS) { this._endCombat(true); return }
+    if (c.ticks - c.lastEventTick > COMBAT_STALE_TICKS) { this._finishOrEnd(true); return }
     this._emit()
   }
 

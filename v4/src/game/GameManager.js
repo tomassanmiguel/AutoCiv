@@ -68,6 +68,7 @@ export class GameManager {
     this.combat = this._blankCombat()
     this.won = false
     this.defeated = false
+    this.deferResolve = false // UI sets true so combat lingers for death anims
 
     this._version = 0
     this._subs = new Set()
@@ -410,6 +411,7 @@ export class GameManager {
 
   // --- Speed / debug --------------------------------------------------------
   setSpeed(speed) { this.speed = speed; this._emit() }
+  setDeferResolve(v) { this.deferResolve = !!v }
 
   get revealEra() { return Math.max(...Object.values(this.branchEra)) }
   get seed() { return this.world.seed }
