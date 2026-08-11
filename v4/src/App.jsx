@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import LoadingScreen from './screens/LoadingScreen.jsx'
 import TitleScreen from './screens/TitleScreen.jsx'
-import PreGameScreen from './screens/PreGameScreen.jsx'
 import GameScreen from './components/GameScreen.jsx'
-import { DEFAULT_CIV, DEFAULT_DIFFICULTY } from './game/data/civilizations.js'
 import { AudioManager } from './game/audio/AudioManager.js'
 import { TITLE_TRACK } from './game/audio/tracks.js'
 import './App.css'
@@ -11,31 +9,23 @@ import './App.css'
 const FADE_MS = 260 // keep in sync with .screen-fade transition in App.css
 
 /**
- * Top-level screen router (loading → title → pregame → game).
- *
- * The game is organized as discrete "screens" held in local state — no URL
- * routing, this is a game rather than a navigable website.
+ * Top-level screen router (loading → title → game). No civ-select screen in v4
+ * (may return later). Screens are discrete states, not routes — this is a game.
  */
 export default function App() {
   const [screen, setScreen] = useState('loading')
   const [seed, setSeed] = useState(0)
-  const [civ, setCiv] = useState(DEFAULT_CIV)
-  const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY)
   const [fading, setFading] = useState(false)
 
   // One AudioManager for the whole session, shared across screens so the
-  // title↔era hand-off cross-fades on one system. App drives the TITLE track on
-  // every non-game screen; IN game the era track is driven by `AudioController`
-  // (inside GameScreen, where the reveal era is readable). `playTrack` is
-  // idempotent, so re-requesting the same src on a re-render never restarts it.
+  // title↔era hand-off cross-fades on one system.
   const [audio] = useState(() => new AudioManager(0.5))
 
   useEffect(() => {
     if (screen !== 'game') audio.playTrack(TITLE_TRACK)
   }, [screen, audio])
 
-  // Unlock audio on the first user gesture (browser autoplay policy). Honors the
-  // 'autociv.mute' escape hatch.
+  // Unlock audio on the first user gesture (autoplay policy); honors the mute flag.
   useEffect(() => {
     if (localStorage.getItem('autociv.mute') === '1') return
     const kick = () => audio.enable()
@@ -47,24 +37,13 @@ export default function App() {
     }
   }, [audio])
 
-  // Fade to black, swap the screen mid-fade, then fade back in.
   const transitionTo = (next, before) => {
     if (fading) return
     setFading(true)
-    setTimeout(() => {
-      before?.()
-      setScreen(next)
-      setFading(false)
-    }, FADE_MS)
+    setTimeout(() => { before?.(); setScreen(next); setFading(false) }, FADE_MS)
   }
 
-  const openSetup = () => transitionTo('pregame')
-  const beginGame = (civKey, diffKey) =>
-    transitionTo('game', () => {
-      setSeed((Math.random() * 0x100000000) >>> 0)
-      setCiv(civKey)
-      setDifficulty(diffKey)
-    })
+  const beginGame = () => transitionTo('game', () => setSeed((Math.random() * 0x100000000) >>> 0))
   const exitToTitle = () => transitionTo('title')
   const beginFromTitle = () => {
     if (localStorage.getItem('autociv.mute') !== '1') audio.enable()
@@ -74,11 +53,8 @@ export default function App() {
   return (
     <div className="app-shell">
       {screen === 'loading' && <LoadingScreen onStart={beginFromTitle} />}
-      {screen === 'title' && <TitleScreen onNewGame={openSetup} />}
-      {screen === 'pregame' && <PreGameScreen onStart={beginGame} onBack={exitToTitle} />}
-      {screen === 'game' && (
-        <GameScreen seed={seed} civ={civ} difficulty={difficulty} audio={audio} onExit={exitToTitle} />
-      )}
+      {screen === 'title' && <TitleScreen onNewGame={beginGame} />}
+      {screen === 'game' && <GameScreen seed={seed} audio={audio} onExit={exitToTitle} />}
       <div className={`screen-fade${fading ? ' active' : ''}`} />
     </div>
   )

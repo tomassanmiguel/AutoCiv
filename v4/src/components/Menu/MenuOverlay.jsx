@@ -77,9 +77,6 @@ export default function MenuOverlay({ onExit }) {
             <section className="menu-section">
               <div className="menu-section-title">Map</div>
               <div className="seed-readout">seed <b>{game.seed}</b></div>
-              <button className="menu-frame-btn frame-box-dark" onClick={() => game.regenerate()}>
-                Reroll Map
-              </button>
             </section>
 
             <section className="menu-section">

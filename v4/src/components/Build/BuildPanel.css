@@ -1,0 +1,38 @@
+.build-panel {
+  position: absolute;
+  left: 12px;
+  top: 62px;
+  width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(10, 14, 24, 0.9);
+  border: 1px solid rgba(200, 170, 90, 0.3);
+  border-radius: 10px;
+  z-index: 18;
+  font-size: 13px;
+}
+.bp-head { font-weight: 600; color: #f2cf6a; font-variant: small-caps; letter-spacing: 0.03em; }
+.bp-section { color: #8a97ad; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+.bp-build, .bp-upgrades, .bp-begin, .bp-cancel {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-radius: 7px; cursor: pointer;
+  background: rgba(24, 32, 50, 0.9);
+  border: 1px solid rgba(120, 140, 180, 0.28);
+  color: #dce4f2; font-size: 13px; text-align: left;
+}
+.bp-build:hover:not(:disabled), .bp-upgrades:hover { border-color: rgba(200, 170, 90, 0.6); }
+.bp-build.poor, .bp-build:disabled { opacity: 0.45; cursor: default; }
+.bp-cost { display: flex; align-items: center; gap: 3px; color: #f2cf6a; }
+.bp-cost img { width: 14px; height: 14px; }
+.bp-upgrades { justify-content: center; color: #c9b6ee; border-color: rgba(160, 120, 220, 0.4); }
+.bp-spacer { flex: 1; min-height: 4px; }
+.bp-begin { justify-content: center; background: rgba(200, 90, 70, 0.9); border-color: #e58a6a; color: #fff; font-weight: 700; }
+.bp-begin:hover { background: rgba(220, 100, 78, 1); }
+
+.build-panel.placing { align-items: stretch; }
+.bp-hint { color: #dce4f2; line-height: 1.4; }
+.bp-hint b { color: #f2cf6a; }
+.bp-cancel { justify-content: center; }

@@ -63,6 +63,7 @@ export class GameManager {
     this.cityYieldRadius = CITY_YIELD_RADIUS
 
     this.selection = null       // { type:'placement'|'draft', ... }
+    this.ui = { upgrade: false, progress: false } // summonable overlays
     this.pendingWave = null     // mustered host preview
     this.combat = this._blankCombat()
     this.won = false
@@ -191,6 +192,31 @@ export class GameManager {
 
   allCities() { return this.world.list.filter((t) => t.city).map((t) => ({ tile: t, city: t.city })) }
   cityCount() { return this.world.list.reduce((n, t) => n + (t.city ? 1 : 0), 0) }
+
+  /** UI: tiles a hovered unit could strike (v1 units are stationary towers). */
+  unitReachCells(tile) {
+    if (!tile?.unit) return null
+    const s = this.unitBoardStats(tile)
+    const attack = new Set()
+    for (const h of disc(tile.q, tile.r, s.range)) {
+      if (h.q === tile.q && h.r === tile.r) continue
+      if (this.isKnown(h.q, h.r)) attack.add(key(h.q, h.r))
+    }
+    return { move: new Set(), attack, threat: new Set() }
+  }
+
+  /** UI: a city/palace's live economy for the hover card. */
+  cityInfo(tile) {
+    if (!tile?.city) return null
+    const c = tile.city
+    return {
+      pop: c.pop, palace: !!c.palace,
+      gold: Math.round(this.cityGold(c)),
+      progress: Math.round(this.cityProgress(c)),
+      food: Math.round(this.cityFood(c)),
+      ...this.cityStats(c),
+    }
+  }
 
   // --- Progress threshold + draft -------------------------------------------
   _progressThreshold(lastEra) {
@@ -380,6 +406,13 @@ export class GameManager {
   // --- Speed / debug --------------------------------------------------------
   setSpeed(speed) { this.speed = speed; this._emit() }
 
+  get revealEra() { return Math.max(...Object.values(this.branchEra)) }
+  get seed() { return this.world.seed }
+
+  toggleUpgrade() { this.ui.upgrade = !this.ui.upgrade; this._emit() }
+  toggleProgress() { this.ui.progress = !this.ui.progress; this._emit() }
+  closeUi() { this.ui.upgrade = false; this.ui.progress = false; this._emit() }
+
   /** Debug: jump the reveal stage (MenuOverlay slider). */
   setStage(stage) {
     this.stage = Math.max(0, Math.min(stage, STAGE.full_map))
@@ -387,6 +420,8 @@ export class GameManager {
     if (this.phase === 'prep') this._prepareWave()
     this._emit()
   }
+  prevStage() { this.setStage(this.stage - 1) }
+  nextStage() { this.setStage(this.stage + 1) }
 
   // --- Flavors summary (UI) -------------------------------------------------
   flavorStatus() {

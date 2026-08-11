@@ -1,0 +1,56 @@
+.game-screen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #05070d;
+  color: #e7ecf5;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* --- Top bar ------------------------------------------------------------ */
+.top-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px 0 64px; /* clear the menu hamburger */
+  background: linear-gradient(180deg, rgba(8, 12, 22, 0.92), rgba(8, 12, 22, 0.62));
+  border-bottom: 1px solid rgba(200, 170, 90, 0.25);
+  z-index: 20;
+  pointer-events: none;
+}
+.top-bar > * { pointer-events: auto; }
+.tb-group { display: flex; align-items: center; gap: 12px; }
+.tb-res { margin-left: auto; }
+.tb-stat { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.tb-stat b { font-size: 16px; color: #fff; }
+.tb-stat.stage { color: #9fb0c8; font-variant: small-caps; letter-spacing: 0.04em; }
+.tb-stat img { width: 18px; height: 18px; }
+.tb-stat.gold b { color: #f2cf6a; }
+
+.tb-progress { display: flex; align-items: center; gap: 8px; }
+.tb-progress img { width: 18px; height: 18px; }
+.tb-progbar {
+  width: 160px; height: 10px; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1); overflow: hidden;
+  border: 1px solid rgba(120, 220, 160, 0.35);
+}
+.tb-progbar span { display: block; height: 100%; background: linear-gradient(90deg, #4bd08a, #7ff0b0); transition: width 0.15s; }
+
+.tb-tracks {
+  padding: 6px 12px; border-radius: 7px; cursor: pointer; font-size: 13px;
+  background: rgba(24, 32, 50, 0.9); border: 1px solid rgba(200, 170, 90, 0.35); color: #dce4f2;
+}
+.tb-tracks:hover { border-color: rgba(200, 170, 90, 0.7); }
+
+.tb-speed { gap: 4px; }
+.tb-speed-btn {
+  width: 34px; height: 30px;
+  background: rgba(20, 28, 44, 0.9);
+  border: 1px solid rgba(200, 170, 90, 0.3);
+  color: #cdd6e6; border-radius: 6px; cursor: pointer; font-size: 11px;
+}
+.tb-speed-btn.active { background: rgba(200, 170, 90, 0.85); color: #1a130a; border-color: #f2cf6a; }
+.tb-speed-btn:disabled { opacity: 0.4; cursor: default; }
