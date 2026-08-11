@@ -1,0 +1,350 @@
+.hexmap-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+.hexmap-viewport.dragging { cursor: grabbing; }
+
+/* The TERRAIN canvas: a screen-space layer behind everything, redrawn
+   imperatively on each camera frame (see HexMap.jsx drawTerrain). It never takes
+   the pointer — hit-testing is geometric on the viewport. */
+.hexmap-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Everything except terrain: markers, highlights, cards, pieces. Camera-scaled.
+   pointer-events:none so a mouse event over bare terrain lands on the viewport
+   (which is how the geometric hit-test tells terrain from a card/button); the
+   gold buttons and combat pieces opt back in individually. */
+.hexmap-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  transform-origin: 0 0;
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* One anchor per tile that bears a marker (improvement / city / camp), sized to
+   the hex so the markers' percentage widths still resolve, and centred on it. */
+.hex-marker-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+/* The hover cue is a separate lightweight overlay (one node) drawn over the
+   hovered hex. */
+.hex-hover-cue {
+  position: absolute;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  background: rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Markers sit on top of the tile art. */
+.hex-marker {
+  display: grid;
+  place-items: center;
+  width: 42%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.hex-marker.palace {
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, #c99a2e 60%, #7a5410);
+  color: #3a2c10;
+  border: 2px solid #4a3608;
+}
+.hex-marker.camp {
+  background: radial-gradient(circle at 35% 30%, #ff8a7a, #a32020 60%, #5c0f0f);
+  color: #ffe4e0;
+  border: 2px solid #3d0a0a;
+  font-size: 0.95rem;
+}
+
+/* --- Hover info card ------------------------------------------------------
+   Anchored bottom-left of the map rather than following the cursor, so it can
+   never cover the tile you are inspecting. */
+.hex-tip {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 15;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(10, 12, 22, 0.92);
+  border: 1px solid rgba(201, 154, 46, 0.45);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  backdrop-filter: blur(3px);
+}
+.hex-tip-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--accent, #d8ad4e);
+}
+.hex-tip-sub {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #8b93a8;
+  margin-top: 0.1rem;
+}
+.hex-tip-body {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 0.45rem;
+  font-size: 0.9rem;
+}
+.hex-tip-yield { color: #9fd88a; font-weight: 600; }
+.hex-tip-none { color: #6f7789; }
+.hex-tip-warn {
+  color: #e39191;
+  border: 1px solid rgba(227, 145, 145, 0.4);
+  border-radius: 999px;
+  padding: 0.02rem 0.45rem;
+  font-size: 0.72rem;
+}
+.hex-tip-note {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #a8b0c2;
+}
+.hex-tip-note.palace { color: #e6c877; }
+.hex-tip-note.camp { color: #e39191; }
+
+/* --- Corner readout ------------------------------------------------------- */
+.hexmap-readout {
+  position: absolute;
+  right: 0.9rem;
+  top: 0.8rem;
+  z-index: 12;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: #7f879b;
+  background: rgba(10, 12, 22, 0.6);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  pointer-events: none;
+}
+
+/* --- territory ------------------------------------------------------------ */
+/* Controlled ground gets a faint warm WASH — drawn on the terrain CANVAS per
+   controlled tile (see HexMap.jsx drawTerrain), and suppressed there while a
+   unit's reach dims the whole board. */
+
+/* One continuous outline around the whole territory, drawn as hex edges. */
+.territory-outline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 4;
+}
+.territory-outline line {
+  stroke: #ffd76a;
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgba(255, 190, 70, 0.65));
+}
+
+/* An improvement (outpost) is a small dot; a city replaces it with a population
+   pip. CENTRED by default (grid); tucked to the bottom-right corner only when a
+   unit/building shares the tile, so the centred card cannot cover it. */
+.hex-improved {
+  width: 15%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff2c4, #c9a22e);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 0 1.5px rgba(60, 44, 10, 0.7);
+  pointer-events: none;
+}
+.hex-improved.cornered {
+  position: absolute;
+  bottom: 8%;
+  right: 8%;
+}
+.hex-city {
+  display: grid;
+  place-items: center;
+  width: 38%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: linear-gradient(160deg, #f6e2a2, #9a7418);
+  border: 2px solid #3a2c10;
+  color: #2b2007;
+  font-weight: 800;
+  font-size: 0.85rem;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.hex-city.palace {
+  width: 46%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff6d5, #e8c05c 55%, #7a5410);
+  box-shadow: 0 0 20px rgba(216, 173, 78, 0.9), 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+/* A city with a unit on it: shrink the pip and pin it to the top-left corner so
+   the centred unit badge cannot cover it (absolute, so it leaves the grid flow). */
+.hex-city.cornered {
+  position: absolute;
+  top: 4%;
+  left: 4%;
+  width: 24%;
+  font-size: 0.62rem;
+}
+
+.hex-tip-note.build { color: #b8d2e6; }
+.hex-tip-note.unit { color: #e3d3a0; }
+
+/* --- unit reach ------------------------------------------------------------
+   While a unit's reach is shown the whole board DIMS (a dark veil drawn over the
+   terrain canvas) so the warm control tint, the expansion pulse and the reach
+   colours don't mix on one surface. Reach is the only lit thing on screen, so it
+   cannot be mistaken for control. The gold territory outline fades below. */
+
+/* Highlights are POLYGONS, so the border actually follows the hexagon. A CSS
+   inset ring is painted on the rectangle and clipped afterwards, which leaves
+   the four diagonals bare — see the note in HexMap.jsx. */
+.hex-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 6; /* above the territory outline, which also lives on the map */
+}
+.hex-overlay polygon {
+  fill: none;
+  stroke: none;
+  stroke-linejoin: round;
+}
+/* The gold border is the other thing that says "control", so fade it too. */
+.hexmap-content.reaching .territory-outline { opacity: 0.2; }
+
+/* FILL = ground it can stand on. STROKE = what it can hit. A tile is often
+   both, which is why these are separate channels and not one ranked colour. */
+.hex-overlay polygon.can-move { fill: rgba(56, 189, 248, 0.34); }
+.hex-overlay polygon.can-hit {
+  stroke: #fca5a5;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 3px rgba(248, 113, 113, 0.9));
+}
+.hex-overlay polygon.can-hit:not(.can-move) { fill: rgba(248, 113, 113, 0.2); }
+/* AMBER, faint — only reachable if it moves first. */
+.hex-overlay polygon.threat:not(.can-move):not(.can-hit) {
+  fill: rgba(251, 191, 36, 0.13);
+  stroke: rgba(252, 211, 77, 0.5);
+  stroke-width: 2;
+}
+
+/* Legal expansion / placement targets, same layer so they cannot fight. */
+.hex-overlay polygon.target {
+  fill: rgba(120, 230, 120, 0.16);
+  stroke: rgba(180, 250, 170, 0.95);
+  stroke-width: 4;
+  animation: hex-target 1.3s ease-in-out infinite;
+}
+/* A city-founding tile in the :food: expand choice — GOLD, to read apart from a
+   green settle tile. */
+.hex-overlay polygon.city-target {
+  fill: rgba(255, 206, 110, 0.2);
+  stroke: rgba(255, 216, 120, 0.98);
+  stroke-width: 4;
+  animation: hex-target 1.3s ease-in-out infinite;
+}
+@keyframes hex-target {
+  0%, 100% { fill-opacity: 0.5; stroke-opacity: 0.7; }
+  50% { fill-opacity: 1; stroke-opacity: 1; }
+}
+
+/* --- unit equipment, in the hover card ------------------------------------ */
+.hex-tip-gear {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+.gear-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+.gear-slot {
+  flex: 0 0 3.6rem;
+  color: #7f879b;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.66rem;
+}
+.gear-name { color: #e2e7f2; }
+.gear-bonus { color: #9fd88a; margin-left: auto; white-space: nowrap; }
+
+/* Ground you own that already holds one of what you are placing. A dashed grey
+   outline, deliberately quiet — it says "taken", not "forbidden". Without it a
+   full tile looked exactly like sea, mountain, or land you do not own. */
+.hex-overlay polygon.blocked {
+  fill: rgba(10, 12, 20, 0.4);
+  stroke: rgba(180, 190, 210, 0.55);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+/* --- repositioning (prep phase) -------------------------------------------- */
+/* The picked-up unit. GREEN = free (within reposition range), AMBER = paid (a
+   cost is drawn on the tile), RED = you can't afford it. */
+.hex-overlay polygon.repo-src {
+  fill: rgba(120, 230, 120, 0.1);
+  stroke: #eaf7c8;
+  stroke-width: 4;
+  animation: hex-target 1.1s ease-in-out infinite;
+}
+.hex-overlay polygon.repo-free {
+  fill: rgba(120, 230, 120, 0.22);
+  stroke: rgba(180, 250, 170, 0.85);
+  stroke-width: 2;
+}
+.hex-overlay polygon.repo-paid {
+  fill: rgba(251, 191, 36, 0.16);
+  stroke: rgba(252, 211, 77, 0.85);
+  stroke-width: 2;
+}
+.hex-overlay polygon.repo-poor {
+  fill: rgba(80, 80, 90, 0.2);
+  stroke: rgba(200, 120, 120, 0.5);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.hex-overlay text.repo-cost {
+  fill: #f6d67a;
+  font-size: 20px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 3;
+}

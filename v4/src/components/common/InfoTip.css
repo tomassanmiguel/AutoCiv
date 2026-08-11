@@ -1,0 +1,45 @@
+/* No display set here so a passed className (e.g. .slot-row) controls layout. */
+.infotip {
+  position: fixed;
+  z-index: 60;
+  max-width: 260px;
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+/* An interactive tooltip can be hovered — that is the whole point of it, since
+   it holds its own hover targets (see InfoTip's `interactive` prop). */
+.infotip.interactive { pointer-events: auto; }
+/* `left`/`top` are set to the anchor's edge; the transform tucks the box just
+   beside it (vertically centered) so it never covers the anchor. */
+.infotip.open-left { transform: translate(-100%, -50%); }
+.infotip.open-right { transform: translate(0, -50%); }
+
+/* Upgrade preview (hovering the on-card Upgrade button): dark-green tint to signal
+   these are the POST-upgrade values. */
+.infotip.upgrade-preview {
+  background: #12331c;
+  border-color: #3f8f52;
+}
+.infotip.upgrade-preview .infotip-title { color: #9be8ad; }
+.tc-tip-upg {
+  font-weight: 700;
+  color: #b8f0c4;
+  margin-bottom: 0.2rem;
+  font-size: 0.85rem;
+}
+.infotip-title {
+  font-weight: 700;
+  color: var(--accent-light);
+  margin-bottom: 0.2rem;
+  font-size: 0.85rem;
+}
+.infotip-body {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
