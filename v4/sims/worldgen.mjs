@@ -113,7 +113,7 @@ STAGES.forEach((st, i) => {
 // --- Earth yield balance ---------------------------------------------------
 
 console.log('\n=== Earth base yield (sum over all Earth tiles) ===')
-for (const res of ['food', 'production', 'gold', 'progress']) {
+for (const res of ['food', 'gold', 'progress']) {
   const vals = yieldTotals.map((y) => y[res])
   const avg = vals.reduce((a, b) => a + b, 0) / vals.length
   console.log(`  ${res.padEnd(11)} avg ${avg.toFixed(0).padStart(5)}   min ${Math.min(...vals)}   max ${Math.max(...vals)}`)
