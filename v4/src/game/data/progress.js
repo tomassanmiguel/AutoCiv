@@ -1,79 +1,98 @@
-// The five-flavor progress draft (v4). PLACEHOLDER content — one deterministic
-// advancement per flavor per era, scaling slightly (docs/techs.md). Real
-// multi-option pools come from the content editor later.
+// The five-flavor tech ladders (v4 turn-based). Each flavor is a ladder of
+// ACTIVE_ERAS techs (Stone..Renaissance). Research is COMMITTED: the player
+// sets one active flavor and progress income fills its current tech over
+// several turns. Completing a flavor's FINAL (Renaissance) tech — its
+// ASCENDANCY — wins the run, so the strategy is to pick a lane and rush it
+// while teching enough of the others to survive.
 //
-// Taking a card advances THAT flavor's era. A flavor is COMPLETE once it has
-// taken its final-era (ACTIVE_ERAS-1) advancement; all five complete = win.
-//
-// An advancement is data: { id, flavor, era, name, desc, effects[] }. The engine
-// (GameManager._applyAdvancement) interprets the effect kinds.
+// An advancement is data: { id, flavor, era, name, desc, effects[] }. The
+// engine (GameManager._applyEffect) interprets the effect kinds:
+//   reveal_next        — push the map reveal one stage outward
+//   unlock_unit {cls}  — add a unit class to the build menu
+//   unit_flat {atk,def}— +atk/+def to every player unit
+//   gold_tile_bonus n  — +n :gold: from every gold-yielding tile a city works
+//   progress_per_pop n — +n :progress: per city pop
+//   unlock_building k  — add a building to the build menu
+//   city_atk n         — cities gain +n :attack: (they fight back)
+//   yield_radius n     — cities harvest n tiles further out
 
-import { ACTIVE_ERAS, DRAFT_CARDS } from './config.js'
+import { ACTIVE_ERAS, ERA_NAMES } from './config.js'
 
-export const FLAVORS = ['expansion', 'military', 'economy', 'science', 'culture']
+export const FLAVORS = ['military', 'science', 'economy', 'culture', 'expansion']
 
 export const FLAVOR_META = {
-  expansion: { name: 'Expansion', color: '#6ab5d9', blurb: 'Reveals more of the map.' },
-  military: { name: 'Military', color: '#d96a6a', blurb: 'Unlocks unit classes and upgrades.' },
-  economy: { name: 'Economy', color: '#d9b45a', blurb: 'Raises gold output.' },
-  science: { name: 'Science', color: '#6ad9a0', blurb: 'Raises progress output.' },
-  culture: { name: 'Culture', color: '#b06ad9', blurb: 'Strengthens cities.' },
+  military: { name: 'Military', color: '#d96a6a', icon: '/sprites/ui/melee.png', blurb: 'Unlocks unit classes and strengthens every unit.' },
+  science: { name: 'Science', color: '#6ad9a0', icon: '/sprites/icons/progress.png', blurb: 'Raises :progress: output and unlocks knowledge buildings.' },
+  economy: { name: 'Economy', color: '#d9b45a', icon: '/sprites/icons/gold.png', blurb: 'Raises :gold: from worked tiles and unlocks the market.' },
+  culture: { name: 'Culture', color: '#b06ad9', icon: '/sprites/ui/wonder.png', blurb: 'Fortifies cities and unlocks walls, towers and wonders.' },
+  expansion: { name: 'Expansion', color: '#6ab5d9', icon: '/sprites/icons/range.png', blurb: 'Reveals more of the map — better tiles and more lead time.' },
 }
 
-// Which class each early Military pick unlocks (v1 goes up to Naval).
-const MILITARY_UNLOCK = { 0: 'ranged', 1: 'cavalry', 2: 'naval' }
+// The ascendancy is the last era's tech of any flavor.
+export const isAscendancy = (era) => era === ACTIVE_ERAS - 1
 
-/** The single advancement offered by a flavor at a given era. */
+// Verbatim ladders. Index i = era i (0..ACTIVE_ERAS-1). The final entry is the
+// ascendancy (winning) tech.
+const LADDERS = {
+  military: [
+    { name: 'Archery', desc: 'Unlocks the :ranged: Archer.', effects: [{ kind: 'unlock_unit', cls: 'ranged' }] },
+    { name: 'Horsemanship', desc: 'Unlocks the :cavalry: Rider.', effects: [{ kind: 'unlock_unit', cls: 'cavalry' }] },
+    { name: 'Iron Weapons', desc: '+8 :attack: / +8 :defense: to all units.', effects: [{ kind: 'unit_flat', atk: 8, def: 8 }] },
+    { name: 'Siegecraft', desc: 'Unlocks the :siege: Catapult (hits an area).', effects: [{ kind: 'unlock_unit', cls: 'siege' }] },
+    { name: 'Men-at-Arms', desc: 'Unlocks the heavy Pikeman — a tough wall.', effects: [{ kind: 'unlock_unit', cls: 'heavy' }] },
+    { name: 'Grand Army', desc: 'ASCENDANCY. +20 :attack: / +20 :defense: to all units. Win the run.', effects: [{ kind: 'unit_flat', atk: 20, def: 20 }] },
+  ],
+  science: [
+    { name: 'Oral Tradition', desc: '+1 :progress: per city pop.', effects: [{ kind: 'progress_per_pop', amount: 1 }] },
+    { name: 'Writing', desc: 'Unlocks the Library (+:progress: each turn).', effects: [{ kind: 'unlock_building', key: 'library' }] },
+    { name: 'Mathematics', desc: '+1 :progress: per city pop.', effects: [{ kind: 'progress_per_pop', amount: 1 }] },
+    { name: 'Philosophy', desc: '+2 :progress: per city pop.', effects: [{ kind: 'progress_per_pop', amount: 2 }] },
+    { name: 'Scholasticism', desc: '+2 :progress: per city pop.', effects: [{ kind: 'progress_per_pop', amount: 2 }] },
+    { name: 'Scientific Method', desc: 'ASCENDANCY. +4 :progress: per city pop. Win the run.', effects: [{ kind: 'progress_per_pop', amount: 4 }] },
+  ],
+  economy: [
+    { name: 'Barter', desc: '+3 :gold: from every worked gold tile.', effects: [{ kind: 'gold_tile_bonus', amount: 3 }] },
+    { name: 'Currency', desc: 'Unlocks the Market (+:gold: each turn).', effects: [{ kind: 'unlock_building', key: 'market' }] },
+    { name: 'Mining', desc: '+5 :gold: from every worked gold tile.', effects: [{ kind: 'gold_tile_bonus', amount: 5 }] },
+    { name: 'Trade Routes', desc: '+6 :gold: from every worked gold tile.', effects: [{ kind: 'gold_tile_bonus', amount: 6 }] },
+    { name: 'Banking', desc: '+8 :gold: from every worked gold tile.', effects: [{ kind: 'gold_tile_bonus', amount: 8 }] },
+    { name: 'Capitalism', desc: 'ASCENDANCY. +15 :gold: from every worked gold tile. Win the run.', effects: [{ kind: 'gold_tile_bonus', amount: 15 }] },
+  ],
+  culture: [
+    { name: 'Tribalism', desc: 'Cities fight back — +6 :attack:.', effects: [{ kind: 'city_atk', atk: 6 }] },
+    { name: 'Masonry', desc: 'Unlocks the Wall — a tough blocker with no attack.', effects: [{ kind: 'unlock_building', key: 'wall' }] },
+    { name: 'Fortification', desc: 'Unlocks the Watchtower — a ranged defensive building.', effects: [{ kind: 'unlock_building', key: 'watchtower' }] },
+    { name: 'Monuments', desc: 'Unlocks Wonders — very costly buildings with strong effects.', effects: [{ kind: 'unlock_building', key: 'wonder' }] },
+    { name: 'Guilds', desc: 'Cities strike harder — +10 :attack:.', effects: [{ kind: 'city_atk', atk: 10 }] },
+    { name: 'Renaissance', desc: 'ASCENDANCY. Cities strike harder — +20 :attack:. Win the run.', effects: [{ kind: 'city_atk', atk: 20 }] },
+  ],
+  expansion: [
+    { name: 'Scouting', desc: 'Reveal more of the map.', effects: [{ kind: 'reveal_next' }] },
+    { name: 'Trailblazing', desc: 'Reveal more of the map.', effects: [{ kind: 'reveal_next' }] },
+    { name: 'Roadbuilding', desc: 'Reveal more of the map.', effects: [{ kind: 'reveal_next' }] },
+    { name: 'Cartography', desc: 'Reveal more of the map; cities harvest one tile further.', effects: [{ kind: 'reveal_next' }, { kind: 'yield_radius', amount: 1 }] },
+    { name: 'Seafaring', desc: 'Reveal more of the map.', effects: [{ kind: 'reveal_next' }] },
+    { name: 'Age of Discovery', desc: 'ASCENDANCY. Reveal more of the map. Win the run.', effects: [{ kind: 'reveal_next' }] },
+  ],
+}
+
+/** The advancement a flavor offers at a given era. */
 export function advancementFor(flavor, era) {
-  const id = `${flavor}-${era}`
-  switch (flavor) {
-    case 'science': {
-      const n = 1 + Math.floor(era / 2)
-      return { id, flavor, era, name: `Science ${era + 1}`, desc: `+${n} :progress: per citizen, all cities.`, effects: [{ kind: 'progress_per_citizen', amount: n }] }
-    }
-    case 'military': {
-      const effects = [{ kind: 'unit_flat', atk: 5, def: 5 }, { kind: 'upgrade_ceiling', amount: 1 }]
-      const cls = MILITARY_UNLOCK[era]
-      let desc = '+5 :attack: / +5 :defense: to all units; +1 upgrade level.'
-      if (cls) { effects.push({ kind: 'unlock_class', cls }); desc = `Unlocks the ${cls} class. +5 :attack: / +5 :defense: to all units; +1 upgrade level.` }
-      return { id, flavor, era, name: `Military ${era + 1}`, desc, effects }
-    }
-    case 'culture':
-      return { id, flavor, era, name: `Culture ${era + 1}`, desc: '+20 :attack: / +20 :defense: to all cities.', effects: [{ kind: 'city_flat', atk: 20, def: 20 }] }
-    case 'economy':
-      return { id, flavor, era, name: `Economy ${era + 1}`, desc: '+5 :gold: to every gold-producing tile.', effects: [{ kind: 'gold_tile_bonus', amount: 5 }] }
-    case 'expansion':
-    default:
-      return { id, flavor, era, name: `Expansion ${era + 1}`, desc: 'Reveal more of the map.', effects: [{ kind: 'reveal_next' }] }
-  }
+  const l = LADDERS[flavor]
+  if (!l || era < 0 || era >= l.length) return null
+  const e = l[era]
+  return { id: `${flavor}-${era}`, flavor, era, name: e.name, desc: e.desc, effects: e.effects }
 }
 
-/** Is a flavor complete (has taken every era's advancement)? */
+/** Gold-free progress cost of a flavor's current tech. */
+export function researchCost(era, base, growth) {
+  return Math.round(base * Math.pow(growth, era))
+}
+
+/** Has a flavor taken its ascendancy (era ACTIVE_ERAS-1)? */
 export const isFlavorComplete = (branchEra, flavor) => branchEra[flavor] >= ACTIVE_ERAS
 
-/** Have all five flavors been completed? (win) */
-export const allComplete = (branchEra) => FLAVORS.every((f) => isFlavorComplete(branchEra, f))
+/** Any flavor complete = win. */
+export const anyComplete = (branchEra) => FLAVORS.some((f) => isFlavorComplete(branchEra, f))
 
-/**
- * Deal up to DRAFT_CARDS advancement cards. Only flavors that are not yet
- * complete can be offered; each offers its CURRENT-era advancement. Weighted
- * toward the player's LESS-developed flavors so none gets stranded. Distinct
- * flavors (with one option each, a repeat would be identical).
- */
-export function draftOptions(branchEra, rng = Math.random, count = DRAFT_CARDS) {
-  const pool = FLAVORS.filter((f) => !isFlavorComplete(branchEra, f))
-  const chosen = []
-  const bag = pool.slice()
-  while (chosen.length < count && bag.length) {
-    // weight = how far this flavor is BEHIND (ACTIVE_ERAS - era), min 1.
-    const weights = bag.map((f) => Math.max(1, ACTIVE_ERAS - branchEra[f]))
-    let total = weights.reduce((a, b) => a + b, 0)
-    let r = rng() * total
-    let idx = 0
-    for (; idx < bag.length; idx++) { r -= weights[idx]; if (r <= 0) break }
-    if (idx >= bag.length) idx = bag.length - 1
-    const flavor = bag.splice(idx, 1)[0]
-    chosen.push(advancementFor(flavor, branchEra[flavor]))
-  }
-  return chosen
-}
+export const eraName = (era) => ERA_NAMES[Math.min(era, ERA_NAMES.length - 1)]

@@ -60,6 +60,27 @@
   background: radial-gradient(circle at 40% 30%, rgba(216, 173, 78, 0.5), rgba(28, 22, 8, 0.97));
   box-shadow: 0 0 18px rgba(216, 173, 78, 0.5);
 }
+/* Buildings take their colour from the building def (--flavor). */
+.piece-card.building {
+  border-color: var(--flavor, #9aa0a6);
+  background: linear-gradient(160deg, rgba(38, 44, 58, 0.96), rgba(16, 20, 28, 0.96));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.piece-card.building .pc-hpbar > span { background: color-mix(in srgb, var(--flavor, #9aa0a6) 70%, #cfe0f0); }
+.piece-card.building .pc-icon { filter: none; }
+
+/* Forecast ghost: the coming wave, telegraphed on the frontier — translucent,
+   dashed and gently breathing so it reads as not-yet-arrived. */
+.piece-card.ghost {
+  opacity: 0.6;
+  outline: 2px dashed rgba(255, 120, 90, 0.85);
+  outline-offset: 2px;
+  animation: muster-breathe 2.4s ease-in-out infinite;
+}
+.pc-incoming {
+  font-size: 7.5px; text-align: center; color: #ff9a7a;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
 
 /* The class SYMBOL — a small inverted silhouette at the top of the card. */
 .pc-icon {
@@ -225,6 +246,8 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/* City pop lost to an enemy hit — reads as attrition, not HP damage. */
+.combat-float.pop { color: #ffb27a; }
 @keyframes float-up {
   0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); }
   25% { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }

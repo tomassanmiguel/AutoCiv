@@ -1,53 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GameManager } from '../game/GameManager.js'
 import { GameProvider, useGame } from '../game/react/GameProvider.jsx'
-import { SPEED_TPS, COMBAT_INTERVAL_MS, COMBAT_END_LINGER_MS } from '../game/data/config.js'
-import { STAGES } from '../game/world/regions.js'
+import { TURN_ANIM_MS, ERA_NAMES } from '../game/data/config.js'
+import { FLAVOR_META } from '../game/data/progress.js'
 import HexMap from './HexMap/HexMap.jsx'
 import AudioController from './AudioController.jsx'
 import MenuOverlay from './Menu/MenuOverlay.jsx'
 import BuildPanel from './Build/BuildPanel.jsx'
-import DraftOverlay from './Draft/DraftOverlay.jsx'
 import UpgradeModal from './Upgrade/UpgradeModal.jsx'
 import ProgressPanel from './Progress/ProgressPanel.jsx'
 import EndOverlay from './Hud/EndOverlay.jsx'
 import './GameScreen.css'
 
-const SPEEDS = [
-  { key: 'paused', glyph: '❚❚' },
-  { key: 'slow', glyph: '▶' },
-  { key: 'normal', glyph: '▶▶' },
-  { key: 'fast', glyph: '▶▶▶' },
-]
-
 export default function GameScreen({ seed, audio, onExit }) {
   const [manager] = useState(() => new GameManager(seed))
-
-  // The combat clock: a fractional accumulator advances the running combat at
-  // SPEED_TPS[speed] ticks/sec. It runs only during combat and pauses for a draft.
-  // At combat end the board LINGERS for COMBAT_END_LINGER_MS so the last death
-  // animation plays before resolveCombat() resets to prep.
-  useEffect(() => {
-    manager.setDeferResolve(true)
-    let acc = 0
-    let lingerMs = 0
-    const iv = setInterval(() => {
-      const g = manager
-      if (g.combat.finishing) {
-        lingerMs += COMBAT_INTERVAL_MS
-        if (lingerMs >= COMBAT_END_LINGER_MS) { lingerMs = 0; g.resolveCombat() }
-        return
-      }
-      lingerMs = 0
-      if (g.phase !== 'combat' || g.selection || g.won || g.defeated) { acc = 0; return }
-      acc += (SPEED_TPS[g.speed] ?? 0) * (COMBAT_INTERVAL_MS / 1000)
-      let guard = 0
-      while (acc >= 1 && guard++ < 200 && g.phase === 'combat' && !g.selection && !g.won && !g.defeated && !g.combat.finishing) {
-        g.combatTick(); acc -= 1
-      }
-    }, COMBAT_INTERVAL_MS)
-    return () => clearInterval(iv)
-  }, [manager])
 
   return (
     <GameProvider manager={manager}>
@@ -56,7 +22,6 @@ export default function GameScreen({ seed, audio, onExit }) {
         <AudioController audio={audio} />
         <TopBar />
         <BuildPanel />
-        <DraftOverlay />
         <UpgradeModal />
         <ProgressPanel />
         <MenuOverlay onExit={onExit} />
@@ -68,31 +33,54 @@ export default function GameScreen({ seed, audio, onExit }) {
 
 function TopBar() {
   const game = useGame()
-  const prog = game.progress
-  const pct = Math.max(0, Math.min(100, (prog.value / prog.threshold) * 100))
+  const ri = game.researchInfo()
+  const eraIdx = ri.flavor ? game.branchEra[ri.flavor] : 0
+  const pct = ri.flavor ? Math.max(0, Math.min(100, (ri.value / ri.cost) * 100)) : 0
+  const meta = ri.flavor ? FLAVOR_META[ri.flavor] : null
+
+  // A short input lock after End Turn so the round's slides/floats read before
+  // the next click. State is applied synchronously; this is purely for pacing.
+  const [busy, setBusy] = useState(false)
+  const timer = useRef(null)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const endTurn = () => {
+    if (busy || game.selection || game.won || game.defeated) return
+    game.endTurn()
+    setBusy(true)
+    timer.current = setTimeout(() => setBusy(false), TURN_ANIM_MS)
+  }
+
+  const incoming = game.forecast.length
+
   return (
     <div className="top-bar">
       <div className="tb-group">
-        <div className="tb-stat wave">Wave <b>{game.wave}</b></div>
-        <div className="tb-stat stage">{STAGES[game.stage].name}</div>
-      </div>
-
-      <div className="tb-group tb-res">
-        <div className="tb-stat gold"><img src="/sprites/icons/gold.png" alt="gold" /><b>{Math.round(game.gold)}</b></div>
-        <div className="tb-progress" title={`${Math.round(prog.value)} / ${prog.threshold} progress`}>
-          <img src="/sprites/icons/progress.png" alt="progress" />
-          <div className="tb-progbar"><span style={{ width: `${pct}%` }} /></div>
+        <div className="tb-stat turn">Turn <b>{game.turn}</b></div>
+        <div className="tb-stat era">{ERA_NAMES[Math.min(eraIdx, ERA_NAMES.length - 1)]}</div>
+        <div className="tb-stat threat" title="Enemies forecast to arrive next turn">
+          <span className="tb-threat-dot" />incoming <b>{incoming}</b>
         </div>
       </div>
 
-      <button className="tb-tracks" onClick={() => game.toggleProgress()}>Tracks</button>
-
-      <div className="tb-group tb-speed">
-        {SPEEDS.map((s) => (
-          <button key={s.key} className={`tb-speed-btn${game.speed === s.key ? ' active' : ''}`}
-            onClick={() => game.setSpeed(s.key)}>{s.glyph}</button>
-        ))}
+      <div className="tb-group tb-res">
+        <div className="tb-stat gold">
+          <img src="/sprites/icons/gold.png" alt="gold" /><b>{Math.round(game.gold)}</b>
+          {game.lastGoldGain > 0 && <span className="tb-delta">+{game.lastGoldGain}</span>}
+        </div>
       </div>
+
+      <button className="tb-research" onClick={() => game.toggleProgress()} style={meta ? { '--flavor': meta.color } : undefined}>
+        <span className="tb-res-label">
+          {meta ? `${meta.name}: ${ri.adv.name}` : 'Choose a research lane'}
+        </span>
+        <span className="tb-res-bar"><span style={{ width: `${pct}%` }} /></span>
+        <span className="tb-res-num">{ri.flavor ? `${Math.round(ri.value)}/${ri.cost}` : '—'}</span>
+      </button>
+
+      <button className={`tb-endturn${busy ? ' busy' : ''}`} onClick={endTurn}
+        disabled={busy || !!game.selection || game.won || game.defeated}>
+        End Turn ⏭
+      </button>
     </div>
   )
 }

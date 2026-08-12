@@ -1,74 +1,80 @@
-// GameManager (v4) — the root game model. Framework-free (no React): the UI
-// reads it through the subscribe/getVersion bridge (see react/GameProvider).
+// GameManager (v4 turn-based) — the root game model. Framework-free (no React):
+// the UI reads it through the subscribe/getVersion bridge (see react/GameProvider).
 //
-// The loop has NO development phase. Three phases repeat:
-//   prep    — spend gold (found cities, hire units, buy upgrades), reposition
-//   combat  — the cooldown clock runs; cities emit gold+progress; a progress
-//             threshold pauses combat for a draft; enemies march on the palace
-//   resolve — cities gain/lose pop by survival; food → pop; wave++
+// THE LOOP IS TURN-BASED. There are no phases and no wall clock. The player
+// plans freely (found cities, build units/buildings, repair, reposition, pick a
+// research lane), then calls endTurn(), which resolves ONE round in a fixed
+// order (see manager/combat.js _resolveTurn):
+//     resolve units  -> resolve resource gain -> resolve research
+// then forecasts the next wave onto the frontier.
 //
-// Two currencies: GOLD (a stock, spent in prep) and PROGRESS (one pool, a
-// threshold that opens a draft). POP is a per-city stat. Cities are combat
-// pieces. Win = all five flavors complete; lose = the palace is destroyed.
+// Enemies are PERSISTENT (this.enemies): they muster on the frontier a turn
+// ahead (this.forecast), march on the palace, raze buildings and cities, and
+// kill units permanently. Two currencies: GOLD (a stock, spent while planning)
+// and PROGRESS (income that fills the ACTIVE research lane). Win = complete any
+// flavor's Renaissance ascendancy. Lose = the palace is razed.
 //
 // Combat lives in manager/combat.js as a mixin (installCombat at the bottom).
 
 import { generateWorld } from './world/worldgen.js'
-import { key, neighbors, disc, distance } from './hex/coords.js'
-import { STAGE } from './world/regions.js'
-import { BATTLEFIELD_DEPTH } from './world/regions.js'
+import { key, neighbors, distance, disc } from './hex/coords.js'
+import { STAGE, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { terrainOf, isPassable, isLand, rangeBonusOf } from './world/terrain.js'
 import { UNIT_DEFS, canPlaceUnit } from './data/units.js'
+import { BUILDING_DEFS, canPlaceBuilding, buildingHp } from './data/buildings.js'
 import { emptyUpgradeState, upgradeBonus, nextNode, upgradeCost } from './data/upgrades.js'
 import {
-  FLAVORS, advancementFor, draftOptions, isFlavorComplete, allComplete,
+  FLAVORS, advancementFor, researchCost, isFlavorComplete, isAscendancy,
 } from './data/progress.js'
 import {
   STARTING_GOLD, PALACE_START_POP, CITY_START_POP, CITY_MIN_SPACING,
-  CITY_YIELD_RADIUS, CITY_BASE_DEF, PALACE_BASE_DEF, PALACE_ATK, PALACE_RANGE,
-  PROGRESS_BASE, TIER_GROWTH, DEFAULT_SPEED, ACTIVE_ERAS,
-  CITY_COST, UNIT_COSTS,
+  CITY_YIELD_RADIUS, PALACE_MAX_HP, PALACE_ATK, PALACE_RANGE, CITY_ATTACK_RANGE,
+  FOOD_BASE, FOOD_GROWTH, RESEARCH_BASE, RESEARCH_GROWTH,
+  COUNT_GROWTH, WONDER_COUNT_GROWTH, CITY_COST, UNIT_COSTS, REPAIR_PER_HP,
 } from './data/config.js'
 import { installCombat } from './manager/combat.js'
 
-// v1 caps map reveal at the Islands notch (docs/design.md §8).
-const EXPANSION_STAGE_CAP = STAGE.islands
+// The prototype charts Earth only (Stone..Renaissance). Expansion techs walk the
+// reveal ladder out to Full Earth and no further.
+const REVEAL_CAP = STAGE.full_earth
+const MAX_YIELD_RADIUS = 3
 
 export class GameManager {
   constructor(seed = 1) {
     this.world = generateWorld(seed >>> 0)
     this.stage = STAGE.local
-    this.wave = 1
-    this.phase = 'prep' // 'prep' | 'combat' | 'resolve'
-    this.speed = DEFAULT_SPEED
+    this.turn = 1
 
     this.gold = STARTING_GOLD
-    // Single progress pool. `threshold` scales with the last pick's tier.
-    this.progress = { value: 0, level: 0, threshold: this._progressThreshold(0) }
 
-    this.branchEra = { expansion: 0, military: 0, economy: 0, science: 0, culture: 0 }
+    // Research: one active flavor lane; income fills its current tech.
+    this.branchEra = { military: 0, science: 0, economy: 0, culture: 0, expansion: 0 }
     this.taken = []
-    this.lastPickEra = 0
+    this.researchFlavor = 'military'
+    this.researchValue = 0
+    this.lastGoldGain = 0
+    this.lastProgressGain = 0
 
     // Modifiers folded in by advancements.
     this.mods = {
-      progressPerCitizen: 0,
       unitAtkFlat: 0, unitDefFlat: 0,
-      upgradeCeiling: 0,
-      cityAtkFlat: 0, cityDefFlat: 0,
-      goldTileBonus: 0,
+      goldTileBonus: 0, progressPerPop: 1, cityAtkFlat: 0,
+      upgradeCeiling: 99, // upgrades are a pure gold sink in the prototype
     }
     this.upgrades = emptyUpgradeState()
     this.unlockedClasses = new Set(['melee'])
+    this.unlockedBuildings = new Set()
     this.cityYieldRadius = CITY_YIELD_RADIUS
 
-    this.selection = null       // { type:'placement'|'draft', ... }
-    this.ui = { upgrade: false, progress: false } // summonable overlays
-    this.pendingWave = null     // mustered host preview
-    this.combat = this._blankCombat()
+    this.selection = null       // { type:'placement', kind, cost }
+    this.ui = { upgrade: false, progress: false }
+
+    this.enemies = []           // persistent hostile pieces on the board
+    this.forecast = []          // next turn's arrivals (shown as ghosts)
+    this.events = []            // this turn's floating numbers (rebuilt each turn)
+
     this.won = false
     this.defeated = false
-    this.deferResolve = false // UI sets true so combat lingers for death anims
 
     this._version = 0
     this._subs = new Set()
@@ -77,34 +83,33 @@ export class GameManager {
     this._foundPalace()
     this._recomputeKnown()
     this._giveStartingArmy()
-    this._prepareWave()
+    this._makeForecast()
   }
 
-  // --- React bridge (arrow fields: passed unbound to useSyncExternalStore) ---
+  // --- React bridge ---------------------------------------------------------
   subscribe = (fn) => { this._subs.add(fn); return () => this._subs.delete(fn) }
   getVersion = () => this._version
   _emit() { this._version++; for (const fn of this._subs) fn() }
-
   _id() { return this._nextId++ }
 
   // --- Setup ----------------------------------------------------------------
   _foundPalace() {
     const t = this.world.at(0, 0)
-    t.city = { id: this._id(), palace: true, pop: PALACE_START_POP, q: 0, r: 0 }
+    t.city = { id: this._id(), palace: true, pop: PALACE_START_POP, q: 0, r: 0, hp: PALACE_MAX_HP, foodStore: 0 }
   }
 
   _giveStartingArmy() {
-    // Start with a single melee unit on a passable land tile beside the palace.
+    // A single Warrior on a passable land tile beside the palace.
     for (const n of neighbors(0, 0)) {
       const t = this.world.at(n.q, n.r)
       if (t && !t.city && !t.unit && canPlaceUnit(UNIT_DEFS.melee, t.terrain)) {
-        t.unit = { id: this._id(), cls: 'melee' }
+        t.unit = { id: this._id(), cls: 'melee', hp: this.unitStats('melee').def }
         return
       }
     }
   }
 
-  // --- Known world + battlefield ring ---------------------------------------
+  // --- Known world + frontier ring ------------------------------------------
   _recomputeKnown() {
     const list = this.world.list
     const tiles = list.filter((t) => t.revealStage <= this.stage)
@@ -134,8 +139,7 @@ export class GameManager {
     return !!t && (t.revealStage <= this.stage || this.known.bfSet.has(key(q, r)))
   }
 
-  // --- Economy --------------------------------------------------------------
-  /** Tiles a city harvests: the disc of its yield radius, KNOWN tiles only. */
+  // --- Economy readers ------------------------------------------------------
   cityRadiusTiles(city) {
     const out = []
     for (const h of disc(city.q, city.r, this.cityYieldRadius)) {
@@ -155,7 +159,7 @@ export class GameManager {
   }
 
   cityProgress(city) {
-    let p = city.pop * (1 + this.mods.progressPerCitizen)
+    let p = city.pop * this.mods.progressPerPop
     for (const t of this.cityRadiusTiles(city)) p += terrainOf(t.terrain).yields.progress
     return p
   }
@@ -166,33 +170,43 @@ export class GameManager {
     return f
   }
 
-  /** A city's combat stats (HP pool + attack). Palace is tougher and attacks. */
+  foodThreshold(pop) { return Math.round(FOOD_BASE * Math.pow(FOOD_GROWTH, pop)) }
+
+  /** A city's combat stats. Palace has a real HP pool; cities use pop attrition. */
   cityStats(city) {
-    const maxHp = (city.palace ? PALACE_BASE_DEF : CITY_BASE_DEF) + this.mods.cityDefFlat
-    const atk = city.palace ? PALACE_ATK + this.mods.cityAtkFlat : 0
-    const range = city.palace ? PALACE_RANGE : 0
-    return { maxHp, atk, range }
+    if (city.palace) {
+      return { maxHp: PALACE_MAX_HP, atk: PALACE_ATK + this.mods.cityAtkFlat, range: PALACE_RANGE }
+    }
+    const atk = this.mods.cityAtkFlat
+    return { maxHp: 0, atk, range: atk > 0 ? CITY_ATTACK_RANGE : 0 }
   }
 
-  // --- Units ----------------------------------------------------------------
+  // --- Units + buildings ----------------------------------------------------
   unitStats(cls) {
     const d = UNIT_DEFS[cls]
     const atk = d.atk + this.mods.unitAtkFlat + upgradeBonus(this.upgrades, cls, 'atk')
     const def = d.def + this.mods.unitDefFlat + upgradeBonus(this.upgrades, cls, 'def')
-    return { atk, def, range: d.range, cd: d.cd }
+    return { atk, def, range: d.range, splash: d.splash ?? 0 }
   }
 
   /** UI: live stats for the unit on a tile, incl. its terrain range bonus. */
   unitBoardStats(tile) {
     if (!tile.unit) return null
     const s = this.unitStats(tile.unit.cls)
-    return { ...s, range: s.range + rangeBonusOf(tile.terrain), cls: tile.unit.cls }
+    return { ...s, range: s.range + rangeBonusOf(tile.terrain), cls: tile.unit.cls, hp: tile.unit.hp }
+  }
+
+  buildingStats(bkey) {
+    const d = BUILDING_DEFS[bkey]
+    return { maxHp: buildingHp(d), atk: d.atk ?? 0, range: d.range ?? 0 }
   }
 
   allCities() { return this.world.list.filter((t) => t.city).map((t) => ({ tile: t, city: t.city })) }
-  cityCount() { return this.world.list.reduce((n, t) => n + (t.city ? 1 : 0), 0) }
+  cityCount() { return this.world.list.reduce((n, t) => n + (t.city && !t.city.palace ? 1 : 0), 0) }
+  countUnits(cls) { return this.world.list.reduce((n, t) => n + (t.unit?.cls === cls ? 1 : 0), 0) }
+  countBuildings(bkey) { return this.world.list.reduce((n, t) => n + (t.building?.key === bkey ? 1 : 0), 0) }
 
-  /** UI: tiles a hovered unit could strike (v1 units are stationary towers). */
+  /** UI: tiles a hovered unit could strike (stationary towers). */
   unitReachCells(tile) {
     if (!tile?.unit) return null
     const s = this.unitBoardStats(tile)
@@ -204,104 +218,124 @@ export class GameManager {
     return { move: new Set(), attack, threat: new Set() }
   }
 
-  /** UI: a city/palace's live economy for the hover card. */
+  /** UI: a city/palace's live economy + defence for the hover card. */
   cityInfo(tile) {
     if (!tile?.city) return null
     const c = tile.city
+    const s = this.cityStats(c)
     return {
       pop: c.pop, palace: !!c.palace,
       gold: Math.round(this.cityGold(c)),
       progress: Math.round(this.cityProgress(c)),
       food: Math.round(this.cityFood(c)),
-      ...this.cityStats(c),
+      threshold: this.foodThreshold(c.pop),
+      hp: c.hp ?? null, ...s,
     }
   }
 
-  // --- Progress threshold + draft -------------------------------------------
-  _progressThreshold(lastEra) {
-    return Math.round(PROGRESS_BASE * Math.pow(TIER_GROWTH, lastEra))
+  // --- Research (commit-a-lane) ---------------------------------------------
+  setResearch(flavor) {
+    if (!FLAVORS.includes(flavor) || isFlavorComplete(this.branchEra, flavor)) return
+    this.researchFlavor = flavor
+    // Overflow may already complete the newly picked tech.
+    this._drainResearch()
+    this._emit()
   }
 
-  /** Add progress; if the threshold is crossed and no draft is open, open one. */
-  _addProgress(amount) {
-    this.progress.value += amount
-    if (!this.selection && this.progress.value >= this.progress.threshold) this._openDraft()
-  }
-
-  _openDraft() {
-    const rng = this._draftRng()
-    const options = draftOptions(this.branchEra, rng)
-    if (!options.length) {
-      // Everything is complete (win) or nothing offerable — consume and move on.
-      this.progress.value -= this.progress.threshold
-      this.progress.level++
-      this.progress.threshold = this._progressThreshold(this.lastPickEra)
-      return
+  researchInfo() {
+    const f = this.researchFlavor
+    if (!f || isFlavorComplete(this.branchEra, f)) return { flavor: null, value: this.researchValue }
+    const era = this.branchEra[f]
+    return {
+      flavor: f, era, adv: advancementFor(f, era),
+      cost: researchCost(era, RESEARCH_BASE, RESEARCH_GROWTH),
+      value: this.researchValue,
     }
-    this.selection = { type: 'draft', options }
   }
 
-  _draftRng() {
-    // Deterministic-ish but varied per draft, and node-safe (no Math.random ban).
-    let s = (this.world.seed ^ (this.progress.level * 2654435761) ^ (this.wave * 40503)) >>> 0
-    return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0x100000000 }
+  _advanceResearch(amount) {
+    this.researchValue += amount
+    this._drainResearch()
   }
 
-  draftPick(advancement) {
-    if (this.selection?.type !== 'draft') return
-    this.progress.value -= this.progress.threshold
-    this.progress.level++
-    this._takeAdvancement(advancement)
-    this.progress.threshold = this._progressThreshold(this.lastPickEra)
-    this.selection = null
-    // A new crossing (overflow) may open the next draft immediately.
-    if (this.progress.value >= this.progress.threshold) this._openDraft()
-    this._checkWin()
-    this._emit()
+  _drainResearch() {
+    let guard = 0
+    while (this.researchFlavor && !isFlavorComplete(this.branchEra, this.researchFlavor) && guard++ < 30) {
+      const f = this.researchFlavor
+      const era = this.branchEra[f]
+      const cost = researchCost(era, RESEARCH_BASE, RESEARCH_GROWTH)
+      if (this.researchValue < cost) break
+      this.researchValue -= cost
+      this._completeResearch(f, era)
+      if (this.won) break
+    }
   }
 
-  draftSkip() {
-    if (this.selection?.type !== 'draft') return
-    this.progress.value -= this.progress.threshold
-    this.progress.level++
-    this.progress.threshold = this._progressThreshold(this.lastPickEra)
-    this.selection = null
-    if (this.progress.value >= this.progress.threshold) this._openDraft()
-    this._emit()
-  }
-
-  _takeAdvancement(a) {
-    this.taken.push(a.id)
-    this.branchEra[a.flavor] = a.era + 1
-    this.lastPickEra = a.era
-    for (const e of a.effects) this._applyEffect(e)
+  _completeResearch(flavor, era) {
+    const adv = advancementFor(flavor, era)
+    if (!adv) return
+    this.taken.push(adv.id)
+    this.branchEra[flavor] = era + 1
+    for (const e of adv.effects) this._applyEffect(e)
+    if (isAscendancy(era)) this.won = true
   }
 
   _applyEffect(e) {
     switch (e.kind) {
-      case 'progress_per_citizen': this.mods.progressPerCitizen += e.amount; break
-      case 'unit_flat': this.mods.unitAtkFlat += e.atk; this.mods.unitDefFlat += e.def; break
-      case 'upgrade_ceiling': this.mods.upgradeCeiling += e.amount; break
-      case 'unlock_class': this.unlockedClasses.add(e.cls); break
-      case 'city_flat': this.mods.cityAtkFlat += e.atk; this.mods.cityDefFlat += e.def; break
-      case 'gold_tile_bonus': this.mods.goldTileBonus += e.amount; break
       case 'reveal_next':
-        if (this.stage < EXPANSION_STAGE_CAP) { this.stage++; this._recomputeKnown() }
+        if (this.stage < REVEAL_CAP) { this.stage++; this._recomputeKnown() }
         break
+      case 'unlock_unit': this.unlockedClasses.add(e.cls); break
+      case 'unit_flat':
+        this.mods.unitAtkFlat += e.atk; this.mods.unitDefFlat += e.def
+        // Retroactively toughen every unit already on the board.
+        for (const t of this.world.list) if (t.unit) t.unit.hp += e.def
+        break
+      case 'gold_tile_bonus': this.mods.goldTileBonus += e.amount; break
+      case 'progress_per_pop': this.mods.progressPerPop += e.amount; break
+      case 'unlock_building': this.unlockedBuildings.add(e.key); break
+      case 'city_atk': this.mods.cityAtkFlat += e.atk; break
+      case 'yield_radius': this.cityYieldRadius = Math.min(MAX_YIELD_RADIUS, this.cityYieldRadius + e.amount); break
       default: break
     }
   }
 
-  _checkWin() {
-    if (allComplete(this.branchEra)) { this.won = true; this.combat.active = false }
+  flavorStatus() {
+    return FLAVORS.map((f) => ({
+      flavor: f,
+      era: this.branchEra[f],
+      total: this.branchEra[f], // filled below for clarity
+      complete: isFlavorComplete(this.branchEra, f),
+      active: f === this.researchFlavor && !isFlavorComplete(this.branchEra, f),
+      adv: isFlavorComplete(this.branchEra, f) ? null : advancementFor(f, this.branchEra[f]),
+      cost: isFlavorComplete(this.branchEra, f) ? 0 : researchCost(this.branchEra[f], RESEARCH_BASE, RESEARCH_GROWTH),
+    }))
   }
 
-  // --- Placement (found city / hire unit) -----------------------------------
-  buildCost(kind) { return kind === 'city' ? CITY_COST : (UNIT_COSTS[kind] ?? 40) }
+  // --- Build (found city / hire unit / raise building) ----------------------
+  buildKinds() {
+    return {
+      city: true,
+      units: [...this.unlockedClasses],
+      buildings: [...this.unlockedBuildings],
+    }
+  }
+
+  buildCost(kind) {
+    if (kind === 'city') return Math.round(CITY_COST * Math.pow(COUNT_GROWTH, this.cityCount()))
+    if (UNIT_COSTS[kind] != null) return Math.round(UNIT_COSTS[kind] * Math.pow(COUNT_GROWTH, this.countUnits(kind)))
+    const b = BUILDING_DEFS[kind]
+    if (b) {
+      const growth = b.wonder ? WONDER_COUNT_GROWTH : COUNT_GROWTH
+      return Math.round(b.cost * Math.pow(growth, this.countBuildings(kind)))
+    }
+    return 9999
+  }
 
   canBuild(kind) {
-    if (this.phase !== 'prep' || this.selection || this.won || this.defeated) return false
-    if (kind !== 'city' && !this.unlockedClasses.has(kind)) return false
+    if (this.selection || this.won || this.defeated) return false
+    if (UNIT_COSTS[kind] != null && !this.unlockedClasses.has(kind)) return false
+    if (BUILDING_DEFS[kind] && !this.unlockedBuildings.has(kind)) return false
     return this.gold >= this.buildCost(kind)
   }
 
@@ -315,35 +349,29 @@ export class GameManager {
     if (this.selection?.type === 'placement') { this.selection = null; this._emit() }
   }
 
-  /** Legal placement tiles for the current selection. */
   placementTargets() {
-    const sel = this.selection
-    if (sel?.type !== 'placement') return []
+    if (this.selection?.type !== 'placement') return []
     const out = []
-    for (const t of this.known.tiles) {
-      if (this._canPlace(sel.kind, t)) out.push(t)
-    }
+    for (const t of this.known.tiles) if (this._canPlace(this.selection.kind, t)) out.push(t)
     return out
   }
 
   _canPlace(kind, t) {
-    if (t.unit || t.city) return false // one piece per tile
+    if (t.unit || t.city || t.building) return false // one piece per tile
     if (kind === 'city') {
       if (!isLand(t.terrain) || !isPassable(t.terrain)) return false
-      // No city within CITY_MIN_SPACING of another city/palace.
       for (const { city } of this.allCities()) {
         if (distance(t.q, t.r, city.q, city.r) < CITY_MIN_SPACING) return false
       }
-      // Not on a map EXTREMITY: every neighbour must exist and be revealed (so
-      // the tile is interior to the known world, not on the frontier edge where
-      // its yield radius spills into the battlefield).
+      // Interior only: every neighbour revealed, so the yield radius doesn't
+      // spill into the frontier.
       for (const n of neighbors(t.q, t.r)) {
         const o = this.world.at(n.q, n.r)
         if (!o || o.revealStage > this.stage) return false
       }
-      // Must have food in reach to grow.
       return this.cityRadiusTiles({ q: t.q, r: t.r }).some((x) => terrainOf(x.terrain).yields.food > 0)
     }
+    if (BUILDING_DEFS[kind]) return canPlaceBuilding(BUILDING_DEFS[kind], t.terrain)
     return canPlaceUnit(UNIT_DEFS[kind], t.terrain)
   }
 
@@ -352,49 +380,51 @@ export class GameManager {
     if (sel?.type !== 'placement' || !this._canPlace(sel.kind, tile)) return
     if (this.gold < sel.cost) return
     this.gold -= sel.cost
-    if (sel.kind === 'city') tile.city = { id: this._id(), palace: false, pop: CITY_START_POP, q: tile.q, r: tile.r }
-    else tile.unit = { id: this._id(), cls: sel.kind }
+    if (sel.kind === 'city') {
+      tile.city = { id: this._id(), palace: false, pop: CITY_START_POP, q: tile.q, r: tile.r, foodStore: 0 }
+    } else if (BUILDING_DEFS[sel.kind]) {
+      tile.building = { id: this._id(), key: sel.kind, hp: buildingHp(BUILDING_DEFS[sel.kind]) }
+    } else {
+      tile.unit = { id: this._id(), cls: sel.kind, hp: this.unitStats(sel.kind).def }
+    }
     this.selection = null
     this._emit()
   }
 
-  // --- Upgrades -------------------------------------------------------------
-  canUpgrade(cls, tree) {
-    if (this.phase !== 'prep' || this.won || this.defeated) return false
-    const node = nextNode(this.upgrades, cls, tree)
-    if (!node) return false
-    if (node.level > 1 + this.mods.upgradeCeiling) return false // ceiling = 1 + Military picks
-    return this.gold >= upgradeCost(node.level)
+  // --- Repair (heal a living unit or building to full, for gold) ------------
+  repairInfo(tile) {
+    let cur, max
+    if (tile?.unit) { cur = tile.unit.hp; max = this.unitStats(tile.unit.cls).def }
+    else if (tile?.building) { cur = tile.building.hp; max = this.buildingStats(tile.building.key).maxHp }
+    else return null
+    const missing = Math.max(0, max - cur)
+    return { missing, max, cost: Math.round(missing * REPAIR_PER_HP), damaged: missing > 0 }
   }
 
-  upgradeInfo(cls, tree) {
-    const node = nextNode(this.upgrades, cls, tree)
-    if (!node) return { node: null, maxed: true }
-    return {
-      node,
-      cost: upgradeCost(node.level),
-      affordable: this.gold >= upgradeCost(node.level),
-      unlocked: node.level <= 1 + this.mods.upgradeCeiling,
-    }
+  canRepair(tile) {
+    if (this.selection || this.won || this.defeated) return false
+    const info = this.repairInfo(tile)
+    return !!info && info.damaged && this.gold >= info.cost
   }
 
-  buyUpgrade(cls, tree) {
-    if (!this.canUpgrade(cls, tree)) return
-    const node = nextNode(this.upgrades, cls, tree)
-    this.gold -= upgradeCost(node.level)
-    this.upgrades[cls][tree] = node.tier
+  repairOccupant(tile) {
+    if (!this.canRepair(tile)) return
+    const info = this.repairInfo(tile)
+    this.gold -= info.cost
+    if (tile.unit) tile.unit.hp = info.max
+    else if (tile.building) tile.building.hp = info.max
     this._emit()
   }
 
-  // --- Reposition (prep, free in v1) ----------------------------------------
-  get canReposition() { return this.phase === 'prep' && !this.selection && !this.won && !this.defeated }
+  // --- Reposition (planning, free) ------------------------------------------
+  get canReposition() { return !this.selection && !this.won && !this.defeated }
 
   repositionTargets(fromTile) {
     if (!this.canReposition || !fromTile?.unit) return []
     const def = UNIT_DEFS[fromTile.unit.cls]
     const out = []
     for (const t of this.known.tiles) {
-      if (t === fromTile || t.unit || t.city) continue
+      if (t === fromTile || t.unit || t.city || t.building) continue
       if (canPlaceUnit(def, t.terrain)) out.push({ tile: t, free: true, afford: true, cost: 0 })
     }
     return out
@@ -402,44 +432,67 @@ export class GameManager {
 
   repositionUnit(fromTile, toTile) {
     if (!this.canReposition || !fromTile?.unit) return
-    if (toTile.unit || toTile.city) return
+    if (toTile.unit || toTile.city || toTile.building) return
     if (!canPlaceUnit(UNIT_DEFS[fromTile.unit.cls], toTile.terrain)) return
     toTile.unit = fromTile.unit
     fromTile.unit = null
     this._emit()
   }
 
-  // --- Speed / debug --------------------------------------------------------
-  setSpeed(speed) { this.speed = speed; this._emit() }
-  setDeferResolve(v) { this.deferResolve = !!v }
+  // --- Upgrades (per-class atk/def gold sink) -------------------------------
+  canUpgrade(cls, tree) {
+    if (this.selection || this.won || this.defeated) return false
+    const node = nextNode(this.upgrades, cls, tree)
+    if (!node) return false
+    return this.gold >= upgradeCost(node.level)
+  }
 
-  get revealEra() { return Math.max(...Object.values(this.branchEra)) }
-  get seed() { return this.world.seed }
+  upgradeInfo(cls, tree) {
+    const node = nextNode(this.upgrades, cls, tree)
+    if (!node) return { node: null, maxed: true }
+    return { node, cost: upgradeCost(node.level), affordable: this.gold >= upgradeCost(node.level), unlocked: true }
+  }
 
+  buyUpgrade(cls, tree) {
+    if (!this.canUpgrade(cls, tree)) return
+    const node = nextNode(this.upgrades, cls, tree)
+    this.gold -= upgradeCost(node.level)
+    this.upgrades[cls][tree] = node.tier
+    // Toughen living units of this class so a def buy tops them up.
+    if (tree === 'def') for (const t of this.world.list) if (t.unit?.cls === cls) t.unit.hp += node.add
+    this._emit()
+  }
+
+  // --- City growth (food -> pop) --------------------------------------------
+  _growCities() {
+    for (const { tile, city } of this.allCities()) {
+      if (city.pop <= 0) continue
+      city.foodStore = (city.foodStore ?? 0) + this.cityFood(city)
+      let guard = 0
+      while (city.foodStore >= this.foodThreshold(city.pop) && guard++ < 50) {
+        city.foodStore -= this.foodThreshold(city.pop)
+        city.pop++
+      }
+      void tile
+    }
+  }
+
+  // --- Menu / debug ---------------------------------------------------------
   toggleUpgrade() { this.ui.upgrade = !this.ui.upgrade; this._emit() }
   toggleProgress() { this.ui.progress = !this.ui.progress; this._emit() }
   closeUi() { this.ui.upgrade = false; this.ui.progress = false; this._emit() }
 
+  get seed() { return this.world.seed }
+
   /** Debug: jump the reveal stage (MenuOverlay slider). */
   setStage(stage) {
-    this.stage = Math.max(0, Math.min(stage, STAGE.full_map))
+    this.stage = Math.max(0, Math.min(stage, REVEAL_CAP))
     this._recomputeKnown()
-    if (this.phase === 'prep') this._prepareWave()
+    this._makeForecast()
     this._emit()
   }
   prevStage() { this.setStage(this.stage - 1) }
   nextStage() { this.setStage(this.stage + 1) }
-
-  // --- Flavors summary (UI) -------------------------------------------------
-  flavorStatus() {
-    return FLAVORS.map((f) => ({
-      flavor: f,
-      era: this.branchEra[f],
-      complete: isFlavorComplete(this.branchEra, f),
-      total: ACTIVE_ERAS,
-      current: isFlavorComplete(this.branchEra, f) ? null : advancementFor(f, this.branchEra[f]),
-    }))
-  }
 }
 
 installCombat(GameManager)

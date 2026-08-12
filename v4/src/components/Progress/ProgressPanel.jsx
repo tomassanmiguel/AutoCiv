@@ -1,8 +1,11 @@
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { FLAVOR_META } from '../../game/data/progress.js'
+import { ERA_NAMES } from '../../game/data/config.js'
+import IconText from '../common/IconText.jsx'
 import './ProgressPanel.css'
 
-/** The summonable five-column record of what you hold and your path to the win. */
+/** The research board. Pick ONE lane to commit to; progress income fills its
+ *  current tech. Completing any lane's Renaissance ascendancy wins the run. */
 export default function ProgressPanel() {
   const game = useGame()
   if (!game.ui.progress) return null
@@ -12,32 +15,45 @@ export default function ProgressPanel() {
     <div className="prog-backdrop" onClick={() => game.toggleProgress()}>
       <div className="prog-panel" onClick={(e) => e.stopPropagation()}>
         <div className="prog-head">
-          <h2>Progress</h2>
+          <h2>Research</h2>
+          <span className="prog-hint">Pick a lane to research. Reach any Renaissance ascendancy to win.</span>
           <button className="prog-close" onClick={() => game.toggleProgress()}>✕</button>
         </div>
         <div className="prog-cols">
           {status.map((s) => {
             const m = FLAVOR_META[s.flavor]
+            const clickable = !s.complete
             return (
-              <div key={s.flavor} className="prog-col" style={{ '--flavor': m.color }}>
+              <button key={s.flavor}
+                className={`prog-col${s.active ? ' active' : ''}${s.complete ? ' complete' : ''}`}
+                style={{ '--flavor': m.color }}
+                disabled={!clickable}
+                onClick={() => game.setResearch(s.flavor)}>
                 <div className="pcol-head">
+                  <img src={m.icon} alt="" />
                   <span>{m.name}</span>
-                  <span className="pcol-era">{s.complete ? '✓' : `${s.era}/${s.total}`}</span>
+                  <span className="pcol-era">{s.complete ? '★' : `${s.era}/${ERA_NAMES.length}`}</span>
                 </div>
-                <div className="pcol-blurb">{m.blurb}</div>
+                <div className="pcol-blurb"><IconText>{m.blurb}</IconText></div>
+                {s.adv && (
+                  <div className="pcol-next">
+                    <div className="pcol-next-name">{ERA_NAMES[s.era]}: {s.adv.name}</div>
+                    <div className="pcol-next-desc"><IconText>{s.adv.desc}</IconText></div>
+                    <div className="pcol-next-cost"><img src="/sprites/icons/progress.png" alt="" />{s.cost}</div>
+                  </div>
+                )}
                 <div className="pcol-ladder">
-                  {Array.from({ length: s.total }).map((_, i) => (
-                    <div key={i} className={`pcol-step${i < s.era ? ' done' : ''}${i === s.era && !s.complete ? ' next' : ''}`}>
-                      Era {i + 1}
-                    </div>
+                  {ERA_NAMES.map((era, i) => (
+                    <span key={i} className={`pcol-pip${i < s.era ? ' done' : ''}${i === s.era && !s.complete ? ' next' : ''}${i === ERA_NAMES.length - 1 ? ' asc' : ''}`}
+                      title={era} />
                   ))}
                 </div>
-                {s.complete && <div className="pcol-done">COMPLETE</div>}
-              </div>
+                {s.active && <div className="pcol-tag">RESEARCHING</div>}
+                {s.complete && <div className="pcol-tag win">ASCENDED</div>}
+              </button>
             )
           })}
         </div>
-        <div className="prog-foot">Complete all five tracks to win.</div>
       </div>
     </div>
   )

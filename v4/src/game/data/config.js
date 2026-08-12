@@ -1,59 +1,59 @@
-// v4 tunables — ALL PLACEHOLDERS (docs/design.md §15). One file so the balance
-// knobs live in one place while we find out whether the loop is fun.
+// v4 tunables — TURN-BASED prototype (docs/turn-based-redesign.md).
+//
+// The game is turn-based: each End Turn resolves ONE round in the fixed order
+// resolve units -> resolve resource gain -> resolve research, then the next
+// wave is forecast onto the frontier. Prototype scope: 6 eras (Stone..
+// Renaissance); completing ANY flavor's Renaissance ascendancy wins.
+//
+// One file for the balance knobs while we find out whether the loop is fun.
+
+// --- Eras ------------------------------------------------------------------
+export const ERA_NAMES = ['Stone', 'Bronze', 'Iron', 'Classical', 'Medieval', 'Renaissance']
+export const ACTIVE_ERAS = ERA_NAMES.length // 6; ascendancy = era ACTIVE_ERAS-1
 
 // --- Economy ---------------------------------------------------------------
-export const STARTING_GOLD = 120
-export const PALACE_START_POP = 10
-export const CITY_START_POP = 1
-export const CITY_MIN_SPACING = 3       // min hex distance between any two cities/palace
-export const CITY_YIELD_RADIUS = 1      // tiles a city harvests (disc); upgradeable to 3 later
-export const MAX_CITY_YIELD_RADIUS = 3
+export const STARTING_GOLD = 140
+export const PALACE_START_POP = 8
+export const CITY_START_POP = 2
+export const CITY_MIN_SPACING = 3
+export const CITY_YIELD_RADIUS = 1
 
-// --- City / palace as combat pieces ---------------------------------------
-export const CITY_BASE_DEF = 1          // city HP; raised by Culture + upgrades
-export const PALACE_BASE_DEF = 200      // palace HP (much tougher — losing it ends the run)
-export const PALACE_ATK = 18
+// --- Palace / city as combat pieces ---------------------------------------
+export const PALACE_MAX_HP = 220   // razing the palace ends the run
+export const PALACE_ATK = 22
 export const PALACE_RANGE = 2
+export const CITY_ATTACK_RANGE = 1 // cities fight back once Culture grants atk
 
-// --- Cooldowns (in ticks) — distinct per class is how speed reads on-board --
-export const CITY_YIELD_CD = 15
-export const PALACE_ATTACK_CD = 6
+// --- City growth (food -> pop) --------------------------------------------
+// A city banks harvested food; each new pop costs an escalating amount, so
+// growth slows as a city gets big.
+export const FOOD_BASE = 14
+export const FOOD_GROWTH = 1.45     // threshold(pop) = FOOD_BASE * FOOD_GROWTH^pop
 
-// --- Combat clock ----------------------------------------------------------
-// The clock only runs during combat. A fractional accumulator in GameScreen
-// advances the combat clock at SPEED_TPS[speed] ticks PER SECOND, so 'slow' can
-// be genuinely slow (well under one tick per frame) and easy to read.
-export const COMBAT_INTERVAL_MS = 55
-export const SPEED_TPS = { paused: 0, slow: 2, normal: 6, fast: 14 }
-export const DEFAULT_SPEED = 'fast'
-// Real-time pause at the end of a combat so the last death animation plays out
-// before the board resets to prep. Only the UI defers; the headless sim resolves
-// immediately (GameManager.deferResolve).
-export const COMBAT_END_LINGER_MS = 700
-// Safety cap so a stalemate (enemies walled out, player has no offense) can't
-// loop forever — combat resolves as a survival if it runs this long.
-export const COMBAT_MAX_TICKS = 1500
-// End combat if nothing takes damage for this many ticks (a walled-off, unreachable
-// enemy) — resolves the stalemate instead of letting the economy flood.
-export const COMBAT_STALE_TICKS = 150
+// --- Research (commit-a-lane) ----------------------------------------------
+// One active flavor; progress income fills its current tech over several turns.
+export const RESEARCH_BASE = 40
+export const RESEARCH_GROWTH = 1.55 // cost(era) = RESEARCH_BASE * RESEARCH_GROWTH^era
 
-// --- Progress threshold ----------------------------------------------------
-// Next advancement costs PROGRESS_BASE * TIER_GROWTH^(era of the last pick).
-export const PROGRESS_BASE = 200
-export const TIER_GROWTH = 1.6
+// --- Build costs -----------------------------------------------------------
+// Cost = base * COUNT_GROWTH^(living count of that exact type). Losing pieces
+// makes their replacements cheap again (self-correcting, anti-death-spiral).
+export const COUNT_GROWTH = 1.5
+export const CITY_COST = 55
+export const UNIT_COSTS = { melee: 18, ranged: 24, cavalry: 34, siege: 62, heavy: 48 }
+// Wonders escalate on powers of two for a one-per feel.
+export const WONDER_COUNT_GROWTH = 2
 
-// --- Build costs (prep, gold) ----------------------------------------------
-export const CITY_COST = 60
-export const UNIT_COSTS = { melee: 30, ranged: 40, cavalry: 45, naval: 45, aerial: 50, astral: 55 }
+// --- Repair ----------------------------------------------------------------
+export const REPAIR_PER_HP = 1.2    // gold to restore one HP of a damaged building
 
-// --- Draft -----------------------------------------------------------------
-export const DRAFT_CARDS = 3
+// --- Enemy escalation (by TURN, not by lane) -------------------------------
+// Each turn spawns SPAWN_BASE * SPAWN_GROWTH^(turn-1) HP worth of enemies on
+// the frontier; per-enemy stats also creep so late bodies are tanky.
+export const SPAWN_BASE = 12
+export const SPAWN_GROWTH = 1.12
+export const ENEMY_HP_GROWTH = 1.05
+export const ENEMY_ATK_PER_TURN = 0.7
 
-// --- Combat details --------------------------------------------------------
-export const BASE_CRIT_CHANCE = 0        // crit is a deferred ranged upgrade; off in v1
-export const CRIT_MULT = 2
-
-// --- Content scope ---------------------------------------------------------
-// v1 ships 5 eras; the engine scales to 15 by data. A flavor is COMPLETE once it
-// has taken its final-era advancement; all five complete = win.
-export const ACTIVE_ERAS = 5
+// --- UI --------------------------------------------------------------------
+export const TURN_ANIM_MS = 620     // input lock after End Turn so the round reads

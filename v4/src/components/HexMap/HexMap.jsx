@@ -6,11 +6,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../../game/react/GameProvider.jsx'
 import { SQRT3, fromPixel, key } from '../../game/hex/coords.js'
 import { spriteUrl, terrainOf, RES_ICON } from '../../game/world/terrain.js'
-import { UNIT_DEFS } from '../../game/data/units.js'
+import { UNIT_DEFS, PALACE_ICON, CITY_ICON } from '../../game/data/units.js'
+import { BUILDING_DEFS } from '../../game/data/buildings.js'
 import PieceCard from './PieceCard.jsx'
-import TileCard from './TileCard.jsx'
 import IconText from '../common/IconText.jsx'
 import './HexMap.css'
+
+const POP = '/sprites/ui/pop.png'
 
 const HEX_SIZE = 54
 const HEX_W = HEX_SIZE * 2
@@ -42,7 +44,6 @@ export default function HexMap() {
   const game = useGame()
   const stage = game.stage
   const known = game.known
-  const combat = game.combat
   const sel = game.selection
   const version = game.getVersion()
 
@@ -85,7 +86,28 @@ export default function HexMap() {
   }
   useEffect(() => () => clearTimeout(hoverTimer.current), [])
 
-  const reach = !combat.active && hover?.unit ? game.unitReachCells(hover) : null
+  const reach = hover?.unit ? game.unitReachCells(hover) : null
+
+  // Normalized render pieces for every unit / building / city on the board.
+  const boardPieces = useMemo(() => {
+    const out = []
+    for (const t of known.tiles) {
+      if (t.unit) {
+        const d = UNIT_DEFS[t.unit.cls]; const s = game.unitStats(t.unit.cls)
+        out.push({ id: `u${t.unit.id}`, side: 'player', name: d.name, icon: d.icon, color: d.flavor, q: t.q, r: t.r, hp: t.unit.hp, maxHp: s.def, atk: s.atk, lastAttackSeq: t.unit.lastAttackSeq, lastAttackDir: t.unit.lastAttackDir })
+      }
+      if (t.building) {
+        const d = BUILDING_DEFS[t.building.key]; const s = game.buildingStats(t.building.key)
+        out.push({ id: `b${t.building.id}`, side: 'building', name: d.name, icon: d.icon, color: d.flavor, q: t.q, r: t.r, hp: t.building.hp, maxHp: s.maxHp, atk: s.atk, lastAttackSeq: t.building.lastAttackSeq, lastAttackDir: t.building.lastAttackDir })
+      }
+      if (t.city) {
+        const c = t.city; const s = game.cityStats(c)
+        out.push({ id: `c${c.id}`, side: c.palace ? 'palace' : 'city', name: c.palace ? 'Palace' : 'City', icon: c.palace ? PALACE_ICON : CITY_ICON, color: '#e6c15a', q: t.q, r: t.r, hp: c.hp, maxHp: s.maxHp, atk: s.atk, pop: c.pop, lastAttackSeq: c.lastAttackSeq, lastAttackDir: c.lastAttackDir })
+      }
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [known, version])
 
   const [repo, setRepo] = useState(null)
   const canReposition = game.canReposition
@@ -369,15 +391,13 @@ export default function HexMap() {
     if (drawSigRef.current !== drawSig) { drawSigRef.current = drawSig; drawTerrain() }
   })
 
-  const devPhase = game.phase === 'development' || game.phase === 'prep'
-
   return (
     <div className="hexmap-viewport" ref={viewportRef}
       onMouseDown={onMouseDown} onMouseMove={onHexHover} onMouseLeave={onViewportLeave} onClick={onHexClick}>
       <canvas className="hexmap-canvas" ref={canvasRef} />
       <div className={`hexmap-content${reach ? ' reaching' : ''}`} ref={contentRef} style={{ width: layout.w, height: layout.h }}>
 
-        {hover && !combat.active && (() => {
+        {hover && (() => {
           const { left, top } = posOf(hover)
           return <div className="hex-hover-cue" style={{ left, top, width: HEX_W - SEAM, height: HEX_H - SEAM }} />
         })()}
@@ -400,20 +420,43 @@ export default function HexMap() {
           </svg>
         )}
 
-        {/* Out-of-combat: a card on every tile that holds a unit or city. */}
-        {!combat.active && shown.map((t) => {
-          if (known.bfSet.has(key(t.q, t.r)) || (!t.unit && !t.city)) return null
-          const c = centerOf(t.q, t.r)
+        {/* Every unit / building / city on the board, always on. */}
+        {boardPieces.map((p) => {
+          const c = centerOf(p.q, p.r)
+          return <PieceCard key={p.id} piece={p} x={c.x} y={c.y} size={HEX_W * (p.side === 'palace' ? 0.84 : 0.74)} />
+        })}
+
+        {/* Persistent enemies marching on the palace. */}
+        {game.enemies.map((e) => {
+          const c = centerOf(e.q, e.r)
+          return <PieceCard key={`e${e.id}`} piece={e} x={c.x} y={c.y} size={HEX_W * 0.74} embarked={isAtSea(e.q, e.r)} />
+        })}
+
+        {/* Forecast: next turn's arrivals, telegraphed on the frontier. */}
+        {game.forecast.map((e) => {
+          const c = centerOf(e.q, e.r)
+          return <PieceCard key={`f${e.id}`} piece={e} x={c.x} y={c.y} size={HEX_W * 0.7} ghost />
+        })}
+
+        {/* Floating combat + income numbers for the turn just resolved. */}
+        {game.events.map((ev) => {
+          const c = centerOf(ev.q, ev.r)
+          const isRes = ev.kind === 'gold' || ev.kind === 'progress' || ev.kind === 'food'
+          const dx = ev.kind === 'gold' ? -HEX_W * 0.18 : ev.kind === 'progress' ? HEX_W * 0.18 : 0
+          let body
+          if (isRes) body = <><img src={RES_ICON[ev.kind]} alt="" />+{ev.amount}</>
+          else if (ev.kind === 'raze') body = 'razed'
+          else if (ev.kind === 'pop') body = <><img src={POP} alt="" />−{ev.amount}</>
+          else body = `−${ev.amount}`
           return (
-            <div key={`c${key(t.q, t.r)}`} className={`tile-card-anchor${hover === t ? ' hovered' : ''}`}
-              style={{ left: c.x, top: c.y, width: HEX_W, height: HEX_H, fontSize: HEX_W * 0.17 }}>
-              <TileCard game={game} tile={t} compact={devPhase && !!t.unit} />
+            <div key={ev.id} className={`combat-float ${ev.kind}`} style={{ left: c.x + dx, top: c.y, fontSize: HEX_W * (isRes ? 0.2 : 0.24) }}>
+              {body}
             </div>
           )
         })}
 
         {/* Hovering a city paints what each surrounding tile yields to it. */}
-        {!combat.active && hover?.city && game.cityRadiusTiles(hover.city).map((t) => {
+        {hover?.city && game.cityRadiusTiles(hover.city).map((t) => {
           if (t === hover) return null
           const y = terrainOf(t.terrain).yields
           const items = []
@@ -431,41 +474,6 @@ export default function HexMap() {
           )
         })}
 
-        {/* Muster preview: the wave standing on the battlefield ring during prep. */}
-        {!combat.active && game.pendingWave && game.pendingWave.enemies.map((e) => {
-          const c = centerOf(e.q, e.r)
-          return <div key={`p${e.id}`} className="muster"><PieceCard piece={e} x={c.x} y={c.y} size={HEX_W * 0.7} /></div>
-        })}
-
-        {/* Combat layer. */}
-        {combat.active && (
-          <>
-            {combat.cities.map((ci) => { const c = centerOf(ci.q, ci.r); return (
-              <PieceCard key={`ci${ci.id}`} piece={ci} x={c.x} y={c.y} size={HEX_W * (ci.palace ? 0.84 : 0.74)}
-                acting={combat.acting?.id === ci.id} slideDelay={ci.attackedAtTick === combat.ticks} />
-            ) })}
-            {combat.units.map((u) => { const c = centerOf(u.q, u.r); return (
-              <PieceCard key={`u${u.id}`} piece={u} x={c.x} y={c.y} size={HEX_W * 0.74}
-                slideDelay={u.attackedAtTick === combat.ticks} />
-            ) })}
-            {combat.enemies.map((e) => { const c = centerOf(e.q, e.r); return (
-              <PieceCard key={`e${e.id}`} piece={e} x={c.x} y={c.y} size={HEX_W * 0.74}
-                embarked={isAtSea(e.q, e.r)} slideDelay={e.attackedAtTick === combat.ticks} />
-            ) })}
-            {combat.events.map((ev) => {
-              const c = centerOf(ev.q, ev.r)
-              const isRes = ev.kind === 'gold' || ev.kind === 'progress' || ev.kind === 'food'
-              const dx = ev.kind === 'gold' ? -HEX_W * 0.18 : ev.kind === 'progress' ? HEX_W * 0.18 : 0
-              return (
-                <div key={ev.id} className={`combat-float ${ev.kind}`} style={{ left: c.x + dx, top: c.y, fontSize: HEX_W * (isRes ? 0.2 : 0.26) }}>
-                  {isRes ? <><img src={RES_ICON[ev.kind]} alt="" />+{ev.amount}</>
-                    : ev.kind === 'heal' ? `+${ev.amount}`
-                      : `−${ev.amount}`}
-                </div>
-              )
-            })}
-          </>
-        )}
       </div>
 
       {hover && <TileTip game={game} tile={hover} battlefield={known.bfSet.has(key(hover.q, hover.r))} />}
@@ -488,6 +496,9 @@ function TileTip({ game, tile, battlefield }) {
   const info = tile.city ? game.cityInfo(tile) : null
   const uDef = tile.unit && UNIT_DEFS[tile.unit.cls]
   const uStats = tile.unit && game.unitBoardStats(tile)
+  const bDef = tile.building && BUILDING_DEFS[tile.building.key]
+  const bStats = tile.building && game.buildingStats(tile.building.key)
+  const enemy = game.enemies.find((e) => !e.dead && e.q === tile.q && e.r === tile.r)
   return (
     <div className="hex-tip">
       <div className="hex-tip-title">{def.name}</div>
@@ -503,10 +514,10 @@ function TileTip({ game, tile, battlefield }) {
         <div className="hex-tip-note build">
           <b>{info.palace ? 'Palace' : 'City'}</b> — pop {info.pop}
           <div className="hex-tip-body">
-            <IconText>{`:defense: ${info.maxHp}${info.atk > 0 ? ` · :attack: ${info.atk} · :range: ${info.range}` : ''}`}</IconText>
+            <IconText>{info.palace ? `:defense: ${Math.round(info.hp)}/${info.maxHp} · :attack: ${info.atk} · :range: ${info.range}` : `${info.atk > 0 ? `:attack: ${info.atk} · :range: ${info.range} · ` : ''}each hit costs 1 pop`}</IconText>
           </div>
           <div className="hex-tip-sub">
-            <IconText>{`makes +${info.gold} :gold: · +${info.progress} :progress: / cooldown · +${info.food} :food:/wave → pop`}</IconText>
+            <IconText>{`+${info.gold} :gold: · +${info.progress} :progress: per turn · +${info.food} :food: → grows at ${info.threshold}`}</IconText>
           </div>
         </div>
       )}
@@ -514,7 +525,23 @@ function TileTip({ game, tile, battlefield }) {
         <div className="hex-tip-note unit">
           <b>{uDef.name}</b> — {uDef.blurb}
           <div className="hex-tip-sub">
-            <IconText>{`:attack: ${uStats.atk} · :defense: ${uStats.def} · :range: ${uStats.range}`}</IconText>
+            <IconText>{`:attack: ${uStats.atk} · :defense: ${Math.round(uStats.hp)}/${uStats.def} · :range: ${uStats.range}`}</IconText>
+          </div>
+        </div>
+      )}
+      {bDef && (
+        <div className="hex-tip-note build">
+          <b>{bDef.name}</b> — <IconText>{bDef.blurb}</IconText>
+          <div className="hex-tip-sub">
+            <IconText>{`:defense: ${Math.round(tile.building.hp)}/${bStats.maxHp}${bStats.atk > 0 ? ` · :attack: ${bStats.atk} · :range: ${bStats.range}` : ''}`}</IconText>
+          </div>
+        </div>
+      )}
+      {enemy && (
+        <div className="hex-tip-note enemy">
+          <b>{enemy.name}</b> — enemy
+          <div className="hex-tip-sub">
+            <IconText>{`:attack: ${enemy.atk} · :defense: ${Math.max(0, Math.round(enemy.hp))}/${enemy.maxHp} · :range: ${enemy.range}`}</IconText>
           </div>
         </div>
       )}
