@@ -12,7 +12,7 @@ export const ERA_NAMES = ['Stone', 'Bronze', 'Iron', 'Classical', 'Medieval', 'R
 export const ACTIVE_ERAS = ERA_NAMES.length // 6; ascendancy = era ACTIVE_ERAS-1
 
 // --- Economy ---------------------------------------------------------------
-export const STARTING_GOLD = 140
+export const STARTING_GOLD = 90
 export const PALACE_START_POP = 8
 export const CITY_START_POP = 2
 export const CITY_MIN_SPACING = 3
@@ -38,9 +38,9 @@ export const RESEARCH_GROWTH = 1.55 // cost(era) = RESEARCH_BASE * RESEARCH_GROW
 // --- Build costs -----------------------------------------------------------
 // Cost = base * COUNT_GROWTH^(living count of that exact type). Losing pieces
 // makes their replacements cheap again (self-correcting, anti-death-spiral).
-export const COUNT_GROWTH = 1.5
-export const CITY_COST = 55
-export const UNIT_COSTS = { melee: 18, ranged: 24, cavalry: 34, siege: 62, heavy: 48 }
+export const COUNT_GROWTH = 1.6
+export const CITY_COST = 140
+export const UNIT_COSTS = { melee: 45, ranged: 60, cavalry: 95, siege: 170, heavy: 130 }
 // Wonders escalate on powers of two for a one-per feel.
 export const WONDER_COUNT_GROWTH = 2
 

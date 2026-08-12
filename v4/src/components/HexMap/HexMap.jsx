@@ -423,7 +423,7 @@ export default function HexMap() {
         {/* Every unit / building / city on the board, always on. */}
         {boardPieces.map((p) => {
           const c = centerOf(p.q, p.r)
-          return <PieceCard key={p.id} piece={p} x={c.x} y={c.y} size={HEX_W * (p.side === 'palace' ? 0.84 : 0.74)} />
+          return <PieceCard key={p.id} piece={p} x={c.x} y={c.y} size={HEX_W * (p.side === 'palace' ? 1.0 : 0.74)} />
         })}
 
         {/* Persistent enemies marching on the palace. */}

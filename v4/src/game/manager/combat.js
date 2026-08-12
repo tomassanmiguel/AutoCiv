@@ -63,42 +63,60 @@ export function installCombat(GM) {
     this.forecast = generateHost(this.turn, spawns, reachable, rng, () => this._id())
   }
 
-  // --- The turn -------------------------------------------------------------
+  // --- The turn (resolved one actor at a time, driven by the UI) ------------
+  // endTurn() sets the round up and queues every actor; stepTurn() executes ONE
+  // actor and emits, so the UI can pause between them and you can follow the
+  // action; when the queue drains, _finalizeTurn() banks income + research.
   P.endTurn = function () {
-    if (this.selection || this.won || this.defeated) return
-    this._resolveTurn()
-  }
-
-  P._resolveTurn = function () {
+    if (this.selection || this.pickingResearch || this.resolving || this.won || this.defeated) return
     this.events = []
     this._bashSeq = (this._bashSeq ?? 0)
 
-    // 1. Materialize the forecast.
+    // Materialize the forecast (last turn's telegraphed arrivals become real).
     for (const e of this.forecast) this.enemies.push(e)
     this.forecast = []
 
     // Occupied tiles (units / buildings / cities) — the enemy target pool.
     this._occupied = this.world.list.filter((t) => t.unit || t.building || t.city)
-
-    // 2. Player pieces act (first shot).
-    for (const t of this.world.list) if (t.unit && !t.unit._dead) this._unitAct(t)
-    for (const t of this.world.list) if (t.building && !t.building._dead) this._buildingAct(t)
-    for (const { tile, city } of this.allCities()) this._cityAct(city, tile)
-
-    // 3. Enemies act (route around player pieces).
     this._blocked = this._computeBlocked()
     this._fieldCache = null
     this._field()
-    for (const e of this._enemiesByProximity()) {
-      if (e.dead) continue
-      this._enemyAct(e)
-      if (this.defeated) break
-    }
 
-    // 4. Cleanup.
+    // Action order: player pieces first (towers get the first shot), then
+    // enemies by proximity to the palace.
+    const q = []
+    for (const t of this.world.list) if (t.unit && !t.unit._dead) q.push({ kind: 'unit', tile: t })
+    for (const t of this.world.list) if (t.building && !t.building._dead) q.push({ kind: 'building', tile: t })
+    for (const { tile, city } of this.allCities()) q.push({ kind: 'city', tile, city })
+    for (const e of this._enemiesByProximity()) q.push({ kind: 'enemy', enemy: e })
+    this._queue = q
+    this.resolving = true
+    this._emit()
+  }
+
+  // Execute one actor. Returns true if it did something visible (attacked or
+  // moved), so the UI can skip the pause on no-op actors.
+  P.stepTurn = function () {
+    if (!this.resolving) return false
+    if (this.defeated || !this._queue.length) { this._finalizeTurn(); return false }
+    const item = this._queue.shift()
+    let acted = false
+    switch (item.kind) {
+      case 'unit': if (item.tile.unit && !item.tile.unit._dead) acted = this._unitAct(item.tile); break
+      case 'building': if (item.tile.building && !item.tile.building._dead) acted = this._buildingAct(item.tile); break
+      case 'city': if (item.tile.city && !item.tile.city._dead) acted = this._cityAct(item.city, item.tile); break
+      case 'enemy': if (!item.enemy.dead) acted = this._enemyAct(item.enemy); break
+      default: break
+    }
+    this._emit()
+    return acted
+  }
+
+  P._finalizeTurn = function () {
+    this.resolving = false
+    this._queue = null
     this._cleanupDead()
 
-    // 5 + 6. Resource gain from survivors, then research + growth.
     if (!this.defeated) {
       let gold = 0, progress = 0
       for (const { tile, city } of this.allCities()) {
@@ -123,11 +141,12 @@ export function installCombat(GM) {
       this._growCities()
     }
 
-    // 7. Advance the turn and forecast the next host.
     if (!this.won && !this.defeated) {
       this.turn++
       this._recomputeKnown()
       this._makeForecast()
+      // A completed tech left no active lane — prompt a fresh pick at turn end.
+      if (!this.researchFlavor) this.pickingResearch = true
     }
     this._emit()
   }
@@ -189,18 +208,20 @@ export function installCombat(GM) {
 
   P._enemyAct = function (e) {
     this._applyTerrainDrain(e)
-    if (e.dead) return
+    if (e.dead) return true
     const embarked = this._embarkedTerrain(this.world.at(e.q, e.r)?.terrain)
     if (e.marches) {
-      this._enemyMove(e)
-      if (!embarked) { const tgt = this._enemyTarget(e); if (tgt) this._enemyHitPiece(e, tgt) }
-      return
+      let acted = this._enemyMove(e)
+      if (!embarked) { const tgt = this._enemyTarget(e); if (tgt) { this._enemyHitPiece(e, tgt); acted = true } }
+      return acted
     }
     if (!embarked) {
       const tgt = this._enemyTarget(e)
-      if (tgt) { this._enemyHitPiece(e, tgt); return }
+      if (tgt) { this._enemyHitPiece(e, tgt); return true }
     }
-    for (let i = 0; i < e.moves; i++) { if (!this._enemyMove(e)) break }
+    let moved = false
+    for (let i = 0; i < e.moves; i++) { if (!this._enemyMove(e)) break; moved = true }
+    return moved
   }
 
   P._enemyTarget = function (e) {
@@ -299,7 +320,7 @@ export function installCombat(GM) {
     const s = this.unitStats(u.cls)
     const range = s.range + rangeBonusOf(tile.terrain)
     const best = this._bestEnemyInRange(tile.q, tile.r, range)
-    if (!best) return
+    if (!best) return false
     this._setBash(u, tile.q, tile.r, best.q, best.r)
     this._hitEnemy(best, s.atk)
     if (s.splash > 0) {
@@ -308,24 +329,27 @@ export function installCombat(GM) {
         if (e2) this._hitEnemy(e2, s.atk * s.splash)
       }
     }
+    return true
   }
 
   P._buildingAct = function (tile) {
     const def = BUILDING_DEFS[tile.building.key]
-    if (!def.atk) return
+    if (!def.atk) return false
     const best = this._bestEnemyInRange(tile.q, tile.r, def.range)
-    if (!best) return
+    if (!best) return false
     this._setBash(tile.building, tile.q, tile.r, best.q, best.r)
     this._hitEnemy(best, def.atk)
+    return true
   }
 
   P._cityAct = function (city, tile) {
     const s = this.cityStats(city)
-    if (s.atk <= 0 || s.range <= 0) return
+    if (s.atk <= 0 || s.range <= 0) return false
     const best = this._bestEnemyInRange(tile.q, tile.r, s.range)
-    if (!best) return
+    if (!best) return false
     this._setBash(city, tile.q, tile.r, best.q, best.r)
     this._hitEnemy(best, s.atk)
+    return true
   }
 
   P._hitEnemy = function (e, dmg) {

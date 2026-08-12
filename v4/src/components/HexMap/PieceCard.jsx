@@ -19,6 +19,7 @@ function defColor(hp, maxHp) {
  */
 export default function PieceCard({ piece, x, y, size, ghost = false, embarked = false }) {
   const side = piece.side
+  const isPalace = side === 'palace'
   const isCity = side === 'city' || side === 'palace'
   const usePop = side === 'city' // cities show pop (their durability), not an HP bar
   const dir = piece.lastAttackDir ?? { x: 0, y: -1 }
@@ -33,6 +34,8 @@ export default function PieceCard({ piece, x, y, size, ghost = false, embarked =
           style={{ '--flavor': piece.color }}
         >
           {embarked && <span className="pc-embark" title="Embarked — exposed">🌊</span>}
+          {isPalace && <span className="pc-crown" title="Your capital — if it falls, the run ends">♛</span>}
+          {isPalace && <span className="pc-pop" title="Population"><img src={POP} alt="" />{piece.pop}</span>}
           {piece.icon && <img className="pc-icon" src={piece.icon} alt="" />}
           <div className="pc-name">{piece.name}</div>
           {ghost ? (
@@ -42,7 +45,7 @@ export default function PieceCard({ piece, x, y, size, ghost = false, embarked =
               {piece.atk > 0 && <span><img src={ATK} alt="" />{piece.atk}</span>}
               {usePop
                 ? <span><img src={POP} alt="" />{piece.pop}</span>
-                : <span style={defColor(piece.hp, piece.maxHp)}><img src={DEF} alt="" />{Math.max(0, Math.round(piece.hp))}</span>}
+                : <span style={defColor(piece.hp, piece.maxHp)}><img src={DEF} alt="" />{Math.max(0, Math.round(piece.hp))}{isPalace ? `/${piece.maxHp}` : ''}</span>}
             </div>
           )}
           {!ghost && !usePop && (

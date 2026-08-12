@@ -56,10 +56,30 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
 }
 .piece-card.palace {
-  border-color: #f2cf6a;
-  background: radial-gradient(circle at 40% 30%, rgba(216, 173, 78, 0.5), rgba(28, 22, 8, 0.97));
-  box-shadow: 0 0 18px rgba(216, 173, 78, 0.5);
+  border-color: #f7d97e;
+  border-width: 2px;
+  background: radial-gradient(circle at 40% 28%, rgba(240, 200, 96, 0.55), rgba(30, 22, 6, 0.98));
+  box-shadow: 0 0 22px rgba(240, 200, 96, 0.6), inset 0 0 12px rgba(255, 220, 120, 0.2);
+  padding-top: 8px;
 }
+/* Crown marks the capital — the piece you must not lose. */
+.pc-crown {
+  position: absolute; top: -2px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; line-height: 1; color: #ffe08a;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+/* Palace population badge (top-left) — its economic engine. */
+.pc-pop {
+  position: absolute; top: 1px; left: 2px;
+  display: inline-flex; align-items: center; gap: 1px;
+  font-size: 8px; color: #ffe8b8; font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.pc-pop img { width: 8px; height: 8px; object-fit: contain; }
+.piece-card.palace .pc-icon { max-width: 22px; height: 16px; }
+.piece-card.palace .pc-stats { font-size: 10px; font-weight: 700; }
+.piece-card.palace .pc-hpbar { height: 5px; }
 /* Buildings take their colour from the building def (--flavor). */
 .piece-card.building {
   border-color: var(--flavor, #9aa0a6);

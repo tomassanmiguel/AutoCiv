@@ -35,9 +35,6 @@ export default function BuildPanel() {
 
       {buildings.length > 0 && <div className="bp-section">Buildings</div>}
       {buildings.map((b) => <BuildBtn key={b} game={game} kind={b} name={BUILDING_DEFS[b].name} blurb={BUILDING_DEFS[b].blurb} />)}
-
-      <div className="bp-spacer" />
-      <button className="bp-upgrades" onClick={() => game.toggleUpgrade()}>⚒ Upgrades</button>
     </div>
   )
 }

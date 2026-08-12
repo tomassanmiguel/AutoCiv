@@ -8,16 +8,20 @@ import './ProgressPanel.css'
  *  current tech. Completing any lane's Renaissance ascendancy wins the run. */
 export default function ProgressPanel() {
   const game = useGame()
-  if (!game.ui.progress) return null
+  const forced = game.pickingResearch
+  if (!game.ui.progress && !forced) return null
   const status = game.flavorStatus()
+  const close = () => { if (!forced) game.toggleProgress() }
 
   return (
-    <div className="prog-backdrop" onClick={() => game.toggleProgress()}>
+    <div className={`prog-backdrop${forced ? ' forced' : ''}`} onClick={close}>
       <div className="prog-panel" onClick={(e) => e.stopPropagation()}>
         <div className="prog-head">
-          <h2>Research</h2>
-          <span className="prog-hint">Pick a lane to research. Reach any Renaissance ascendancy to win.</span>
-          <button className="prog-close" onClick={() => game.toggleProgress()}>✕</button>
+          <h2>{forced ? 'Choose your next research' : 'Research'}</h2>
+          <span className="prog-hint">{forced
+            ? 'Your last tech completed — pick the next. Reach any Renaissance ascendancy to win.'
+            : 'Pick a lane to research. Reach any Renaissance ascendancy to win.'}</span>
+          {!forced && <button className="prog-close" onClick={() => game.toggleProgress()}>✕</button>}
         </div>
         <div className="prog-cols">
           {status.map((s) => {

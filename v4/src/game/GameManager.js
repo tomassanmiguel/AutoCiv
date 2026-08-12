@@ -4,7 +4,7 @@
 // THE LOOP IS TURN-BASED. There are no phases and no wall clock. The player
 // plans freely (found cities, build units/buildings, repair, reposition, pick a
 // research lane), then calls endTurn(), which resolves ONE round in a fixed
-// order (see manager/combat.js _resolveTurn):
+// order (see manager/combat.js endTurn / stepTurn / _finalizeTurn):
 //     resolve units  -> resolve resource gain -> resolve research
 // then forecasts the next wave onto the frontier.
 //
@@ -22,7 +22,6 @@ import { STAGE, BATTLEFIELD_DEPTH } from './world/regions.js'
 import { terrainOf, isPassable, isLand, rangeBonusOf } from './world/terrain.js'
 import { UNIT_DEFS, canPlaceUnit } from './data/units.js'
 import { BUILDING_DEFS, canPlaceBuilding, buildingHp } from './data/buildings.js'
-import { emptyUpgradeState, upgradeBonus, nextNode, upgradeCost } from './data/upgrades.js'
 import {
   FLAVORS, advancementFor, researchCost, isFlavorComplete, isAscendancy,
 } from './data/progress.js'
@@ -59,16 +58,17 @@ export class GameManager {
     this.mods = {
       unitAtkFlat: 0, unitDefFlat: 0,
       goldTileBonus: 0, progressPerPop: 1, cityAtkFlat: 0,
-      upgradeCeiling: 99, // upgrades are a pure gold sink in the prototype
     }
-    this.upgrades = emptyUpgradeState()
     this.unlockedClasses = new Set(['melee'])
     this.unlockedBuildings = new Set()
     this.cityYieldRadius = CITY_YIELD_RADIUS
 
     this.selection = null       // { type:'placement', kind, cost }
-    this.ui = { upgrade: false, progress: false }
+    this.pickingResearch = false // a completed tech left no lane — forced pick
+    this.ui = { progress: false }
 
+    this.resolving = false      // a turn is animating actor-by-actor
+    this._queue = null
     this.enemies = []           // persistent hostile pieces on the board
     this.forecast = []          // next turn's arrivals (shown as ghosts)
     this.events = []            // this turn's floating numbers (rebuilt each turn)
@@ -184,8 +184,8 @@ export class GameManager {
   // --- Units + buildings ----------------------------------------------------
   unitStats(cls) {
     const d = UNIT_DEFS[cls]
-    const atk = d.atk + this.mods.unitAtkFlat + upgradeBonus(this.upgrades, cls, 'atk')
-    const def = d.def + this.mods.unitDefFlat + upgradeBonus(this.upgrades, cls, 'def')
+    const atk = d.atk + this.mods.unitAtkFlat
+    const def = d.def + this.mods.unitDefFlat
     return { atk, def, range: d.range, splash: d.splash ?? 0 }
   }
 
@@ -233,12 +233,11 @@ export class GameManager {
     }
   }
 
-  // --- Research (commit-a-lane) ---------------------------------------------
+  // --- Research (commit-a-lane; pick presented at end of turn) ---------------
   setResearch(flavor) {
     if (!FLAVORS.includes(flavor) || isFlavorComplete(this.branchEra, flavor)) return
     this.researchFlavor = flavor
-    // Overflow may already complete the newly picked tech.
-    this._drainResearch()
+    this.pickingResearch = false
     this._emit()
   }
 
@@ -253,21 +252,18 @@ export class GameManager {
     }
   }
 
+  // One completion per turn: fill the active tech, and if it finishes, clear the
+  // lane so a fresh pick is presented at turn end (no auto-continue).
   _advanceResearch(amount) {
     this.researchValue += amount
-    this._drainResearch()
-  }
-
-  _drainResearch() {
-    let guard = 0
-    while (this.researchFlavor && !isFlavorComplete(this.branchEra, this.researchFlavor) && guard++ < 30) {
-      const f = this.researchFlavor
-      const era = this.branchEra[f]
-      const cost = researchCost(era, RESEARCH_BASE, RESEARCH_GROWTH)
-      if (this.researchValue < cost) break
+    const f = this.researchFlavor
+    if (!f || isFlavorComplete(this.branchEra, f)) return
+    const era = this.branchEra[f]
+    const cost = researchCost(era, RESEARCH_BASE, RESEARCH_GROWTH)
+    if (this.researchValue >= cost) {
       this.researchValue -= cost
       this._completeResearch(f, era)
-      if (this.won) break
+      this.researchFlavor = null
     }
   }
 
@@ -333,7 +329,7 @@ export class GameManager {
   }
 
   canBuild(kind) {
-    if (this.selection || this.won || this.defeated) return false
+    if (this.selection || this.resolving || this.pickingResearch || this.won || this.defeated) return false
     if (UNIT_COSTS[kind] != null && !this.unlockedClasses.has(kind)) return false
     if (BUILDING_DEFS[kind] && !this.unlockedBuildings.has(kind)) return false
     return this.gold >= this.buildCost(kind)
@@ -402,7 +398,7 @@ export class GameManager {
   }
 
   canRepair(tile) {
-    if (this.selection || this.won || this.defeated) return false
+    if (this.selection || this.resolving || this.pickingResearch || this.won || this.defeated) return false
     const info = this.repairInfo(tile)
     return !!info && info.damaged && this.gold >= info.cost
   }
@@ -417,7 +413,7 @@ export class GameManager {
   }
 
   // --- Reposition (planning, free) ------------------------------------------
-  get canReposition() { return !this.selection && !this.won && !this.defeated }
+  get canReposition() { return !this.selection && !this.resolving && !this.pickingResearch && !this.won && !this.defeated }
 
   repositionTargets(fromTile) {
     if (!this.canReposition || !fromTile?.unit) return []
@@ -439,30 +435,6 @@ export class GameManager {
     this._emit()
   }
 
-  // --- Upgrades (per-class atk/def gold sink) -------------------------------
-  canUpgrade(cls, tree) {
-    if (this.selection || this.won || this.defeated) return false
-    const node = nextNode(this.upgrades, cls, tree)
-    if (!node) return false
-    return this.gold >= upgradeCost(node.level)
-  }
-
-  upgradeInfo(cls, tree) {
-    const node = nextNode(this.upgrades, cls, tree)
-    if (!node) return { node: null, maxed: true }
-    return { node, cost: upgradeCost(node.level), affordable: this.gold >= upgradeCost(node.level), unlocked: true }
-  }
-
-  buyUpgrade(cls, tree) {
-    if (!this.canUpgrade(cls, tree)) return
-    const node = nextNode(this.upgrades, cls, tree)
-    this.gold -= upgradeCost(node.level)
-    this.upgrades[cls][tree] = node.tier
-    // Toughen living units of this class so a def buy tops them up.
-    if (tree === 'def') for (const t of this.world.list) if (t.unit?.cls === cls) t.unit.hp += node.add
-    this._emit()
-  }
-
   // --- City growth (food -> pop) --------------------------------------------
   _growCities() {
     for (const { tile, city } of this.allCities()) {
@@ -478,9 +450,8 @@ export class GameManager {
   }
 
   // --- Menu / debug ---------------------------------------------------------
-  toggleUpgrade() { this.ui.upgrade = !this.ui.upgrade; this._emit() }
   toggleProgress() { this.ui.progress = !this.ui.progress; this._emit() }
-  closeUi() { this.ui.upgrade = false; this.ui.progress = false; this._emit() }
+  closeUi() { this.ui.progress = false; this._emit() }
 
   get seed() { return this.world.seed }
 

@@ -3,6 +3,9 @@
   display: flex; align-items: center; justify-content: center;
   background: rgba(4, 6, 12, 0.7);
 }
+/* A forced pick (a tech just completed) reads as a required decision. */
+.prog-backdrop.forced { background: rgba(4, 6, 12, 0.86); z-index: 40; }
+.prog-backdrop.forced .prog-panel { box-shadow: 0 0 0 1px rgba(242, 207, 106, 0.5), 0 10px 40px rgba(0, 0, 0, 0.7); }
 .prog-panel {
   background: rgba(12, 16, 28, 0.98);
   border: 1px solid rgba(200, 170, 90, 0.4);

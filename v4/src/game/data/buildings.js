@@ -23,27 +23,27 @@ export const BUILDING_ORDER = ['market', 'library', 'wall', 'watchtower', 'wonde
 export const BUILDING_DEFS = {
   market: {
     key: 'market', name: 'Market', icon: '/sprites/ui/building.png', flavor: '#d9b45a',
-    hp: 24, cost: 40, placement: LAND, yield: { gold: 6 },
+    hp: 24, cost: 100, placement: LAND, yield: { gold: 6 },
     blurb: 'Generates +6 :gold: every turn.',
   },
   library: {
     key: 'library', name: 'Library', icon: '/sprites/ui/utility-building.png', flavor: '#6ad9a0',
-    hp: 24, cost: 45, placement: LAND, yield: { progress: 5 },
+    hp: 24, cost: 110, placement: LAND, yield: { progress: 5 },
     blurb: 'Generates +5 :progress: every turn.',
   },
   wall: {
     key: 'wall', name: 'Wall', icon: '/sprites/ui/building.png', flavor: '#9aa0a6',
-    hp: 80, cost: 35, placement: LAND, blocker: true,
+    hp: 80, cost: 90, placement: LAND, blocker: true,
     blurb: 'A tough blocker (80 :defense:). Walls off enemy paths; does not attack.',
   },
   watchtower: {
     key: 'watchtower', name: 'Watchtower', icon: '/sprites/ui/utility-building.png', flavor: '#d85a5a',
-    hp: 34, cost: 55, placement: LAND, atk: 9, range: 2,
+    hp: 34, cost: 150, placement: LAND, atk: 9, range: 2,
     blurb: 'Strikes enemies within 2 tiles for 9 :attack:.',
   },
   wonder: {
     key: 'wonder', name: 'Grand Wonder', icon: '/sprites/ui/wonder.png', flavor: '#b06ad9',
-    hp: 120, cost: 320, placement: LAND, wonder: true, yield: { gold: 12, progress: 10 },
+    hp: 120, cost: 900, placement: LAND, wonder: true, yield: { gold: 12, progress: 10 },
     blurb: 'A costly marvel: +12 :gold: and +10 :progress: every turn.',
   },
 }
