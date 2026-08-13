@@ -1972,6 +1972,64 @@
           "amount": 1
         }
       ]
+    },
+    {
+      "id": "forge",
+      "name": "Forge",
+      "type": "building",
+      "subtype": "production",
+      "era": "Medieval",
+      "production": 7,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+1 production per hill or mountain within range 2.",
+      "econ": [
+        {
+          "name": "self_per_terrain_in_range",
+          "resource": "production",
+          "amount": 1,
+          "terrain": "hills",
+          "range": 2
+        },
+        {
+          "name": "self_per_terrain_in_range",
+          "resource": "production",
+          "amount": 1,
+          "terrain": "mountain",
+          "range": 2
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "university",
+      "name": "University",
+      "type": "building",
+      "subtype": "progress",
+      "era": "Renaissance",
+      "production": 9,
+      "upkeep": 4,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+1 progress to each progress-generating tile within range 2.",
+      "econ": [
+        {
+          "name": "self_per_progress_tile_in_range",
+          "resource": "progress",
+          "amount": 1,
+          "range": 2
+        }
+      ],
+      "combat": []
     }
   ],
   "techs": [
@@ -3387,6 +3445,96 @@
         {
           "name": "unlock_deployable",
           "deployable": "cossack"
+        }
+      ]
+    },
+    {
+      "id": "metallurgy",
+      "name": "Metallurgy",
+      "flavor": "Production",
+      "era": "Medieval",
+      "desc": "Unlocks the Forge.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "forge"
+        }
+      ]
+    },
+    {
+      "id": "university",
+      "name": "University",
+      "flavor": "Progress",
+      "era": "Renaissance",
+      "desc": "Unlocks the University.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "university"
+        }
+      ]
+    },
+    {
+      "id": "monotheism",
+      "name": "Monotheism",
+      "flavor": "Gold",
+      "era": "Classical",
+      "desc": "Temples also produce gold equal to their progress output.",
+      "effects": [
+        {
+          "name": "subtype_convert_yield",
+          "deployable": "temple",
+          "from": "progress",
+          "to": "gold"
+        }
+      ]
+    },
+    {
+      "id": "tithing",
+      "name": "Tithing",
+      "flavor": "Gold",
+      "era": "Renaissance",
+      "desc": "Double the gold yield of temples.",
+      "effects": [
+        {
+          "name": "subtype_yield_mult",
+          "deployable": "temple",
+          "resource": "gold",
+          "factor": 2
+        }
+      ]
+    },
+    {
+      "id": "citizenship",
+      "name": "Citizenship",
+      "flavor": "Progress",
+      "era": "Classical",
+      "desc": "Double the progress yield of your settlements.",
+      "effects": [
+        {
+          "name": "subtype_yield_mult",
+          "subtype": "settlement",
+          "resource": "progress",
+          "factor": 2
+        }
+      ]
+    },
+    {
+      "id": "civil_service",
+      "name": "Civil Service",
+      "flavor": "Military",
+      "era": "Medieval",
+      "desc": "Gain land attack and defense equal to your total settlement output.",
+      "effects": [
+        {
+          "name": "army_from_settlement_output",
+          "stat": "atk",
+          "domain": "land"
+        },
+        {
+          "name": "army_from_settlement_output",
+          "stat": "def",
+          "domain": "land"
         }
       ]
     }

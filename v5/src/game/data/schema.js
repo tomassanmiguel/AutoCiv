@@ -92,6 +92,9 @@ export const EFFECT_KINDS = [
   N('keep_natural_production', 'Buildings keep tile production', { where: 'tech', params: [] }),
   N('army_growth_per_turn', 'Army +scalar accrues each turn', { where: 'tech', params: [{ key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'amount', type: 'number' }] }),
   N('palace_random_growth', 'Palace +random base yield each turn', { where: 'tech', params: [{ key: 'amount', type: 'number' }] }),
+  N('subtype_yield_mult', 'Multiply a subtype/deployable yield', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'factor', type: 'number' }] }),
+  N('subtype_convert_yield', 'Subtype/deployable also makes X = its Y', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'from', type: 'enum', options: RES_ALL }, { key: 'to', type: 'enum', options: RES_ALL }] }),
+  N('army_from_settlement_output', 'Army +scalar = settlement output', { where: 'tech', params: [{ key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }] }),
 
   // -- deployable econ (per turn) --
   N('self_yield', 'Produces (self)', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
@@ -133,6 +136,12 @@ export const EFFECT_KINDS = [
 
   // -- deployable econ (special) --
   N('gold_from_army', 'Gold = % of land army attack', { where: 'econ', params: [{ key: 'percent', type: 'number' }] }),
+  N('self_per_terrain_in_range', '+resource per terrain in range', { where: 'econ', params: [
+    { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }, { key: 'terrain', type: 'terrain' }, { key: 'range', type: 'number' },
+  ] }),
+  N('self_per_progress_tile_in_range', '+resource per progress tile in range', { where: 'econ', params: [
+    { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }, { key: 'range', type: 'number' },
+  ] }),
 
   // -- deployable one-shot on build --
   N('on_build', 'One-time gain when built', { where: 'build', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
