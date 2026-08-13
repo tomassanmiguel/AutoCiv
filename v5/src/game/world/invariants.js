@@ -32,7 +32,7 @@ const MIN_ISLANDS = 2
 const MAX_TUNDRA_FRACTION = 0.30 // tundra is now a guaranteed polar cap that may tendril equatorward
 // Earth is only ~400 tiles, so its region-shaped stages are naturally small;
 // this floor exists to catch a DEAD notch, not to enforce an even ladder.
-const MIN_STAGE_TILES = 8
+const MIN_STAGE_TILES = 5 // a wide ocean makes the New World smaller, so its interior reveal step is naturally modest
 const ENCAMPMENT_MIN_DIST = 6
 const EARLY_ENCAMPMENT_DIST = 12
 const MOON_GAP = 1  // the Moon hangs exactly one ring beyond Earth
@@ -211,12 +211,15 @@ export function validate(world) {
   )
   if (bridged) v.push('New World touches the Old World (no ocean channel)')
 
-  // A strip of OPEN OCEAN must fully separate the continents — no shallow pinch
-  // where a single water tile touches both, leaving no open sea between them.
+  // A strip of OPEN OCEAN must fully separate the two SIDES — Old World + its
+  // island vs New World + its island — with no shallow pinch where a single water
+  // tile touches both, leaving no open sea between them.
+  const oldSide = (o) => o && (o.region === 'old_world' || o.region === 'isle') && isLand(o.terrain)
+  const newSide = (o) => o && o.region === 'new_world' && isLand(o.terrain)
   const pinch = world.list.some((t) => t.band === 'earth' && isWater(t.terrain) &&
-    neighbors(t.q, t.r).some((n) => { const o = at(n.q, n.r); return o && o.region === 'old_world' && isLand(o.terrain) }) &&
-    neighbors(t.q, t.r).some((n) => { const o = at(n.q, n.r); return o && o.region === 'new_world' && isLand(o.terrain) }))
-  if (pinch) v.push('a shallow pinch bridges the continents (no open ocean between)')
+    neighbors(t.q, t.r).some((n) => oldSide(at(n.q, n.r))) &&
+    neighbors(t.q, t.r).some((n) => newSide(at(n.q, n.r))))
+  if (pinch) v.push('a shallow pinch bridges the two sides (no open ocean between)')
 
   // Climate is latitudinal: an arid equator, tundra confined to the two poles.
   const PR = Math.sqrt(3) * earthR
