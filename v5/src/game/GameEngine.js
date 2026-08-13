@@ -24,6 +24,18 @@ export class GameEngine {
     for (const t of w.list) { t.key = hkey(t.q, t.r); t.dist = t.d }
     this.world = { tiles: w.list, byKey: w.tiles, radius: w.list.length, palace: w.palace, raw: w }
     this._version = 0
+
+    // Palace starts on a RANDOM interior plains tile with room to grow — not the map
+    // centre — for variety. (Plains only occur on Earth land, so it is never on the edge.)
+    const landNeighbors = (t) => neighbors(t.q, t.r).reduce((n, nb) => {
+      const o = w.tiles.get(hkey(nb.q, nb.r)); const d = o && TERRAIN[o.terrain]
+      return n + (d && d.kind === 'land' ? 1 : 0)
+    }, 0)
+    const rand = rng((this.seed ^ 0x50a1ace) >>> 0)
+    const plains = w.list.filter((t) => t.terrain === 'plains' && landNeighbors(t) >= 2)
+    const home = plains.length ? plains[Math.floor(rand() * plains.length)] : w.tiles.get(hkey(0, 0))
+    this.palaceKey = home.key
+    this.world.palace = { q: home.q, r: home.r }
     this._subs = new Set()
 
     this.turn = 1
@@ -43,10 +55,10 @@ export class GameEngine {
     this.unlocksThisEra = 0
     this.taken = new Set()
 
-    // Board: palace at the origin, controlled tiles, placed instances.
-    this.controlled = new Set([hkey(0, 0)])
+    // Board: palace on the chosen home tile, controlled tiles, placed instances.
+    this.controlled = new Set([this.palaceKey])
     this.deployed = new Map()
-    this.deployed.set(hkey(0, 0), { id: 'palace', level: 1, age: 0 })
+    this.deployed.set(this.palaceKey, { id: 'palace', level: 1, age: 0 })
 
     this._recomputeMods()
     this._buildOffer()
@@ -157,7 +169,7 @@ export class GameEngine {
       }
     }
     // palace flat bonuses
-    if (this.deployed.has(hkey(0, 0))) for (const r in this.mods.palaceYield) income[r] += this.mods.palaceYield[r]
+    if (this.deployed.has(this.palaceKey)) for (const r in this.mods.palaceYield) income[r] += this.mods.palaceYield[r]
     // units-produce + per-unique-era
     const mil = this.militaryCount()
     for (const r in this.mods.unitsProduce) income[r] += this.mods.unitsProduce[r] * mil
