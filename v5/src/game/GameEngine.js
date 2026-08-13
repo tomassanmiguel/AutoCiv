@@ -327,10 +327,12 @@ export class GameEngine {
     }
     return out
   }
-  computeEconomy() {
+  computeEconomy(bd = null) {
     const income = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
     const palaceInc = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
     let upkeep = 0
+    // Optional breakdown collector: tag each contribution with a (group, label) for the income UI.
+    const rec = bd ? (group, label, r, amount) => { if (amount) bd.push({ group, label, r, amount }) } : null
     // controlled tiles: natural yield if empty, else the deployable's econ. The palace
     // accumulates separately so its whole yield can be multiplied (Absolute Monarchy).
     for (const k of this.controlled) {
@@ -338,15 +340,15 @@ export class GameEngine {
       const inst = this.deployed.get(k)
       if (!inst) {
         const y = this.terrainYield(t)
-        for (const r in y) income[r] += y[r]
+        for (const r in y) { income[r] += y[r]; if (rec) rec('tile', TERRAIN[t.terrain]?.name || t.terrain, r, y[r]) }
         // Feudalism: a producing terrain tile adjacent to a settlement gains extra yield.
         for (const fs of this.mods.terrainAdjSettlement) {
-          if (t.terrain === fs.terrain && (y[fs.resource] || 0) > 0 && this.adjCount(k, 'settlement') > 0) income[fs.resource] += fs.amount
+          if (t.terrain === fs.terrain && (y[fs.resource] || 0) > 0 && this.adjCount(k, 'settlement') > 0) { income[fs.resource] += fs.amount; if (rec) rec('bonus', 'Feudalism', fs.resource, fs.amount) }
         }
         continue
       }
       const dep = DEPLOYABLES[inst.id]
-      if (!dep.unique) upkeep += Math.max(0, dep.upkeep - this.mods.upkeepReduction)
+      if (!dep.unique) { const u = Math.max(0, dep.upkeep - this.mods.upkeepReduction); upkeep += u; if (rec) rec('upkeep', dep.name, 'gold', -u) }
       const bucket = k === this.palaceKey ? palaceInc : income
       const out = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
       // Ecology: a deployable no longer removes the tile's natural production.
@@ -382,25 +384,25 @@ export class GameEngine {
       for (const im of this.mods.isolatedMult) if (hit(im) && this.adjCount(k, 'building') === 0) for (const r in out) out[r] *= im.factor
       // Evangelism: multiply matching deployables' output on a given region (New World temples).
       for (const rm of this.mods.regionYieldMult) if (hit(rm) && t.region === rm.region) { if (rm.resource === 'all') { for (const r in out) out[r] *= rm.factor } else out[rm.resource] *= rm.factor }
-      for (const r in out) bucket[r] += out[r]
+      for (const r in out) { bucket[r] += out[r]; if (rec && k !== this.palaceKey) rec(dep.type === 'unit' ? 'unit' : 'building', dep.name, r, out[r]) }
     }
     // palace flat bonuses + accrued Hereditary Rule growth, then the whole palace yield ×palaceMult
     if (this.deployed.has(this.palaceKey)) {
       for (const r in this.mods.palaceYield) palaceInc[r] += this.mods.palaceYield[r]
       for (const r in this.palaceAccum) palaceInc[r] += this.palaceAccum[r]
-      for (const r in palaceInc) income[r] += palaceInc[r] * this.mods.palaceMult
+      for (const r in palaceInc) { const v = palaceInc[r] * this.mods.palaceMult; income[r] += v; if (rec) rec('palace', 'Palace', r, v) }
     }
     // per-settlement yields (Democracy, Census, Slavery…)
     if (Object.keys(this.mods.settlementYield).length) {
       let settlements = 0
       for (const v of this.deployed.values()) if (DEPLOYABLES[v.id].subtype === 'settlement') settlements++
-      for (const r in this.mods.settlementYield) income[r] += this.mods.settlementYield[r] * settlements
+      for (const r in this.mods.settlementYield) { const v = this.mods.settlementYield[r] * settlements; income[r] += v; if (rec) rec('bonus', 'Settlements', r, v) }
     }
     // Trade Networks: gold equal to the farthest controlled ring from the palace.
     if (this.mods.tradeNetworks) {
       let far = 0
       for (const k of this.controlled) { const r = this.ringFromPalace(this.world.byKey.get(k)); if (r > far) far = r }
-      income.gold += far
+      income.gold += far; if (rec) rec('bonus', 'Trade Networks', 'gold', far)
     }
     // Tightbeams: every empty controlled tile ON A LINE between a pair of receivers gains +N to each natural output.
     const beams = [...this.deployed].filter(([, v]) => (DEPLOYABLES[v.id].econ || []).some((e) => e.name === 'tightbeam_network'))
@@ -411,21 +413,39 @@ export class GameEngine {
       for (const key of boosted) {
         if (!this.controlled.has(key) || this.deployed.has(key)) continue
         const y = this.terrainYield(this.world.byKey.get(key))
-        for (const r in y) if (y[r] > 0) income[r] += amt
+        for (const r in y) if (y[r] > 0) { income[r] += amt; if (rec) rec('bonus', 'Tightbeams', r, amt) }
       }
     }
     // Philosophy: +progress per owned tech of a flavor.
     if (Object.keys(this.mods.progressPerFlavor).length) {
       const byFlavor = {}
       for (const id of this.taken) { const f = TECHS[id]?.flavor; if (f) byFlavor[f] = (byFlavor[f] || 0) + 1 }
-      for (const f in this.mods.progressPerFlavor) income.progress += this.mods.progressPerFlavor[f] * (byFlavor[f] || 0)
+      for (const f in this.mods.progressPerFlavor) { const v = this.mods.progressPerFlavor[f] * (byFlavor[f] || 0); income.progress += v; if (rec) rec('bonus', 'Philosophy', 'progress', v) }
     }
     // units-produce + per-unique-era
     const mil = this.militaryCount()
-    for (const r in this.mods.unitsProduce) income[r] += this.mods.unitsProduce[r] * mil
+    for (const r in this.mods.unitsProduce) { const v = this.mods.unitsProduce[r] * mil; income[r] += v; if (rec) rec('bonus', 'Military output', r, v) }
     const uniq = this.uniqueOwned()
-    for (const r in this.mods.perUnique) income[r] += this.mods.perUnique[r] * uniq
+    for (const r in this.mods.perUnique) { const v = this.mods.perUnique[r] * uniq; income[r] += v; if (rec) rec('bonus', 'Unique deployables', r, v) }
     return { income, upkeep }
+  }
+  /** Grouped income breakdown per resource for the UI: { rows:{res:[{label,group,amount,count}]}, income, upkeep }. */
+  incomeBreakdown() {
+    const bd = []
+    const { income, upkeep } = this.computeEconomy(bd)
+    const RES_ALL = ['production', 'gold', 'food', 'progress', 'legitimacy']
+    const perRes = {}; for (const r of RES_ALL) perRes[r] = new Map()
+    for (const e of bd) {
+      const m = perRes[e.r]; if (!m) continue
+      const key = `${e.group}|${e.label}`
+      const cur = m.get(key) || { label: e.label, group: e.group, amount: 0, count: 0 }
+      cur.amount += e.amount; cur.count += 1
+      m.set(key, cur)
+    }
+    const rows = {}
+    for (const r of RES_ALL) rows[r] = [...perRes[r].values()].filter((x) => x.amount !== 0)
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+    return { rows, income, upkeep }
   }
   /** Per-turn accruals: Oral Tradition (army +atk) and Hereditary Rule (palace +random). */
   _accrueGrowth() {

@@ -144,6 +144,28 @@
 .stbl tr.z td { color: #a99a78; }
 .vs { text-align: center; color: var(--ink-soft); font-size: 10px; margin: 3px 0 7px; letter-spacing: .5px; }
 
+/* income breakdown */
+.v5-theater.income { max-width: 460px; }
+.inc-tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+.inc-tab { display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--parch-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; min-width: 52px; }
+.inc-tab .ric { height: 18px; }
+.inc-tab.on { border-color: var(--brass); background: #efe4c6; box-shadow: 0 0 0 1px var(--brass) inset; }
+.inc-tt { font-size: 10px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.inc-tt.pos, .inc-amt.pos, .inc-total b.pos { color: #2f7a3a; }
+.inc-tt.neg, .inc-amt.neg, .inc-total b.neg { color: var(--bad); }
+.inc-total { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--parch-2); margin-bottom: 8px; font-size: 12px; color: var(--ink-soft); }
+.inc-total b { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; }
+.inc-total .ric { height: 15px; }
+.inc-body { max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+.inc-sec { margin-bottom: 8px; }
+.inc-sec-h { font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: var(--brass-deep); font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 2px; margin-bottom: 3px; }
+.inc-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 2px; font-size: 12.5px; }
+.inc-row:nth-child(even) { background: #00000008; }
+.inc-name { color: var(--ink); }
+.inc-cnt { color: var(--ink-soft); font-size: 10px; margin-left: 5px; }
+.inc-amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+.inc-empty { text-align: center; color: var(--ink-soft); font-style: italic; padding: 18px; font-size: 12px; }
+
 /* mercenary hiring */
 .merc { background: var(--parch-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-top: 10px; }
 .merc-h { font-size: 11px; color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; }

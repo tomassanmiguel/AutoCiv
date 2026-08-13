@@ -62,12 +62,13 @@ function Game({ onExit, audio }) {
   const [seenWave, setSeenWave] = useState(0)
   const [waveOpen, setWaveOpen] = useState(false)
   const [takenOpen, setTakenOpen] = useState(false)
+  const [incomeOpen, setIncomeOpen] = useState(false)
   const [creativeOpen, setCreativeOpen] = useState(false)
   useEffect(() => { if (audio) audio.playTrack(trackForEra(g.era)) }, [g.era, audio])
   const showCombat = g.lastCombat && g.lastCombat.wave > seenWave
   return (
     <div className={`v5 ${g.creative ? 'creative' : ''}`}>
-      <TopBar g={g} onExit={onExit} onWave={() => setWaveOpen(true)} onTaken={() => setTakenOpen(true)} onCreativeMenu={() => setCreativeOpen(true)} />
+      <TopBar g={g} onExit={onExit} onWave={() => setWaveOpen(true)} onTaken={() => setTakenOpen(true)} onIncome={() => setIncomeOpen(true)} onCreativeMenu={() => setCreativeOpen(true)} />
       <div className="v5-body">
         <HexMap g={g} />
         <Sidebar g={g} />
@@ -75,6 +76,7 @@ function Game({ onExit, audio }) {
       {g.selection && <SelectionBanner g={g} />}
       {waveOpen && <WaveOverlay g={g} onClose={() => setWaveOpen(false)} />}
       {takenOpen && <TakenOverlay g={g} onClose={() => setTakenOpen(false)} />}
+      {incomeOpen && <IncomeOverlay g={g} onClose={() => setIncomeOpen(false)} />}
       {creativeOpen && <CreativeTechOverlay g={g} onClose={() => setCreativeOpen(false)} />}
       {showCombat && (
         <CombatOverlay title={`Wave ${g.lastCombat.wave} · ${g.lastCombat.enemy.archetypeName}`}
@@ -86,7 +88,7 @@ function Game({ onExit, audio }) {
   )
 }
 
-function TopBar({ g, onExit, onWave, onTaken, onCreativeMenu }) {
+function TopBar({ g, onExit, onWave, onTaken, onIncome, onCreativeMenu }) {
   const pt = g.perTurn()
   const dueIn = g.turnsUntilWave()
   const pred = g.previewCombat()
@@ -119,6 +121,9 @@ function TopBar({ g, onExit, onWave, onTaken, onCreativeMenu }) {
           </InfoTip>
         ))}
       </div>
+      <InfoTip text="Income breakdown — what every tile and building contributes, per resource.">
+        <button className="v5-iconbtn" onClick={onIncome}>📊</button>
+      </InfoTip>
       <InfoTip text="Technologies researched, by era.">
         <button className="v5-iconbtn" onClick={onTaken}>📜</button>
       </InfoTip>
@@ -172,6 +177,54 @@ function TakenOverlay({ g, onClose }) {
             ))}</div>
           </div>
         ))}
+        <button className="v5-cont" onClick={onClose}>Close</button>
+      </NineSlice>
+    </div>
+  )
+}
+
+function IncomeOverlay({ g, onClose }) {
+  const RESES = ['production', 'gold', 'food', 'progress', 'legitimacy']
+  const [tab, setTab] = useState('production')
+  const { rows } = g.incomeBreakdown()
+  const list = rows[tab] || []
+  const total = list.reduce((s, x) => s + x.amount, 0)
+  const num = (v) => { const r = Math.round(v * 10) / 10; return Number.isInteger(r) ? `${r}` : r.toFixed(1) }
+  const sign = (v) => `${v > 0 ? '+' : ''}${num(v)}`
+  const SECTIONS = [
+    { key: 'tile', title: 'Tiles' }, { key: 'building', title: 'Buildings' }, { key: 'unit', title: 'Units' },
+    { key: 'palace', title: 'Palace' }, { key: 'bonus', title: 'Bonuses' }, { key: 'upkeep', title: 'Upkeep' },
+  ]
+  return (
+    <div className="v5-modal-bg" onClick={onClose}>
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={24} className="v5-theater income" onClick={(e) => e.stopPropagation()}>
+        <h2>Income Breakdown</h2>
+        <div className="inc-tabs">
+          {RESES.map((r) => (
+            <button key={r} className={`inc-tab ${tab === r ? 'on' : ''}`} onClick={() => setTab(r)}>
+              <RIco r={r} s={18} /><span className={`inc-tt ${(rows[r] || []).reduce((s, x) => s + x.amount, 0) < 0 ? 'neg' : 'pos'}`}>{sign((rows[r] || []).reduce((s, x) => s + x.amount, 0))}</span>
+            </button>
+          ))}
+        </div>
+        <div className="inc-total"><span>Net / turn</span><b className={total < 0 ? 'neg' : 'pos'}><RIco r={tab} s={16} /> {sign(total)}</b></div>
+        <div className="inc-body">
+          {SECTIONS.map((sec) => {
+            const items = list.filter((x) => x.group === sec.key)
+            if (!items.length) return null
+            return (
+              <div key={sec.key} className="inc-sec">
+                <div className="inc-sec-h">{sec.title}</div>
+                {items.map((it) => (
+                  <div key={`${it.group}-${it.label}`} className="inc-row">
+                    <span className="inc-name">{it.label}{it.count > 1 && (sec.key === 'tile' || sec.key === 'building' || sec.key === 'unit' || sec.key === 'upkeep') ? <span className="inc-cnt">×{it.count}</span> : null}</span>
+                    <span className={`inc-amt ${it.amount < 0 ? 'neg' : 'pos'}`}>{sign(it.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })}
+          {list.length === 0 && <div className="inc-empty">No {tab} income yet.</div>}
+        </div>
         <button className="v5-cont" onClick={onClose}>Close</button>
       </NineSlice>
     </div>
