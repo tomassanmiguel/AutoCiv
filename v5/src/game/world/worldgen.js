@@ -157,13 +157,13 @@ function generateEarth(tiles, seed, rng) {
       continue
     }
 
-    const e = elevN(px * 10, py * 10)
-    const m = moistN(px * 9 + 30, py * 9 + 30)
+    // Higher-frequency climate fields ⇒ SMALLER biome clusters and a more mixed map.
+    const e = elevN(px * 14, py * 14)
+    const m = moistN(px * 13 + 30, py * 13 + 30)
     const c = climN(px * 7 + 80, py * 7 + 80)
-    // Lower-frequency ridge field ⇒ longer, connected ridgelines that read as
-    // ranges rather than speckled peaks. Stored for the frequency repair, which
-    // grows the ranges further.
-    const ridge = 1 - Math.abs(2 * ridgeN(px * 9, py * 9) - 1)
+    // Ridge field for mountains — kept a touch lower frequency so ranges still read
+    // as ranges, but shorter than before. The frequency repair grows them modestly.
+    const ridge = 1 - Math.abs(2 * ridgeN(px * 11, py * 11) - 1)
     t.elev = e
     t.moist = m
     t.ridge = ridge
@@ -491,7 +491,7 @@ function balanceEarthTerrain(tiles) {
     switch (terr) {
       case 'mountain': {
         let s = t.ridge ?? 0.5
-        for (const nb of neighbors(t.q, t.r)) if (tiles.get(key(nb.q, nb.r))?.terrain === 'mountain') { s += 2; break }
+        for (const nb of neighbors(t.q, t.r)) if (tiles.get(key(nb.q, nb.r))?.terrain === 'mountain') { s += 1; break } // smaller ranges
         return s
       }
       case 'forest': return t.moist ?? 0.5
@@ -558,6 +558,23 @@ function separateContinents(tiles) {
     if (t.region === 'new_world' && isLand(t.terrain) && (dist.get(key(t.q, t.r)) ?? Infinity) <= 3) {
       t.region = 'sea'; t.seaKind = 'channel'; t.terrain = 'ocean'
     }
+  }
+}
+
+/**
+ * Global polar caps: NOTHING non-tundra may sit poleward of the tundra extremes.
+ * Any land tile — continent, island or isle — north of the northernmost tundra
+ * tile or south of the southernmost becomes tundra, so the ice caps are the true
+ * poleward edge of all land.
+ */
+function enforceGlobalPolarCaps(tiles) {
+  const land = [...tiles.values()].filter((t) => t.band === 'earth' && isLand(t.terrain))
+  const tundra = land.filter((t) => t.terrain === 'tundra')
+  if (!tundra.length) return
+  const yN = Math.max(...tundra.map((t) => t.y)) // northernmost tundra
+  const yS = Math.min(...tundra.map((t) => t.y)) // southernmost tundra
+  for (const t of land) {
+    if (t.terrain !== 'tundra' && (t.y > yN || t.y < yS)) t.terrain = 'tundra'
   }
 }
 
@@ -1506,6 +1523,7 @@ export function buildWorld(seed) {
     enforcePolarTundra(tiles)
   }
   guaranteeBothPoles(tiles)
+  enforceGlobalPolarCaps(tiles) // no non-tundra land (incl. islands) beyond the tundra extremes
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt, galaxyReach)
 
