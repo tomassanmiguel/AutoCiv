@@ -1665,6 +1665,104 @@
           "amount": 30
         }
       ]
+    },
+    {
+      "id": "foreign_legion",
+      "name": "Foreign Legion",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Steam",
+      "production": 13,
+      "upkeep": 5,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "60 atk / 60 def, +10/+10 per foreign legion you own.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 60
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 60
+        },
+        {
+          "name": "combat_count_scaling",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 10
+        },
+        {
+          "name": "combat_count_scaling",
+          "domain": "land",
+          "stat": "def",
+          "amount": 10
+        }
+      ]
+    },
+    {
+      "id": "tank",
+      "name": "Tank",
+      "type": "unit",
+      "subtype": "cavalry",
+      "era": "Steam",
+      "production": 15,
+      "upkeep": 10,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "60 attack, 60 defense.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 60
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 60
+        }
+      ]
+    },
+    {
+      "id": "hospital",
+      "name": "Hospital",
+      "type": "building",
+      "subtype": "food",
+      "era": "Steam",
+      "production": 13,
+      "upkeep": 5,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+20 food.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "food",
+          "amount": 20
+        }
+      ],
+      "combat": []
     }
   ],
   "techs": [
@@ -2707,6 +2805,128 @@
           "name": "subtype_combat_mult",
           "subtype": "naval",
           "factor": 1.5
+        }
+      ]
+    },
+    {
+      "id": "foreign_legion",
+      "name": "Foreign Legion",
+      "flavor": "Melee",
+      "era": "Steam",
+      "desc": "Unlocks the Foreign Legion.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "foreign_legion"
+        }
+      ]
+    },
+    {
+      "id": "nationalism",
+      "name": "Nationalism",
+      "flavor": "Military",
+      "era": "Steam",
+      "desc": "Gain attack in all domains equal to legitimacy divided by 4.",
+      "effects": [
+        {
+          "name": "army_from_legitimacy",
+          "stat": "atk",
+          "domain": "all",
+          "divisor": 4
+        }
+      ]
+    },
+    {
+      "id": "bayonets",
+      "name": "Bayonets",
+      "flavor": "Melee",
+      "era": "Steam",
+      "desc": "All melee units gain +10 attack and +10 defense.",
+      "effects": [
+        {
+          "name": "subtype_combat_flat",
+          "subtype": "melee",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 10
+        },
+        {
+          "name": "subtype_combat_flat",
+          "subtype": "melee",
+          "domain": "land",
+          "stat": "def",
+          "amount": 10
+        }
+      ]
+    },
+    {
+      "id": "inoculation",
+      "name": "Inoculation",
+      "flavor": "Food",
+      "era": "Steam",
+      "desc": "Unlocks the Hospital.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "hospital"
+        }
+      ]
+    },
+    {
+      "id": "napoleonic_code",
+      "name": "Napoleonic Code",
+      "flavor": "Defense",
+      "era": "Steam",
+      "desc": "All units gain +10 defense.",
+      "effects": [
+        {
+          "name": "army_combat_flat",
+          "stat": "def",
+          "domain": "all",
+          "amount": 10
+        }
+      ]
+    },
+    {
+      "id": "tanks",
+      "name": "Tanks",
+      "flavor": "Cavalry",
+      "era": "Modern",
+      "desc": "Unlocks the Tank.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "tank"
+        }
+      ]
+    },
+    {
+      "id": "solar_power",
+      "name": "Solar Power",
+      "flavor": "Production",
+      "era": "Information",
+      "desc": "Deserts yield +2 production.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "desert",
+          "resource": "production",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "melange",
+      "name": "Melange",
+      "flavor": "Gold",
+      "era": "Liminite",
+      "desc": "Multiply all gold from deserts by 10.",
+      "effects": [
+        {
+          "name": "tile_yield_mult",
+          "terrain": "desert",
+          "resource": "gold",
+          "factor": 10
         }
       ]
     }

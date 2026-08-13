@@ -80,6 +80,9 @@ export const EFFECT_KINDS = [
     { key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'divisor', type: 'number' },
   ] }),
   N('subtype_combat_mult', 'Multiply combat of a subtype', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'factor', type: 'number' }] }),
+  N('subtype_combat_flat', 'Units of a subtype +scalar', { where: 'tech', params: [
+    { key: 'subtype', type: 'string' }, { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
+  ] }),
   N('gold_interest', 'Interest on banked gold', { where: 'tech', params: [{ key: 'factor', type: 'number' }] }),
 
   // -- deployable econ (per turn) --

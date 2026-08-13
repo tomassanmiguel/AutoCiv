@@ -134,7 +134,7 @@ export class GameEngine {
       tileYield: {}, tileYieldMult: {}, unitsProduce: {}, upkeepReduction: 0, prodCost: { all: 0, building: 0 },
       palaceYield: {}, palaceMult: 1, vision: 0, armyFlat: [], armyFromLegit: [], onCombat: [], perUnique: {},
       settlementYield: {}, buildingSubtypeYield: {}, progressCostMult: 1,
-      subtypeCombatMult: {}, goldInterest: 0, freeReroll: false,
+      subtypeCombatMult: {}, subtypeCombatFlat: [], goldInterest: 0, freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
     const expansions = new Set()
@@ -163,6 +163,7 @@ export class GameEngine {
           case 'progress_cost_mult': m.progressCostMult *= e.factor; break
           case 'army_from_legitimacy': m.armyFromLegit.push({ stat: e.stat, domain: e.domain, divisor: e.divisor }); break
           case 'subtype_combat_mult': m.subtypeCombatMult[e.subtype] = (m.subtypeCombatMult[e.subtype] || 1) * e.factor; break
+          case 'subtype_combat_flat': m.subtypeCombatFlat.push({ subtype: e.subtype, domain: e.domain, stat: e.stat, amount: e.amount }); break
           case 'gold_interest': m.goldInterest += e.amount ?? e.factor; break
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
@@ -287,6 +288,8 @@ export class GameEngine {
     }
     const db = TERRAIN[t.terrain].defBonus || 0
     if (db) out.land.def += db
+    // per-subtype flat bonuses (Bayonets…) applied before the subtype multiplier
+    for (const f of this.mods.subtypeCombatFlat) if (f.subtype === dep.subtype) out[f.domain][f.stat] += f.amount
     // tech multipliers on a whole subtype (Flying Buttress, Shipbuilding…)
     const smult = this.mods.subtypeCombatMult[dep.subtype]
     if (smult) for (const d of DOMAINS) for (const st of ['atk', 'def', 'bomb']) out[d][st] *= smult
