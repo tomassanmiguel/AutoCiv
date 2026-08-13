@@ -46,13 +46,20 @@ const INLAND_SEA_NEW = 0.80
 
 // Climate is LATITUDINAL: an arid equator, tundra at the two poles. The polar
 // axis is the world's vertical, so north/south read as up/down on the map.
-const TUNDRA_LAT = 0.66      // base polar latitude; tundra fills everything POLEWARD of the wavy boundary
-const TUNDRA_TENDRIL = 0.16  // how far that boundary wobbles equatorward, so tundra forms blocs that tendril toward the equator
+const TUNDRA_LAT = 0.74      // base polar latitude; tundra fills everything POLEWARD of the wavy boundary (a modest cap, leaving temperate room)
+const TUNDRA_TENDRIL = 0.12  // how far that boundary wobbles equatorward, so tundra forms blocs that tendril toward the equator
 const DESERT_LAT = 0.42
 
-const RIDGE_CUT = 0.96 // ridged-noise threshold for mountains — high, so ranges
-                       // come out as sparse lines rather than blobs
+const RIDGE_CUT = 0.94 // sparse ridge PEAKS to seed ranges; the frequency repair then grows them into
+                       // connected ranges up to the minimum, leaving the odd unseeded peak lonely
 const HILL_CUT = 0.60
+
+// Pixel latitude scale — |y|/EARTH_PR is normalised latitude (0 equator … 1 pole).
+const EARTH_PR = SQRT3 * BANDS.earth.max
+// Minimum share each terrain must reach among a CONTINENT's land tiles.
+const EARTH_MINS = { plains: 0.20, forest: 0.15, hills: 0.15, mountain: 0.10, desert: 0.08, tundra: 0.08 }
+// Exoplanets are more chaotic and mountainous. Shares are over a body's LAND tiles.
+const EXO_MINS = { exomountain: 0.22, exohills: 0.15, exoplains: 0.18, exotundra: 0.08, exodesert: 0.08 }
 
 const MAX_LOCAL_DRY = 3 // desert/tundra tiles allowed inside the opening view
 const ENCAMPMENT_MIN_DIST = 6
@@ -153,8 +160,13 @@ function generateEarth(tiles, seed, rng) {
     const e = elevN(px * 10, py * 10)
     const m = moistN(px * 9 + 30, py * 9 + 30)
     const c = climN(px * 7 + 80, py * 7 + 80)
-    const ridge = 1 - Math.abs(2 * ridgeN(px * 14, py * 14) - 1)
+    // Lower-frequency ridge field ⇒ longer, connected ridgelines that read as
+    // ranges rather than speckled peaks. Stored for the frequency repair, which
+    // grows the ranges further.
+    const ridge = 1 - Math.abs(2 * ridgeN(px * 9, py * 9) - 1)
     t.elev = e
+    t.moist = m
+    t.ridge = ridge
 
     // The polar boundary is a smooth latitude sampled HORIZONTALLY (fixed vertical
     // coord), so it reads as one wavy line: everything POLEWARD of it is solid
@@ -283,6 +295,120 @@ function enforcePolarTundra(tiles) {
         const o = tiles.get(key(n.q, n.r))
         if (o && o.terrain === 'tundra' && Math.abs(o.y) < Math.abs(t.y)) { t.terrain = 'tundra'; spreading = true; break }
       }
+    }
+  }
+}
+
+/**
+ * Convert land tiles so each listed terrain reaches a minimum COUNT. A donor is a
+ * land tile whose current terrain is above its OWN minimum (or has no minimum) and
+ * is not protected; among donors the best candidate for the target (highest
+ * `scoreOf`, −Infinity = ineligible) is converted. `terrain` is processed in the
+ * order given. Because the mountain score rewards adjacency to existing mountains,
+ * mountains grow into RANGES rather than scattered peaks.
+ */
+function enforceTerrainMins(tiles, land, mins, scoreOf, protectedTerr, protect) {
+  const N = land.length
+  if (!N) return
+  const count = {}
+  for (const t of land) count[t.terrain] = (count[t.terrain] || 0) + 1
+  const target = {}
+  for (const k in mins) target[k] = Math.ceil(mins[k] * N) // ceil so the achieved share actually MEETS the minimum
+  // Serve the MOST-deficient terrain first (by fraction of its target still owed),
+  // so no single terrain is fully satisfied at the others' expense — important on
+  // the small New World, where a strict order would starve later terrains.
+  const stuck = new Set()
+  for (let guard = 0; guard < N * 6; guard++) {
+    let worst = null, worstDef = 0
+    for (const terr in target) {
+      if (stuck.has(terr)) continue
+      const def = (target[terr] - (count[terr] || 0)) / target[terr]
+      if (def > worstDef) { worstDef = def; worst = terr }
+    }
+    if (!worst) break
+    let best = null, bestS = -Infinity
+    for (const t of land) {
+      if (t.terrain === worst || (protect && protect(t))) continue
+      const cur = t.terrain
+      if (protectedTerr.has(cur)) continue // never strip a protected terrain (mountains, tundra)
+      if (cur in target && (count[cur] || 0) <= target[cur]) continue // donor must be in surplus
+      const s = scoreOf(worst, t)
+      if (s > bestS) { bestS = s; best = t }
+    }
+    if (!best || bestS === -Infinity) { stuck.add(worst); continue } // geography/supply won't allow more
+    count[best.terrain]--
+    best.terrain = worst
+    count[worst] = (count[worst] || 0) + 1
+  }
+}
+
+/** Extend tundra equatorward from the poles until it reaches `minCount`, most-
+ *  poleward land first — so it never strands a non-tundra tile poleward of tundra. */
+function extendTundra(land, minCount, protect) {
+  let have = land.filter((t) => t.terrain === 'tundra').length
+  if (have >= minCount) return
+  const cands = land
+    .filter((t) => t.terrain !== 'tundra' && t.terrain !== 'mountain' && !(protect && protect(t)))
+    .sort((a, b) => Math.abs(b.y) - Math.abs(a.y))
+  for (const t of cands) {
+    if (have >= minCount) break
+    t.terrain = 'tundra'; have++
+  }
+}
+
+/**
+ * Enforce the per-continent terrain minimums (EARTH_MINS). Runs AFTER the palace
+ * repair, so it leaves the opening view (d ≤ LOCAL_RADIUS) untouched. Tundra is
+ * grown from the poles first (respecting the polar rule); the rest are grown by
+ * their defining field, with mountains forming ranges.
+ */
+function balanceEarthTerrain(tiles) {
+  const protect = (t) => t.d <= LOCAL_RADIUS // don't disturb the guaranteed opening view
+  const scoreEarth = (terr, t) => {
+    const latN = Math.abs(t.y) / EARTH_PR
+    switch (terr) {
+      case 'mountain': {
+        let s = t.ridge ?? 0.5
+        for (const nb of neighbors(t.q, t.r)) if (tiles.get(key(nb.q, nb.r))?.terrain === 'mountain') { s += 2; break }
+        return s
+      }
+      case 'forest': return t.moist ?? 0.5
+      case 'hills': return t.elev ?? 0.5
+      case 'desert': return latN > 0.6 ? -Infinity : (1 - (t.moist ?? 0.5)) - latN * 0.2 // prefer dry & equatorial; allow up to mid-latitude
+      case 'tundra': return -Infinity // tundra is placed poleward by extendTundra only — never here
+      default: return 0 // plains — any surplus donor will do
+    }
+  }
+  // Only tundra is protected from donation (removing it would strand non-tundra
+  // poleward). Surplus mountains ABOVE their minimum may be donated to feed other
+  // terrains; connectOldWorldLand reopens any pass this closes.
+  const protectedTerr = new Set(['tundra'])
+  const continents = ['old_world', 'new_world'].map((region) => ({
+    region, land: [...tiles.values()].filter((t) => t.region === region && isLand(t.terrain)),
+  })).filter((c) => c.land.length)
+  // 1) Grow each continent's tundra cap from the poles to the minimum.
+  for (const c of continents) extendTundra(c.land, Math.ceil(EARTH_MINS.tundra * c.land.length), protect)
+  // 2) LOCK the polar zones as tundra now, so step 3 can never place forest/hills
+  //    poleward of tundra (which a later flood would only eat back).
+  enforcePolarTundra(tiles)
+  // 3) Grow the remaining minimums from equatorward donors; mountains form ranges.
+  for (const c of continents) enforceTerrainMins(tiles, c.land, EARTH_MINS, scoreEarth, protectedTerr, protect)
+}
+
+/** Guarantee tundra in BOTH hemispheres: if a hemisphere's continent land has no
+ *  tundra, turn its most-poleward land into a small tundra cap. */
+function guaranteeBothPoles(tiles) {
+  const land = [...tiles.values()].filter((t) => t.band === 'earth' && (t.region === 'old_world' || t.region === 'new_world') && isLand(t.terrain))
+  for (const sign of [1, -1]) {
+    const hemi = land.filter((t) => (t.y >= 0 ? 1 : -1) === sign)
+    if (!hemi.length || hemi.some((t) => t.terrain === 'tundra')) continue
+    hemi.sort((a, b) => Math.abs(b.y) - Math.abs(a.y))
+    const seed = hemi[0]
+    if (Math.abs(seed.y) / EARTH_PR < 0.45) continue // no polar land here — forcing tundra would break confinement
+    seed.terrain = 'tundra'
+    for (const nb of neighbors(seed.q, seed.r)) {
+      const o = tiles.get(key(nb.q, nb.r))
+      if (o && isLand(o.terrain) && o.terrain !== 'mountain' && Math.abs(o.y) >= Math.abs(seed.y) - 1.5) o.terrain = 'tundra'
     }
   }
 }
@@ -1192,6 +1318,15 @@ export function buildWorld(seed) {
   connectOldWorldLand(tiles)
   finalizeEarthCoasts(tiles)
   enforcePolarTundra(tiles) // AFTER the land bridges, so their plains obey the polar rule too
+  // Balance terrain to the per-continent minimums, reopen any passes the new mountain
+  // ranges close, and re-tundra bridge-stranded tiles — iterated so each pass tops up
+  // the ±1 tile the previous connectivity/flood step trimmed.
+  for (let i = 0; i < 2; i++) {
+    balanceEarthTerrain(tiles) // per-continent minimums + mountain ranges (leaves the opening view alone)
+    connectOldWorldLand(tiles)
+    enforcePolarTundra(tiles)
+  }
+  guaranteeBothPoles(tiles)
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt, galaxyReach)
 

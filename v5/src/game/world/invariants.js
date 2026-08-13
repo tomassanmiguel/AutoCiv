@@ -29,7 +29,7 @@ const START_RADIUS = 5
 const MIN_OLD_WORLD = 45
 const MIN_NEW_WORLD = 14
 const MIN_ISLANDS = 2
-const MAX_TUNDRA_FRACTION = 0.22
+const MAX_TUNDRA_FRACTION = 0.30 // tundra is now a guaranteed polar cap that may tendril equatorward
 // Earth is only ~400 tiles, so its region-shaped stages are naturally small;
 // this floor exists to catch a DEAD notch, not to enforce an even ladder.
 const MIN_STAGE_TILES = 8
@@ -44,8 +44,9 @@ const MARS_OUTER_GAP = 1 // at least one layer of space beyond Mars before deep 
 // pop), so the floor is on those two.
 const MIN_EARTH_YIELD = { food: 32, gold: 85 }
 
-// Mountains are gameplay obstacles, so they must exist but stay sparse.
-const MOUNTAIN_FRACTION = { min: 0.015, max: 0.15 }
+// Mountains are gameplay obstacles that now form RANGES: guaranteed present in
+// bulk, but still capped so the map stays open (connectivity is repaired too).
+const MOUNTAIN_FRACTION = { min: 0.05, max: 0.20 }
 
 const MIN_RIVER_TILES = 4
 const MIN_RIVER_RUN = 4
@@ -74,14 +75,16 @@ export function validate(world) {
     }
   }
 
-  // Bodies must sit wholly inside their band, or the concentric structure breaks.
+  // Bodies must sit wholly inside their band(s), or the concentric structure
+  // breaks. The exoplanet's SYSTEM may reach from deep space into the galactic
+  // band (a backside moon can sit that far out), so it accepts either.
   const containment = [
-    ['moon', 'space'], ['mars', 'space'], ['asteroid', 'space'],
-    ['exoplanet', 'deep'], ['exomoon', 'deep'],
+    ['moon', ['space']], ['mars', ['space']], ['asteroid', ['space']],
+    ['exoplanet', ['deep', 'galactic']], ['exomoon', ['deep', 'galactic']],
   ]
-  for (const [region, band] of containment) {
-    const stray = world.list.filter((t) => t.region === region && t.band !== band)
-    if (stray.length) v.push(`${region} spills outside the ${band} band (${stray.length} tiles)`)
+  for (const [region, bands] of containment) {
+    const stray = world.list.filter((t) => t.region === region && !bands.includes(t.band))
+    if (stray.length) v.push(`${region} spills outside the ${bands.join('/')} band (${stray.length} tiles)`)
   }
 
   const spanOf = (region) => {
@@ -213,10 +216,12 @@ export function validate(world) {
   const latOf = (t) => Math.abs(t.y) / PR
   const desertMid = earth.filter((t) => t.terrain === 'desert' && latOf(t) < 0.5).length
   const tundra = earth.filter((t) => t.terrain === 'tundra')
-  const tundraPolar = tundra.filter((t) => latOf(t) > 0.5).length
+  // Tundra is a polar cap that may TENDRIL equatorward, so "polar" is generous and
+  // the confinement floor is loose — it only catches tundra scattered like confetti.
+  const tundraPolar = tundra.filter((t) => latOf(t) > 0.45).length
   if (desertMid < MIN_CLIMATE_TILES) v.push(`too little desert near Earth's equator (${desertMid})`)
   if (tundraPolar < MIN_CLIMATE_TILES) v.push(`too little polar tundra (${tundraPolar})`)
-  if (tundra.length && tundraPolar / tundra.length < 0.85) {
+  if (tundra.length && tundraPolar / tundra.length < 0.65) {
     v.push(`tundra is not confined to the poles (${tundraPolar}/${tundra.length} polar)`)
   }
   const earthLandAll = earth.filter((t) => isLand(t.terrain)).length
