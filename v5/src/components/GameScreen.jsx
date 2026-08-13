@@ -4,6 +4,7 @@ import { GameEngine } from '../game/GameEngine.js'
 import { toPixel } from '../game/hex/coords.js'
 import { TERRAIN, DEPLOYABLES } from '../game/data/content.js'
 import { DOMAINS } from '../game/data/schema.js'
+import { resolveCombatTimeline, domainHasForce } from '../game/systems/combat.js'
 import { trackForEra } from '../game/audio/tracks.js'
 import NineSlice from './common/NineSlice.jsx'
 import InfoTip from './common/InfoTip.jsx'
@@ -13,10 +14,7 @@ import './GameScreen.css'
 const HEX = 34
 const RES_KEYS = ['production', 'food', 'gold', 'progress']
 const ICON = (n) => `/sprites/icons/${n}.png`
-const RES_ICON = {
-  production: ICON('production'), gold: ICON('gold'), food: ICON('food'),
-  progress: ICON('progress'), legitimacy: ICON('legitimacy'),
-}
+const RES_ICON = { production: ICON('production'), gold: ICON('gold'), food: ICON('food'), progress: ICON('progress'), legitimacy: ICON('legitimacy') }
 const STAT_ICON = { atk: ICON('attack'), def: ICON('defense'), bomb: ICON('range') }
 const CAT_COLOR = {
   melee: '#c0563b', ranged: '#c9a13e', cavalry: '#b5793a', siege: '#8a5a2b', naval: '#3d7fa0',
@@ -24,7 +22,6 @@ const CAT_COLOR = {
   food: '#6faa4f', progress: '#5aa0d0', production: '#b0703a',
 }
 const catColor = (dep) => CAT_COLOR[dep.subtype] || '#9a8a6a'
-// silhouette (in /sprites/ui, inverted to white by index.css / .sil filter)
 const UI = (n) => `/sprites/ui/${n}.png`
 const SIL_UNIT = { melee: UI('melee'), ranged: UI('ranged'), cavalry: UI('cavalry'), siege: UI('siege'), naval: UI('boat') }
 const SIL_BLD = { settlement: UI('building'), defense: UI('defense'), gold: UI('gold'), food: UI('food'), progress: UI('progress'), production: UI('production'), legitimacy: UI('legitimacy') }
@@ -33,9 +30,11 @@ function silFor(dep) {
   if (dep.type === 'unit') return SIL_UNIT[dep.subtype] || UI('unit')
   return SIL_BLD[dep.subtype] || UI('building')
 }
-
-const RIco = ({ r, s = 16 }) => <img className="ric" src={RES_ICON[r]} alt={r} style={{ height: s }} />
+const RIco = ({ r, s = 14 }) => <img className="ric" src={RES_ICON[r]} alt={r} style={{ height: s }} />
+const SIco = ({ st, s = 14 }) => <img className="ric" src={STAT_ICON[st]} alt={st} style={{ height: s }} />
 const fmt = (n) => Math.floor(n)
+const cap = (s) => s[0].toUpperCase() + s.slice(1)
+const total = (p) => p.atk + p.def + p.bomb
 const delta = (n) => { const v = Math.floor(n); return v === 0 ? null : <span className={`dlt ${v > 0 ? 'up' : 'dn'}`}>{v > 0 ? '+' : ''}{v}</span> }
 
 export default function GameScreen({ seed, onExit, audio }) {
@@ -61,7 +60,11 @@ function Game({ onExit, audio }) {
         <Sidebar g={g} />
       </div>
       {g.selection && <SelectionBanner g={g} />}
-      {showCombat && <CombatModal g={g} onClose={() => setSeenWave(g.lastCombat.wave)} />}
+      {showCombat && (
+        <CombatOverlay title={`Wave ${g.lastCombat.wave} · ${g.lastCombat.enemy.archetypeName}`}
+          player={g.lastCombat.player} enemy={g.lastCombat.enemy.scalars}
+          dismissLabel="Continue" onDismiss={() => setSeenWave(g.lastCombat.wave)} />
+      )}
       {g.status !== 'playing' && <EndOverlay g={g} onExit={onExit} />}
     </div>
   )
@@ -80,7 +83,7 @@ function TopBar({ g, onExit }) {
     <header className="v5-top">
       <div className="v5-brand">AutoCiv <span>v5</span></div>
       <div className="v5-era">{g.eraName()} Era · Turn {g.turn}</div>
-      <InfoTip text={dueIn === 0 ? 'An enemy wave strikes at the end of this turn.' : `The next enemy wave arrives in ${dueIn} turn(s). Prepare your military.`}>
+      <InfoTip text={dueIn === 0 ? 'An enemy wave strikes at the end of this turn.' : `The next enemy wave arrives in ${dueIn} turn(s).`}>
         <div className={`v5-wave ${dueIn === 0 ? 'imminent' : ''}`}>⚔ {dueIn === 0 ? 'Wave now' : `Wave in ${dueIn}`}</div>
       </InfoTip>
       <div className="v5-stats">
@@ -89,7 +92,7 @@ function TopBar({ g, onExit }) {
         </InfoTip>
         {RES_KEYS.map((r) => (
           <InfoTip key={r} text={r === 'gold' ? goldTip : resTip[r]}>
-            <div className="v5-stat"><RIco r={r} /><b>{fmt(g.resources[r])}</b>{delta(pt.net[r])}</div>
+            <div className="v5-stat"><RIco r={r} s={17} /><b>{fmt(g.resources[r])}</b>{delta(pt.net[r])}</div>
           </InfoTip>
         ))}
       </div>
@@ -118,11 +121,7 @@ function HexMap({ g }) {
   const vision = useMemo(() => g.visionSet(), [g, g._version]) // eslint-disable-line
   const expand = useMemo(() => { const m = {}; for (const e of g.expandTargets()) m[e.key] = e; return m }, [g, g._version]) // eslint-disable-line
   const placing = g.selection && g.selection.type === 'build' ? g.selection.deployableId : null
-
-  const onTile = (t) => {
-    if (placing) g.placeAt(t.key)
-    else if (expand[t.key]) g.expandAt(t.key)
-  }
+  const onTile = (t) => { if (placing) g.placeAt(t.key); else if (expand[t.key]?.affordable) g.expandAt(t.key) }
 
   return (
     <div className="v5-map">
@@ -130,24 +129,25 @@ function HexMap({ g }) {
         <defs><clipPath id="hexclip"><polygon points={HEX_PTS} /></clipPath></defs>
         {tiles.map((t) => {
           const p = layout.pos[t.key]
-          const seen = vision.has(t.key)
+          const seen = g.revealAll || vision.has(t.key)
           const controlled = g.controlled.has(t.key)
           const inst = g.deployed.get(t.key)
           const dep = inst && DEPLOYABLES[inst.id]
           const canPlace = placing && g.placementValid(placing, t.key)
           const exp = expand[t.key]
+          const expAff = exp && exp.affordable && !placing
           const cls = ['hx']
           if (!seen) cls.push('fog')
-          if (canPlace || exp) cls.push('clickable')
+          if (canPlace || expAff) cls.push('clickable')
           return (
             <g key={t.key} className={cls.join(' ')} transform={`translate(${p.x} ${p.y})`}
-              onClick={() => onTile(t)} onMouseEnter={() => setHover(t.key)} onMouseLeave={() => setHover((h) => (h === t.key ? null : h))}>
+              onClick={() => onTile(t)} onMouseEnter={() => seen && setHover(t.key)} onMouseLeave={() => setHover((h) => (h === t.key ? null : h))}>
               {seen
                 ? <image href={`/sprites/tiles/${TERRAIN[t.terrain].sprite || t.terrain}.png`} x={-HEX} y={-HEX} width={HEX * 2} height={HEX * 2} clipPath="url(#hexclip)" preserveAspectRatio="xMidYMid slice" />
                 : <polygon points={HEX_PTS} fill="#0e1017" />}
               <polygon points={HEX_PTS} className="seam" />
               {controlled && <polygon points={HEX_PTS} className="own-ring" />}
-              {(canPlace || exp) && <polygon points={HEX_PTS} className={`hi-ring ${exp && !canPlace ? 'exp' : ''}`} />}
+              {(canPlace || expAff) && <polygon points={HEX_PTS} className={`hi-ring ${expAff && !canPlace ? 'exp' : ''}`} />}
               {dep && (
                 <g className="dbadge">
                   <circle r="14" fill="#12151bee" stroke={catColor(dep)} strokeWidth="2.2" />
@@ -155,7 +155,12 @@ function HexMap({ g }) {
                   <text className="dname" y={27}>{dep.name}</text>
                 </g>
               )}
-              {exp && !inst && <g className="exp-badge"><image className="ric" href={RES_ICON.food} x={-15} y={-10} width={14} height={14} /><text className="cost" x={3} y={2}>{exp.cost}</text></g>}
+              {expAff && !inst && (
+                <g className="exp-badge" transform="translate(0 -19)">
+                  <image href={RES_ICON.food} x={-12} y={-6} width={11} height={11} />
+                  <text className="cost" x={2} y={3}>{exp.cost}</text>
+                </g>
+              )}
             </g>
           )
         })}
@@ -177,24 +182,24 @@ function MapHoverCard({ g, k }) {
   const ty = TERRAIN[t.terrain]
   return (
     <div className="v5-hover">
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={20} className="frame">
+      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={18} fill={false} className="frame">
         {dep ? (
           <>
             <div className="hv-h"><img className="sil-i" src={silFor(dep)} alt="" /><b>{dep.name}</b><span className="hv-sub">{dep.type} · {dep.subtype}</span></div>
             <div className="hv-desc"><IconText>{dep.desc}</IconText></div>
             {out && Object.keys(out).length > 0 && (
-              <div className="hv-out"><span className="hv-lbl">Output / turn</span>{Object.entries(out).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={14} />{v}</span>)}</div>
+              <div className="hv-out"><span className="hv-lbl">Output / turn</span>{Object.entries(out).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={13} />{v}</span>)}</div>
             )}
             {scLines.length > 0 && (
               <div className="hv-out"><span className="hv-lbl">Combat</span>{scLines.map((x) => (
-                <span key={x.d} className="hv-chip">{x.d}: {x.atk ? <><img src={STAT_ICON.atk} className="ric" alt="atk" />{x.atk} </> : ''}{x.def ? <><img src={STAT_ICON.def} className="ric" alt="def" />{x.def} </> : ''}{x.bomb ? <><img src={STAT_ICON.bomb} className="ric" alt="bomb" />{x.bomb}</> : ''}</span>
+                <span key={x.d} className="hv-chip cap">{x.d}: {x.atk ? <><SIco st="atk" s={12} />{x.atk} </> : ''}{x.def ? <><SIco st="def" s={12} />{x.def} </> : ''}{x.bomb ? <><SIco st="bomb" s={12} />{x.bomb}</> : ''}</span>
               ))}</div>
             )}
           </>
         ) : (
           <>
-            <div className="hv-h"><b>{ty.name}</b>{g.controlled.has(k) ? <span className="hv-sub">controlled</span> : <span className="hv-sub">unclaimed</span>}</div>
-            <div className="hv-out">{Object.entries(ty.yield || {}).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={14} />{v}</span>)}{ty.defBonus ? <span className="hv-chip"><img src={STAT_ICON.def} className="ric" alt="def" />+{ty.defBonus}</span> : null}</div>
+            <div className="hv-h"><b>{ty.name}</b><span className="hv-sub">{g.controlled.has(k) ? 'controlled' : 'unclaimed'}</span></div>
+            <div className="hv-out">{Object.entries(ty.yield || {}).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={13} />{v}</span>)}{ty.defBonus ? <span className="hv-chip"><SIco st="def" s={12} />+{ty.defBonus}</span> : null}</div>
           </>
         )}
       </NineSlice>
@@ -210,7 +215,7 @@ function Sidebar({ g }) {
       <div className="v5-tabs">
         {tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
       </div>
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={22} className="v5-tabbody">
+      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={20} fill={false} className="v5-tabbody">
         {tab === 'research' && <ResearchPanel g={g} />}
         {tab === 'build' && <BuildPanel g={g} />}
         {tab === 'wave' && <WavePanel g={g} />}
@@ -223,20 +228,20 @@ function ResearchPanel({ g }) {
   const offer = g.offerData()
   return (
     <div className="panel">
-      <div className="panel-h">Research <span className="sub">{g.eraName()} · {g.unlocksThisEra}/{3} to next era</span></div>
+      <div className="panel-h">Research <span className="sub">{g.eraName()} · {g.unlocksThisEra}/3 to next era</span></div>
       {offer.map((o, i) => (
         <div key={o.id} className={`tech ${o.wildcard ? 'wild' : ''}`}>
           <div className="tech-top"><b>{o.tech.name}</b><span className="flav">{o.tech.flavor}{o.wildcard ? ' · wildcard' : ''}</span></div>
           <div className="tech-desc"><IconText>{o.tech.desc}</IconText></div>
           <div className="tech-act">
             <button disabled={!o.affordable} onClick={() => g.unlockTech(o.id)}>Unlock · {o.cost} <RIco r="progress" s={13} /></button>
-            <InfoTip text={g.rerollTokens > 0 ? 'Reroll this option — free (from Astrology).' : `Reroll this option for ${5 + 5 * g.rerollsUsed} gold. Cost rises each reroll.`}>
+            <InfoTip text={g.rerollTokens > 0 ? 'Reroll this option — free (from Astrology).' : `Reroll for ${5 + 5 * g.rerollsUsed} gold. Cost rises each reroll.`}>
               <button className="reroll" onClick={() => g.reroll(i)}>⟳ {g.rerollTokens > 0 ? 'free' : <>{5 + 5 * g.rerollsUsed}<RIco r="gold" s={12} /></>}</button>
             </InfoTip>
           </div>
         </div>
       ))}
-      {offer.length === 0 && <div className="empty">Nothing left to research here.</div>}
+      {offer.length === 0 && <div className="empty">All options taken — new research arrives next turn.</div>}
     </div>
   )
 }
@@ -248,7 +253,7 @@ function BuildPanel({ g }) {
       <div className="panel-h">Build <span className="sub"><RIco r="production" s={13} /> {fmt(g.resources.production)}</span></div>
       <div className="build-grid">
         {list.map(({ id, dep, cost, affordable }) => (
-          <InfoTip key={id} text={`${dep.desc}\n\nType: :${simpleTok(dep)}:  ·  Cost ${cost} :production:  ·  Upkeep ${dep.upkeep} :gold:`}>
+          <InfoTip key={id} text={`${dep.desc}\n\nCost ${cost} :production:  ·  Upkeep ${dep.upkeep} :gold:`}>
             <button className={`bcard ${g.selection?.deployableId === id ? 'sel' : ''}`} disabled={!affordable} onClick={() => g.beginBuild(id)}>
               <img className="bsil" src={silFor(dep)} alt="" />
               <span className="bname">{dep.name}</span>
@@ -261,21 +266,34 @@ function BuildPanel({ g }) {
     </div>
   )
 }
-function simpleTok(dep) {
-  const t = dep.type === 'unit' ? dep.subtype : dep.subtype === 'defense' ? 'fort' : 'building'
-  return ['melee', 'ranged', 'cavalry', 'siege', 'naval', 'fort', 'building'].includes(t) ? t : 'building'
-}
 
 function WavePanel({ g }) {
   const enemy = g.enemyCard
   const you = g.playerScalars()
+  const pred = g.previewCombat()
+  const [sim, setSim] = useState(false)
   return (
     <div className="panel">
       <div className="panel-h">Next Wave <span className="sub">#{enemy?.wave} · {enemy?.archetypeName}</span></div>
+      {pred && (
+        <div className="predict">
+          <div className="predict-h">Predicted outcome</div>
+          <div className="predict-row">
+            <span className="gold"><RIco r="gold" s={15} /> +{pred.goldGained} gold</span>
+            <span className="loss"><RIco r="legitimacy" s={15} /> −{pred.legitimacyLost} legit</span>
+          </div>
+          <div className="predict-sub">won: {pred.won.map(cap).join(', ') || '—'} · lost: {pred.lost.map(cap).join(', ') || '—'}</div>
+          <button className="sim-btn" onClick={() => setSim(true)}>▶ Simulate battle</button>
+        </div>
+      )}
       <ScalarTable title="Your military" s={you} accent="#5aa0d0" />
       <div className="vs">▼ resolves against ▼</div>
       <ScalarTable title="Enemy card" s={enemy?.scalars} accent="#c0563b" />
-      <div className="hint">Combat is an empire-wide aggregate of these 12 scalars. Bombardment fires first and spills downward; surviving attack scores gold (yours) or legitimacy loss (theirs).</div>
+      <div className="hint">Combat is an empire-wide aggregate of these 12 scalars. Bombardment fires first and spills downward.</div>
+      {sim && enemy && (
+        <CombatOverlay title={`Wave ${enemy.wave} — simulation (no effect)`} player={you} enemy={enemy.scalars}
+          dismissLabel="Close" onDismiss={() => setSim(false)} />
+      )}
     </div>
   )
 }
@@ -285,12 +303,85 @@ function ScalarTable({ title, s, accent }) {
     <div className="stbl">
       <div className="stbl-h" style={{ color: accent }}>{title}</div>
       <table>
-        <thead><tr><th></th><th><img src={STAT_ICON.atk} className="ric" alt="atk" /></th><th><img src={STAT_ICON.def} className="ric" alt="def" /></th><th><img src={STAT_ICON.bomb} className="ric" alt="bmb" /></th></tr></thead>
+        <thead><tr><th></th><th><SIco st="atk" s={13} /></th><th><SIco st="def" s={13} /></th><th><SIco st="bomb" s={13} /></th></tr></thead>
         <tbody>
           {DOMAINS.map((d) => { const row = s[d]; const z = !row.atk && !row.def && !row.bomb; return (
             <tr key={d} className={z ? 'z' : ''}><td className="dm">{d}</td><td>{row.atk}</td><td>{row.def}</td><td>{row.bomb}</td></tr>) })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ---- combat theater ----
+function CombatOverlay({ title, player, enemy, dismissLabel, onDismiss }) {
+  return (
+    <div className="v5-modal-bg" onClick={onDismiss}>
+      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={24} fill={false} className="v5-theater" onClick={(e) => e.stopPropagation()}>
+        <h2>{title}</h2>
+        <CombatTheater player={player} enemy={enemy} />
+        <button className="v5-cont" onClick={onDismiss}>{dismissLabel}</button>
+      </NineSlice>
+    </div>
+  )
+}
+function CombatTheater({ player, enemy }) {
+  const { frames, result } = useMemo(() => resolveCombatTimeline(player, enemy), [player, enemy])
+  const last = frames.length - 1
+  const [i, setI] = useState(0)
+  const [playing, setPlaying] = useState(true)
+  const [speed, setSpeed] = useState(1)
+  useEffect(() => {
+    if (!playing || i >= last) return
+    const id = setTimeout(() => setI((x) => Math.min(last, x + 1)), 640 / speed)
+    return () => clearTimeout(id)
+  }, [playing, i, speed, last])
+  const cur = frames[i]
+  const start = frames[0]
+  const done = i >= last
+  const shown = DOMAINS.filter((d) => domainHasForce(start.P[d]) || domainHasForce(start.E[d]))
+  const scale = {}
+  for (const d of shown) scale[d] = Math.max(1, total(start.P[d]), total(start.E[d]))
+  const phaseLabel = cur.phase === 'start' ? 'Battle begins' : cur.phase === 'end' ? 'Resolved' : `${cap(cur.domain)} — ${cur.phase === 'bombard' ? 'Bombardment' : 'Attack'}`
+  const toggle = () => { if (done) { setI(0); setPlaying(true) } else setPlaying((p) => !p) }
+  return (
+    <div className="ct">
+      <div className="ct-phase">{phaseLabel}</div>
+      <div className="ct-board" style={{ gridTemplateColumns: `repeat(${shown.length}, 1fr)` }}>
+        {shown.map((d) => (
+          <div key={d} className={`ct-dom ${cur.domain === d && cur.phase !== 'end' ? 'active' : ''}`}>
+            <div className="ct-dh">{d}</div>
+            <Army side="you" pool={cur.P[d]} scale={scale[d]} />
+            <div className="ct-mid">vs</div>
+            <Army side="foe" pool={cur.E[d]} scale={scale[d]} />
+          </div>
+        ))}
+      </div>
+      <div className={`ct-score ${done ? 'show' : ''}`}>
+        <span className="gold"><RIco r="gold" s={18} /> +{result.goldGained}</span>
+        <span className="loss"><RIco r="legitimacy" s={18} /> −{result.legitimacyLost}</span>
+      </div>
+      <div className="ct-controls">
+        <button onClick={() => setI(0)} title="Restart">⟲</button>
+        <button onClick={toggle} title="Play / pause">{playing && !done ? '❚❚' : '▶'}</button>
+        <button onClick={() => { setPlaying(false); setI((x) => Math.min(last, x + 1)) }} title="Step">⏭</button>
+        <button onClick={() => setI(last)} title="Skip to end">Skip</button>
+        <span className="ct-spd">{[1, 2, 4].map((s) => <button key={s} className={speed === s ? 'on' : ''} onClick={() => setSpeed(s)}>{s}×</button>)}</span>
+      </div>
+    </div>
+  )
+}
+function Army({ side, pool, scale }) {
+  return (
+    <div className={`ct-army ${side}`}>
+      <div className="ct-side">{side === 'you' ? 'You' : 'Foe'}</div>
+      {['def', 'atk', 'bomb'].map((st) => (
+        <div key={st} className="ct-bar-row">
+          <img className="ric" src={STAT_ICON[st]} alt={st} />
+          <div className="ct-bar"><div className={`ct-fill ${st}`} style={{ width: `${Math.min(100, (pool[st] / scale) * 100)}%` }} /></div>
+          <span className="ct-bv">{pool[st]}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -305,37 +396,11 @@ function SelectionBanner({ g }) {
   )
 }
 
-function CombatModal({ g, onClose }) {
-  const c = g.lastCombat
-  const r = c.result
-  return (
-    <div className="v5-modal-bg" onClick={onClose}>
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={26} className="v5-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Wave {c.wave} · {c.enemy.archetypeName}</h2>
-        <div className="combat-cols">
-          {r.domains.map((d) => (
-            <div key={d.domain} className={`cdom ${d.result}`}>
-              <div className="cdom-h">{d.domain}</div>
-              <div className="cdom-r">{d.result === 'win' ? 'won' : d.result === 'loss' ? 'lost' : d.result}</div>
-            </div>
-          ))}
-        </div>
-        <div className="combat-score">
-          <span className="gold"><RIco r="gold" s={20} /> +{r.goldGained}</span>
-          <span className="loss"><RIco r="legitimacy" s={20} /> −{r.legitimacyLost}</span>
-        </div>
-        {c.bonus && (c.bonus.food || c.bonus.production || c.bonus.progress) ? <div className="combat-bonus">Festival bonus collected.</div> : null}
-        <button className="v5-cont" onClick={onClose}>Continue</button>
-      </NineSlice>
-    </div>
-  )
-}
-
 function EndOverlay({ g, onExit }) {
   const won = g.status === 'won'
   return (
     <div className="v5-modal-bg">
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={30} className={`v5-end ${won ? 'win' : 'lose'}`}>
+      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={28} fill={false} className={`v5-end ${won ? 'win' : 'lose'}`}>
         <h1>{won ? 'Victory' : 'Defeat'}</h1>
         <p>{won ? 'Your civilization ascends.' : 'Your legitimacy has collapsed.'}</p>
         <p className="sub">Survived {g.waveCount} waves · reached the {g.eraName()} era.</p>

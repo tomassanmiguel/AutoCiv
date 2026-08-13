@@ -24,6 +24,7 @@ export class GameEngine {
     this.turn = 1
     this.waveCount = 0
     this.status = 'playing' // 'playing' | 'won' | 'lost'
+    this.revealAll = true // TEMP: show the whole map (fog lifted for worldgen review)
     this.selection = null // { type:'build', deployableId } while placing
     this.log = []
     this.lastCombat = null
@@ -226,11 +227,16 @@ export class GameEngine {
     const dist = bfs(starts, (q, r) => this.world.byKey.has(hkey(q, r)), 1 + this.mods.vision)
     return new Set(dist.keys())
   }
+  /** The frontier you may settle: tiles ADJACENT to controlled (keeps the empire
+   *  connected). Independent of vision range — Surveying widens sight, not reach. */
+  expandFrontier() {
+    const out = new Set()
+    for (const k of this.controlled) for (const nk of this.neighborKeys(k)) if (!this.controlled.has(nk)) out.add(nk)
+    return out
+  }
   expandTargets() {
-    const vis = this.visionSet()
     const out = []
-    for (const k of vis) {
-      if (this.controlled.has(k)) continue
+    for (const k of this.expandFrontier()) {
       const t = this.world.byKey.get(k)
       const ter = TERRAIN[t.terrain]
       if (ter.unlock && !this.expansions.has(t.terrain)) continue
@@ -243,8 +249,7 @@ export class GameEngine {
     if (this.status !== 'playing') return false
     const t = this.tileAt(k)
     if (!t || this.controlled.has(k)) return false
-    const vis = this.visionSet()
-    if (!vis.has(k)) return false
+    if (!this.neighborKeys(k).some((nk) => this.controlled.has(nk))) return false // must stay connected
     const ter = TERRAIN[t.terrain]
     if (ter.unlock && !this.expansions.has(t.terrain)) return false
     const cost = ter.expandBase + Math.max(0, t.dist - 1)
@@ -324,8 +329,9 @@ export class GameEngine {
     // advance era after enough unlocks (only while a later era still has content)
     const lastEra = maxContentEra()
     if (this.unlocksThisEra >= META.unlocksPerEra && this.era < lastEra) { this.era++; this.unlocksThisEra = 0 }
-    // replace the taken slot with a fresh draw from the right pool
-    this._redrawSlot(slot)
+    // The offer does NOT refill on unlock — consume the slot. A fresh 3 (+wildcard)
+    // are drawn at the start of the next turn.
+    this.offer.splice(slot, 1)
     this._previewWave()
     this._emit()
     return true
@@ -424,6 +430,8 @@ export class GameEngine {
   }
   /** Combat scalar contribution of the deployable on a tile. */
   instScalars(k) { const inst = this.deployed.get(k); return inst ? this._instScalars(k, inst) : null }
+  /** Predicted outcome of the upcoming wave against the current board (no effects). */
+  previewCombat() { return this.enemyCard ? resolveCombat(this.playerScalars(), this.enemyCard.scalars) : null }
 
   buildableList() {
     return [...this.unlocked].filter((id) => id !== 'palace').map((id) => ({

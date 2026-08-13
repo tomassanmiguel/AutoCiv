@@ -22,6 +22,7 @@ export function armyValue(s) {
   return v
 }
 export function domainHasForce(pool) { return pool.atk > 0 || pool.def > 0 || pool.bomb > 0 }
+function totalPools(s) { let t = 0; for (const d of DOMAINS) t += s[d].atk + s[d].def + s[d].bomb; return t }
 
 // Erode a pool in the fixed order def → atk → bomb; return leftover (excess).
 function erode(pool, dmg) {
@@ -34,35 +35,30 @@ function erode(pool, dmg) {
   return dmg
 }
 
-/**
- * Resolve a battle between two 12-scalar blocks.
- * Bombardment resolves first (and its excess spills to the next lower domain);
- * attack resolves second (excess wasted). Surviving attack scores at the end:
- * player → gold gained, enemy → legitimacy lost.
- */
-export function resolveCombat(playerScalars, enemyScalars) {
-  const P = cloneScalars(playerScalars)
-  const E = cloneScalars(enemyScalars)
-
+// Run the rounds in place, calling onFrame(phase, domain) after each sub-step.
+function runRounds(P, E, onFrame) {
   for (let round = 0; round < 8; round++) {
-    let before = totalPools(P) + totalPools(E)
+    const before = totalPools(P) + totalPools(E)
     let spillToP = 0
     let spillToE = 0
     for (const d of ORDER) {
+      if (!domainHasForce(P[d]) && !domainHasForce(E[d])) continue
       if (spillToP > 0) spillToP = erode(P[d], spillToP)
       if (spillToE > 0) spillToE = erode(E[d], spillToE)
-      // bombardment (snapshot), spills downward
       const pb = P[d].bomb
       const eb = E[d].bomb
       spillToE += erode(E[d], pb)
       spillToP += erode(P[d], eb)
-      // attack (post-bombardment), no spill
+      onFrame && onFrame('bombard', d)
       erode(E[d], P[d].atk)
       erode(P[d], E[d].atk)
+      onFrame && onFrame('attack', d)
     }
-    if (totalPools(P) + totalPools(E) === before) break // stable
+    if (totalPools(P) + totalPools(E) === before) break
   }
+}
 
+function scoreOutcome(P, E) {
   let goldGained = 0
   let legitimacyLost = 0
   const domains = []
@@ -77,14 +73,34 @@ export function resolveCombat(playerScalars, enemyScalars) {
     else if (!eForce && !pForce) result = 'clear'
     domains.push({ domain: d, player: P[d], enemy: E[d], result })
   }
-  const won = domains.filter((x) => x.result === 'win').map((x) => x.domain)
-  const lost = domains.filter((x) => x.result === 'loss').map((x) => x.domain)
-  return { domains, goldGained: Math.floor(goldGained), legitimacyLost: Math.floor(legitimacyLost), won, lost }
+  return {
+    domains,
+    goldGained: Math.floor(goldGained),
+    legitimacyLost: Math.floor(legitimacyLost),
+    won: domains.filter((x) => x.result === 'win').map((x) => x.domain),
+    lost: domains.filter((x) => x.result === 'loss').map((x) => x.domain),
+  }
 }
-function totalPools(s) {
-  let t = 0
-  for (const d of DOMAINS) t += s[d].atk + s[d].def + s[d].bomb
-  return t
+
+/** Resolve a battle; returns the scored outcome. */
+export function resolveCombat(playerScalars, enemyScalars) {
+  const P = cloneScalars(playerScalars)
+  const E = cloneScalars(enemyScalars)
+  runRounds(P, E)
+  return scoreOutcome(P, E)
+}
+
+/** Resolve a battle AND record a frame after every sub-step (for animation). */
+export function resolveCombatTimeline(playerScalars, enemyScalars) {
+  const P = cloneScalars(playerScalars)
+  const E = cloneScalars(enemyScalars)
+  const frames = []
+  const push = (phase, domain) => frames.push({ phase, domain, P: cloneScalars(P), E: cloneScalars(E) })
+  push('start', null)
+  runRounds(P, E, push)
+  const result = scoreOutcome(P, E)
+  push('end', null)
+  return { frames, result, start: { P: cloneScalars(playerScalars), E: cloneScalars(enemyScalars) } }
 }
 
 /**
