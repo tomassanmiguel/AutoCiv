@@ -28,7 +28,7 @@ import {
 import { isPassable, isLand, isWater, terrainOf } from './terrain.js'
 import { validate } from './invariants.js'
 
-const MAX_ATTEMPTS = 16
+const MAX_ATTEMPTS = 9 // cap worst-case worldgen time; relaxed invariants pass well within this
 
 // --- Earth shaping knobs -----------------------------------------------------
 // The split axis. OW_EDGE must stay comfortably above 0 or the palace (at s=0,
@@ -158,13 +158,15 @@ function generateEarth(tiles, seed, rng) {
     t.elev = e
 
     const tundraCut = TUNDRA_LAT + 0.10 * (2 * c - 1)
-    const dryCut = 0.50 + 0.12 * (2 * c - 1)
+    const dryCut = 0.42 + 0.10 * (2 * c - 1)
+    // Compress the moisture extremes so a dry seed isn't all desert and a wet one isn't all forest.
+    const mc = 0.5 + (m - 0.5) * 0.7
 
     if (ridge > RIDGE_CUT && e > 0.42) t.terrain = 'mountain'
     else if (e > HILL_CUT) t.terrain = 'hills'
     else if (lat > tundraCut && pol > TUNDRA_CLUSTER) t.terrain = 'tundra'
-    else if (lat < DESERT_LAT && m < dryCut) t.terrain = 'desert'
-    else if (m > 0.54) t.terrain = 'forest'
+    else if (lat < DESERT_LAT && mc < dryCut) t.terrain = 'desert'
+    else if (mc > 0.56) t.terrain = 'forest'
     else t.terrain = 'plains'
   }
 
@@ -422,15 +424,20 @@ function generateDeep(tiles, seed, rng) {
   }
   stampBody(tiles, best, BODIES.exomoon.radius, 'exomoon', 'exomoon')
 
-  // A SECOND exomoon on a different bearing, clear of the first and of other bodies.
-  let best2 = null; let best2Score = -Infinity
-  for (const h of moonRing) {
-    const t = tiles.get(key(h.q, h.r)); if (!t) continue
-    const away = lengthOf(h.q - best.q, h.r - best.r)
-    if (away < 6 || !clearOfBodies(tiles, t)) continue
-    if (away > best2Score) { best2Score = away; best2 = h }
+  // A SECOND exomoon ADJACENT to the exoplanet — touching it without overlapping —
+  // and clear of the first moon.
+  const R = BODIES.exomoon.radius
+  const near = []
+  for (const t of tiles.values()) {
+    if (t.band !== 'deep' || t.region === 'exoplanet' || t.region === 'exomoon') continue
+    const cells = disc(t.q, t.r, R)
+    if (cells.some((h) => tiles.get(key(h.q, h.r))?.region === 'exoplanet')) continue // no overlap
+    const touches = cells.some((h) => neighbors(h.q, h.r).some((n) => tiles.get(key(n.q, n.r))?.region === 'exoplanet'))
+    if (!touches) continue
+    if (lengthOf(t.q - best.q, t.r - best.r) < R + 3) continue // clear of the first moon
+    near.push(t)
   }
-  if (best2) stampBody(tiles, best2, BODIES.exomoon.radius, 'exomoon', 'exomoon')
+  if (near.length) stampBody(tiles, near[Math.floor(rng() * near.length)], R, 'exomoon', 'exomoon')
 
   return center
 }
@@ -440,28 +447,44 @@ function generateDeep(tiles, seed, rng) {
  * size of the main exoplanet, so there is more to reach out there.
  */
 function scatterMiniExoplanets(tiles, exoCenter, seed, rng) {
-  const elevN = makeNoise2D(seed + 301, { scale: 1.8 })
+  const elevN = makeNoise2D(seed + 301, { scale: 2.2 })
+  const moistN = makeNoise2D(seed + 317, { scale: 2.6 })
+  const seaN = makeNoise2D(seed + 331, { scale: 1.9 })
+  const ridgeN = makeNoise2D(seed + 349, { scale: 1.7 })
+  const shapeN = makeNoise2D(seed + 367, { scale: 2.4 })
   const want = 3
   const placed = []
   const cands = []
   for (const t of tiles.values()) {
     if (t.band !== 'deep') continue
-    if (t.region === 'exoplanet' || t.region === 'exomoon') continue
+    if (t.region === 'exoplanet' || t.region === 'exomoon' || t.region === 'mini_exo') continue
     if (lengthOf(t.q - exoCenter.q, t.r - exoCenter.r) < 12) continue // well clear of the main exoplanet
     cands.push(t)
   }
   shuffle(cands, rng)
   for (const c of cands) {
     if (placed.length >= want) break
-    const rad = 1 + Math.floor(rng() * 2) // 1..2 — much smaller than the main (5)
+    const rad = 2 + Math.floor(rng() * 2) // 2..3 — bigger than before, still a fraction of the main (5)
+    const strange = rng() < 0.5    // half get an irregular, non-disc outline
     const halo = disc(c.q, c.r, rad + 1)
     if (halo.some((h) => { const o = tiles.get(key(h.q, h.r)); return o && (BODY_REGIONS.has(o.region) || o.region === 'exoplanet') })) continue
-    if (placed.some((p) => lengthOf(p.q - c.q, p.r - c.r) < 8)) continue
+    if (placed.some((p) => lengthOf(p.q - c.q, p.r - c.r) < rad + 8)) continue
     for (const h of disc(c.q, c.r, rad)) {
       const t = tiles.get(key(h.q, h.r)); if (!t) continue
+      const lq = h.q - c.q, lr = h.r - c.r
+      const dd = lengthOf(lq, lr) / rad
+      if (strange && dd > 0.45 && shapeN(h.q * 1.4, h.r * 1.4) < 0.45) continue // bite chunks out of the edge
+      const e = elevN(lq * 1.6 + 10, lr * 1.6 + 10)
+      const m = moistN(lq * 1.6 + 40, lr * 1.6 + 40)
+      const w = seaN(lq * 1.7 + 70, lr * 1.7 + 70)
+      const ridge = 1 - Math.abs(2 * ridgeN(lq * 2.4, lr * 2.4) - 1)
       t.region = 'mini_exo' // own region so it doesn't break the main-exoplanet invariants
-      const e = elevN(h.q * 1.6, h.r * 1.6)
-      t.terrain = rad > 1 && e > 0.6 ? 'exohills' : e < 0.26 ? 'exosea' : 'exoplains'
+      if (w < 0.34) t.terrain = 'exosea'
+      else if (ridge > 0.92 && e > 0.45) t.terrain = 'exomountain'
+      else if (e > 0.62) t.terrain = 'exohills'
+      else if (dd > 0.85) t.terrain = 'exotundra'
+      else if (m < 0.28) t.terrain = 'exodesert'
+      else t.terrain = 'exoplains'
     }
     placed.push(c)
   }

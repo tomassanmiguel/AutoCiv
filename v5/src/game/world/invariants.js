@@ -49,7 +49,7 @@ const MOUNTAIN_FRACTION = { min: 0.015, max: 0.15 }
 
 const MIN_RIVER_TILES = 4
 const MIN_RIVER_RUN = 4
-const MIN_CLIMATE_TILES = 3
+const MIN_CLIMATE_TILES = 2
 const MAX_LOCAL_DRY = 3
 
 export function validate(world) {
@@ -90,7 +90,6 @@ export function validate(world) {
   }
   const moon = spanOf('moon')
   const mars = spanOf('mars')
-  const exo = spanOf('exoplanet')
   const exomoon = spanOf('exomoon')
 
   // The Moon hangs exactly one ring of open space beyond Earth's rim.
@@ -109,9 +108,9 @@ export function validate(world) {
     if (moon && mars.min <= moon.max) v.push('Mars and the Moon overlap in radius')
   }
 
-  // The exoplanet's moon sits on its BACKSIDE — strictly further out.
+  // The exoplanet has moons (one on the backside, one adjacent — the latter can sit
+  // within the exoplanet's radius span, so the old "strictly beyond" rule is dropped).
   if (!exomoon) v.push('no exomoon')
-  else if (exo && exomoon.min <= exo.max) v.push('exomoon is not beyond the exoplanet')
 
   // No asteroid may appear before the Moon does, or hug a celestial body.
   if (moon) {

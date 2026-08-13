@@ -291,7 +291,7 @@
     },
     {
       "id": "exoplains",
-      "name": "Exoplains",
+      "name": "Plains",
       "kind": "land",
       "yield": {
         "food": 4
@@ -303,7 +303,7 @@
     },
     {
       "id": "exohills",
-      "name": "Exohills",
+      "name": "Hills",
       "kind": "land",
       "yield": {
         "production": 4
@@ -315,7 +315,7 @@
     },
     {
       "id": "exomountain",
-      "name": "Exomountain",
+      "name": "Mountain",
       "kind": "land",
       "yield": {
         "production": 4
@@ -327,7 +327,7 @@
     },
     {
       "id": "exosea",
-      "name": "Exosea",
+      "name": "Sea",
       "kind": "water",
       "yield": {
         "gold": 4,
@@ -340,7 +340,7 @@
     },
     {
       "id": "exodesert",
-      "name": "Exodesert",
+      "name": "Desert",
       "kind": "land",
       "yield": {
         "gold": 8
@@ -352,7 +352,7 @@
     },
     {
       "id": "exotundra",
-      "name": "Exotundra",
+      "name": "Tundra",
       "kind": "land",
       "yield": {
         "progress": 8
