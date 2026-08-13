@@ -1414,6 +1414,123 @@
           "filter": "cavalry"
         }
       ]
+    },
+    {
+      "id": "cuiraseer",
+      "name": "Cuirassier",
+      "type": "unit",
+      "subtype": "cavalry",
+      "era": "Medieval",
+      "production": 7,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "30 attack, 20 defense.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 30
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 20
+        }
+      ]
+    },
+    {
+      "id": "castle",
+      "name": "Castle",
+      "type": "building",
+      "subtype": "defense",
+      "era": "Medieval",
+      "production": 7,
+      "upkeep": 4,
+      "placement": {
+        "kind": "land",
+        "only": [
+          "hills"
+        ]
+      },
+      "desc": "60 defense, +10 for each adjacent unit.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 60
+        },
+        {
+          "name": "combat_per_adjacent",
+          "domain": "land",
+          "stat": "def",
+          "amount": 10,
+          "filter": "military"
+        }
+      ]
+    },
+    {
+      "id": "longship",
+      "name": "Longship",
+      "type": "unit",
+      "subtype": "naval",
+      "era": "Medieval",
+      "production": 7,
+      "upkeep": 3,
+      "placement": {
+        "kind": "water",
+        "only": [
+          "coast",
+          "ocean",
+          "river"
+        ]
+      },
+      "desc": "40 sea attack.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "atk",
+          "amount": 40
+        }
+      ]
+    },
+    {
+      "id": "observatory",
+      "name": "Observatory",
+      "type": "building",
+      "subtype": "progress",
+      "era": "Medieval",
+      "production": 7,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land"
+      },
+      "desc": "+2 progress, +2 for each adjacent mountain.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 2
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "progress",
+          "amount": 2,
+          "filter": "mountain"
+        }
+      ],
+      "combat": []
     }
   ],
   "techs": [
@@ -2270,6 +2387,86 @@
           "subtype": "progress",
           "resource": "progress",
           "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "stirrups",
+      "name": "Stirrups",
+      "flavor": "Cavalry",
+      "era": "Medieval",
+      "desc": "Unlocks the Cuirassier.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "cuiraseer"
+        }
+      ]
+    },
+    {
+      "id": "castles",
+      "name": "Castles",
+      "flavor": "Defense",
+      "era": "Medieval",
+      "desc": "Unlocks the Castle.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "castle"
+        }
+      ]
+    },
+    {
+      "id": "clinker_construction",
+      "name": "Clinker Construction",
+      "flavor": "Naval",
+      "era": "Medieval",
+      "desc": "Unlocks the Longship.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "longship"
+        }
+      ]
+    },
+    {
+      "id": "astronomy",
+      "name": "Astronomy",
+      "flavor": "Progress",
+      "era": "Medieval",
+      "desc": "Unlocks the Observatory.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "observatory"
+        }
+      ]
+    },
+    {
+      "id": "algebra",
+      "name": "Algebra",
+      "flavor": "Progress",
+      "era": "Medieval",
+      "desc": "Reduce the cost of all future progress by 10% (rounded down).",
+      "effects": [
+        {
+          "name": "progress_cost_mult",
+          "factor": 0.9
+        }
+      ]
+    },
+    {
+      "id": "crusades",
+      "name": "Crusades",
+      "flavor": "Military",
+      "era": "Medieval",
+      "desc": "Gain land attack equal to legitimacy divided by 2.",
+      "effects": [
+        {
+          "name": "army_from_legitimacy",
+          "stat": "atk",
+          "domain": "land",
+          "divisor": 2
         }
       ]
     }

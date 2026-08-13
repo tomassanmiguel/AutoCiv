@@ -132,8 +132,8 @@ export class GameEngine {
   _recomputeMods() {
     const m = {
       tileYield: {}, tileYieldMult: {}, unitsProduce: {}, upkeepReduction: 0, prodCost: { all: 0, building: 0 },
-      palaceYield: {}, palaceMult: 1, vision: 0, armyFlat: [], onCombat: [], perUnique: {},
-      settlementYield: {}, buildingSubtypeYield: {}, freeReroll: false,
+      palaceYield: {}, palaceMult: 1, vision: 0, armyFlat: [], armyFromLegit: [], onCombat: [], perUnique: {},
+      settlementYield: {}, buildingSubtypeYield: {}, progressCostMult: 1, freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
     const expansions = new Set()
@@ -159,6 +159,8 @@ export class GameEngine {
           case 'building_subtype_yield': (m.buildingSubtypeYield[e.subtype] ||= {})[e.resource] = (m.buildingSubtypeYield[e.subtype][e.resource] || 0) + e.amount; break
           case 'palace_yield_mult': m.palaceMult *= e.factor; break
           case 'tile_yield_mult': (m.tileYieldMult[e.terrain] ||= {})[e.resource] = (m.tileYieldMult[e.terrain][e.resource] || 1) * e.factor; break
+          case 'progress_cost_mult': m.progressCostMult *= e.factor; break
+          case 'army_from_legitimacy': m.armyFromLegit.push({ stat: e.stat, domain: e.domain, divisor: e.divisor }); break
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
         }
@@ -196,6 +198,7 @@ export class GameEngine {
         case 'water': if (t.terrain === 'coast' || t.terrain === 'ocean' || t.terrain === 'river') n++; break
         case 'hills': if (t.terrain === 'hills') n++; break
         case 'desert': if (t.terrain === 'desert') n++; break
+        case 'mountain': if (t.terrain === 'mountain') n++; break
         case 'any': n++; break
         default: break
       }
@@ -307,6 +310,12 @@ export class GameEngine {
       const ds = f.domain === 'all' ? DOMAINS : [f.domain]
       for (const d of ds) s[d][f.stat] += f.amount * mil
     }
+    // army bonus scaled from legitimacy (Crusades, Nationalism) — applied once
+    for (const f of this.mods.armyFromLegit) {
+      const add = Math.floor(this.legitimacy / f.divisor)
+      const ds = f.domain === 'all' ? DOMAINS : [f.domain]
+      for (const d of ds) s[d][f.stat] += add
+    }
     // gold-debt penalty: negative gold subtracts that much from every scalar
     const debt = this.resources.gold < 0 ? -this.resources.gold : 0
     if (debt) for (const d of DOMAINS) for (const st of ['atk', 'def', 'bomb']) s[d][st] = Math.max(0, s[d][st] - debt)
@@ -405,10 +414,11 @@ export class GameEngine {
     }
     this.offer = offer
   }
+  progressCostOf(era) { return Math.floor(progressCost(eraIndex(era)) * (this.mods.progressCostMult || 1)) }
   offerData() {
     return this.offer.map((o) => {
       const t = TECHS[o.id]
-      const cost = progressCost(eraIndex(t.era))
+      const cost = this.progressCostOf(t.era)
       return { ...o, tech: t, cost, affordable: this.resources.progress >= cost }
     })
   }
@@ -416,7 +426,7 @@ export class GameEngine {
     const slot = this.offer.findIndex((o) => o.id === id)
     if (slot < 0 || this.status !== 'playing') return false
     const t = TECHS[id]
-    const cost = progressCost(eraIndex(t.era))
+    const cost = this.progressCostOf(t.era)
     if (this.resources.progress < cost) return false
     this.resources.progress -= cost
     this.taken.add(id)

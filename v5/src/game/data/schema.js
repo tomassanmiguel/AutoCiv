@@ -75,12 +75,16 @@ export const EFFECT_KINDS = [
   N('building_subtype_yield', 'Buildings of a type +yield', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
   N('palace_yield_mult', 'Multiply palace yield', { where: 'tech', params: [{ key: 'factor', type: 'number' }] }),
   N('tile_yield_mult', 'Multiply a terrain’s yield', { where: 'tech', params: [{ key: 'terrain', type: 'terrain' }, { key: 'resource', type: 'enum', options: RESOURCES }, { key: 'factor', type: 'number' }] }),
+  N('progress_cost_mult', 'Scale future progress cost', { where: 'tech', params: [{ key: 'factor', type: 'number' }] }),
+  N('army_from_legitimacy', 'Army +scalar from legitimacy', { where: 'tech', params: [
+    { key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'divisor', type: 'number' },
+  ] }),
 
   // -- deployable econ (per turn) --
   N('self_yield', 'Produces (self)', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
   N('per_adjacent', '+resource per adjacent', { where: 'econ', params: [
     { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' },
-    { key: 'filter', type: 'enum', options: ['building', 'settlement', 'military', 'forest_or_mountain', 'water', 'hills', 'desert', 'any'] },
+    { key: 'filter', type: 'enum', options: ['building', 'settlement', 'military', 'forest_or_mountain', 'water', 'hills', 'desert', 'mountain', 'any'] },
   ] }),
   N('growth_per_turn', 'Output grows each turn', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
   N('count_scaling', '+resource per owned of this type', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
@@ -92,7 +96,7 @@ export const EFFECT_KINDS = [
   ] }),
   N('combat_per_adjacent', '+scalar per adjacent', { where: 'combat', params: [
     { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
-    { key: 'filter', type: 'enum', options: ['fortification', 'building', 'same_type', 'cavalry', 'military'] },
+    { key: 'filter', type: 'enum', options: ['fortification', 'building', 'same_type', 'cavalry', 'military', 'mountain'] },
   ] }),
   N('combat_on_terrain', 'Scalar bonus on terrain', { where: 'combat', params: [
     { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS },
