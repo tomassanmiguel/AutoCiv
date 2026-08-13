@@ -3796,6 +3796,203 @@
           "amount": 1
         }
       ]
+    },
+    {
+      "id": "satelites",
+      "name": "Satelites",
+      "flavor": "Expansion",
+      "era": "Modern",
+      "desc": "Enables crossing and settling near space.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "near_space"
+        }
+      ]
+    },
+    {
+      "id": "advanced_propulsion",
+      "name": "Advanced Propulsion",
+      "flavor": "Expansion",
+      "era": "Solar",
+      "desc": "Enables crossing and settling deep space around the planets.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "space"
+        }
+      ]
+    },
+    {
+      "id": "habs",
+      "name": "Habs",
+      "flavor": "Expansion",
+      "era": "Information",
+      "desc": "Enables settling the lunar and martian plains.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "moon"
+        },
+        {
+          "name": "enable_expansion",
+          "terrain": "mars"
+        }
+      ]
+    },
+    {
+      "id": "helium3",
+      "name": "Helium-3",
+      "flavor": "Expansion",
+      "era": "Solar",
+      "desc": "Enables settling lunar craters.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "lunar_crater"
+        }
+      ]
+    },
+    {
+      "id": "robotics",
+      "name": "Robotics",
+      "flavor": "Expansion",
+      "era": "Solar",
+      "desc": "Enables settling martian craters.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "mars_mountain"
+        }
+      ]
+    },
+    {
+      "id": "xenoculture",
+      "name": "Xenoculture",
+      "flavor": "Expansion",
+      "era": "Solar",
+      "desc": "Enables settling martian ice caps.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "mars_ice"
+        }
+      ]
+    },
+    {
+      "id": "asteroid_mining",
+      "name": "Asteroid Mining",
+      "flavor": "Expansion",
+      "era": "Solar",
+      "desc": "Enables settling asteroids.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "asteroid"
+        }
+      ]
+    },
+    {
+      "id": "cryogenics",
+      "name": "Cryogenics",
+      "flavor": "Expansion",
+      "era": "Exodus",
+      "desc": "Enables settling exoplanet tiles.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "exoplains"
+        },
+        {
+          "name": "enable_expansion",
+          "terrain": "exohills"
+        },
+        {
+          "name": "enable_expansion",
+          "terrain": "exomountain"
+        },
+        {
+          "name": "enable_expansion",
+          "terrain": "exosea"
+        },
+        {
+          "name": "enable_expansion",
+          "terrain": "exodesert"
+        },
+        {
+          "name": "enable_expansion",
+          "terrain": "exotundra"
+        },
+        {
+          "name": "enable_expansion",
+          "terrain": "exomoon"
+        }
+      ]
+    },
+    {
+      "id": "ftl",
+      "name": "FTL",
+      "flavor": "Expansion",
+      "era": "Liminite",
+      "desc": "Enables settling deep space.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "deep_space"
+        }
+      ]
+    },
+    {
+      "id": "teraforming",
+      "name": "Teraforming",
+      "flavor": "Expansion",
+      "era": "Galactic",
+      "desc": "Enables settling planets.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "planet"
+        }
+      ]
+    },
+    {
+      "id": "dark_matter",
+      "name": "Dark Matter",
+      "flavor": "Expansion",
+      "era": "Galactic",
+      "desc": "Enables settling singularities.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "singularity"
+        }
+      ]
+    },
+    {
+      "id": "dyson_sphere",
+      "name": "Dyson Sphere",
+      "flavor": "Expansion",
+      "era": "Galactic",
+      "desc": "Enables settling stars.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "star"
+        }
+      ]
+    },
+    {
+      "id": "colonialism",
+      "name": "Colonialism",
+      "flavor": "Expansion",
+      "era": "Exploration",
+      "desc": "Enables settling New World tiles.",
+      "effects": [
+        {
+          "name": "enable_region",
+          "region": "new_world"
+        }
+      ]
     }
   ],
   "enemy": {

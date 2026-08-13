@@ -15,6 +15,7 @@ import {
 const RES = ['production', 'gold', 'food', 'progress']
 const CREATIVE_CAP = 999999 // resources/legitimacy pinned here in Creative Mode
 const MERC_COST = { land: 1, sea: 2, sky: 3, space: 4 } // gold per +1 temporary attack, by domain
+const GATED_REGIONS = new Set(['new_world']) // regions needing a tech to settle (Colonialism → New World)
 
 export class GameEngine {
   constructor(seed = 1) {
@@ -161,6 +162,7 @@ export class GameEngine {
       terrainAdjSettlement: [], tileYieldFactor: {}, isolatedMult: [], subtypeCombatFromOutput: [],
       mercenaries: false, mercDefPerHire: 0,
       critPerRanged: 0, crossBombard: [],
+      regions: new Set(),
       freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
@@ -171,6 +173,7 @@ export class GameEngine {
           case 'tile_yield': (m.tileYield[e.terrain] ||= {})[e.resource] = (m.tileYield[e.terrain][e.resource] || 0) + e.amount; break
           case 'unlock_deployable': unlocked.add(e.deployable); break
           case 'enable_expansion': expansions.add(e.terrain); break
+          case 'enable_region': m.regions.add(e.region); break
           case 'units_produce': m.unitsProduce[e.resource] = (m.unitsProduce[e.resource] || 0) + e.amount; break
           case 'palace_yield_flat': {
             const list = e.resource === 'all' ? RES : [e.resource]
@@ -217,7 +220,7 @@ export class GameEngine {
         }
       }
     }
-    if (this.creative) { for (const id in DEPLOYABLES) unlocked.add(id); for (const t of Object.values(TERRAIN)) if (t.unlock) expansions.add(t.id) }
+    if (this.creative) { for (const id in DEPLOYABLES) unlocked.add(id); for (const t of Object.values(TERRAIN)) if (t.unlock) expansions.add(t.id); for (const rg of GATED_REGIONS) m.regions.add(rg) }
     this.mods = m
     this.unlocked = unlocked
     this.expansions = expansions
@@ -584,6 +587,7 @@ export class GameEngine {
       const ter = TERRAIN[t.terrain]
       if (!ter) continue // only content terrains are settleable (Earth land + coast)
       if (ter.unlock && !this.expansions.has(t.terrain)) continue
+      if (GATED_REGIONS.has(t.region) && !this.mods.regions.has(t.region)) continue // Colonialism gates the New World
       const cost = this.expandCost(t)
       out.push({ key: k, terrain: t.terrain, cost, affordable: this.resources.food >= cost })
     }
@@ -597,6 +601,7 @@ export class GameEngine {
     const ter = TERRAIN[t.terrain]
     if (!ter) return false
     if (ter.unlock && !this.expansions.has(t.terrain)) return false
+    if (GATED_REGIONS.has(t.region) && !this.mods.regions.has(t.region)) return false
     const cost = this.expandCost(t)
     if (this.resources.food < cost) return false
     this.resources.food -= cost
