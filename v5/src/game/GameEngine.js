@@ -395,6 +395,36 @@ export class GameEngine {
   }
 
   // ---- selectors for UI ----
+  /** Per-turn income, upkeep, and net (gold net of upkeep). */
+  perTurn() {
+    const { income, upkeep } = this.computeEconomy()
+    const net = { ...income }
+    net.gold -= upkeep
+    return { income, upkeep, net }
+  }
+  /** Per-turn output of the deployable on a tile (only nonzero resources). */
+  tileOutput(k) {
+    const inst = this.deployed.get(k)
+    if (!inst) return null
+    const dep = DEPLOYABLES[inst.id]
+    const t = this.world.byKey.get(k)
+    const out = {}
+    const add = (r, v) => { if (v) out[r] = (out[r] || 0) + v }
+    for (const e of dep.econ || []) {
+      switch (e.name) {
+        case 'self_yield': add(e.resource, e.amount); break
+        case 'per_adjacent': add(e.resource, e.amount * this.adjCount(k, e.filter)); break
+        case 'growth_per_turn': add(e.resource, e.amount * (inst.age || 0)); break
+        case 'count_scaling': add(e.resource, e.amount * this.ownedCount(inst.id)); break
+        case 'double_tile_yield': { const y = this.terrainYield(t); for (const r in y) add(r, y[r] * 2); break }
+        default: break
+      }
+    }
+    return out
+  }
+  /** Combat scalar contribution of the deployable on a tile. */
+  instScalars(k) { const inst = this.deployed.get(k); return inst ? this._instScalars(k, inst) : null }
+
   buildableList() {
     return [...this.unlocked].filter((id) => id !== 'palace').map((id) => ({
       id, dep: DEPLOYABLES[id], cost: this.buildCost(id), affordable: this.canBuild(id),
