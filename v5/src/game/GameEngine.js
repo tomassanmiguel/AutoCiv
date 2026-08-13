@@ -141,6 +141,7 @@ export class GameEngine {
       armyPerSameType: [], foodDistanceFactor: 1, emptyTileCombat: [], tradeNetworks: false,
       progressPerFlavor: {}, keepNaturalProduction: false, armyGrowth: [], palaceRandomGrowth: 0,
       yieldMult: [], subtypeConvert: [], armyFromSettlement: [],
+      terrainAdjSettlement: [], tileYieldFactor: {}, isolatedMult: [], subtypeCombatFromOutput: [],
       freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
@@ -183,6 +184,10 @@ export class GameEngine {
           case 'subtype_yield_mult': m.yieldMult.push({ subtype: e.subtype, deployable: e.deployable, resource: e.resource, factor: e.factor }); break
           case 'subtype_convert_yield': m.subtypeConvert.push({ subtype: e.subtype, deployable: e.deployable, from: e.from, to: e.to }); break
           case 'army_from_settlement_output': m.armyFromSettlement.push({ stat: e.stat, domain: e.domain }); break
+          case 'terrain_adjacent_settlement': m.terrainAdjSettlement.push({ terrain: e.terrain, resource: e.resource, amount: e.amount }); break
+          case 'override_tile_yield_factor': m.tileYieldFactor[e.deployable] = e.factor; break
+          case 'subtype_isolated_mult': m.isolatedMult.push({ subtype: e.subtype, deployable: e.deployable, factor: e.factor }); break
+          case 'subtype_combat_from_output': m.subtypeCombatFromOutput.push({ subtype: e.subtype, deployable: e.deployable, from: e.from, domain: e.domain }); break
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
         }
@@ -245,6 +250,16 @@ export class GameEngine {
     }
     return n
   }
+  /** Sum of the natural terrain yield of `resource` over controlled tiles adjacent to k (Bridge). */
+  _adjacentTileYield(k, resource) {
+    let sum = 0
+    for (const nk of this.neighborKeys(k)) {
+      if (!this.controlled.has(nk)) continue
+      const y = this.terrainYield(this.world.byKey.get(nk))
+      sum += y[resource] || 0
+    }
+    return sum
+  }
   _settlementOutputTotal() {
     let sum = 0
     for (const [k, v] of this.deployed) if (DEPLOYABLES[v.id].subtype === 'settlement') { const o = this.tileOutput(k); if (o) for (const rr in o) sum += o[rr] }
@@ -259,7 +274,15 @@ export class GameEngine {
     for (const k of this.controlled) {
       const t = this.world.byKey.get(k)
       const inst = this.deployed.get(k)
-      if (!inst) { const y = this.terrainYield(t); for (const r in y) income[r] += y[r]; continue }
+      if (!inst) {
+        const y = this.terrainYield(t)
+        for (const r in y) income[r] += y[r]
+        // Feudalism: a producing terrain tile adjacent to a settlement gains extra yield.
+        for (const fs of this.mods.terrainAdjSettlement) {
+          if (t.terrain === fs.terrain && (y[fs.resource] || 0) > 0 && this.adjCount(k, 'settlement') > 0) income[fs.resource] += fs.amount
+        }
+        continue
+      }
       const dep = DEPLOYABLES[inst.id]
       if (!dep.unique) upkeep += Math.max(0, dep.upkeep - this.mods.upkeepReduction)
       const bucket = k === this.palaceKey ? palaceInc : income
@@ -272,10 +295,11 @@ export class GameEngine {
           case 'per_adjacent': out[e.resource] += e.amount * this.adjCount(k, e.filter); break
           case 'growth_per_turn': out[e.resource] += e.amount * (inst.age || 0); break
           case 'count_scaling': out[e.resource] += e.amount * this.ownedCount(inst.id); break
-          case 'double_tile_yield': { const y = this.terrainYield(t); for (const r in y) out[r] += y[r] * 2; break }
+          case 'double_tile_yield': { const y = this.terrainYield(t); const f = this.mods.tileYieldFactor[inst.id] || 2; for (const r in y) out[r] += y[r] * f; break }
           case 'gold_from_army': out.gold += Math.ceil(this.playerScalars().land.atk * (e.percent / 100)); break
           case 'self_per_terrain_in_range': out[e.resource] += e.amount * this._countTerrainInRange(k, e.terrain, e.range); break
           case 'self_per_progress_tile_in_range': out[e.resource] += e.amount * this._countProgressTilesInRange(k, e.range); break
+          case 'aura_tile_yield_mult': out[e.resource] += (e.factor - 1) * this._adjacentTileYield(k, e.resource); break
           default: break
         }
       }
@@ -284,10 +308,12 @@ export class GameEngine {
         const by = this.mods.buildingSubtypeYield[dep.subtype]
         if (by) for (const r in by) out[r] += by[r]
       }
-      // tech conversions (Monotheism: temple gold = its progress) then multipliers (Tithing, Citizenship)
+      // tech conversions (Monotheism: temple gold = its progress) then multipliers (Tithing, Citizenship, Scientific Method)
       const hit = (m) => m.deployable ? dep.id === m.deployable : dep.subtype === m.subtype
       for (const cv of this.mods.subtypeConvert) if (hit(cv)) out[cv.to] += out[cv.from] || 0
-      for (const mv of this.mods.yieldMult) if (hit(mv)) out[mv.resource] *= mv.factor
+      for (const mv of this.mods.yieldMult) if (hit(mv)) { if (mv.resource === 'all') { for (const r in out) out[r] *= mv.factor } else out[mv.resource] *= mv.factor }
+      // Pilgrimage: shrine with no adjacent building multiplies its whole output.
+      for (const im of this.mods.isolatedMult) if (hit(im) && this.adjCount(k, 'building') === 0) for (const r in out) out[r] *= im.factor
       for (const r in out) bucket[r] += out[r]
     }
     // palace flat bonuses + accrued Hereditary Rule growth, then the whole palace yield ×palaceMult
@@ -373,8 +399,18 @@ export class GameEngine {
     if (db) out.land.def += db
     // Tribalism: every unit +scalar per OTHER unit of the same type.
     if (dep.type === 'unit') for (const a of this.mods.armyPerSameType) out.land[a.stat] += a.amount * Math.max(0, this.ownedCount(inst.id) - 1)
-    // per-subtype flat bonuses (Bayonets…) applied before the subtype multiplier
+    // per-subtype flat bonuses (Bayonets, Hedgerows…) applied before the subtype multiplier
     for (const f of this.mods.subtypeCombatFlat) if (f.subtype === dep.subtype) out[f.domain][f.stat] += f.amount
+    // Inquisition: a deployable gains atk & def equal to one of its own outputs.
+    if (this.mods.subtypeCombatFromOutput.length) {
+      const oh = (m) => m.deployable ? dep.id === m.deployable : dep.subtype === m.subtype
+      for (const f of this.mods.subtypeCombatFromOutput) {
+        if (!oh(f)) continue
+        const o = this.tileOutput(k)
+        const v = (o && o[f.from]) || 0
+        out[f.domain].atk += v; out[f.domain].def += v
+      }
+    }
     // tech multipliers on a whole subtype (Flying Buttress, Shipbuilding…)
     const smult = this.mods.subtypeCombatMult[dep.subtype]
     if (smult) for (const d of DOMAINS) for (const st of ['atk', 'def', 'bomb']) out[d][st] *= smult
@@ -650,10 +686,16 @@ export class GameEngine {
         case 'per_adjacent': add(e.resource, e.amount * this.adjCount(k, e.filter)); break
         case 'growth_per_turn': add(e.resource, e.amount * (inst.age || 0)); break
         case 'count_scaling': add(e.resource, e.amount * this.ownedCount(inst.id)); break
-        case 'double_tile_yield': { const y = this.terrainYield(t); for (const r in y) add(r, y[r] * 2); break }
+        case 'double_tile_yield': { const y = this.terrainYield(t); const f = this.mods.tileYieldFactor[inst.id] || 2; for (const r in y) add(r, y[r] * f); break }
+        case 'aura_tile_yield_mult': add(e.resource, (e.factor - 1) * this._adjacentTileYield(k, e.resource)); break
         default: break
       }
     }
+    // mirror the tech conversions/multipliers computeEconomy applies, so cards match income
+    const hit = (m) => m.deployable ? dep.id === m.deployable : dep.subtype === m.subtype
+    for (const cv of this.mods.subtypeConvert) if (hit(cv)) add(cv.to, out[cv.from] || 0)
+    for (const mv of this.mods.yieldMult) if (hit(mv)) { if (mv.resource === 'all') { for (const r in out) out[r] *= mv.factor } else if (out[mv.resource]) out[mv.resource] *= mv.factor }
+    for (const im of this.mods.isolatedMult) if (hit(im) && this.adjCount(k, 'building') === 0) for (const r in out) out[r] *= im.factor
     return out
   }
   /** Combat scalar contribution of the deployable on a tile. */

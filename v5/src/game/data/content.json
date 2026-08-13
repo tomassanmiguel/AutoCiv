@@ -2030,6 +2030,30 @@
         }
       ],
       "combat": []
+    },
+    {
+      "id": "bridge",
+      "name": "Bridge",
+      "type": "building",
+      "subtype": "gold",
+      "era": "Medieval",
+      "production": 7,
+      "upkeep": 2,
+      "placement": {
+        "kind": "water",
+        "only": [
+          "river"
+        ]
+      },
+      "desc": "Triples the gold yield of all adjacent tiles.",
+      "econ": [
+        {
+          "name": "aura_tile_yield_mult",
+          "resource": "gold",
+          "factor": 3
+        }
+      ],
+      "combat": []
     }
   ],
   "techs": [
@@ -3535,6 +3559,126 @@
           "name": "army_from_settlement_output",
           "stat": "def",
           "domain": "land"
+        }
+      ]
+    },
+    {
+      "id": "feudalism",
+      "name": "Feudalism",
+      "flavor": "Food",
+      "era": "Medieval",
+      "desc": "Plains tiles producing food adjacent to a settlement produce +2 food.",
+      "effects": [
+        {
+          "name": "terrain_adjacent_settlement",
+          "terrain": "plains",
+          "resource": "food",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "crop_rotation",
+      "name": "Crop Rotation",
+      "flavor": "Food",
+      "era": "Medieval",
+      "desc": "Farms quadruple tile yields instead of doubling.",
+      "effects": [
+        {
+          "name": "override_tile_yield_factor",
+          "deployable": "farm",
+          "factor": 4
+        }
+      ]
+    },
+    {
+      "id": "pilgrimage",
+      "name": "Pilgrimage",
+      "flavor": "Legitimacy",
+      "era": "Medieval",
+      "desc": "Shrines with no adjacent buildings produce triple output.",
+      "effects": [
+        {
+          "name": "subtype_isolated_mult",
+          "deployable": "shrine",
+          "factor": 3
+        }
+      ]
+    },
+    {
+      "id": "hedgerows",
+      "name": "Hedgerows",
+      "flavor": "Defense",
+      "era": "Medieval",
+      "desc": "All food buildings also gain +20 defense.",
+      "effects": [
+        {
+          "name": "subtype_combat_flat",
+          "subtype": "food",
+          "domain": "land",
+          "stat": "def",
+          "amount": 20
+        }
+      ]
+    },
+    {
+      "id": "cofferdams",
+      "name": "Cofferdams",
+      "flavor": "Gold",
+      "era": "Medieval",
+      "desc": "Unlocks the Bridge.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "bridge"
+        }
+      ]
+    },
+    {
+      "id": "inquisition",
+      "name": "Inquisition",
+      "flavor": "Military",
+      "era": "Renaissance",
+      "desc": "Temples gain +attack and +defense equal to their progress output.",
+      "effects": [
+        {
+          "name": "subtype_combat_from_output",
+          "deployable": "temple",
+          "from": "progress",
+          "domain": "land"
+        }
+      ]
+    },
+    {
+      "id": "scientific_method",
+      "name": "Scientific Method",
+      "flavor": "Progress",
+      "era": "Exploration",
+      "desc": "Increase the effect of all libraries, observatories, universities, and academies by 100%.",
+      "effects": [
+        {
+          "name": "subtype_yield_mult",
+          "deployable": "library",
+          "resource": "all",
+          "factor": 2
+        },
+        {
+          "name": "subtype_yield_mult",
+          "deployable": "observatory",
+          "resource": "all",
+          "factor": 2
+        },
+        {
+          "name": "subtype_yield_mult",
+          "deployable": "university",
+          "resource": "all",
+          "factor": 2
+        },
+        {
+          "name": "subtype_yield_mult",
+          "deployable": "academy",
+          "resource": "all",
+          "factor": 2
         }
       ]
     }

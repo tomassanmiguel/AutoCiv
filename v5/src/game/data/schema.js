@@ -92,9 +92,17 @@ export const EFFECT_KINDS = [
   N('keep_natural_production', 'Buildings keep tile production', { where: 'tech', params: [] }),
   N('army_growth_per_turn', 'Army +scalar accrues each turn', { where: 'tech', params: [{ key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'amount', type: 'number' }] }),
   N('palace_random_growth', 'Palace +random base yield each turn', { where: 'tech', params: [{ key: 'amount', type: 'number' }] }),
-  N('subtype_yield_mult', 'Multiply a subtype/deployable yield', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'factor', type: 'number' }] }),
+  N('subtype_yield_mult', 'Multiply a subtype/deployable yield', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'resource', type: 'enum', options: ['all', ...RES_ALL] }, { key: 'factor', type: 'number' }] }),
   N('subtype_convert_yield', 'Subtype/deployable also makes X = its Y', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'from', type: 'enum', options: RES_ALL }, { key: 'to', type: 'enum', options: RES_ALL }] }),
   N('army_from_settlement_output', 'Army +scalar = settlement output', { where: 'tech', params: [{ key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }] }),
+  N('terrain_adjacent_settlement', 'Terrain +yield when producing & adjacent to a settlement', { where: 'tech', params: [
+    { key: 'terrain', type: 'terrain' }, { key: 'resource', type: 'enum', options: RESOURCES }, { key: 'amount', type: 'number' },
+  ] }),
+  N('override_tile_yield_factor', 'Override a deployable’s tile-yield multiplier', { where: 'tech', params: [{ key: 'deployable', type: 'deployable' }, { key: 'factor', type: 'number' }] }),
+  N('subtype_isolated_mult', 'Multiply output when it has no adjacent building', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'factor', type: 'number' }] }),
+  N('subtype_combat_from_output', 'Subtype/deployable +atk & +def = its output', { where: 'tech', params: [
+    { key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'from', type: 'enum', options: RES_ALL }, { key: 'domain', type: 'enum', options: DOMAINS },
+  ] }),
 
   // -- deployable econ (per turn) --
   N('self_yield', 'Produces (self)', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
@@ -141,6 +149,9 @@ export const EFFECT_KINDS = [
   ] }),
   N('self_per_progress_tile_in_range', '+resource per progress tile in range', { where: 'econ', params: [
     { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }, { key: 'range', type: 'number' },
+  ] }),
+  N('aura_tile_yield_mult', 'Multiply adjacent tiles’ natural yield (credited here)', { where: 'econ', params: [
+    { key: 'resource', type: 'enum', options: RESOURCES }, { key: 'factor', type: 'number' },
   ] }),
 
   // -- deployable one-shot on build --
