@@ -57,6 +57,7 @@ export class GameEngine {
 
     this.turn = 1
     this.waveCount = 0
+    this.waveDelay = 0 // Calendar: pending one-turn delays that skip the next wave turn
     this.status = 'playing' // 'playing' | 'won' | 'lost'
     this.creative = false // Creative Mode: all deployables unlocked, infinite resources, no death
     this.revealAll = true // TEMP: show the whole map (fog lifted for worldgen review)
@@ -112,6 +113,7 @@ export class GameEngine {
   unlockTechDirect(id) {
     if (!this.creative || !TECHS[id] || this.taken.has(id)) return false
     this.taken.add(id)
+    this._applyTechOneShots(id)
     this.unlocksThisEra++
     this._recomputeMods()
     if (this.mods.freeReroll) this.rerollTokens++
@@ -128,6 +130,16 @@ export class GameEngine {
   tileAt(k) { return this.world.byKey.get(k) }
   instAt(k) { return this.deployed.get(k) || null }
   ownedCount(id) { let n = 0; for (const v of this.deployed.values()) if (v.id === id) n++; return n }
+  /** One-shot effects that fire once when a tech is unlocked (Calendar's wave delay). */
+  _applyTechOneShots(id) {
+    for (const e of TECHS[id].effects || []) if (e.name === 'delay_next_wave') this.waveDelay += (e.amount || 1)
+  }
+  /** Turns until the next enemy wave actually fires (accounts for Calendar delays). */
+  turnsUntilWave() {
+    let base = (META.waveInterval - (this.turn % META.waveInterval)) % META.waveInterval
+    if (this.waveDelay > 0) base += META.waveInterval // the upcoming wave turn will be skipped
+    return base
+  }
   uniqueOwned() { const s = new Set(); for (const v of this.deployed.values()) if (v.id !== 'palace') s.add(v.id); return s.size }
   militaryCount() { let n = 0; for (const v of this.deployed.values()) if (DEPLOYABLES[v.id].type === 'unit') n++; return n }
 
@@ -148,6 +160,7 @@ export class GameEngine {
       yieldMult: [], subtypeConvert: [], armyFromSettlement: [],
       terrainAdjSettlement: [], tileYieldFactor: {}, isolatedMult: [], subtypeCombatFromOutput: [],
       mercenaries: false, mercDefPerHire: 0,
+      critPerRanged: 0, crossBombard: [],
       freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
@@ -196,6 +209,9 @@ export class GameEngine {
           case 'subtype_combat_from_output': m.subtypeCombatFromOutput.push({ subtype: e.subtype, deployable: e.deployable, from: e.from, domain: e.domain }); break
           case 'enable_mercenaries': m.mercenaries = true; break
           case 'merc_def_per_hire': m.mercDefPerHire += e.amount; break
+          case 'crit_per_ranged': m.critPerRanged += (e.percent || 0) / 100; break
+          case 'cross_domain_bombard': m.crossBombard.push({ from: e.from, to: e.to }); break
+          case 'delay_next_wave': break // one-shot, applied at unlock time
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
         }
@@ -517,11 +533,19 @@ export class GameEngine {
   resetMercs() { this.mercAtk = { land: 0, sea: 0, sky: 0, space: 0 }; this.mercDef = { land: 0, sea: 0, sky: 0, space: 0 } }
   /** Effective combat scalars the player fights with: board army + hired + Embassy mercs.
    *  The enemy card is generated from playerScalars (board only), so mercs are a real edge. */
+  _rangedCount() { let n = 0; for (const v of this.deployed.values()) if (DEPLOYABLES[v.id].subtype === 'ranged') n++; return n }
   combatScalars() {
     const s = this.playerScalars()
     for (const d of DOMAINS) { s[d].atk += this.mercAtk[d]; s[d].def += this.mercDef[d] }
     const emb = this._embassyMercAttack()
     if (emb.atk) for (const d of DOMAINS) { s[d].atk += emb.atk; s[d].def += emb.def }
+    // Composite Bows: expected-value crit — all player damage (atk & bomb) scaled by 1% per ranged unit.
+    if (this.mods.critPerRanged > 0) {
+      const m = 1 + this.mods.critPerRanged * this._rangedCount()
+      for (const d of DOMAINS) { s[d].atk = Math.round(s[d].atk * m); s[d].bomb = Math.round(s[d].bomb * m) }
+    }
+    // Physics: one domain's bombardment also strikes another (land → sea).
+    for (const cb of this.mods.crossBombard) s[cb.to].bomb += s[cb.from].bomb
     return s
   }
   /** Snapshot for the merc UI: cost, presence, and current hires per domain. */
@@ -651,6 +675,7 @@ export class GameEngine {
     if (this.resources.progress < cost) return false
     this.resources.progress -= cost
     this.taken.add(id)
+    this._applyTechOneShots(id)
     this.unlocksThisEra++
     this._recomputeMods()
     if (this.mods.freeReroll) this.rerollTokens++
@@ -721,7 +746,10 @@ export class GameEngine {
   endTurn() {
     if (this.status !== 'playing') return
     this.selection = null
-    if (this.isWaveTurn()) this._resolveWave()
+    if (this.isWaveTurn()) {
+      if (this.waveDelay > 0) { this.waveDelay--; this.log.unshift(`Turn ${this.turn}: enemy attack delayed (Calendar).`) }
+      else this._resolveWave()
+    }
     if (this.status !== 'playing') { this._emit(); return }
     this.turn++
     this._accrueGrowth()

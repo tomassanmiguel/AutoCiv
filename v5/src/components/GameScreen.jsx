@@ -88,7 +88,7 @@ function Game({ onExit, audio }) {
 
 function TopBar({ g, onExit, onWave, onTaken, onCreativeMenu }) {
   const pt = g.perTurn()
-  const dueIn = (META.waveInterval - (g.turn % META.waveInterval)) % META.waveInterval
+  const dueIn = g.turnsUntilWave()
   const pred = g.previewCombat()
   const dmg = pred ? pred.legitimacyLost : 0
   const fatal = dmg >= g.legitimacy

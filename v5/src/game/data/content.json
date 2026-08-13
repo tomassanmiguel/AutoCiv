@@ -3756,6 +3756,46 @@
           "amount": 2
         }
       ]
+    },
+    {
+      "id": "composite_bows",
+      "name": "Composite Bows",
+      "flavor": "Ranged",
+      "era": "Iron",
+      "desc": "All your damage has a 1% chance to be critical (double) for each ranged unit in your empire.",
+      "effects": [
+        {
+          "name": "crit_per_ranged",
+          "percent": 1
+        }
+      ]
+    },
+    {
+      "id": "physics",
+      "name": "Physics",
+      "flavor": "Military",
+      "era": "Renaissance",
+      "desc": "Your land bombardment also strikes the naval domain.",
+      "effects": [
+        {
+          "name": "cross_domain_bombard",
+          "from": "land",
+          "to": "sea"
+        }
+      ]
+    },
+    {
+      "id": "calendar",
+      "name": "Calendar",
+      "flavor": "Miscellaneous",
+      "era": "Iron",
+      "desc": "Delay the next enemy attack by 1 turn.",
+      "effects": [
+        {
+          "name": "delay_next_wave",
+          "amount": 1
+        }
+      ]
     }
   ],
   "enemy": {

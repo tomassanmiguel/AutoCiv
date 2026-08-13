@@ -105,6 +105,9 @@ export const EFFECT_KINDS = [
   ] }),
   N('enable_mercenaries', 'Enable hiring mercenaries in combat', { where: 'tech', params: [] }),
   N('merc_def_per_hire', 'Each mercenary hired also grants +def', { where: 'tech', params: [{ key: 'amount', type: 'number' }] }),
+  N('crit_per_ranged', 'Crit chance (double damage) per ranged unit', { where: 'tech', params: [{ key: 'percent', type: 'number' }] }),
+  N('cross_domain_bombard', 'One domain’s bombardment also strikes another', { where: 'tech', params: [{ key: 'from', type: 'enum', options: DOMAINS }, { key: 'to', type: 'enum', options: DOMAINS }] }),
+  N('delay_next_wave', 'Delay the next enemy attack (turns)', { where: 'tech', params: [{ key: 'amount', type: 'number' }] }),
 
   // -- deployable econ (per turn) --
   N('self_yield', 'Produces (self)', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
