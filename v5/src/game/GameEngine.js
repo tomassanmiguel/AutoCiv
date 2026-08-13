@@ -19,6 +19,11 @@ const GATED_REGIONS = new Set(['new_world']) // regions needing a tech to settle
 // Bodies that act as adjacency bridges once their tech is owned: every shore of one
 // connected body becomes mutually reachable (cross an ocean / space to any far coast).
 const BRIDGE_TERRAINS = ['ocean', 'exosea', 'near_space', 'space', 'deep_space']
+// Explorer media: a Caravel sails water and dies on landfall; a Probe flies the void
+// and dies when it strikes any solid body. The 6 hex step directions.
+const WATER_TERRAINS = ['coast', 'ocean', 'river', 'exosea']
+const VOID_TERRAINS = ['near_space', 'space', 'deep_space', 'outer_space']
+const DIRS = neighbors(0, 0).map((n) => ({ dq: n.q, dr: n.r }))
 
 export class GameEngine {
   constructor(seed = 1) {
@@ -89,6 +94,7 @@ export class GameEngine {
     this.controlled = new Set([this.palaceKey])
     this.deployed = new Map()
     this.deployed.set(this.palaceKey, { id: 'palace', level: 1, age: 0 })
+    this.explorers = [] // moving Caravels / Probes (not in `deployed` — no econ/combat)
 
     this._recomputeMods()
     this._revealVision()  // seed fog-of-war around the palace
@@ -582,8 +588,73 @@ export class GameEngine {
   _revealVision() { for (const k of this.visionSet()) this.explored.add(k) }
   /** Reveal specific tiles (explorer probes/caravels). */
   revealTiles(keys) { let n = 0; for (const k of keys) if (this.world.byKey.has(k) && !this.explored.has(k)) { this.explored.add(k); n++ } return n }
-  /** A tile counts as known if explored, or in Creative Mode (whole map visible). */
-  isExplored(k) { return this.creative || this.explored.has(k) }
+  /** A tile counts as known once it has been explored (fog holds even in Creative Mode). */
+  isExplored(k) { return this.explored.has(k) }
+  /** Manual "reveal the whole map" (a Creative-Mode convenience button, not automatic). */
+  revealAllMap() { for (const t of this.world.tiles) this.explored.add(t.key); this._emit() }
+
+  // ---- explorers (Caravel, Deep Space Probe) ----
+  explorerAt(k) { return this.explorers.find((e) => e.key === k) || null }
+  _discKeys(k, R) { const { q, r } = parse(k); return disc(q, r, R).map((h) => hkey(h.q, h.r)) }
+  _bestDirToward(q, r, tq, tr) {
+    let best = null; let bestD = Infinity
+    for (const d of DIRS) { const dist = lengthOf(q + d.dq - tq, r + d.dr - tr); if (dist < bestD) { bestD = dist; best = d } }
+    return best
+  }
+  _outwardDir(k) { // away from the map centre (0,0)
+    const { q, r } = parse(k)
+    let best = null; let bestD = -Infinity
+    for (const d of DIRS) { const dist = lengthOf(q + d.dq, r + d.dr); if (dist > bestD) { bestD = dist; best = d } }
+    return best
+  }
+  _seekOceanDir(k) { // BFS the water for the nearest open ocean; return the first step toward it (no local minima)
+    const prev = new Map([[k, null]])
+    const queue = [k]
+    let target = null
+    while (queue.length) {
+      const cur = queue.shift()
+      if (cur !== k && this.world.byKey.get(cur).terrain === 'ocean') { target = cur; break }
+      for (const nk of this.neighborKeys(cur)) {
+        if (prev.has(nk) || !WATER_TERRAINS.includes(this.world.byKey.get(nk).terrain)) continue
+        prev.set(nk, cur); queue.push(nk)
+      }
+    }
+    if (!target) return null
+    let step = target
+    while (prev.get(step) !== k) step = prev.get(step)
+    const a = parse(k); const b = parse(step)
+    return { dq: b.q - a.q, dr: b.r - a.r }
+  }
+  /** Advance every explorer one turn; reveal along the way; disband on landfall/impact for gold. */
+  _moveExplorers() {
+    const survivors = []
+    for (const exp of this.explorers) if (!this._stepExplorer(exp)) survivors.push(exp)
+    this.explorers = survivors
+  }
+  _stepExplorer(exp) {
+    const move = DEPLOYABLES[exp.id].move
+    const passable = move.medium === 'space' ? VOID_TERRAINS : WATER_TERRAINS
+    const R = 1 + this.mods.vision
+    for (let s = 0; s < move.speed; s++) {
+      if (move.medium === 'water' && exp.phase === 'seek') { const d = this._seekOceanDir(exp.key); if (!d) return this._destroyExplorer(exp); exp.dir = d }
+      const { q, r } = parse(exp.key)
+      const next = hkey(q + exp.dir.dq, r + exp.dir.dr)
+      const nt = this.world.byKey.get(next)
+      if (!nt || !passable.includes(nt.terrain)) return this._destroyExplorer(exp) // off-map, landfall, or impact
+      exp.key = next
+      // on reaching open ocean, lock a straight heading ACROSS (toward the far side through Earth's centre)
+      if (move.medium === 'water' && exp.phase === 'seek' && nt.terrain === 'ocean') { const p = parse(next); exp.phase = 'straight'; exp.dir = this._bestDirToward(p.q, p.r, -p.q, -p.r) }
+      this.revealTiles(this._discKeys(next, R))
+    }
+    return false
+  }
+  _destroyExplorer(exp) {
+    const move = DEPLOYABLES[exp.id].move
+    this.resources.gold += move.reward
+    this.revealTiles(this._discKeys(exp.key, 1 + this.mods.vision))
+    this.log.unshift(`${DEPLOYABLES[exp.id].name} reached its journey's end (+${move.reward} gold).`)
+    return true
+  }
   /** Connected components of each bridge terrain, cached (terrain is static per game).
    *  Each = { terrain, members:Set(body tiles), shore:Set(tiles touching the body) }. */
   _bridgeComponents() {
@@ -673,10 +744,18 @@ export class GameEngine {
   cancelSelection() { if (this.selection) { this.selection = null; this._emit() } }
   placementValid(id, k) {
     const t = this.tileAt(k)
-    if (!t || !this.controlled.has(k) || this.deployed.has(k)) return false
+    if (!t) return false
+    const dep = DEPLOYABLES[id]
+    if (dep.move && dep.move.medium === 'space') {
+      // Probe: an explored, empty void tile adjacent to any controlled tile.
+      if (this.deployed.has(k) || this.explorerAt(k) || !this.isExplored(k)) return false
+      if (!VOID_TERRAINS.includes(t.terrain)) return false
+      return this.neighborKeys(k).some((nk) => this.controlled.has(nk))
+    }
+    if (!this.controlled.has(k) || this.deployed.has(k) || this.explorerAt(k)) return false
     const ter = TERRAIN[t.terrain]
     if (!ter) return false
-    const p = DEPLOYABLES[id].placement || {}
+    const p = dep.placement || {}
     const kind = ter.kind
     if (p.kind === 'land' && kind !== 'land') return false
     if (p.kind === 'water' && kind !== 'water') return false
@@ -692,6 +771,16 @@ export class GameEngine {
     const cost = this.buildCost(id)
     if (this.resources.production < cost) return false
     this.resources.production -= cost
+    const mv = DEPLOYABLES[id].move
+    if (mv) { // spawn a moving explorer instead of a static deployable
+      const exp = { id, key: k, dir: mv.medium === 'space' ? this._outwardDir(k) : null, phase: mv.medium === 'space' ? 'straight' : 'seek' }
+      this.explorers.push(exp)
+      this.revealTiles(this._discKeys(k, 1 + this.mods.vision))
+      this.selection = null
+      this._previewWave()
+      this._emit()
+      return true
+    }
     this.deployed.set(k, { id, level: 1, age: 0 })
     // one-shot on-build effects (Cathedral +legitimacy…)
     for (const e of DEPLOYABLES[id].build || []) {
@@ -810,6 +899,7 @@ export class GameEngine {
     this._accrueGrowth()
     this._applyIncome()
     this._revealVision()
+    this._moveExplorers()
     this._buildOffer()
     this._previewWave()
     this._emit()

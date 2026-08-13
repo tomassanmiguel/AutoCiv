@@ -2142,6 +2142,51 @@
           "amount": 10
         }
       ]
+    },
+    {
+      "id": "caravel",
+      "name": "Caravel",
+      "type": "unit",
+      "subtype": "naval",
+      "era": "Renaissance",
+      "production": 9,
+      "upkeep": 4,
+      "placement": {
+        "kind": "water",
+        "only": [
+          "coast"
+        ]
+      },
+      "desc": "An explorer. Sails to open ocean then straight on until landfall, revealing the map — then disbands for 50 gold.",
+      "move": {
+        "kind": "caravel",
+        "medium": "water",
+        "speed": 2,
+        "reward": 50
+      },
+      "econ": [],
+      "combat": []
+    },
+    {
+      "id": "deep_space_probe",
+      "name": "Deep Space Probe",
+      "type": "unit",
+      "subtype": "astral",
+      "era": "Liminite",
+      "production": 24,
+      "upkeep": 16,
+      "placement": {
+        "kind": "space"
+      },
+      "desc": "An explorer. Launches from space beside your empire and flies straight out, revealing the void — self-destructs on impact for 500 gold.",
+      "move": {
+        "kind": "probe",
+        "medium": "space",
+        "speed": 3,
+        "reward": 500
+      },
+      "econ": [],
+      "combat": []
     }
   ],
   "techs": [
@@ -4014,7 +4059,7 @@
       "name": "FTL",
       "flavor": "Expansion",
       "era": "Liminite",
-      "desc": "Enables settling deep space.",
+      "desc": "Enables settling deep space and unlocks the Deep Space Probe.",
       "effects": [
         {
           "name": "enable_expansion",
@@ -4023,6 +4068,10 @@
         {
           "name": "enable_bridge",
           "terrain": "deep_space"
+        },
+        {
+          "name": "unlock_deployable",
+          "deployable": "deep_space_probe"
         }
       ]
     },
@@ -4117,6 +4166,19 @@
           "deployable": "temple",
           "resource": "all",
           "factor": 2
+        }
+      ]
+    },
+    {
+      "id": "optics",
+      "name": "Optics",
+      "flavor": "Expansion",
+      "era": "Renaissance",
+      "desc": "Unlocks the Caravel — an ocean explorer.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "caravel"
         }
       ]
     }

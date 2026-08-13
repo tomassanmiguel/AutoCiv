@@ -130,6 +130,11 @@ function TopBar({ g, onExit, onWave, onTaken, onCreativeMenu }) {
           <button className="v5-iconbtn creative-on" onClick={onCreativeMenu}>⚗</button>
         </InfoTip>
       )}
+      {g.creative && (
+        <InfoTip text="Reveal the whole map (fog stays off only for tiles now shown).">
+          <button className="v5-iconbtn creative-on" onClick={() => g.revealAllMap()}>🗺</button>
+        </InfoTip>
+      )}
       <InfoTip text={pending ? 'You still have research, builds, or expansions available this turn.' : 'Nothing left to do — end your turn.'}>
         <button className={`v5-endturn ${pending ? 'muted' : 'ready'}`} onClick={() => g.endTurn()}>End Turn ▸</button>
       </InfoTip>
@@ -374,6 +379,16 @@ function HexMap({ g }) {
           return (
             <div key={t.key} className="v5-piece" style={{ left: c.x, top: c.y, width: HEX_W * 0.66, height: HEX_W * 0.66 }}>
               <div className="v5-badge" style={{ borderColor: catColor(dep) }}><img src={silFor(dep)} alt="" /></div>
+              <div className="v5-pname" style={{ fontSize: nameSize }}>{dep.name}</div>
+            </div>
+          )
+        })}
+        {g.explorers.map((exp) => {
+          const t = g.tileAt(exp.key); if (!t) return null
+          const dep = DEPLOYABLES[exp.id]; const c = centerOf(t.q, t.r)
+          return (
+            <div key={`exp-${exp.id}-${exp.key}`} className="v5-piece explorer" style={{ left: c.x, top: c.y, width: HEX_W * 0.66, height: HEX_W * 0.66 }}>
+              <div className="v5-badge" style={{ borderColor: '#57c7ff' }}><img src={silFor(dep)} alt="" /></div>
               <div className="v5-pname" style={{ fontSize: nameSize }}>{dep.name}</div>
             </div>
           )
