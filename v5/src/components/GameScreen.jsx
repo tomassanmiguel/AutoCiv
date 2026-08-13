@@ -378,12 +378,18 @@ function MapHoverCard({ g, k }) {
 }
 
 function Sidebar({ g }) {
+  // Collapse a menu when there is nothing you can act on right now.
+  const canResearch = g.offerData().some((o) => o.affordable)
+  const canBuild = g.buildableList().some((b) => b.affordable)
   return (
     <aside className="v5-side">
       <NineSlice src="/sprites/ui/box.png" slice={205} width={20} className="v5-sidebody">
-        <ResearchPanel g={g} />
-        <div className="v5-sep" />
-        <BuildPanel g={g} />
+        {canResearch && <ResearchPanel g={g} />}
+        {canResearch && canBuild && <div className="v5-sep" />}
+        {canBuild && <BuildPanel g={g} />}
+        {!canResearch && !canBuild && (
+          <div className="v5-nada"><IconText>Nothing affordable yet — end your turn to gather more :production: and :progress:.</IconText></div>
+        )}
       </NineSlice>
     </aside>
   )

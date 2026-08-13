@@ -78,6 +78,7 @@
 .v5-tabs button.on { color: var(--brass-deep); border-bottom-color: var(--brass-deep); background: #00000010; }
 .v5-tabbody, .v5-sidebody { flex: 1; overflow-y: auto; margin: 6px; color: var(--ink); background: var(--parch); }
 .v5-sep { height: 1px; background: var(--brass); opacity: .5; margin: 14px 2px; }
+.v5-nada { color: var(--ink-soft); font-size: 13px; line-height: 1.6; padding: 8px 2px; text-align: center; }
 .v5-theater.taken { width: 560px; }
 .taken-empty { text-align: center; color: var(--ink-soft); }
 .taken-era { margin-bottom: 12px; }
