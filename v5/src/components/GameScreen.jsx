@@ -370,7 +370,7 @@ function MapHoverCard({ g, k }) {
           </>
         ) : (
           <>
-            <div className="hv-h"><b>{tName}</b><span className="hv-sub">{g.controlled.has(k) ? 'controlled' : cdef ? 'unclaimed' : 'unreachable'}</span></div>
+            <div className="hv-h"><b>{tName}</b>{t.region === 'new_world' && <span className="hv-nw">New World ×2</span>}{t.region === 'old_world' && <span className="hv-ow">Old World</span>}<span className="hv-sub">{g.controlled.has(k) ? 'controlled' : cdef ? 'unclaimed' : 'unreachable'}</span></div>
             <div className="hv-out">{Object.entries(tYield).filter(([, v]) => v > 0).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={13} />{v}</span>)}{cdef?.defBonus ? <span className="hv-chip"><SIco st="def" s={12} />+{cdef.defBonus}</span> : null}{Object.values(tYield).every((v) => !v) && <span className="hv-chip">no yield</span>}</div>
           </>
         )}

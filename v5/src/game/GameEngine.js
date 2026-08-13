@@ -131,6 +131,7 @@ export class GameEngine {
     const base = { ...(def.yield || {}) }
     const bonus = this.mods.tileYield[t.terrain]
     if (bonus) for (const r in bonus) base[r] = (base[r] || 0) + bonus[r]
+    if (t.region === 'new_world') for (const r in base) base[r] *= 2 // New World tiles yield double
     return base
   }
   adjCount(k, filter) {

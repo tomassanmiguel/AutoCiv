@@ -36,9 +36,9 @@ const MAX_ATTEMPTS = 16
 // NW_EDGE out is therefore the only way to widen the ocean, which is why the
 // main sea grows at the New World's expense rather than the Old World's.
 const OW_EDGE = 0.06
-const NW_EDGE = 0.52
-const SPLIT_WOBBLE = 0.30 // kept below the channel width so the ocean rarely closes
-const RIM_SEA = 0.99      // radius past which Earth TENDS to sea; loose, land may reach the rim
+const NW_EDGE = 0.58      // wider ocean channel (a bit more sea, smaller New World)
+const SPLIT_WOBBLE = 0.40 // more boundary wobble so the sea reads as an irregular ocean, not a straight river
+const RIM_SEA = 0.94      // radius past which Earth TENDS to sea; lower = a rounder, larger ocean at the rim
 
 // Climate is LATITUDINAL: an arid equator, tundra at the two poles. The polar
 // axis is the world's vertical, so north/south read as up/down on the map.
@@ -171,7 +171,7 @@ function scatterIslands(tiles, earth, rng) {
       }),
   )
   shuffle(open, rng)
-  const want = 3 + Math.floor(rng() * 3)
+  const want = 5 + Math.floor(rng() * 3) // +2 more islands than before
   const placed = []
   for (const t of open) {
     if (placed.length >= want) break

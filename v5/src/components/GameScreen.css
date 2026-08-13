@@ -68,6 +68,8 @@
 .hv-h { display: flex; align-items: center; gap: 7px; }
 .hv-h b { font-size: 14px; color: var(--brass-deep); }
 .hv-h .hv-sub { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .4px; margin-left: auto; }
+.hv-nw { font-size: 10px; font-weight: 700; color: #2e6b4a; background: #cfe6d6; border: 1px solid #7bb894; border-radius: 999px; padding: 1px 7px; }
+.hv-ow { font-size: 10px; color: var(--ink-soft); }
 .sil-i { height: 18px; }
 .hv-desc { font-size: 12px; color: #5a4a2c; margin: 6px 0; line-height: 1.45; }
 .hv-out { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 6px; }
