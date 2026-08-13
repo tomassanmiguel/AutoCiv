@@ -84,6 +84,14 @@ export const EFFECT_KINDS = [
     { key: 'subtype', type: 'string' }, { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
   ] }),
   N('gold_interest', 'Interest on banked gold', { where: 'tech', params: [{ key: 'factor', type: 'number' }] }),
+  N('army_per_same_type', 'Units +scalar per other same-type', { where: 'tech', params: [{ key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' }] }),
+  N('food_distance_discount', 'Scale expansion distance cost', { where: 'tech', params: [{ key: 'factor', type: 'number' }] }),
+  N('empty_tile_combat', 'Empty controlled tiles +scalar', { where: 'tech', params: [{ key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' }] }),
+  N('trade_networks', 'Gold = farthest controlled ring', { where: 'tech', params: [] }),
+  N('progress_per_flavor', '+progress / owned tech of a flavor', { where: 'tech', params: [{ key: 'flavor', type: 'string' }, { key: 'amount', type: 'number' }] }),
+  N('keep_natural_production', 'Buildings keep tile production', { where: 'tech', params: [] }),
+  N('army_growth_per_turn', 'Army +scalar accrues each turn', { where: 'tech', params: [{ key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'amount', type: 'number' }] }),
+  N('palace_random_growth', 'Palace +random base yield each turn', { where: 'tech', params: [{ key: 'amount', type: 'number' }] }),
 
   // -- deployable econ (per turn) --
   N('self_yield', 'Produces (self)', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
@@ -116,6 +124,15 @@ export const EFFECT_KINDS = [
   N('combat_when_surrounded', '+scalar when fully surrounded', { where: 'combat', params: [
     { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
   ] }),
+  N('combat_from_legitimacy', 'Scalar = legitimacy / divisor', { where: 'combat', params: [
+    { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'divisor', type: 'number' },
+  ] }),
+  N('combat_per_empty_tile', '+scalar per empty controlled tile', { where: 'combat', params: [
+    { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
+  ] }),
+
+  // -- deployable econ (special) --
+  N('gold_from_army', 'Gold = % of land army attack', { where: 'econ', params: [{ key: 'percent', type: 'number' }] }),
 
   // -- deployable one-shot on build --
   N('on_build', 'One-time gain when built', { where: 'build', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),

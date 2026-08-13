@@ -1763,6 +1763,215 @@
         }
       ],
       "combat": []
+    },
+    {
+      "id": "longbowman",
+      "name": "Longbowman",
+      "type": "unit",
+      "subtype": "ranged",
+      "era": "Medieval",
+      "production": 6,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "8 land attack, 15 bombardment; +5 per adjacent fortification, +5 on hills.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 8
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 15
+        },
+        {
+          "name": "combat_per_adjacent",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 5,
+          "filter": "fortification"
+        },
+        {
+          "name": "combat_on_terrain",
+          "domain": "land",
+          "stat": "bomb",
+          "terrain": "hills",
+          "mode": "add",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "id": "astral_legion",
+      "name": "Astral Legion",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Liminite",
+      "production": 27,
+      "upkeep": 28,
+      "placement": {
+        "kind": "land"
+      },
+      "desc": "500 atk / 500 def, +50/+50 per astral legion you own.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 500
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 500
+        },
+        {
+          "name": "combat_count_scaling",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 50
+        },
+        {
+          "name": "combat_count_scaling",
+          "domain": "land",
+          "stat": "def",
+          "amount": 50
+        }
+      ]
+    },
+    {
+      "id": "gilgamesh",
+      "name": "Gilgamesh",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Bronze",
+      "production": 4,
+      "upkeep": 8,
+      "unique": true,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "100 attack, 100 defense.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 100
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 100
+        }
+      ]
+    },
+    {
+      "id": "knight",
+      "name": "Knight",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Medieval",
+      "production": 7,
+      "upkeep": 4,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "50 defense; attack equal to legitimacy divided by 3.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 50
+        },
+        {
+          "name": "combat_from_legitimacy",
+          "domain": "land",
+          "stat": "atk",
+          "divisor": 3
+        }
+      ]
+    },
+    {
+      "id": "colliseum",
+      "name": "Colosseum",
+      "type": "building",
+      "subtype": "gold",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "Gold equal to 3% of your land army attack.",
+      "econ": [
+        {
+          "name": "gold_from_army",
+          "percent": 3
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "cossack",
+      "name": "Cossack",
+      "type": "unit",
+      "subtype": "cavalry",
+      "era": "Exploration",
+      "production": 11,
+      "upkeep": 4,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "10 atk / 10 def, +1 attack per empty controlled tile.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 10
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 10
+        },
+        {
+          "name": "combat_per_empty_tile",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 1
+        }
+      ]
     }
   ],
   "techs": [
@@ -2927,6 +3136,257 @@
           "terrain": "desert",
           "resource": "gold",
           "factor": 10
+        }
+      ]
+    },
+    {
+      "id": "tribalism",
+      "name": "Tribalism",
+      "flavor": "Military",
+      "era": "Stone",
+      "desc": "Military units gain +1 attack for each other unit of the same type.",
+      "effects": [
+        {
+          "name": "army_per_same_type",
+          "stat": "atk",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "basket_weaving",
+      "name": "Basket Weaving",
+      "flavor": "Food",
+      "era": "Stone",
+      "desc": "Halve the distance cost of expansion (rounded down).",
+      "effects": [
+        {
+          "name": "food_distance_discount",
+          "factor": 0.5
+        }
+      ]
+    },
+    {
+      "id": "sacred_grounds",
+      "name": "Sacred Grounds",
+      "flavor": "Defense",
+      "era": "Stone",
+      "desc": "Controlled tiles without a deployable gain 1 defense.",
+      "effects": [
+        {
+          "name": "empty_tile_combat",
+          "domain": "land",
+          "stat": "def",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "slavery",
+      "name": "Slavery",
+      "flavor": "Production",
+      "era": "Bronze",
+      "desc": "Settlements gain +3 production but −1 progress.",
+      "effects": [
+        {
+          "name": "settlement_yield",
+          "resource": "production",
+          "amount": 3
+        },
+        {
+          "name": "settlement_yield",
+          "resource": "progress",
+          "amount": -1
+        }
+      ]
+    },
+    {
+      "id": "trade_networks",
+      "name": "Trade Networks",
+      "flavor": "Gold",
+      "era": "Bronze",
+      "desc": "Gain gold each turn equal to the distance to your farthest controlled tile.",
+      "effects": [
+        {
+          "name": "trade_networks"
+        }
+      ]
+    },
+    {
+      "id": "philosophy",
+      "name": "Philosophy",
+      "flavor": "Progress",
+      "era": "Classical",
+      "desc": "+1 progress per turn for each progress technology you have.",
+      "effects": [
+        {
+          "name": "progress_per_flavor",
+          "flavor": "Progress",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "ecology",
+      "name": "Ecology",
+      "flavor": "Science",
+      "era": "Modern",
+      "desc": "Deployables no longer remove the natural production of their tile.",
+      "effects": [
+        {
+          "name": "keep_natural_production"
+        }
+      ]
+    },
+    {
+      "id": "specialization",
+      "name": "Specialization",
+      "flavor": "Economy",
+      "era": "Bronze",
+      "desc": "Buildings generate a resource based on their type.",
+      "effects": [
+        {
+          "name": "building_subtype_yield",
+          "subtype": "food",
+          "resource": "food",
+          "amount": 1
+        },
+        {
+          "name": "building_subtype_yield",
+          "subtype": "gold",
+          "resource": "gold",
+          "amount": 1
+        },
+        {
+          "name": "building_subtype_yield",
+          "subtype": "production",
+          "resource": "production",
+          "amount": 1
+        },
+        {
+          "name": "building_subtype_yield",
+          "subtype": "progress",
+          "resource": "progress",
+          "amount": 1
+        },
+        {
+          "name": "building_subtype_yield",
+          "subtype": "legitimacy",
+          "resource": "legitimacy",
+          "amount": 1
+        },
+        {
+          "name": "subtype_combat_flat",
+          "subtype": "defense",
+          "domain": "land",
+          "stat": "def",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "oral_tradition",
+      "name": "Oral Tradition",
+      "flavor": "Military",
+      "era": "Bronze",
+      "desc": "All units gain +1 attack at the end of every turn.",
+      "effects": [
+        {
+          "name": "army_growth_per_turn",
+          "stat": "atk",
+          "domain": "all",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hereditary_rule",
+      "name": "Hereditary Rule",
+      "flavor": "Palace",
+      "era": "Bronze",
+      "desc": "At the end of each turn, the palace gains +1 to a random base yield.",
+      "effects": [
+        {
+          "name": "palace_random_growth",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "longbow",
+      "name": "Longbow",
+      "flavor": "Ranged",
+      "era": "Medieval",
+      "desc": "Unlocks the Longbowman.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "longbowman"
+        }
+      ]
+    },
+    {
+      "id": "space_marines",
+      "name": "Space Marines",
+      "flavor": "Melee",
+      "era": "Liminite",
+      "desc": "Unlocks the Astral Legion.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "astral_legion"
+        }
+      ]
+    },
+    {
+      "id": "heros_journey",
+      "name": "Hero's Journey",
+      "flavor": "Melee",
+      "era": "Bronze",
+      "desc": "Unlocks Gilgamesh.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "gilgamesh"
+        }
+      ]
+    },
+    {
+      "id": "armor",
+      "name": "Armor",
+      "flavor": "Melee",
+      "era": "Medieval",
+      "desc": "Unlocks the Knight.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "knight"
+        }
+      ]
+    },
+    {
+      "id": "entertainment",
+      "name": "Entertainment",
+      "flavor": "Gold",
+      "era": "Classical",
+      "desc": "Unlocks the Colosseum.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "colliseum"
+        }
+      ]
+    },
+    {
+      "id": "saddle_carbines",
+      "name": "Saddle Carbines",
+      "flavor": "Cavalry",
+      "era": "Exploration",
+      "desc": "Unlocks the Cossack.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "cossack"
         }
       ]
     }

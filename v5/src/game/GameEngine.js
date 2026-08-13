@@ -71,6 +71,9 @@ export class GameEngine {
     this.era = 0
     this.unlocksThisEra = 0
     this.taken = new Set()
+    // per-turn accumulators (Oral Tradition army growth, Hereditary Rule palace growth)
+    this.armyAccum = { land: { atk: 0, def: 0, bomb: 0 }, sea: { atk: 0, def: 0, bomb: 0 }, sky: { atk: 0, def: 0, bomb: 0 }, space: { atk: 0, def: 0, bomb: 0 } }
+    this.palaceAccum = { production: 0, gold: 0, food: 0, progress: 0 }
 
     // Board: palace on the chosen home tile, controlled tiles, placed instances.
     this.controlled = new Set([this.palaceKey])
@@ -134,7 +137,10 @@ export class GameEngine {
       tileYield: {}, tileYieldMult: {}, unitsProduce: {}, upkeepReduction: 0, prodCost: { all: 0, building: 0 },
       palaceYield: {}, palaceMult: 1, vision: 0, armyFlat: [], armyFromLegit: [], onCombat: [], perUnique: {},
       settlementYield: {}, buildingSubtypeYield: {}, progressCostMult: 1,
-      subtypeCombatMult: {}, subtypeCombatFlat: [], goldInterest: 0, freeReroll: false,
+      subtypeCombatMult: {}, subtypeCombatFlat: [], goldInterest: 0,
+      armyPerSameType: [], foodDistanceFactor: 1, emptyTileCombat: [], tradeNetworks: false,
+      progressPerFlavor: {}, keepNaturalProduction: false, armyGrowth: [], palaceRandomGrowth: 0,
+      freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
     const expansions = new Set()
@@ -165,6 +171,14 @@ export class GameEngine {
           case 'subtype_combat_mult': m.subtypeCombatMult[e.subtype] = (m.subtypeCombatMult[e.subtype] || 1) * e.factor; break
           case 'subtype_combat_flat': m.subtypeCombatFlat.push({ subtype: e.subtype, domain: e.domain, stat: e.stat, amount: e.amount }); break
           case 'gold_interest': m.goldInterest += e.amount ?? e.factor; break
+          case 'army_per_same_type': m.armyPerSameType.push({ stat: e.stat, amount: e.amount }); break
+          case 'food_distance_discount': m.foodDistanceFactor *= e.factor; break
+          case 'empty_tile_combat': m.emptyTileCombat.push({ domain: e.domain, stat: e.stat, amount: e.amount }); break
+          case 'trade_networks': m.tradeNetworks = true; break
+          case 'progress_per_flavor': m.progressPerFlavor[e.flavor] = (m.progressPerFlavor[e.flavor] || 0) + e.amount; break
+          case 'keep_natural_production': m.keepNaturalProduction = true; break
+          case 'army_growth_per_turn': m.armyGrowth.push({ stat: e.stat, domain: e.domain, amount: e.amount }); break
+          case 'palace_random_growth': m.palaceRandomGrowth += e.amount; break
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
         }
@@ -222,6 +236,8 @@ export class GameEngine {
       const dep = DEPLOYABLES[inst.id]
       if (!dep.unique) upkeep += Math.max(0, dep.upkeep - this.mods.upkeepReduction)
       const bucket = k === this.palaceKey ? palaceInc : income
+      // Ecology: a deployable no longer removes the tile's natural production.
+      if (this.mods.keepNaturalProduction && k !== this.palaceKey) { const y = this.terrainYield(t); if (y.production) bucket.production += y.production }
       for (const e of dep.econ || []) {
         switch (e.name) {
           case 'self_yield': bucket[e.resource] += e.amount; break
@@ -229,6 +245,7 @@ export class GameEngine {
           case 'growth_per_turn': bucket[e.resource] += e.amount * (inst.age || 0); break
           case 'count_scaling': bucket[e.resource] += e.amount * this.ownedCount(inst.id); break
           case 'double_tile_yield': { const y = this.terrainYield(t); for (const r in y) bucket[r] += y[r] * 2; break }
+          case 'gold_from_army': bucket.gold += Math.ceil(this.playerScalars().land.atk * (e.percent / 100)); break
           default: break
         }
       }
@@ -238,9 +255,10 @@ export class GameEngine {
         if (by) for (const r in by) bucket[r] += by[r]
       }
     }
-    // palace flat bonuses, then the whole palace yield ×palaceMult
+    // palace flat bonuses + accrued Hereditary Rule growth, then the whole palace yield ×palaceMult
     if (this.deployed.has(this.palaceKey)) {
       for (const r in this.mods.palaceYield) palaceInc[r] += this.mods.palaceYield[r]
+      for (const r in this.palaceAccum) palaceInc[r] += this.palaceAccum[r]
       for (const r in palaceInc) income[r] += palaceInc[r] * this.mods.palaceMult
     }
     // per-settlement yields (Democracy, Census, Slavery…)
@@ -249,12 +267,36 @@ export class GameEngine {
       for (const v of this.deployed.values()) if (DEPLOYABLES[v.id].subtype === 'settlement') settlements++
       for (const r in this.mods.settlementYield) income[r] += this.mods.settlementYield[r] * settlements
     }
+    // Trade Networks: gold equal to the farthest controlled ring from the palace.
+    if (this.mods.tradeNetworks) {
+      let far = 0
+      for (const k of this.controlled) { const r = this.ringFromPalace(this.world.byKey.get(k)); if (r > far) far = r }
+      income.gold += far
+    }
+    // Philosophy: +progress per owned tech of a flavor.
+    if (Object.keys(this.mods.progressPerFlavor).length) {
+      const byFlavor = {}
+      for (const id of this.taken) { const f = TECHS[id]?.flavor; if (f) byFlavor[f] = (byFlavor[f] || 0) + 1 }
+      for (const f in this.mods.progressPerFlavor) income.progress += this.mods.progressPerFlavor[f] * (byFlavor[f] || 0)
+    }
     // units-produce + per-unique-era
     const mil = this.militaryCount()
     for (const r in this.mods.unitsProduce) income[r] += this.mods.unitsProduce[r] * mil
     const uniq = this.uniqueOwned()
     for (const r in this.mods.perUnique) income[r] += this.mods.perUnique[r] * uniq
     return { income, upkeep }
+  }
+  /** Per-turn accruals: Oral Tradition (army +atk) and Hereditary Rule (palace +random). */
+  _accrueGrowth() {
+    for (const g of this.mods.armyGrowth) {
+      const ds = g.domain === 'all' ? DOMAINS : [g.domain]
+      for (const d of ds) this.armyAccum[d][g.stat] += g.amount
+    }
+    if (this.mods.palaceRandomGrowth) {
+      const rs = RES
+      const r = rs[Math.floor(rng((this.seed ^ (this.turn * 7919)) >>> 0)() * rs.length)]
+      this.palaceAccum[r] += this.mods.palaceRandomGrowth
+    }
   }
   _applyIncome() {
     for (const inst of this.deployed.values()) inst.age = (inst.age || 0) + 1
@@ -284,10 +326,18 @@ export class GameEngine {
       } else if (c.name === 'combat_when_surrounded') {
         const nks = this.neighborKeys(k)
         if (nks.length && nks.every((nk) => this.deployed.has(nk))) out[c.domain][c.stat] += c.amount
+      } else if (c.name === 'combat_from_legitimacy') {
+        out[c.domain][c.stat] += Math.floor(this.legitimacy / c.divisor)
+      } else if (c.name === 'combat_per_empty_tile') {
+        let empties = 0
+        for (const ck of this.controlled) if (!this.deployed.has(ck)) empties++
+        out[c.domain][c.stat] += c.amount * empties
       }
     }
     const db = TERRAIN[t.terrain].defBonus || 0
     if (db) out.land.def += db
+    // Tribalism: every unit +scalar per OTHER unit of the same type.
+    if (dep.type === 'unit') for (const a of this.mods.armyPerSameType) out.land[a.stat] += a.amount * Math.max(0, this.ownedCount(inst.id) - 1)
     // per-subtype flat bonuses (Bayonets…) applied before the subtype multiplier
     for (const f of this.mods.subtypeCombatFlat) if (f.subtype === dep.subtype) out[f.domain][f.stat] += f.amount
     // tech multipliers on a whole subtype (Flying Buttress, Shipbuilding…)
@@ -329,6 +379,14 @@ export class GameEngine {
       const ds = f.domain === 'all' ? DOMAINS : [f.domain]
       for (const d of ds) s[d][f.stat] += add
     }
+    // Sacred Grounds: empty controlled tiles add combat.
+    if (this.mods.emptyTileCombat.length) {
+      let empties = 0
+      for (const k of this.controlled) if (!this.deployed.has(k)) empties++
+      for (const f of this.mods.emptyTileCombat) s[f.domain][f.stat] += f.amount * empties
+    }
+    // accrued army growth (Oral Tradition)
+    for (const d of DOMAINS) for (const st of ['atk', 'def', 'bomb']) s[d][st] += this.armyAccum[d][st]
     // gold-debt penalty: negative gold subtracts that much from every scalar
     const debt = this.resources.gold < 0 ? -this.resources.gold : 0
     if (debt) for (const d of DOMAINS) for (const st of ['atk', 'def', 'bomb']) s[d][st] = Math.max(0, s[d][st] - debt)
@@ -349,6 +407,11 @@ export class GameEngine {
     return out
   }
   ringFromPalace(t) { return lengthOf(t.q - this.world.palace.q, t.r - this.world.palace.r) }
+  expandCost(t) {
+    const ter = TERRAIN[t.terrain]
+    const dist = Math.floor(Math.max(0, this.ringFromPalace(t) - 1) * this.mods.foodDistanceFactor)
+    return ter.expandBase + dist
+  }
   expandTargets() {
     const out = []
     for (const k of this.expandFrontier()) {
@@ -356,7 +419,7 @@ export class GameEngine {
       const ter = TERRAIN[t.terrain]
       if (!ter) continue // only content terrains are settleable (Earth land + coast)
       if (ter.unlock && !this.expansions.has(t.terrain)) continue
-      const cost = ter.expandBase + Math.max(0, this.ringFromPalace(t) - 1)
+      const cost = this.expandCost(t)
       out.push({ key: k, terrain: t.terrain, cost, affordable: this.resources.food >= cost })
     }
     return out
@@ -369,7 +432,7 @@ export class GameEngine {
     const ter = TERRAIN[t.terrain]
     if (!ter) return false
     if (ter.unlock && !this.expansions.has(t.terrain)) return false
-    const cost = ter.expandBase + Math.max(0, this.ringFromPalace(t) - 1)
+    const cost = this.expandCost(t)
     if (this.resources.food < cost) return false
     this.resources.food -= cost
     this.controlled.add(k)
@@ -518,6 +581,7 @@ export class GameEngine {
     if (this.isWaveTurn()) this._resolveWave()
     if (this.status !== 'playing') { this._emit(); return }
     this.turn++
+    this._accrueGrowth()
     this._applyIncome()
     this._buildOffer()
     this._previewWave()
