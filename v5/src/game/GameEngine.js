@@ -131,9 +131,9 @@ export class GameEngine {
   // ---- modifiers aggregated from taken techs ----
   _recomputeMods() {
     const m = {
-      tileYield: {}, unitsProduce: {}, upkeepReduction: 0, prodCost: { all: 0, building: 0 },
-      palaceYield: {}, vision: 0, armyFlat: [], onCombat: [], perUnique: {},
-      freeReroll: false,
+      tileYield: {}, tileYieldMult: {}, unitsProduce: {}, upkeepReduction: 0, prodCost: { all: 0, building: 0 },
+      palaceYield: {}, palaceMult: 1, vision: 0, armyFlat: [], onCombat: [], perUnique: {},
+      settlementYield: {}, buildingSubtypeYield: {}, freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
     const expansions = new Set()
@@ -155,6 +155,10 @@ export class GameEngine {
           case 'on_combat_result': m.onCombat.push(e); break
           case 'per_unique_era_deployable': m.perUnique[e.resource] = (m.perUnique[e.resource] || 0) + e.amount; break
           case 'vision_bonus': m.vision += e.amount; break
+          case 'settlement_yield': m.settlementYield[e.resource] = (m.settlementYield[e.resource] || 0) + e.amount; break
+          case 'building_subtype_yield': (m.buildingSubtypeYield[e.subtype] ||= {})[e.resource] = (m.buildingSubtypeYield[e.subtype][e.resource] || 0) + e.amount; break
+          case 'palace_yield_mult': m.palaceMult *= e.factor; break
+          case 'tile_yield_mult': (m.tileYieldMult[e.terrain] ||= {})[e.resource] = (m.tileYieldMult[e.terrain][e.resource] || 1) * e.factor; break
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
         }
@@ -173,6 +177,8 @@ export class GameEngine {
     const base = { ...(def.yield || {}) }
     const bonus = this.mods.tileYield[t.terrain]
     if (bonus) for (const r in bonus) base[r] = (base[r] || 0) + bonus[r]
+    const mult = this.mods.tileYieldMult[t.terrain]
+    if (mult) for (const r in mult) base[r] = (base[r] || 0) * mult[r]
     if (t.region === 'new_world') for (const r in base) base[r] *= 2 // New World tiles yield double
     return base
   }
@@ -187,7 +193,9 @@ export class GameEngine {
         case 'settlement': if (dep && dep.subtype === 'settlement') n++; break
         case 'military': if (dep && dep.type === 'unit') n++; break
         case 'forest_or_mountain': if (t.terrain === 'forest' || t.terrain === 'mountain') n++; break
-        case 'water': if (t.terrain === 'coast') n++; break
+        case 'water': if (t.terrain === 'coast' || t.terrain === 'ocean' || t.terrain === 'river') n++; break
+        case 'hills': if (t.terrain === 'hills') n++; break
+        case 'desert': if (t.terrain === 'desert') n++; break
         case 'any': n++; break
         default: break
       }
@@ -196,27 +204,44 @@ export class GameEngine {
   }
   computeEconomy() {
     const income = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
+    const palaceInc = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
     let upkeep = 0
-    // controlled tiles: natural yield if empty, else the deployable's econ
+    // controlled tiles: natural yield if empty, else the deployable's econ. The palace
+    // accumulates separately so its whole yield can be multiplied (Absolute Monarchy).
     for (const k of this.controlled) {
       const t = this.world.byKey.get(k)
       const inst = this.deployed.get(k)
       if (!inst) { const y = this.terrainYield(t); for (const r in y) income[r] += y[r]; continue }
       const dep = DEPLOYABLES[inst.id]
       if (!dep.unique) upkeep += Math.max(0, dep.upkeep - this.mods.upkeepReduction)
+      const bucket = k === this.palaceKey ? palaceInc : income
       for (const e of dep.econ || []) {
         switch (e.name) {
-          case 'self_yield': income[e.resource] += e.amount; break
-          case 'per_adjacent': income[e.resource] += e.amount * this.adjCount(k, e.filter); break
-          case 'growth_per_turn': income[e.resource] += e.amount * (inst.age || 0); break
-          case 'count_scaling': income[e.resource] += e.amount * this.ownedCount(inst.id); break
-          case 'double_tile_yield': { const y = this.terrainYield(t); for (const r in y) income[r] += y[r] * 2; break }
+          case 'self_yield': bucket[e.resource] += e.amount; break
+          case 'per_adjacent': bucket[e.resource] += e.amount * this.adjCount(k, e.filter); break
+          case 'growth_per_turn': bucket[e.resource] += e.amount * (inst.age || 0); break
+          case 'count_scaling': bucket[e.resource] += e.amount * this.ownedCount(inst.id); break
+          case 'double_tile_yield': { const y = this.terrainYield(t); for (const r in y) bucket[r] += y[r] * 2; break }
           default: break
         }
       }
+      // buildings of a subtype boosted by tech (Alphabet, Specialization…)
+      if (dep.type === 'building') {
+        const by = this.mods.buildingSubtypeYield[dep.subtype]
+        if (by) for (const r in by) bucket[r] += by[r]
+      }
     }
-    // palace flat bonuses
-    if (this.deployed.has(this.palaceKey)) for (const r in this.mods.palaceYield) income[r] += this.mods.palaceYield[r]
+    // palace flat bonuses, then the whole palace yield ×palaceMult
+    if (this.deployed.has(this.palaceKey)) {
+      for (const r in this.mods.palaceYield) palaceInc[r] += this.mods.palaceYield[r]
+      for (const r in palaceInc) income[r] += palaceInc[r] * this.mods.palaceMult
+    }
+    // per-settlement yields (Democracy, Census, Slavery…)
+    if (Object.keys(this.mods.settlementYield).length) {
+      let settlements = 0
+      for (const v of this.deployed.values()) if (DEPLOYABLES[v.id].subtype === 'settlement') settlements++
+      for (const r in this.mods.settlementYield) income[r] += this.mods.settlementYield[r] * settlements
+    }
     // units-produce + per-unique-era
     const mil = this.militaryCount()
     for (const r in this.mods.unitsProduce) income[r] += this.mods.unitsProduce[r] * mil
@@ -239,7 +264,8 @@ export class GameEngine {
     const out = emptyScalars()
     for (const c of dep.combat || []) if (c.name === 'combat_scalar') out[c.domain][c.stat] += c.amount
     for (const c of dep.combat || []) {
-      if (c.name === 'combat_per_adjacent') out[c.domain][c.stat] += c.amount * this._adjCombat(k, inst, c.filter)
+      if (c.name === 'combat_count_scaling') out[c.domain][c.stat] += c.amount * this.ownedCount(inst.id)
+      else if (c.name === 'combat_per_adjacent') out[c.domain][c.stat] += c.amount * this._adjCombat(k, inst, c.filter)
       else if (c.name === 'combat_on_terrain' && t.terrain === c.terrain) {
         if (c.mode === 'double') out[c.domain][c.stat] += out[c.domain][c.stat]
         else out[c.domain][c.stat] += c.amount || 0

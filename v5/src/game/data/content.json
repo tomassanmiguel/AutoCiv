@@ -1134,6 +1134,286 @@
           "amount": 5
         }
       ]
+    },
+    {
+      "id": "city",
+      "name": "City",
+      "type": "building",
+      "subtype": "settlement",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+3 progress, +1 production. Counts as a settlement.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 3
+        },
+        {
+          "name": "self_yield",
+          "resource": "production",
+          "amount": 1
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "aqueduct",
+      "name": "Aqueduct",
+      "type": "building",
+      "subtype": "food",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+10 food.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "food",
+          "amount": 10
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "glassworks",
+      "name": "Glassworks",
+      "type": "building",
+      "subtype": "production",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+1 production, +1 for each adjacent desert.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "production",
+          "amount": 1
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "production",
+          "amount": 1,
+          "filter": "desert"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "crossbowman",
+      "name": "Crossbowman",
+      "type": "unit",
+      "subtype": "ranged",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "10 land attack, 6 bombardment.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 10
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 6
+        }
+      ]
+    },
+    {
+      "id": "bath",
+      "name": "Bath",
+      "type": "building",
+      "subtype": "food",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+3 food, +1 for each adjacent water tile.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "food",
+          "amount": 3
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "food",
+          "amount": 1,
+          "filter": "water"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "amphitheatre",
+      "name": "Amphitheatre",
+      "type": "building",
+      "subtype": "progress",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+3 progress, +1 for each adjacent hill.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 3
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "progress",
+          "amount": 1,
+          "filter": "hills"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "quadrieme",
+      "name": "Quadrieme",
+      "type": "unit",
+      "subtype": "naval",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 4,
+      "placement": {
+        "kind": "water",
+        "only": [
+          "coast"
+        ]
+      },
+      "desc": "18 sea attack, 13 sea defense.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "atk",
+          "amount": 18
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "def",
+          "amount": 13
+        }
+      ]
+    },
+    {
+      "id": "legionairre",
+      "name": "Legionairre",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "15 atk / 15 def, +5/+5 per legionairre you own.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 15
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 15
+        },
+        {
+          "name": "combat_count_scaling",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 5
+        },
+        {
+          "name": "combat_count_scaling",
+          "domain": "land",
+          "stat": "def",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "id": "companion",
+      "name": "Companion",
+      "type": "unit",
+      "subtype": "cavalry",
+      "era": "Classical",
+      "production": 5,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "23 attack, +4 per adjacent cavalry unit.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 23
+        },
+        {
+          "name": "combat_per_adjacent",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 4,
+          "filter": "cavalry"
+        }
+      ]
     }
   ],
   "techs": [
@@ -1790,6 +2070,206 @@
           "per": "once",
           "resource": "production",
           "amount": 4
+        }
+      ]
+    },
+    {
+      "id": "urbanization",
+      "name": "Urbanization",
+      "flavor": "Progress",
+      "era": "Classical",
+      "desc": "Unlocks the City.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "city"
+        }
+      ]
+    },
+    {
+      "id": "democracy",
+      "name": "Democracy",
+      "flavor": "Economy",
+      "era": "Classical",
+      "desc": "Settlements produce +4 progress but −1 production.",
+      "effects": [
+        {
+          "name": "settlement_yield",
+          "resource": "progress",
+          "amount": 4
+        },
+        {
+          "name": "settlement_yield",
+          "resource": "production",
+          "amount": -1
+        }
+      ]
+    },
+    {
+      "id": "concrete",
+      "name": "Concrete",
+      "flavor": "Production",
+      "era": "Classical",
+      "desc": "Reduce building production cost by 2 (min 0).",
+      "effects": [
+        {
+          "name": "production_cost_reduction",
+          "amount": 2,
+          "scope": "building"
+        }
+      ]
+    },
+    {
+      "id": "arches",
+      "name": "Arches",
+      "flavor": "Food",
+      "era": "Classical",
+      "desc": "Unlocks the Aqueduct.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "aqueduct"
+        }
+      ]
+    },
+    {
+      "id": "glassblowing",
+      "name": "Glassblowing",
+      "flavor": "Production",
+      "era": "Classical",
+      "desc": "Unlocks the Glassworks.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "glassworks"
+        }
+      ]
+    },
+    {
+      "id": "machinery",
+      "name": "Machinery",
+      "flavor": "Ranged",
+      "era": "Classical",
+      "desc": "Unlocks the Crossbowman.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "crossbowman"
+        }
+      ]
+    },
+    {
+      "id": "public_baths",
+      "name": "Public Baths",
+      "flavor": "Food",
+      "era": "Classical",
+      "desc": "Unlocks the Bath.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "bath"
+        }
+      ]
+    },
+    {
+      "id": "poetry",
+      "name": "Poetry",
+      "flavor": "Progress",
+      "era": "Classical",
+      "desc": "Unlocks the Amphitheatre.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "amphitheatre"
+        }
+      ]
+    },
+    {
+      "id": "census",
+      "name": "Census",
+      "flavor": "Gold",
+      "era": "Classical",
+      "desc": "Settlements produce +2 gold and +1 food.",
+      "effects": [
+        {
+          "name": "settlement_yield",
+          "resource": "gold",
+          "amount": 2
+        },
+        {
+          "name": "settlement_yield",
+          "resource": "food",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "warships",
+      "name": "Warships",
+      "flavor": "Naval",
+      "era": "Classical",
+      "desc": "Unlocks the Quadrieme.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "quadrieme"
+        }
+      ]
+    },
+    {
+      "id": "professional_soldiers",
+      "name": "Professional Soldiers",
+      "flavor": "Melee",
+      "era": "Classical",
+      "desc": "Unlocks the Legionairre.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "legionairre"
+        }
+      ]
+    },
+    {
+      "id": "dressage",
+      "name": "Dressage",
+      "flavor": "Cavalry",
+      "era": "Classical",
+      "desc": "Unlocks the Companion.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "companion"
+        }
+      ]
+    },
+    {
+      "id": "rhetoric",
+      "name": "Rhetoric",
+      "flavor": "Legitimacy",
+      "era": "Classical",
+      "desc": "Whenever you win a domain in combat, gain 15 legitimacy.",
+      "effects": [
+        {
+          "name": "on_combat_result",
+          "when": "win",
+          "per": "domain",
+          "resource": "legitimacy",
+          "amount": 15
+        }
+      ]
+    },
+    {
+      "id": "alphabet",
+      "name": "Alphabet",
+      "flavor": "Progress",
+      "era": "Iron",
+      "desc": "Progress buildings produce +1 progress.",
+      "effects": [
+        {
+          "name": "building_subtype_yield",
+          "subtype": "progress",
+          "resource": "progress",
+          "amount": 1
         }
       ]
     }
