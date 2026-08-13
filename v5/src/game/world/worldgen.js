@@ -855,20 +855,23 @@ function scatterExoplanets(tiles, seed, rng) {
   let guard = 40
   while (planets.length < EXO_COUNT && guard-- > 0) if (!placeOne(undefined)) break
 
-  // Moons are uncommon: ~50% of exoplanets have none, ~40% one, ~10% two.
-  for (const planet of planets) {
-    const roll = rng()
-    const moons = roll < 0.5 ? 0 : roll < 0.9 ? 1 : 2
-    if (moons === 0) continue
+  // Moons are uncommon: ~50% of exoplanets have none, ~40% one, ~10% two — but at
+  // least 2 total across all exoplanets.
+  const addMoon = (planet) => {
     const near = [...tiles.values()].filter((t) => t.region === 'deep_space' &&
       lengthOf(t.q - planet.q, t.r - planet.r) <= planet.rad + 4)
     shuffle(near, rng)
-    let put = 0
-    for (const t of near) {
-      if (put >= moons) break
-      if (bodyFitsDeep(tiles, t, 1)) { stampBody(tiles, t, 1, 'exomoon', 'exomoon'); put++ }
-    }
+    for (const t of near) if (bodyFitsDeep(tiles, t, 1)) { stampBody(tiles, t, 1, 'exomoon', 'exomoon'); return true }
+    return false
   }
+  let totalMoons = 0
+  for (const planet of planets) {
+    const roll = rng()
+    const want = roll < 0.5 ? 0 : roll < 0.9 ? 1 : 2
+    for (let i = 0; i < want; i++) if (addMoon(planet)) totalMoons++
+  }
+  let guard2 = planets.length * 3
+  while (totalMoons < 2 && guard2-- > 0) if (addMoon(planets[Math.floor(rng() * planets.length)])) totalMoons++
   return planets
 }
 
