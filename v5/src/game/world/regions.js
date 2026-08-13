@@ -89,34 +89,20 @@ export const STAGE_COUNT = STAGES.length
 export const STAGE = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
 
 /**
- * Reveal radius for the CONCENTRIC off-Earth stages. Earth's stages are
- * region-shaped and the two exoplanet stages are corridor-shaped; both are
- * handled by the generator.
+ * Reveal radius for the CONCENTRIC off-Earth stages. Everything past Earth is now
+ * charted in outward rings (a placeholder until the probe/caravel exploration
+ * mechanic drives the reveal); Earth's own stages stay region-shaped. The deep
+ * band and its scattered exoplanets fall out of these rings by distance.
  */
 export const REVEAL_RADIUS = {
   [STAGE.space]: 11, // the lone ring of open space around Earth
   [STAGE.moon]: 15,  // the Moon (12..14) plus the ring of space beyond it
   [STAGE.mars]: 21,  // Mars (16..20) plus the open ring beyond it
-  [STAGE.deep]: 23,  // first rings of the deep-space ocean, short of the exoplanet
+  [STAGE.deep]: 25,  // first rings of deep space
+  [STAGE.exo_coast]: 30, // deeper into deep space
+  [STAGE.full_exo]: 35,  // most of deep space
+  [STAGE.galaxy1]: 39,   // the galactic fringe
 }
-
-/** How far out each exoplanet stage pushes its corridor. */
-export const EXO_REACH = {
-  [STAGE.exo_coast]: BODIES.exoplanet.dist,
-  [STAGE.full_exo]: BODIES.exomoon.dist + BODIES.exomoon.radius,
-}
-
-/**
- * "Outer Galaxy I" does NOT reveal a disc — that would leave the exo corridor
- * poking out of it as a jagged spike. Instead it reveals a smooth TEARDROP whose
- * radius eases from `base` (away from the exoplanet) up to `max` (towards it),
- * enveloping the corridor. The map is deliberately lopsided at that stage, and
- * "Full Map" rounds it back out.
- *
- * `max` must stay large enough to swallow the corridor at its half-angle, or the
- * spike reappears.
- */
-export const GALAXY_SHAPE = { base: 30, max: 40, spread: 2.2 }
 
 /** Features never appear on the outermost revealable ring, so the map edge reads clean. */
 export const FEATURELESS_OUTER_RINGS = 1

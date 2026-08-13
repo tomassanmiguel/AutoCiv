@@ -29,6 +29,7 @@ const START_RADIUS = 5
 const MIN_OLD_WORLD = 45
 const MIN_NEW_WORLD = 14
 const MIN_ISLANDS = 2
+const MIN_EXOPLANETS = 6 // scattered peers, >= 1 in each angular third of the map
 const MAX_TUNDRA_FRACTION = 0.30 // tundra is now a guaranteed polar cap that may tendril equatorward
 // Earth is only ~400 tiles, so its region-shaped stages are naturally small;
 // this floor exists to catch a DEAD notch, not to enforce an even ladder.
@@ -171,19 +172,33 @@ export function validate(world) {
     }
   }
 
-  // The exoplanet's landmass must be one piece (its water may be as odd as it likes).
+  // Exoplanets: there are several scattered bodies now, each its own connected
+  // landmass. Count them as connected LAND components and require enough of them,
+  // spread so every angular third of the map holds at least one.
   const exoLand = world.list.filter((t) => t.region === 'exoplanet' && isLand(t.terrain))
-  if (exoLand.length) {
-    const start = exoLand[0]
-    const reach = bfs([{ q: start.q, r: start.r }], (q, r) => {
-      const t = at(q, r)
-      return !!t && t.region === 'exoplanet' && isLand(t.terrain)
-    })
-    if (reach.size < exoLand.length) {
-      v.push(`exoplanet landmass is split (${reach.size}/${exoLand.length} connected)`)
+  if (!exoLand.length) v.push('no exoplanet land')
+  else {
+    const seen = new Set()
+    const bodies = []
+    for (const t of exoLand) {
+      const k = key(t.q, t.r)
+      if (seen.has(k)) continue
+      const comp = []
+      const stack = [t]; seen.add(k)
+      while (stack.length) {
+        const c = stack.pop(); comp.push(c)
+        for (const n of neighbors(c.q, c.r)) {
+          const nk = key(n.q, n.r); const o = at(n.q, n.r)
+          if (o && o.region === 'exoplanet' && isLand(o.terrain) && !seen.has(nk)) { seen.add(nk); stack.push(o) }
+        }
+      }
+      bodies.push(comp)
     }
-  } else {
-    v.push('exoplanet has no land')
+    if (bodies.length < MIN_EXOPLANETS) v.push(`only ${bodies.length} exoplanets (want >= ${MIN_EXOPLANETS})`)
+    // Each angular third of the map must hold at least one exoplanet.
+    const thirdOf = (t) => { const a = Math.atan2(t.y, t.x); return a < -Math.PI / 3 ? 0 : a < Math.PI / 3 ? 1 : 2 }
+    const thirds = new Set(bodies.map((b) => thirdOf(b[0])))
+    for (let s = 0; s < 3; s++) if (!thirds.has(s)) v.push(`no exoplanet in third ${s} of the map`)
   }
 
   // --- VIABILITY -----------------------------------------------------------
