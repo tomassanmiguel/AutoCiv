@@ -18,7 +18,7 @@
 // repair, validate, and re-roll if it still violates an invariant (see
 // invariants.js). That is what makes the map "varied but predictable".
 
-import { key, disc, ring, neighbors, lengthOf, toPixel, wedgeOf, SQRT3 } from '../hex/coords.js'
+import { key, disc, ring, neighbors, lengthOf, toPixel, wedgeOf, SQRT3, bfs } from '../hex/coords.js'
 import { makeRng, makeNoise2D, shuffle } from './noise.js'
 import {
   BANDS, BODIES, MAX_RADIUS, MAX_REVEAL_RADIUS, REVEAL_RADIUS, EXO_REACH, EXO_CORRIDOR,
@@ -256,12 +256,35 @@ function carveRivers(tiles, earth, rng) {
  * do not generate coast — a one-tile speck ringed by shallows reads wrong.
  */
 function markCoasts(tiles, earth) {
-  const CONTINENT = new Set(['old_world', 'new_world'])
   for (const t of earth) {
     if (t.region !== 'sea') continue
     const touchesLand = neighbors(t.q, t.r).some((n) => {
       const o = tiles.get(key(n.q, n.r))
-      return o && CONTINENT.has(o.region) && isLand(o.terrain)
+      return o && isLand(o.terrain) // ANY land (continent OR island) gives a coast
+    })
+    t.terrain = touchesLand ? 'coast' : 'ocean'
+  }
+}
+
+/**
+ * Final Earth water pass, AFTER land bridges (connectOldWorldLand) may have created
+ * land next to an island: revert any island touching continent land back to sea, then
+ * re-derive coast so every earth water tile adjacent to any land reads as coast.
+ */
+function finalizeEarthCoasts(tiles) {
+  for (const t of tiles.values()) {
+    if (t.region !== 'island') continue
+    const touchesContinent = neighbors(t.q, t.r).some((n) => {
+      const o = tiles.get(key(n.q, n.r))
+      return o && (o.region === 'old_world' || o.region === 'new_world') && isLand(o.terrain)
+    })
+    if (touchesContinent) { t.region = 'sea'; t.seaKind = 'channel'; t.terrain = 'ocean' }
+  }
+  for (const t of tiles.values()) {
+    if (t.band !== 'earth' || t.region !== 'sea') continue
+    const touchesLand = neighbors(t.q, t.r).some((n) => {
+      const o = tiles.get(key(n.q, n.r))
+      return o && isLand(o.terrain)
     })
     t.terrain = touchesLand ? 'coast' : 'ocean'
   }
@@ -424,20 +447,22 @@ function generateDeep(tiles, seed, rng) {
   }
   stampBody(tiles, best, BODIES.exomoon.radius, 'exomoon', 'exomoon')
 
-  // A SECOND exomoon ADJACENT to the exoplanet — touching it without overlapping —
-  // and clear of the first moon.
+  // A SECOND exomoon with exactly ONE ROW of separation from the exoplanet (one empty
+  // ring between them), and clear of the first moon and any other body.
   const R = BODIES.exomoon.radius
-  const near = []
+  const exoStarts = []
+  for (const t of tiles.values()) if (t.region === 'exoplanet') exoStarts.push({ q: t.q, r: t.r })
+  const distField = bfs(exoStarts, (q, r) => tiles.has(key(q, r)))
+  const gapCands = []
   for (const t of tiles.values()) {
-    if (t.band !== 'deep' || t.region === 'exoplanet' || t.region === 'exomoon') continue
-    const cells = disc(t.q, t.r, R)
-    if (cells.some((h) => tiles.get(key(h.q, h.r))?.region === 'exoplanet')) continue // no overlap
-    const touches = cells.some((h) => neighbors(h.q, h.r).some((n) => tiles.get(key(n.q, n.r))?.region === 'exoplanet'))
-    if (!touches) continue
+    if (t.band !== 'deep' || BODY_REGIONS.has(t.region)) continue
+    // Centre R+2 rings from the exoplanet ⇒ the moon's nearest tile is 2 hexes away (one empty ring between).
+    if ((distField.get(key(t.q, t.r)) ?? Infinity) !== R + 2) continue
+    if (disc(t.q, t.r, R).some((h) => BODY_REGIONS.has(tiles.get(key(h.q, h.r))?.region))) continue
     if (lengthOf(t.q - best.q, t.r - best.r) < R + 3) continue // clear of the first moon
-    near.push(t)
+    gapCands.push(t)
   }
-  if (near.length) stampBody(tiles, near[Math.floor(rng() * near.length)], R, 'exomoon', 'exomoon')
+  if (gapCands.length) stampBody(tiles, gapCands[Math.floor(rng() * gapCands.length)], R, 'exomoon', 'exomoon')
 
   return center
 }
@@ -998,6 +1023,7 @@ export function buildWorld(seed) {
   generateOuterSpecials(tiles, rng, inWidestCorridor)
   repairStart(tiles, rng)
   connectOldWorldLand(tiles)
+  finalizeEarthCoasts(tiles)
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt, galaxyReach)
 

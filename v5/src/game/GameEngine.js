@@ -1,7 +1,7 @@
 // AutoCiv v5 — the engine. Framework-free; React reads it through the
 // subscribe/getVersion bridge (see react/GameProvider). All game state and the
 // turn loop live here; content.json (via data/content.js) drives every mechanic.
-import { key as hkey, neighbors, bfs, lengthOf } from './hex/coords.js'
+import { key as hkey, neighbors, bfs, lengthOf, disc } from './hex/coords.js'
 import { generateWorld } from './world/worldgen.js'
 import {
   META, TERRAIN, DEPLOYABLES, TECHS, ENEMY, progressCost,
@@ -40,6 +40,17 @@ export class GameEngine {
     const home = cands[Math.floor(rand() * cands.length)]
     this.palaceKey = home.key
     this.world.palace = { q: home.q, r: home.r }
+
+    // Guarantee variety within range 2 of the palace: at least one plains, forest, and hills.
+    const near2 = disc(home.q, home.r, 2).map((h) => w.tiles.get(hkey(h.q, h.r))).filter(Boolean)
+    const CONVERTIBLE = new Set(['plains', 'forest', 'hills', 'desert', 'tundra'])
+    const usedNear = new Set([this.palaceKey])
+    const ensureNear = (terr) => {
+      if (near2.some((t) => t.terrain === terr)) return
+      const cand = near2.find((t) => !usedNear.has(t.key) && CONVERTIBLE.has(t.terrain))
+      if (cand) { cand.terrain = terr; usedNear.add(cand.key) } // don't let a later ensure re-convert this tile
+    }
+    ensureNear('plains'); ensureNear('forest'); ensureNear('hills')
     this._subs = new Set()
 
     this.turn = 1

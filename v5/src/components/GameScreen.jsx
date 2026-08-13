@@ -251,7 +251,12 @@ function HexMap({ g }) {
   const clampPan = (cam) => {
     const vp = viewportRef.current; const W = vp.clientWidth, H = vp.clientHeight
     const cw = layout.w * cam.scale, ch = layout.h * cam.scale
-    return { scale: cam.scale, tx: cw <= W ? (W - cw) / 2 : clamp(cam.tx, W - cw, 0), ty: ch <= H ? (H - ch) / 2 : clamp(cam.ty, H - ch, 0) }
+    // Allow panning at ANY zoom (even fully zoomed out) with a generous margin, rather than
+    // hard-centering when the map is smaller than the viewport. The map may drift up to ~65%
+    // of the viewport past its fit position but can't be lost entirely.
+    const mx = W * 0.65, my = H * 0.65
+    const clampAxis = (t, content, view) => clamp(t, Math.min(0, view - content) - mx, Math.max(0, view - content) + my)
+    return { scale: cam.scale, tx: clampAxis(cam.tx, cw, W), ty: clampAxis(cam.ty, ch, H) }
   }
 
   useLayoutEffect(() => { if (!didMount.current) { didMount.current = true; const t = fitCamera(); if (t) { cameraRef.current = t; applyTransform() } } })
