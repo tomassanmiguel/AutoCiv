@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { GameProvider, useGame } from '../game/react/GameProvider.jsx'
 import { GameEngine } from '../game/GameEngine.js'
 import { fromPixel, SQRT3, key as hkey } from '../game/hex/coords.js'
-import { spriteUrl } from '../game/world/terrain.js'
+import { spriteUrl, terrainOf } from '../game/world/terrain.js'
 import { TERRAIN, DEPLOYABLES } from '../game/data/content.js'
 import { DOMAINS } from '../game/data/schema.js'
 import { resolveCombatTimeline, domainHasForce } from '../game/systems/combat.js'
@@ -298,7 +298,10 @@ function MapHoverCard({ g, k }) {
   const out = inst && g.tileOutput(k)
   const sc = inst && g.instScalars(k)
   const scLines = sc ? DOMAINS.map((d) => ({ d, ...sc[d] })).filter((x) => x.atk || x.def || x.bomb) : []
-  const ty = TERRAIN[t.terrain]
+  const cdef = TERRAIN[t.terrain]        // content economy def (Earth terrains) — may be undefined off-world
+  const tdef = terrainOf(t.terrain)      // v4 registry — always defined (name, note, base yields)
+  const tName = cdef?.name || tdef.name
+  const tYield = cdef?.yield || tdef.yields || {}
   return (
     <div className="v5-hover">
       <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={18} fill={false} className="frame">
@@ -317,8 +320,9 @@ function MapHoverCard({ g, k }) {
           </>
         ) : (
           <>
-            <div className="hv-h"><b>{ty.name}</b><span className="hv-sub">{g.controlled.has(k) ? 'controlled' : 'unclaimed'}</span></div>
-            <div className="hv-out">{Object.entries(ty.yield || {}).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={13} />{v}</span>)}{ty.defBonus ? <span className="hv-chip"><SIco st="def" s={12} />+{ty.defBonus}</span> : null}</div>
+            <div className="hv-h"><b>{tName}</b><span className="hv-sub">{g.controlled.has(k) ? 'controlled' : cdef ? 'unclaimed' : 'unreachable'}</span></div>
+            <div className="hv-out">{Object.entries(tYield).filter(([, v]) => v > 0).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={13} />{v}</span>)}{cdef?.defBonus ? <span className="hv-chip"><SIco st="def" s={12} />+{cdef.defBonus}</span> : null}</div>
+            {tdef.note && <div className="hv-desc"><IconText>{tdef.note}</IconText></div>}
           </>
         )}
       </NineSlice>
