@@ -395,6 +395,32 @@ function balanceEarthTerrain(tiles) {
   for (const c of continents) enforceTerrainMins(tiles, c.land, EARTH_MINS, scoreEarth, protectedTerr, protect)
 }
 
+/**
+ * Enforce chaotic-but-guaranteed terrain minimums (EXO_MINS) on each exoplanet
+ * body — the main planet and the rogue mini exoplanets — over its LAND tiles.
+ * Exoplanets skew mountainous and have no polar rule, so tundra sits at the rim
+ * and mountains grow into ranges just like on Earth.
+ */
+function balanceExoplanets(tiles) {
+  const scoreExo = (terr, t) => {
+    switch (terr) {
+      case 'exomountain': {
+        let s = t.ridge ?? 0.5
+        for (const nb of neighbors(t.q, t.r)) if (tiles.get(key(nb.q, nb.r))?.terrain === 'exomountain') { s += 2; break }
+        return s
+      }
+      case 'exohills': return t.elev ?? 0.5
+      case 'exotundra': return t.rim ?? 0.5 // exo "tundra" hugs the body's rim
+      case 'exodesert': return 1 - (t.moist ?? 0.5)
+      default: return 0 // exoplains
+    }
+  }
+  for (const region of ['exoplanet', 'mini_exo']) {
+    const land = [...tiles.values()].filter((t) => t.region === region && isLand(t.terrain))
+    if (land.length) enforceTerrainMins(tiles, land, EXO_MINS, scoreExo, new Set(), null)
+  }
+}
+
 /** Guarantee tundra in BOTH hemispheres: if a hemisphere's continent land has no
  *  tundra, turn its most-poleward land into a small tundra cap. */
 function guaranteeBothPoles(tiles) {
@@ -572,13 +598,16 @@ function generateDeep(tiles, seed, rng) {
     const e = elevN(lq * 1.5 + 10, lr * 1.5 + 10)
     const m = moistN(lq * 1.5 + 40, lr * 1.5 + 40)
     const w = seaN(lq * 1.6 + 70, lr * 1.6 + 70)
-    const ridge = 1 - Math.abs(2 * ridgeN(lq * 2.2, lr * 2.2) - 1)
+    const ridge = 1 - Math.abs(2 * ridgeN(lq * 1.6, lr * 1.6) - 1) // lower-freq ⇒ longer ranges
     t.elev = e
+    t.moist = m
+    t.ridge = ridge
+    t.rim = dd
 
     // Irregular inland seas and lakes — NOT a ring of water round the rim, and
     // the exoplanet is free to touch open space at its edge.
     if (w < 0.38) t.terrain = 'exosea'
-    else if (ridge > 0.93 && e > 0.45) t.terrain = 'exomountain'
+    else if (ridge > 0.90 && e > 0.45) t.terrain = 'exomountain'
     else if (e > 0.62) t.terrain = 'exohills'
     else if (dd > 0.86) t.terrain = 'exotundra'
     else if (m < 0.28) t.terrain = 'exodesert'
@@ -792,10 +821,14 @@ function scatterMiniExoplanets(tiles, exoCenter, seed, rng) {
       const e = elevN(lq * 1.6 + 10, lr * 1.6 + 10)
       const m = moistN(lq * 1.6 + 40, lr * 1.6 + 40)
       const w = seaN(lq * 1.7 + 70, lr * 1.7 + 70)
-      const ridge = 1 - Math.abs(2 * ridgeN(lq * 2.4, lr * 2.4) - 1)
+      const ridge = 1 - Math.abs(2 * ridgeN(lq * 1.7, lr * 1.7) - 1) // lower-freq ⇒ longer ranges
       t.region = 'mini_exo' // own region so it doesn't break the main-exoplanet invariants
+      t.elev = e
+      t.moist = m
+      t.ridge = ridge
+      t.rim = dd
       if (w < 0.34) t.terrain = 'exosea'
-      else if (ridge > 0.92 && e > 0.45) t.terrain = 'exomountain'
+      else if (ridge > 0.90 && e > 0.45) t.terrain = 'exomountain'
       else if (e > 0.62) t.terrain = 'exohills'
       else if (dd > 0.85) t.terrain = 'exotundra'
       else if (m < 0.28) t.terrain = 'exodesert'
@@ -1289,6 +1322,7 @@ export function buildWorld(seed) {
   const marsCenter = generateSpace(tiles, rng)
   const exoCenter = generateDeep(tiles, seed, rng)
   scatterMiniExoplanets(tiles, exoCenter, seed, rng)
+  balanceExoplanets(tiles) // chaotic terrain minimums (mountain-heavy) + exo mountain ranges
 
   // Cone test towards the exoplanet, shared by the reveal and the special-scatter.
   const exoAngle = Math.atan2(exoCenter.y, exoCenter.x)
