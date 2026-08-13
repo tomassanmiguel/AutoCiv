@@ -59,6 +59,9 @@ export const EFFECT_KINDS = [
   N('enable_expansion', 'Enables expanding to terrain', { where: 'tech', params: [{ key: 'terrain', type: 'terrain' }] }),
   N('enable_region', 'Enables settling tiles of a map region', { where: 'tech', params: [{ key: 'region', type: 'string' }] }),
   N('enable_bridge', 'Water/space body becomes an adjacency bridge for settling', { where: 'tech', params: [{ key: 'terrain', type: 'terrain' }] }),
+  N('allow_space_build', 'A deployable may be built on space tiles', { where: 'tech', params: [{ key: 'deployable', type: 'deployable' }] }),
+  N('deployable_yield_per_nonearth', 'A deployable +yield per non-Earth tile controlled', { where: 'tech', params: [{ key: 'deployable', type: 'deployable' }, { key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
+  N('deployable_cost_add', 'A deployable costs extra production', { where: 'tech', params: [{ key: 'deployable', type: 'deployable' }, { key: 'amount', type: 'number' }] }),
   N('army_combat_flat', 'All units +combat stat', { where: 'tech', params: [
     { key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'amount', type: 'number' },
   ] }),
@@ -169,6 +172,7 @@ export const EFFECT_KINDS = [
   N('aura_tile_yield_mult', 'Multiply adjacent tiles’ natural yield (credited here)', { where: 'econ', params: [
     { key: 'resource', type: 'enum', options: RESOURCES }, { key: 'factor', type: 'number' },
   ] }),
+  N('tightbeam_network', 'Tiles between any pair of these +yield to each natural output', { where: 'econ', params: [{ key: 'amount', type: 'number' }] }),
 
   // -- deployable one-shot on build --
   N('on_build', 'One-time gain when built', { where: 'build', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),

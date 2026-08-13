@@ -171,6 +171,7 @@ export class GameEngine {
       yieldMult: [], subtypeConvert: [], armyFromSettlement: [],
       terrainAdjSettlement: [], tileYieldFactor: {}, isolatedMult: [], subtypeCombatFromOutput: [],
       regionYieldMult: [], bridges: new Set(),
+      spaceBuild: new Set(), deployableNonEarth: [], deployableCostAdd: {},
       mercenaries: false, mercDefPerHire: 0,
       critPerRanged: 0, crossBombard: [],
       regions: new Set(),
@@ -186,6 +187,9 @@ export class GameEngine {
           case 'enable_expansion': expansions.add(e.terrain); break
           case 'enable_region': m.regions.add(e.region); break
           case 'enable_bridge': m.bridges.add(e.terrain); break
+          case 'allow_space_build': m.spaceBuild.add(e.deployable); break
+          case 'deployable_yield_per_nonearth': m.deployableNonEarth.push({ deployable: e.deployable, resource: e.resource, amount: e.amount }); break
+          case 'deployable_cost_add': m.deployableCostAdd[e.deployable] = (m.deployableCostAdd[e.deployable] || 0) + e.amount; break
           case 'units_produce': m.unitsProduce[e.resource] = (m.unitsProduce[e.resource] || 0) + e.amount; break
           case 'palace_yield_flat': {
             const list = e.resource === 'all' ? RES : [e.resource]
@@ -305,6 +309,24 @@ export class GameEngine {
     for (const [k, v] of this.deployed) if (DEPLOYABLES[v.id].subtype === 'settlement') { const o = this.tileOutput(k); if (o) for (const rr in o) sum += o[rr] }
     return sum
   }
+  _countNonEarthControlled() { let n = 0; for (const k of this.controlled) { const t = this.world.byKey.get(k); if (t && t.band !== 'earth') n++ } return n }
+  /** Hex-line of tile keys between two tiles (inclusive), via cube-coordinate lerp. */
+  _hexLine(ak, bk) {
+    const a = parse(ak); const b = parse(bk)
+    const ax = a.q; const az = a.r; const ay = -ax - az
+    const bx = b.q; const bz = b.r; const by = -bx - bz
+    const N = lengthOf(b.q - a.q, b.r - a.r)
+    const out = []
+    for (let i = 0; i <= N; i++) {
+      const t = N === 0 ? 0 : i / N
+      let x = ax + (bx - ax) * t; let y = ay + (by - ay) * t; let z = az + (bz - az) * t
+      let rx = Math.round(x); let ry = Math.round(y); let rz = Math.round(z)
+      const dx = Math.abs(rx - x); const dy = Math.abs(ry - y); const dz = Math.abs(rz - z)
+      if (dx > dy && dx > dz) rx = -ry - rz; else if (dy > dz) ry = -rx - rz; else rz = -rx - ry
+      out.push(hkey(rx, rz))
+    }
+    return out
+  }
   computeEconomy() {
     const income = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
     const palaceInc = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
@@ -348,6 +370,8 @@ export class GameEngine {
         const by = this.mods.buildingSubtypeYield[dep.subtype]
         if (by) for (const r in by) out[r] += by[r]
       }
+      // Redshift: a deployable gains yield per non-Earth tile controlled (space observatories).
+      for (const ne of this.mods.deployableNonEarth) if (dep.id === ne.deployable) out[ne.resource] += ne.amount * this._countNonEarthControlled()
       // deployable-intrinsic conditional multiplier (Monastery: halved if any adjacent building)
       for (const e of dep.econ || []) if (e.name === 'self_output_mult_if_adjacent' && this.adjCount(k, e.filter) > 0) for (const r in out) out[r] *= e.factor
       // tech conversions (Monotheism: temple gold = its progress) then multipliers (Tithing, Citizenship, Scientific Method)
@@ -377,6 +401,18 @@ export class GameEngine {
       let far = 0
       for (const k of this.controlled) { const r = this.ringFromPalace(this.world.byKey.get(k)); if (r > far) far = r }
       income.gold += far
+    }
+    // Tightbeams: every empty controlled tile ON A LINE between a pair of receivers gains +N to each natural output.
+    const beams = [...this.deployed].filter(([, v]) => (DEPLOYABLES[v.id].econ || []).some((e) => e.name === 'tightbeam_network'))
+    if (beams.length >= 2) {
+      const amt = (DEPLOYABLES[beams[0][1].id].econ.find((e) => e.name === 'tightbeam_network').amount) || 1
+      const boosted = new Set()
+      for (let i = 0; i < beams.length; i++) for (let j = i + 1; j < beams.length; j++) for (const key of this._hexLine(beams[i][0], beams[j][0])) boosted.add(key)
+      for (const key of boosted) {
+        if (!this.controlled.has(key) || this.deployed.has(key)) continue
+        const y = this.terrainYield(this.world.byKey.get(key))
+        for (const r in y) if (y[r] > 0) income[r] += amt
+      }
     }
     // Philosophy: +progress per owned tech of a flavor.
     if (Object.keys(this.mods.progressPerFlavor).length) {
@@ -737,7 +773,8 @@ export class GameEngine {
     const dep = DEPLOYABLES[id]
     const ramp = ((n) => (n <= 1 ? 0 : 1 + ((n - 2) * (n - 1)) / 2))(this.ownedCount(id) + 1)
     const red = dep.type === 'building' ? this.mods.prodCost.all + this.mods.prodCost.building : this.mods.prodCost.all
-    return Math.max(0, dep.production + ramp - red)
+    const add = this.mods.deployableCostAdd[id] || 0 // Redshift: observatories cost +10
+    return Math.max(0, dep.production + ramp + add - red)
   }
   canBuild(id) { return this.unlocked.has(id) && this.status === 'playing' && this.resources.production >= this.buildCost(id) }
   beginBuild(id) { if (this.canBuild(id)) { this.selection = { type: 'build', deployableId: id }; this._emit() } }
@@ -753,6 +790,8 @@ export class GameEngine {
       return this.neighborKeys(k).some((nk) => this.controlled.has(nk))
     }
     if (!this.controlled.has(k) || this.deployed.has(k) || this.explorerAt(k)) return false
+    // Redshift: some buildings may be raised on controlled space tiles.
+    if (this.mods.spaceBuild.has(id) && VOID_TERRAINS.includes(t.terrain)) return true
     const ter = TERRAIN[t.terrain]
     if (!ter) return false
     const p = dep.placement || {}
@@ -933,6 +972,7 @@ export class GameEngine {
       }
     }
     // mirror the tech conversions/multipliers computeEconomy applies, so cards match income
+    for (const ne of this.mods.deployableNonEarth) if (dep.id === ne.deployable) add(ne.resource, ne.amount * this._countNonEarthControlled())
     for (const e of dep.econ || []) if (e.name === 'self_output_mult_if_adjacent' && this.adjCount(k, e.filter) > 0) for (const r in out) out[r] *= e.factor
     const hit = (m) => m.deployable ? dep.id === m.deployable : dep.subtype === m.subtype
     for (const cv of this.mods.subtypeConvert) if (hit(cv)) add(cv.to, out[cv.from] || 0)

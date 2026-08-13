@@ -2187,6 +2187,29 @@
       },
       "econ": [],
       "combat": []
+    },
+    {
+      "id": "tightbeam_receiver",
+      "name": "Tightbeam Receiver",
+      "type": "building",
+      "subtype": "support",
+      "era": "Exodus",
+      "production": 24,
+      "upkeep": 20,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "Every tile on a line between any pair of Tightbeam Receivers gains +1 to each of its natural outputs.",
+      "econ": [
+        {
+          "name": "tightbeam_network",
+          "amount": 1
+        }
+      ],
+      "combat": []
     }
   ],
   "techs": [
@@ -4179,6 +4202,43 @@
         {
           "name": "unlock_deployable",
           "deployable": "caravel"
+        }
+      ]
+    },
+    {
+      "id": "redshift",
+      "name": "Redshift",
+      "flavor": "Progress",
+      "era": "Information",
+      "desc": "Observatories may be built in space, producing 1 progress per non-Earth tile you control (they cost 10 more production).",
+      "effects": [
+        {
+          "name": "allow_space_build",
+          "deployable": "observatory"
+        },
+        {
+          "name": "deployable_yield_per_nonearth",
+          "deployable": "observatory",
+          "resource": "progress",
+          "amount": 1
+        },
+        {
+          "name": "deployable_cost_add",
+          "deployable": "observatory",
+          "amount": 10
+        }
+      ]
+    },
+    {
+      "id": "tightbeams",
+      "name": "Tightbeams",
+      "flavor": "Economy",
+      "era": "Exodus",
+      "desc": "Unlocks the Tightbeam Receiver.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "tightbeam_receiver"
         }
       ]
     }
