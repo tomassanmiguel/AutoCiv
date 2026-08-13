@@ -367,7 +367,7 @@
       "name": "Exomoon",
       "kind": "space",
       "yield": {
-        "progress": 6
+        "progress": 24
       },
       "expandBase": 10,
       "defBonus": 0,
