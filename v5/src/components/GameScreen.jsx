@@ -304,7 +304,7 @@ function MapHoverCard({ g, k }) {
   const tYield = cdef?.yield || tdef.yields || {}
   return (
     <div className="v5-hover">
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={18} fill={false} className="frame">
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={18} className="frame">
         {dep ? (
           <>
             <div className="hv-h"><img className="sil-i" src={silFor(dep)} alt="" /><b>{dep.name}</b><span className="hv-sub">{dep.type} · {dep.subtype}</span></div>
@@ -338,7 +338,7 @@ function Sidebar({ g }) {
       <div className="v5-tabs">
         {tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
       </div>
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={20} fill={false} className="v5-tabbody">
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={20} className="v5-tabbody">
         {tab === 'research' && <ResearchPanel g={g} />}
         {tab === 'build' && <BuildPanel g={g} />}
         {tab === 'wave' && <WavePanel g={g} />}
@@ -440,7 +440,7 @@ function ScalarTable({ title, s, accent }) {
 function CombatOverlay({ title, player, enemy, dismissLabel, onDismiss }) {
   return (
     <div className="v5-modal-bg" onClick={onDismiss}>
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={24} fill={false} className="v5-theater" onClick={(e) => e.stopPropagation()}>
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={24} className="v5-theater" onClick={(e) => e.stopPropagation()}>
         <h2>{title}</h2>
         <CombatTheater player={player} enemy={enemy} />
         <button className="v5-cont" onClick={onDismiss}>{dismissLabel}</button>
@@ -523,7 +523,7 @@ function EndOverlay({ g, onExit }) {
   const won = g.status === 'won'
   return (
     <div className="v5-modal-bg">
-      <NineSlice src="/sprites/ui/box-dark.png" slice={205} width={28} fill={false} className={`v5-end ${won ? 'win' : 'lose'}`}>
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={28} className={`v5-end ${won ? 'win' : 'lose'}`}>
         <h1>{won ? 'Victory' : 'Defeat'}</h1>
         <p>{won ? 'Your civilization ascends.' : 'Your legitimacy has collapsed.'}</p>
         <p className="sub">Survived {g.waveCount} waves · reached the {g.eraName()} era.</p>
