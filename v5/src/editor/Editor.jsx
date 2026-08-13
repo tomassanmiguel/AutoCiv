@@ -200,7 +200,7 @@ function TerrainTab({ content, update }) {
             <tr key={t.id}>
               <td><Txt value={t.id} onChange={(v) => update((c) => c.terrain[i].id = v)} w={90} /></td>
               <td><Txt value={t.name} onChange={(v) => update((c) => c.terrain[i].name = v)} w={90} /></td>
-              <td><Sel value={t.kind} onChange={(v) => update((c) => c.terrain[i].kind = v)} options={['land', 'water']} /></td>
+              <td><Sel value={t.kind} onChange={(v) => update((c) => c.terrain[i].kind = v)} options={['land', 'water', 'space']} /></td>
               <td className="yields">
                 {RESOURCES.map((r) => (
                   <label key={r} className="yl"><i>{r[0]}</i>

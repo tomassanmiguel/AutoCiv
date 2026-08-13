@@ -1,7 +1,7 @@
 // AutoCiv v5 — the engine. Framework-free; React reads it through the
 // subscribe/getVersion bridge (see react/GameProvider). All game state and the
 // turn loop live here; content.json (via data/content.js) drives every mechanic.
-import { key as hkey, neighbors, bfs } from './hex/coords.js'
+import { key as hkey, neighbors, bfs, lengthOf } from './hex/coords.js'
 import { generateWorld } from './world/worldgen.js'
 import {
   META, TERRAIN, DEPLOYABLES, TECHS, ENEMY, progressCost,
@@ -253,6 +253,7 @@ export class GameEngine {
     for (const k of this.controlled) for (const nk of this.neighborKeys(k)) if (!this.controlled.has(nk)) out.add(nk)
     return out
   }
+  ringFromPalace(t) { return lengthOf(t.q - this.world.palace.q, t.r - this.world.palace.r) }
   expandTargets() {
     const out = []
     for (const k of this.expandFrontier()) {
@@ -260,7 +261,7 @@ export class GameEngine {
       const ter = TERRAIN[t.terrain]
       if (!ter) continue // only content terrains are settleable (Earth land + coast)
       if (ter.unlock && !this.expansions.has(t.terrain)) continue
-      const cost = ter.expandBase + Math.max(0, t.dist - 1)
+      const cost = ter.expandBase + Math.max(0, this.ringFromPalace(t) - 1)
       out.push({ key: k, terrain: t.terrain, cost, affordable: this.resources.food >= cost })
     }
     return out
@@ -273,7 +274,7 @@ export class GameEngine {
     const ter = TERRAIN[t.terrain]
     if (!ter) return false
     if (ter.unlock && !this.expansions.has(t.terrain)) return false
-    const cost = ter.expandBase + Math.max(0, t.dist - 1)
+    const cost = ter.expandBase + Math.max(0, this.ringFromPalace(t) - 1)
     if (this.resources.food < cost) return false
     this.resources.food -= cost
     this.controlled.add(k)

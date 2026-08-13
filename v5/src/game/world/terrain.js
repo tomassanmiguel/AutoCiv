@@ -51,6 +51,7 @@ export const TERRAIN = Object.fromEntries([
   // --- Space ---
   T('space', 'Space', 'space', 'space', true, Y()),
   T('deep_space', 'Deep Space', 'deep-space', 'space', true, Y()),
+  T('outer_space', 'Outer Space', 'deep-space', 'space', true, Y()), // same sprite as deep space, distinct name
   T('asteroid', 'Asteroid', 'asteroid', 'space', true, Y(0, 1000)),
   T('moon', 'Moon', 'moon', 'space', true, Y(0, 0, 50)),
   T('lunar_crater', 'Lunar Crater', 'lunar-crater', 'space', true, Y(0, 500), { ext: 'jpg' }),
@@ -69,6 +70,7 @@ export const TERRAIN = Object.fromEntries([
 
   // --- Outer galaxy ---
   T('planet', 'Planet', 'planet', 'space', true, Y(100, 1000, 1000)),
+  T('star', 'Star', 'star', 'space', true, Y(0, 1000)),
   T('singularity', 'Singularity', 'singularity', 'space', false, Y(), { note: 'Impassable — a chokepoint. No yield.' }),
 
   // --- Special ---

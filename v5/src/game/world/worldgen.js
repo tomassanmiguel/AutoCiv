@@ -352,7 +352,7 @@ function scatterInto(candidates, bag, spacing, after) {
 function generateDeep(tiles, seed, rng) {
   for (const t of tiles.values()) {
     if (t.band !== 'deep') continue
-    t.terrain = 'deep_space'
+    t.terrain = 'outer_space' // the space between Earth and the exoplanet (distinct from deep space)
     t.region = 'deep_space'
   }
 
@@ -507,9 +507,10 @@ function generateOuterSpecials(tiles, rng, inCorridor) {
   scatterInto(
     open,
     [
-      ...Array(19).fill('planet'),
+      ...Array(16).fill('planet'),
+      ...Array(9).fill('star'),
       ...Array(5).fill('singularity'),
-      ...Array(24).fill('asteroid'),
+      ...Array(22).fill('asteroid'),
     ],
     3,
   )

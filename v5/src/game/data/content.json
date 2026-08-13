@@ -99,6 +99,280 @@
       "defBonus": 0,
       "unlock": "furs",
       "sprite": "tundra"
+    },
+    {
+      "id": "island",
+      "name": "Island",
+      "kind": "land",
+      "yield": {
+        "food": 1,
+        "progress": 1
+      },
+      "expandBase": 2,
+      "defBonus": 0,
+      "unlock": null,
+      "sprite": "island"
+    },
+    {
+      "id": "river",
+      "name": "River",
+      "kind": "water",
+      "yield": {
+        "gold": 1,
+        "food": 1
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": "fishing",
+      "sprite": "full-coast"
+    },
+    {
+      "id": "ocean",
+      "name": "Ocean",
+      "kind": "water",
+      "yield": {},
+      "expandBase": 0,
+      "defBonus": 0,
+      "unlock": "astronomy",
+      "sprite": "ocean"
+    },
+    {
+      "id": "space",
+      "name": "Space",
+      "kind": "space",
+      "yield": {},
+      "expandBase": 0,
+      "defBonus": 0,
+      "unlock": "advanced_propulsion",
+      "sprite": "space"
+    },
+    {
+      "id": "near_space",
+      "name": "Near Space",
+      "kind": "space",
+      "yield": {},
+      "expandBase": 0,
+      "defBonus": 0,
+      "unlock": "satelites",
+      "sprite": "space"
+    },
+    {
+      "id": "outer_space",
+      "name": "Outer Space",
+      "kind": "space",
+      "yield": {},
+      "expandBase": 0,
+      "defBonus": 0,
+      "unlock": "cryogenics",
+      "sprite": "deep-space"
+    },
+    {
+      "id": "deep_space",
+      "name": "Deep Space",
+      "kind": "space",
+      "yield": {},
+      "expandBase": 0,
+      "defBonus": 0,
+      "unlock": "ftl",
+      "sprite": "deep-space"
+    },
+    {
+      "id": "moon",
+      "name": "Lunar Plains",
+      "kind": "space",
+      "yield": {
+        "progress": 6
+      },
+      "expandBase": 10,
+      "defBonus": 0,
+      "unlock": "habs",
+      "sprite": "moon"
+    },
+    {
+      "id": "lunar_crater",
+      "name": "Lunar Crater",
+      "kind": "space",
+      "yield": {
+        "production": 3
+      },
+      "expandBase": 10,
+      "defBonus": 0,
+      "unlock": "helium3",
+      "sprite": "lunar-crater",
+      "ext": "jpg"
+    },
+    {
+      "id": "mars",
+      "name": "Martian Plains",
+      "kind": "space",
+      "yield": {
+        "progress": 8
+      },
+      "expandBase": 12,
+      "defBonus": 0,
+      "unlock": "habs",
+      "sprite": "mars"
+    },
+    {
+      "id": "mars_ice",
+      "name": "Martian Ice Cap",
+      "kind": "space",
+      "yield": {
+        "food": 8
+      },
+      "expandBase": 12,
+      "defBonus": 0,
+      "unlock": "xenoculture",
+      "sprite": "mars-ice-cap",
+      "ext": "jfif"
+    },
+    {
+      "id": "mars_mountain",
+      "name": "Martian Crater",
+      "kind": "space",
+      "yield": {
+        "production": 4
+      },
+      "expandBase": 12,
+      "defBonus": 20,
+      "unlock": "robotics",
+      "sprite": "mars-mountains"
+    },
+    {
+      "id": "asteroid",
+      "name": "Asteroid",
+      "kind": "space",
+      "yield": {
+        "gold": 20
+      },
+      "expandBase": 15,
+      "defBonus": 0,
+      "unlock": "asteroid_mining",
+      "sprite": "asteroid"
+    },
+    {
+      "id": "planet",
+      "name": "Planet",
+      "kind": "space",
+      "yield": {
+        "food": 20,
+        "progress": 20,
+        "production": 5,
+        "gold": 20
+      },
+      "expandBase": 100,
+      "defBonus": 0,
+      "unlock": "teraforming",
+      "sprite": "planet"
+    },
+    {
+      "id": "singularity",
+      "name": "Singularity",
+      "kind": "space",
+      "yield": {
+        "progress": 80
+      },
+      "expandBase": 100,
+      "defBonus": 0,
+      "unlock": "dark_matter",
+      "sprite": "singularity"
+    },
+    {
+      "id": "star",
+      "name": "Star",
+      "kind": "space",
+      "yield": {
+        "gold": 80
+      },
+      "expandBase": 100,
+      "defBonus": 0,
+      "unlock": "dyson_sphere",
+      "sprite": "star"
+    },
+    {
+      "id": "exoplains",
+      "name": "Exoplains",
+      "kind": "land",
+      "yield": {
+        "food": 4
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": "ftl",
+      "sprite": "exoplains"
+    },
+    {
+      "id": "exohills",
+      "name": "Exohills",
+      "kind": "land",
+      "yield": {
+        "production": 4
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": "ftl",
+      "sprite": "exohills"
+    },
+    {
+      "id": "exomountain",
+      "name": "Exomountain",
+      "kind": "land",
+      "yield": {
+        "production": 4
+      },
+      "expandBase": 2,
+      "defBonus": 20,
+      "unlock": "ftl",
+      "sprite": "exomountain"
+    },
+    {
+      "id": "exosea",
+      "name": "Exosea",
+      "kind": "water",
+      "yield": {
+        "gold": 4,
+        "food": 4
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": "ftl",
+      "sprite": "exosea"
+    },
+    {
+      "id": "exodesert",
+      "name": "Exodesert",
+      "kind": "land",
+      "yield": {
+        "gold": 8
+      },
+      "expandBase": 3,
+      "defBonus": 0,
+      "unlock": "ftl",
+      "sprite": "desert"
+    },
+    {
+      "id": "exotundra",
+      "name": "Exotundra",
+      "kind": "land",
+      "yield": {
+        "progress": 8
+      },
+      "expandBase": 3,
+      "defBonus": 0,
+      "unlock": "ftl",
+      "sprite": "tundra"
+    },
+    {
+      "id": "exomoon",
+      "name": "Exomoon",
+      "kind": "space",
+      "yield": {
+        "progress": 6
+      },
+      "expandBase": 10,
+      "defBonus": 0,
+      "unlock": "ftl",
+      "sprite": "moon"
     }
   ],
   "deployables": [
@@ -1521,10 +1795,10 @@
     }
   ],
   "enemy": {
-    "pressureBase": 0.85,
-    "pressureSlope": 1.06,
-    "floorBase": 12,
-    "floorSlope": 1.35,
+    "pressureBase": 1.1,
+    "pressureSlope": 1.07,
+    "floorBase": 30,
+    "floorSlope": 1.3,
     "variance": 0.15,
     "domainJitter": 0.25,
     "domainUnlockWave": {

@@ -3,8 +3,8 @@ import { GameProvider, useGame } from '../game/react/GameProvider.jsx'
 import { GameEngine } from '../game/GameEngine.js'
 import { fromPixel, SQRT3, key as hkey } from '../game/hex/coords.js'
 import { spriteUrl, terrainOf } from '../game/world/terrain.js'
-import { TERRAIN, DEPLOYABLES } from '../game/data/content.js'
-import { DOMAINS } from '../game/data/schema.js'
+import { TERRAIN, DEPLOYABLES, META, TECHS } from '../game/data/content.js'
+import { DOMAINS, ERAS } from '../game/data/schema.js'
 import { resolveCombatTimeline, domainHasForce } from '../game/systems/combat.js'
 import { trackForEra } from '../game/audio/tracks.js'
 import NineSlice from './common/NineSlice.jsx'
@@ -60,16 +60,20 @@ export default function GameScreen({ seed, onExit, audio }) {
 function Game({ onExit, audio }) {
   const g = useGame()
   const [seenWave, setSeenWave] = useState(0)
+  const [waveOpen, setWaveOpen] = useState(false)
+  const [takenOpen, setTakenOpen] = useState(false)
   useEffect(() => { if (audio) audio.playTrack(trackForEra(g.era)) }, [g.era, audio])
   const showCombat = g.lastCombat && g.lastCombat.wave > seenWave
   return (
     <div className="v5">
-      <TopBar g={g} onExit={onExit} />
+      <TopBar g={g} onExit={onExit} onWave={() => setWaveOpen(true)} onTaken={() => setTakenOpen(true)} />
       <div className="v5-body">
         <HexMap g={g} />
         <Sidebar g={g} />
       </div>
       {g.selection && <SelectionBanner g={g} />}
+      {waveOpen && <WaveOverlay g={g} onClose={() => setWaveOpen(false)} />}
+      {takenOpen && <TakenOverlay g={g} onClose={() => setTakenOpen(false)} />}
       {showCombat && (
         <CombatOverlay title={`Wave ${g.lastCombat.wave} · ${g.lastCombat.enemy.archetypeName}`}
           player={g.lastCombat.player} enemy={g.lastCombat.enemy.scalars}
@@ -80,9 +84,12 @@ function Game({ onExit, audio }) {
   )
 }
 
-function TopBar({ g, onExit }) {
+function TopBar({ g, onExit, onWave, onTaken }) {
   const pt = g.perTurn()
-  const dueIn = (3 - (g.turn % 3)) % 3
+  const dueIn = (META.waveInterval - (g.turn % META.waveInterval)) % META.waveInterval
+  const pred = g.previewCombat()
+  const dmg = pred ? pred.legitimacyLost : 0
+  const fatal = dmg >= g.legitimacy
   const goldTip = `Gold — pays upkeep, mercenaries and rerolls. Income :gold:${fmt(pt.income.gold)}, upkeep −${pt.upkeep} → net ${fmt(pt.net.gold)}/turn. Negative gold subtracts from every combat scalar.`
   const resTip = {
     production: `Production — build deployables. +${fmt(pt.net.production)}/turn from tiles & buildings.`,
@@ -93,8 +100,10 @@ function TopBar({ g, onExit }) {
     <header className="v5-top">
       <div className="v5-brand">AutoCiv <span>v5</span></div>
       <div className="v5-era">{g.eraName()} Era · Turn {g.turn}</div>
-      <InfoTip text={dueIn === 0 ? 'An enemy wave strikes at the end of this turn.' : `The next enemy wave arrives in ${dueIn} turn(s).`}>
-        <div className={`v5-wave ${dueIn === 0 ? 'imminent' : ''}`}>⚔ {dueIn === 0 ? 'Wave now' : `Wave in ${dueIn}`}</div>
+      <InfoTip text={`Next wave ${dueIn === 0 ? 'this turn' : `in ${dueIn} turn(s)`}. Predicted loss ${dmg} legitimacy${fatal ? ' — FATAL!' : ''}. Click for the matchup.`}>
+        <button className={`v5-wave ${dueIn === 0 ? 'imminent' : ''} ${fatal ? 'fatal' : ''}`} onClick={onWave}>
+          ⚔ {dueIn === 0 ? 'Wave now' : `Wave in ${dueIn}`}<span className="wdmg"><RIco r="legitimacy" s={13} />−{dmg}</span>
+        </button>
       </InfoTip>
       <div className="v5-stats">
         <InfoTip text={`Legitimacy — your life total. Reach 0 and the run ends. +${fmt(pt.income.legitimacy)}/turn.`}>
@@ -106,11 +115,49 @@ function TopBar({ g, onExit }) {
           </InfoTip>
         ))}
       </div>
+      <InfoTip text="Technologies researched, by era.">
+        <button className="v5-iconbtn" onClick={onTaken}>📜</button>
+      </InfoTip>
       <InfoTip text="Advance to the next turn. Income is collected and, every 3rd turn, a wave resolves.">
         <button className="v5-endturn" onClick={() => g.endTurn()}>End Turn ▸</button>
       </InfoTip>
       <button className="v5-exit" onClick={onExit} title="Quit to title">✕</button>
     </header>
+  )
+}
+
+function WaveOverlay({ g, onClose }) {
+  return (
+    <div className="v5-modal-bg" onClick={onClose}>
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={24} className="v5-theater" onClick={(e) => e.stopPropagation()}>
+        <h2>Next Wave</h2>
+        <WavePanel g={g} />
+        <button className="v5-cont" onClick={onClose}>Close</button>
+      </NineSlice>
+    </div>
+  )
+}
+
+function TakenOverlay({ g, onClose }) {
+  const byEra = {}
+  for (const id of g.taken) { const t = TECHS[id]; (byEra[t.era] ||= []).push(t) }
+  const eras = ERAS.filter((e) => byEra[e])
+  return (
+    <div className="v5-modal-bg" onClick={onClose}>
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={24} className="v5-theater taken" onClick={(e) => e.stopPropagation()}>
+        <h2>Researched Technologies</h2>
+        {eras.length === 0 && <p className="taken-empty">Nothing researched yet.</p>}
+        {eras.map((e) => (
+          <div key={e} className="taken-era">
+            <div className="taken-eh">{e} <span>({byEra[e].length})</span></div>
+            <div className="taken-list">{byEra[e].map((t) => (
+              <InfoTip key={t.id} text={`${t.flavor} · ${t.desc}`}><span className="taken-chip">{t.name}</span></InfoTip>
+            ))}</div>
+          </div>
+        ))}
+        <button className="v5-cont" onClick={onClose}>Close</button>
+      </NineSlice>
+    </div>
   )
 }
 
@@ -298,10 +345,11 @@ function MapHoverCard({ g, k }) {
   const out = inst && g.tileOutput(k)
   const sc = inst && g.instScalars(k)
   const scLines = sc ? DOMAINS.map((d) => ({ d, ...sc[d] })).filter((x) => x.atk || x.def || x.bomb) : []
-  const cdef = TERRAIN[t.terrain]        // content economy def (Earth terrains) — may be undefined off-world
-  const tdef = terrainOf(t.terrain)      // v4 registry — always defined (name, note, base yields)
+  const cdef = TERRAIN[t.terrain]        // content economy def (may be undefined off-world)
+  const tdef = terrainOf(t.terrain)      // v4 registry — always defined (name, sprite)
   const tName = cdef?.name || tdef.name
-  const tYield = cdef?.yield || tdef.yields || {}
+  // Live yield includes tech modifiers (e.g. Foraging → forest +1 food) for content terrains.
+  const tYield = cdef ? g.terrainYield(t) : (tdef.yields || {})
   return (
     <div className="v5-hover">
       <NineSlice src="/sprites/ui/box.png" slice={205} width={18} className="frame">
@@ -321,8 +369,7 @@ function MapHoverCard({ g, k }) {
         ) : (
           <>
             <div className="hv-h"><b>{tName}</b><span className="hv-sub">{g.controlled.has(k) ? 'controlled' : cdef ? 'unclaimed' : 'unreachable'}</span></div>
-            <div className="hv-out">{Object.entries(tYield).filter(([, v]) => v > 0).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={13} />{v}</span>)}{cdef?.defBonus ? <span className="hv-chip"><SIco st="def" s={12} />+{cdef.defBonus}</span> : null}</div>
-            {tdef.note && <div className="hv-desc"><IconText>{tdef.note}</IconText></div>}
+            <div className="hv-out">{Object.entries(tYield).filter(([, v]) => v > 0).map(([r, v]) => <span key={r} className="hv-chip"><RIco r={r} s={13} />{v}</span>)}{cdef?.defBonus ? <span className="hv-chip"><SIco st="def" s={12} />+{cdef.defBonus}</span> : null}{Object.values(tYield).every((v) => !v) && <span className="hv-chip">no yield</span>}</div>
           </>
         )}
       </NineSlice>
@@ -331,17 +378,12 @@ function MapHoverCard({ g, k }) {
 }
 
 function Sidebar({ g }) {
-  const [tab, setTab] = useState('research')
-  const tabs = [['research', 'Research'], ['build', 'Build'], ['wave', 'Next Wave']]
   return (
     <aside className="v5-side">
-      <div className="v5-tabs">
-        {tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
-      </div>
-      <NineSlice src="/sprites/ui/box.png" slice={205} width={20} className="v5-tabbody">
-        {tab === 'research' && <ResearchPanel g={g} />}
-        {tab === 'build' && <BuildPanel g={g} />}
-        {tab === 'wave' && <WavePanel g={g} />}
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={20} className="v5-sidebody">
+        <ResearchPanel g={g} />
+        <div className="v5-sep" />
+        <BuildPanel g={g} />
       </NineSlice>
     </aside>
   )
