@@ -2054,6 +2054,30 @@
         }
       ],
       "combat": []
+    },
+    {
+      "id": "embassy",
+      "name": "Embassy",
+      "type": "building",
+      "subtype": "mercenaries",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "Each combat, auto-hires 3 mercenaries in every domain, +1 for each adjacent tile you do not control.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "auto_mercenaries",
+          "base": 3,
+          "per_uncontrolled": 1
+        }
+      ]
     }
   ],
   "techs": [
@@ -3679,6 +3703,57 @@
           "deployable": "academy",
           "resource": "all",
           "factor": 2
+        }
+      ]
+    },
+    {
+      "id": "hospitality_rites",
+      "name": "Hospitality Rites",
+      "flavor": "Mercenaries",
+      "era": "Bronze",
+      "desc": "Enables hiring mercenaries in combat — spend gold for temporary attack (1/2/3/4 gold per point on land/sea/sky/space), only in domains where you already have a presence.",
+      "effects": [
+        {
+          "name": "enable_mercenaries"
+        }
+      ]
+    },
+    {
+      "id": "embassy",
+      "name": "Embassy",
+      "flavor": "Mercenaries",
+      "era": "Iron",
+      "desc": "Unlocks the Embassy.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "embassy"
+        }
+      ]
+    },
+    {
+      "id": "diplomatic_marriage",
+      "name": "Diplomatic Marriage",
+      "flavor": "Mercenaries",
+      "era": "Iron",
+      "desc": "When hiring a mercenary, also gain 1 defense in that domain.",
+      "effects": [
+        {
+          "name": "merc_def_per_hire",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "defensive_pact",
+      "name": "Defensive Pact",
+      "flavor": "Mercenaries",
+      "era": "Classical",
+      "desc": "When hiring a mercenary, also gain 2 defense in that domain.",
+      "effects": [
+        {
+          "name": "merc_def_per_hire",
+          "amount": 2
         }
       ]
     }

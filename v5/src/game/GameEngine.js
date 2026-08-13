@@ -14,6 +14,7 @@ import {
 
 const RES = ['production', 'gold', 'food', 'progress']
 const CREATIVE_CAP = 999999 // resources/legitimacy pinned here in Creative Mode
+const MERC_COST = { land: 1, sea: 2, sky: 3, space: 4 } // gold per +1 temporary attack, by domain
 
 export class GameEngine {
   constructor(seed = 1) {
@@ -74,6 +75,10 @@ export class GameEngine {
     // per-turn accumulators (Oral Tradition army growth, Hereditary Rule palace growth)
     this.armyAccum = { land: { atk: 0, def: 0, bomb: 0 }, sea: { atk: 0, def: 0, bomb: 0 }, sky: { atk: 0, def: 0, bomb: 0 }, space: { atk: 0, def: 0, bomb: 0 } }
     this.palaceAccum = { production: 0, gold: 0, food: 0, progress: 0 }
+    // Mercenaries: gold bought this turn for the NEXT wave only (temporary). Attack per
+    // domain, plus def granted by Diplomatic Marriage / Defensive Pact. Cleared each wave.
+    this.mercAtk = { land: 0, sea: 0, sky: 0, space: 0 }
+    this.mercDef = { land: 0, sea: 0, sky: 0, space: 0 }
 
     // Board: palace on the chosen home tile, controlled tiles, placed instances.
     this.controlled = new Set([this.palaceKey])
@@ -142,6 +147,7 @@ export class GameEngine {
       progressPerFlavor: {}, keepNaturalProduction: false, armyGrowth: [], palaceRandomGrowth: 0,
       yieldMult: [], subtypeConvert: [], armyFromSettlement: [],
       terrainAdjSettlement: [], tileYieldFactor: {}, isolatedMult: [], subtypeCombatFromOutput: [],
+      mercenaries: false, mercDefPerHire: 0,
       freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
@@ -188,6 +194,8 @@ export class GameEngine {
           case 'override_tile_yield_factor': m.tileYieldFactor[e.deployable] = e.factor; break
           case 'subtype_isolated_mult': m.isolatedMult.push({ subtype: e.subtype, deployable: e.deployable, factor: e.factor }); break
           case 'subtype_combat_from_output': m.subtypeCombatFromOutput.push({ subtype: e.subtype, deployable: e.deployable, from: e.from, domain: e.domain }); break
+          case 'enable_mercenaries': m.mercenaries = true; break
+          case 'merc_def_per_hire': m.mercDefPerHire += e.amount; break
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
         }
@@ -469,6 +477,63 @@ export class GameEngine {
     return s
   }
 
+  // ---- mercenaries (Hospitality Rites, Embassy, Diplomatic Marriage, Defensive Pact) ----
+  mercUnlocked() { return this.creative || this.mods.mercenaries }
+  mercCostOf(domain) { return MERC_COST[domain] }
+  /** Domains where we already field some military presence (required to hire there). */
+  domainPresence() {
+    const p = { land: false, sea: false, sky: false, space: false }
+    for (const [k, inst] of this.deployed) { const cs = this._instScalars(k, inst); for (const d of DOMAINS) if (cs[d].atk || cs[d].def || cs[d].bomb) p[d] = true }
+    if (this.militaryCount() > 0) for (const f of this.mods.armyFlat) { const ds = f.domain === 'all' ? DOMAINS : [f.domain]; for (const d of ds) p[d] = true }
+    return p
+  }
+  /** Free attack (+matching def from Marriage/Pact) auto-hired by every Embassy each combat. */
+  _embassyMercAttack() {
+    let atk = 0
+    for (const [k, inst] of this.deployed) for (const c of DEPLOYABLES[inst.id].combat || []) {
+      if (c.name !== 'auto_mercenaries') continue
+      let unc = 0
+      for (const nk of this.neighborKeys(k)) if (!this.controlled.has(nk)) unc++
+      atk += (c.base || 0) + (c.per_uncontrolled || 0) * unc
+    }
+    return { atk, def: atk * this.mods.mercDefPerHire }
+  }
+  /** Buy `count` temporary attack in a domain with gold. Returns how many were hired. */
+  hireMerc(domain, count = 1) {
+    if (!this.mercUnlocked() || this.status !== 'playing' || !DOMAINS.includes(domain)) return 0
+    if (!this.domainPresence()[domain]) return 0
+    const unit = MERC_COST[domain]
+    let hired = 0
+    for (let i = 0; i < count; i++) {
+      if (this.resources.gold < unit) break
+      this.resources.gold -= unit
+      this.mercAtk[domain] += 1
+      this.mercDef[domain] += this.mods.mercDefPerHire
+      hired++
+    }
+    if (hired) this._emit()
+    return hired
+  }
+  resetMercs() { this.mercAtk = { land: 0, sea: 0, sky: 0, space: 0 }; this.mercDef = { land: 0, sea: 0, sky: 0, space: 0 } }
+  /** Effective combat scalars the player fights with: board army + hired + Embassy mercs.
+   *  The enemy card is generated from playerScalars (board only), so mercs are a real edge. */
+  combatScalars() {
+    const s = this.playerScalars()
+    for (const d of DOMAINS) { s[d].atk += this.mercAtk[d]; s[d].def += this.mercDef[d] }
+    const emb = this._embassyMercAttack()
+    if (emb.atk) for (const d of DOMAINS) { s[d].atk += emb.atk; s[d].def += emb.def }
+    return s
+  }
+  /** Snapshot for the merc UI: cost, presence, and current hires per domain. */
+  mercInfo() {
+    const pres = this.domainPresence()
+    const emb = this._embassyMercAttack()
+    return DOMAINS.map((d) => ({
+      domain: d, cost: MERC_COST[d], present: pres[d], atk: this.mercAtk[d], def: this.mercDef[d],
+      canAfford1: this.resources.gold >= MERC_COST[d], embassy: emb.atk,
+    }))
+  }
+
   // ---- territory ----
   visionSet() {
     const starts = [...this.controlled].map((k) => parse(k))
@@ -630,9 +695,10 @@ export class GameEngine {
   isWaveTurn() { return this.turn % META.waveInterval === 0 }
   _resolveWave() {
     const n = this.waveCount + 1
-    const P = this.playerScalars()
+    const P = this.playerScalars()       // board army — the enemy card scales to THIS
     const enemy = generateEnemyCard(armyValue(P), n, ENEMY, this._waveRng(n))
-    const result = resolveCombat(P, enemy.scalars)
+    const C = this.combatScalars()       // board + mercenaries — what actually fights
+    const result = resolveCombat(C, enemy.scalars)
     this.resources.gold += result.goldGained
     this.legitimacy -= result.legitimacyLost
     // event-triggered techs
@@ -645,7 +711,8 @@ export class GameEngine {
     for (const r of RES) this.resources[r] += bonus[r] || 0
     this.legitimacy += bonus.legitimacy || 0
     this.waveCount++
-    this.lastCombat = { wave: n, enemy, player: P, result, bonus }
+    this.lastCombat = { wave: n, enemy, player: C, result, bonus }
+    this.resetMercs() // temporary hires are spent by this wave
     this.log.unshift(`Wave ${n}: −${result.legitimacyLost} legitimacy, +${result.goldGained} gold`)
     if (this.legitimacy <= 0 && !this.creative) { this.legitimacy = 0; this.status = 'lost' }
   }
@@ -700,8 +767,8 @@ export class GameEngine {
   }
   /** Combat scalar contribution of the deployable on a tile. */
   instScalars(k) { const inst = this.deployed.get(k); return inst ? this._instScalars(k, inst) : null }
-  /** Predicted outcome of the upcoming wave against the current board (no effects). */
-  previewCombat() { return this.enemyCard ? resolveCombat(this.playerScalars(), this.enemyCard.scalars) : null }
+  /** Predicted outcome of the upcoming wave — includes hired + Embassy mercenaries. */
+  previewCombat() { return this.enemyCard ? resolveCombat(this.combatScalars(), this.enemyCard.scalars) : null }
 
   buildableList() {
     return [...this.unlocked].filter((id) => id !== 'palace').map((id) => ({

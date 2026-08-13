@@ -103,6 +103,8 @@ export const EFFECT_KINDS = [
   N('subtype_combat_from_output', 'Subtype/deployable +atk & +def = its output', { where: 'tech', params: [
     { key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'from', type: 'enum', options: RES_ALL }, { key: 'domain', type: 'enum', options: DOMAINS },
   ] }),
+  N('enable_mercenaries', 'Enable hiring mercenaries in combat', { where: 'tech', params: [] }),
+  N('merc_def_per_hire', 'Each mercenary hired also grants +def', { where: 'tech', params: [{ key: 'amount', type: 'number' }] }),
 
   // -- deployable econ (per turn) --
   N('self_yield', 'Produces (self)', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
@@ -140,6 +142,9 @@ export const EFFECT_KINDS = [
   ] }),
   N('combat_per_empty_tile', '+scalar per empty controlled tile', { where: 'combat', params: [
     { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
+  ] }),
+  N('auto_mercenaries', 'Auto-hire mercenaries each combat (all domains)', { where: 'combat', params: [
+    { key: 'base', type: 'number' }, { key: 'per_uncontrolled', type: 'number' },
   ] }),
 
   // -- deployable econ (special) --

@@ -491,7 +491,7 @@ function BuildPanel({ g }) {
 
 function WavePanel({ g }) {
   const enemy = g.enemyCard
-  const you = g.playerScalars()
+  const you = g.combatScalars()
   const pred = g.previewCombat()
   const [sim, setSim] = useState(false)
   return (
@@ -511,6 +511,7 @@ function WavePanel({ g }) {
       <ScalarTable title="Your military" s={you} accent="#5aa0d0" />
       <div className="vs">▼ resolves against ▼</div>
       <ScalarTable title="Enemy card" s={enemy?.scalars} accent="#c0563b" />
+      <MercPanel g={g} />
       <div className="hint">Combat is an empire-wide aggregate of these 12 scalars. Bombardment fires first and spills downward.</div>
       {sim && enemy && (
         <CombatOverlay title={`Wave ${enemy.wave} — simulation (no effect)`} player={you} enemy={enemy.scalars}
@@ -531,6 +532,32 @@ function ScalarTable({ title, s, accent }) {
             <tr key={d} className={z ? 'z' : ''}><td className="dm">{d}</td><td>{row.atk}</td><td>{row.def}</td><td>{row.bomb}</td></tr>) })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function MercPanel({ g }) {
+  if (!g.mercUnlocked()) return null
+  const rows = g.mercInfo()
+  const emb = rows[0]?.embassy || 0
+  return (
+    <div className="merc">
+      <div className="merc-h">Mercenaries <span className="sub">temporary — spent this wave</span></div>
+      {rows.map((r) => (
+        <div key={r.domain} className={`merc-row ${r.present ? '' : 'off'}`}>
+          <span className="merc-dm">{cap(r.domain)}</span>
+          <span className="merc-cost">{r.cost}<RIco r="gold" s={11} />/<SIco st="atk" s={11} /></span>
+          <span className="merc-have">{r.atk ? <>+{r.atk}<SIco st="atk" s={11} /></> : null}{r.def ? <> +{r.def}<SIco st="def" s={11} /></> : null}</span>
+          {r.present ? (
+            <span className="merc-btns">
+              <button disabled={!r.canAfford1} onClick={() => g.hireMerc(r.domain, 1)}>+1</button>
+              <button disabled={!r.canAfford1} onClick={() => g.hireMerc(r.domain, 10)}>+10</button>
+            </span>
+          ) : <span className="merc-noio">no presence</span>}
+        </div>
+      ))}
+      {emb > 0 && <div className="merc-emb"><IconText>Embassy auto-hires +{emb} :attack: in every domain.</IconText></div>}
+      <div className="merc-hint">Mercenaries boost only your side — the enemy card is fixed to your board army.</div>
     </div>
   )
 }

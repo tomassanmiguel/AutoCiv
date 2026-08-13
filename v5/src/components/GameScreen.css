@@ -144,6 +144,22 @@
 .stbl tr.z td { color: #a99a78; }
 .vs { text-align: center; color: var(--ink-soft); font-size: 10px; margin: 3px 0 7px; letter-spacing: .5px; }
 
+/* mercenary hiring */
+.merc { background: var(--parch-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-top: 10px; }
+.merc-h { font-size: 11px; color: var(--ink); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; }
+.merc-h .sub { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-soft); margin-left: 6px; }
+.merc-row { display: grid; grid-template-columns: 52px 58px 1fr auto; align-items: center; gap: 6px; padding: 3px 0; font-size: 12px; }
+.merc-row.off { opacity: .5; }
+.merc-dm { text-transform: capitalize; color: var(--ink); font-weight: 600; }
+.merc-cost, .merc-have { display: inline-flex; align-items: center; gap: 2px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.merc-have { color: #2f7a3a; font-weight: 700; }
+.merc-noio { font-size: 10px; color: #a99a78; font-style: italic; }
+.merc-btns { display: inline-flex; gap: 4px; }
+.merc-btns button { background: #d9c69a; border: 1px solid var(--brass); color: var(--brass-deep); border-radius: 6px; padding: 2px 8px; font-size: 11px; cursor: pointer; font-weight: 700; }
+.merc-btns button:disabled { opacity: .4; cursor: default; }
+.merc-emb { font-size: 10px; color: #6a5a2e; margin-top: 5px; display: flex; align-items: center; gap: 3px; }
+.merc-hint { font-size: 10px; color: var(--ink-soft); margin-top: 6px; line-height: 1.4; }
+
 .v5-selband { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); background: #efe4c6; border: 1px solid var(--brass); color: var(--brass-deep); padding: 7px 14px; border-radius: 999px; font-size: 13px; display: flex; gap: 10px; align-items: center; z-index: 6; box-shadow: 0 2px 10px #0006; }
 .v5-selband .sil-i { height: 16px; }
 .v5-selband button { background: #d9c69a; border: 1px solid var(--brass); color: var(--brass-deep); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
