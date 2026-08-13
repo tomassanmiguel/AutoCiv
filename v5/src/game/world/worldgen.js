@@ -251,17 +251,20 @@ function carveRivers(tiles, earth, rng) {
   return rivers
 }
 
+/** Continent land (a continent's own ground) — what shallow Coast forms against. */
+const isContinentLand = (o) =>
+  !!o && (o.region === 'old_world' || o.region === 'new_world') && isLand(o.terrain)
+
 /**
  * Water adjacent to CONTINENT land becomes shallow Coast. Islands deliberately
- * do not generate coast — a one-tile speck ringed by shallows reads wrong.
+ * do not generate coast — they carry their own shore in the island sprite, so a
+ * speck in open water reads as an island, not as land ringed by shallows. Coast
+ * only appears next to an island when that same tile also touches continent land.
  */
 function markCoasts(tiles, earth) {
   for (const t of earth) {
     if (t.region !== 'sea') continue
-    const touchesLand = neighbors(t.q, t.r).some((n) => {
-      const o = tiles.get(key(n.q, n.r))
-      return o && isLand(o.terrain) // ANY land (continent OR island) gives a coast
-    })
+    const touchesLand = neighbors(t.q, t.r).some((n) => isContinentLand(tiles.get(key(n.q, n.r))))
     t.terrain = touchesLand ? 'coast' : 'ocean'
   }
 }
@@ -269,23 +272,18 @@ function markCoasts(tiles, earth) {
 /**
  * Final Earth water pass, AFTER land bridges (connectOldWorldLand) may have created
  * land next to an island: revert any island touching continent land back to sea, then
- * re-derive coast so every earth water tile adjacent to any land reads as coast.
+ * re-derive coast so every earth water tile adjacent to CONTINENT land reads as coast
+ * (islands, again, keep their own shore and don't spread coast into open water).
  */
 function finalizeEarthCoasts(tiles) {
   for (const t of tiles.values()) {
     if (t.region !== 'island') continue
-    const touchesContinent = neighbors(t.q, t.r).some((n) => {
-      const o = tiles.get(key(n.q, n.r))
-      return o && (o.region === 'old_world' || o.region === 'new_world') && isLand(o.terrain)
-    })
+    const touchesContinent = neighbors(t.q, t.r).some((n) => isContinentLand(tiles.get(key(n.q, n.r))))
     if (touchesContinent) { t.region = 'sea'; t.seaKind = 'channel'; t.terrain = 'ocean' }
   }
   for (const t of tiles.values()) {
     if (t.band !== 'earth' || t.region !== 'sea') continue
-    const touchesLand = neighbors(t.q, t.r).some((n) => {
-      const o = tiles.get(key(n.q, n.r))
-      return o && isLand(o.terrain)
-    })
+    const touchesLand = neighbors(t.q, t.r).some((n) => isContinentLand(tiles.get(key(n.q, n.r))))
     t.terrain = touchesLand ? 'coast' : 'ocean'
   }
 }
