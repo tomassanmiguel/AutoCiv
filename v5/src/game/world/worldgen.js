@@ -35,7 +35,7 @@ const MAX_ATTEMPTS = 9 // cap worst-case worldgen time; relaxed invariants pass 
 // NW_EDGE out is therefore the only way to widen the ocean, which is why the
 // main sea grows at the New World's expense rather than the Old World's.
 const OW_EDGE = 0.06
-const NW_EDGE = 0.68      // very wide ocean channel — a big open sea fully dividing the continents
+const NW_EDGE = 0.62      // wide ocean channel — a big open sea, sized for the trimmed Earth so the New World keeps an interior
 const SPLIT_WOBBLE = 0.40 // more boundary wobble so the sea reads as an irregular ocean, not a straight river
 const RIM_SEA = 0.90      // radius past which Earth TENDS to sea; lower = a rounder, larger ocean at the rim
 // Inland seas carve oceans INTO the continents (less landmass); higher cut = less sea.
@@ -155,12 +155,13 @@ function generateEarth(tiles, seed, rng) {
     }
 
     // Higher-frequency climate fields ⇒ SMALLER biome clusters and a more mixed map.
-    const e = elevN(px * 14, py * 14)
-    const m = moistN(px * 13 + 30, py * 13 + 30)
+    const e = elevN(px * 18, py * 18)
+    const m = moistN(px * 16 + 30, py * 16 + 30)
     const c = climN(px * 7 + 80, py * 7 + 80)
-    // Ridge field for mountains — kept a touch lower frequency so ranges still read
-    // as ranges, but shorter than before. The frequency repair grows them modestly.
-    const ridge = 1 - Math.abs(2 * ridgeN(px * 11, py * 11) - 1)
+    // Ridge field for mountains — VERY low frequency (few cycles across the small
+    // Earth disc) so ridgelines are long: mountains are the one biome allowed to
+    // form long ranges.
+    const ridge = 1 - Math.abs(2 * ridgeN(px * 3, py * 3) - 1)
     t.elev = e
     t.moist = m
     t.ridge = ridge
@@ -175,7 +176,7 @@ function generateEarth(tiles, seed, rng) {
     // Compress the moisture extremes so a dry seed isn't all desert and a wet one isn't all forest.
     const mc = 0.5 + (m - 0.5) * 0.7
 
-    const isMountain = ridge > RIDGE_CUT && e > 0.42
+    const isMountain = ridge > RIDGE_CUT // follow the low-freq ridgeline alone ⇒ long continuous ranges
     if (isMountain) t.terrain = 'mountain'
     else if (lat > polarBoundary) t.terrain = 'tundra'
     else if (e > HILL_CUT) t.terrain = 'hills'
@@ -488,7 +489,7 @@ function balanceEarthTerrain(tiles) {
     switch (terr) {
       case 'mountain': {
         let s = t.ridge ?? 0.5
-        for (const nb of neighbors(t.q, t.r)) if (tiles.get(key(nb.q, nb.r))?.terrain === 'mountain') { s += 1; break } // smaller ranges
+        for (const nb of neighbors(t.q, t.r)) if (tiles.get(key(nb.q, nb.r))?.terrain === 'mountain') { s += 2; break } // longer ranges — the one cluster allowed to grow
         return s
       }
       case 'forest': return t.moist ?? 0.5
@@ -546,6 +547,81 @@ function enforceGlobalPolarCaps(tiles) {
   const yS = Math.min(...tundra.map((t) => t.y)) // southernmost tundra
   for (const t of land) {
     if (t.terrain !== 'tundra' && (t.y > yN || t.y < yS)) t.terrain = 'tundra'
+  }
+}
+
+const BIOME_CAPS = { hills: 4, forest: 6, plains: 6, desert: 6 } // tundra (ice cap) & mountain (ranges) exempt
+
+/**
+ * Cap same-terrain cluster sizes so biomes stay small and mixed: at most the cap
+ * tiles of one type stay connected (hills 4, the rest 6). Repeatedly shave one
+ * boundary tile off the LARGEST over-cap cluster, re-typing it to a plains/forest/
+ * hills type that is ABSENT from its neighbours — so it becomes an isolated tile
+ * and can never grow a new cluster. Each step strictly shrinks the biggest cluster,
+ * so it converges. Tundra (ice cap) and mountain (long ranges) are exempt; the
+ * palace tile + its food/gold ring are left alone; nothing becomes desert/mountain.
+ */
+function capBiomeClusters(tiles) {
+  const protect = (t) => t.d <= 1
+  const PAL = ['plains', 'forest', 'hills']
+  for (const region of ['old_world', 'new_world']) {
+    const componentsOver = () => {
+      const seen = new Set(); const out = []
+      for (const t of tiles.values()) {
+        if (t.region !== region || !(t.terrain in BIOME_CAPS) || seen.has(key(t.q, t.r))) continue
+        const terr = t.terrain; const comp = []; const st = [t]; seen.add(key(t.q, t.r))
+        while (st.length) {
+          const c = st.pop(); comp.push(c)
+          for (const n of neighbors(c.q, c.r)) {
+            const o = tiles.get(key(n.q, n.r))
+            if (o && o.region === region && o.terrain === terr && !seen.has(key(n.q, n.r))) { seen.add(key(n.q, n.r)); st.push(o) }
+          }
+        }
+        if (comp.length > BIOME_CAPS[terr]) out.push({ comp, terr })
+      }
+      return out
+    }
+    for (let guard = 0; guard < 4000; guard++) {
+      const over = componentsOver()
+      if (!over.length) break
+      over.sort((a, b) => b.comp.length - a.comp.length)
+      const { comp, terr } = over[0]
+      const inComp = new Set(comp.map((t) => key(t.q, t.r)))
+      // Prefer boundary tiles (they have room around them for an isolated re-type).
+      const boundary = comp.filter((t) => !protect(t) &&
+        neighbors(t.q, t.r).some((n) => !inComp.has(key(n.q, n.r))))
+      // Size of the R-cluster that b would join if re-typed to R (1 + its distinct
+      // adjacent R-components), so we never create a NEW over-cap cluster.
+      const mergedSize = (b, R) => {
+        const seen = new Set(); let n = 1
+        for (const nb of neighbors(b.q, b.r)) {
+          const o = tiles.get(key(nb.q, nb.r))
+          if (!o || o.region !== region || o.terrain !== R || seen.has(key(nb.q, nb.r))) continue
+          const st = [o]; seen.add(key(nb.q, nb.r))
+          while (st.length) {
+            const c = st.pop(); n++
+            for (const m of neighbors(c.q, c.r)) {
+              const p = tiles.get(key(m.q, m.r))
+              if (p && p.region === region && p.terrain === R && !seen.has(key(m.q, m.r))) { seen.add(key(m.q, m.r)); st.push(p) }
+            }
+          }
+        }
+        return n
+      }
+      let shaved = false
+      for (const b of boundary) {
+        // Prefer an isolated re-type (R absent from neighbours); else join an adjacent
+        // R-cluster only if the merge stays within cap.
+        let pick = PAL.find((r) => {
+          if (r === terr) return false
+          const has = neighbors(b.q, b.r).some((n) => tiles.get(key(n.q, n.r))?.region === region && tiles.get(key(n.q, n.r))?.terrain === r)
+          return !has
+        })
+        if (!pick) pick = PAL.find((r) => r !== terr && mergedSize(b, r) <= BIOME_CAPS[r])
+        if (pick) { b.terrain = pick; shaved = true; break }
+      }
+      if (!shaved) break // no re-typable boundary tile — accept the remaining cluster
+    }
   }
 }
 
@@ -707,6 +783,7 @@ function scatterInto(candidates, bag, spacing, after) {
 
 const EXO_COUNT = 6
 const EXO_PER_THIRD = 2 // >= this many exoplanets in each 120° third (2 * 3 = 6)
+const EXO_EDGE_MARGIN = 2 // exoplanets/moons never touch the map's outer border rings
 
 // A personality skews an exoplanet's terrain. sea/desert: higher cutoff => more of
 // it. mtn: LOWER ridge cutoff => more mountains. hill: lower elevation cutoff =>
@@ -778,9 +855,11 @@ function scatterExoplanets(tiles, seed, rng) {
   let guard = 40
   while (planets.length < EXO_COUNT && guard-- > 0) if (!placeOne(undefined)) break
 
-  // One or two moons per exoplanet, nestled in the deep space around it.
+  // Moons are uncommon: ~50% of exoplanets have none, ~40% one, ~10% two.
   for (const planet of planets) {
-    const moons = 1 + (rng() < 0.5 ? 1 : 0)
+    const roll = rng()
+    const moons = roll < 0.5 ? 0 : roll < 0.9 ? 1 : 2
+    if (moons === 0) continue
     const near = [...tiles.values()].filter((t) => t.region === 'deep_space' &&
       lengthOf(t.q - planet.q, t.r - planet.r) <= planet.rad + 4)
     shuffle(near, rng)
@@ -889,7 +968,9 @@ function roundedBody(c, rad, strange, shapeN) {
  */
 function bodyFitsDeep(tiles, center, radius) {
   const body = disc(center.q, center.r, radius).map((h) => tiles.get(key(h.q, h.r)))
-  if (body.some((t) => !t || (t.band !== 'deep' && t.band !== 'galactic') || BODY_REGIONS.has(t.region))) return false
+  // In deep/galactic space, not overlapping a body, and never on the map's border rings.
+  if (body.some((t) => !t || (t.band !== 'deep' && t.band !== 'galactic') || BODY_REGIONS.has(t.region) ||
+    t.d > MAX_REVEAL_RADIUS - EXO_EDGE_MARGIN)) return false
   for (const t of body) {
     for (const n of neighbors(t.q, t.r)) {
       const o = tiles.get(key(n.q, n.r))
@@ -1381,6 +1462,7 @@ export function buildWorld(seed) {
   }
   guaranteeBothPoles(tiles)
   enforceGlobalPolarCaps(tiles) // no non-tundra land (incl. islands) beyond the tundra extremes
+  capBiomeClusters(tiles) // keep same-terrain clusters small & mixed (mountains excepted)
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles)
 

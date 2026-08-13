@@ -9,10 +9,10 @@
 // map feels too small or too sprawling.
 
 export const BANDS = {
-  earth: { min: 0, max: 10 },       //  331 tiles — two continents + a wide ocean + islands
-  space: { min: 11, max: 21 },      //  Moon (r1) and Mars (r2) discs live here
-  deep: { min: 22, max: 38 },       //  the deep-space "ocean"; exoplanet (r5) + its moon
-  galactic: { min: 39, max: 40 },   //  outer deep space (trimmed 1 ring)
+  earth: { min: 0, max: 9 },        //  two continents + a wide ocean + islands (Earth trimmed 1 ring)
+  space: { min: 10, max: 20 },      //  Moon (r1) and Mars (r2) discs live here
+  deep: { min: 21, max: 34 },       //  deep space (trimmed 3 rings); the scattered exoplanets live here
+  galactic: { min: 35, max: 36 },   //  outer deep space
 }
 
 // v5 has no derived battlefield ring, so the map ends at the last revealable ring.
@@ -31,10 +31,8 @@ export const MAX_RADIUS = MAX_REVEAL_RADIUS + BATTLEFIELD_DEPTH
 //   - the exoplanet's moon is always on its BACKSIDE — further out along the
 //     same bearing, so you meet the planet before its moon
 export const BODIES = {
-  moon: { radius: 1, dist: 13 },      // spans 12..14 — ring 11 is the lone gap from Earth
-  mars: { radius: 2, dist: 18 },      // spans 16..20 — ring 21 is open space before deep
-  exoplanet: { radius: 5, dist: 29 }, // spans 24..34
-  exomoon: { radius: 1, dist: 37 },   // spans 36..38 — ring 35 is its lone buffer
+  moon: { radius: 1, dist: 12 },      // spans 11..13 — ring 10 is the lone gap from Earth
+  mars: { radius: 2, dist: 17 },      // spans 15..19 — ring 20 is open space before deep
 }
 
 // The exoplanet is reached along a CORRIDOR rather than by revealing the whole
@@ -95,13 +93,13 @@ export const STAGE = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
  * band and its scattered exoplanets fall out of these rings by distance.
  */
 export const REVEAL_RADIUS = {
-  [STAGE.space]: 11, // the lone ring of open space around Earth
-  [STAGE.moon]: 15,  // the Moon (12..14) plus the ring of space beyond it
-  [STAGE.mars]: 21,  // Mars (16..20) plus the open ring beyond it
-  [STAGE.deep]: 25,  // first rings of deep space
-  [STAGE.exo_coast]: 30, // deeper into deep space
-  [STAGE.full_exo]: 35,  // most of deep space
-  [STAGE.galaxy1]: 39,   // the galactic fringe
+  [STAGE.space]: 10, // the lone ring of open space around Earth
+  [STAGE.moon]: 14,  // the Moon (11..13) plus the ring of space beyond it
+  [STAGE.mars]: 20,  // Mars (15..19) plus the open ring beyond it
+  [STAGE.deep]: 24,  // first rings of deep space
+  [STAGE.exo_coast]: 28, // deeper into deep space
+  [STAGE.full_exo]: 32,  // most of deep space
+  [STAGE.galaxy1]: 35,   // the galactic fringe
 }
 
 /** Features never appear on the outermost revealable ring, so the map edge reads clean. */
@@ -112,4 +110,4 @@ export const FEATURELESS_OUTER_RINGS = 1
 // inside it), so a wider Local view is guaranteed island- and New-World-free.
 export const LOCAL_RADIUS = 4
 export const NEARBY_RADIUS = 6
-export const DISTANT_RADIUS = 9
+export const DISTANT_RADIUS = 7 // Earth now ends at ring 9, so the Old World stage covers rings 8-9

@@ -27,7 +27,7 @@ const FEATURE_TERRAIN = new Set(['planet', 'singularity', 'asteroid'])
 const START_RADIUS = 5
 // The main ocean is wide, so the New World is the smaller share by design.
 const MIN_OLD_WORLD = 45
-const MIN_NEW_WORLD = 14
+const MIN_NEW_WORLD = 12 // Earth trimmed by a ring, so the New World is a touch smaller
 const MIN_ISLANDS = 2
 const MIN_EXOPLANETS = 6 // scattered peers, >= 1 in each angular third of the map
 const MAX_TUNDRA_FRACTION = 0.30 // tundra is now a guaranteed polar cap that may tendril equatorward
@@ -94,7 +94,6 @@ export function validate(world) {
   }
   const moon = spanOf('moon')
   const mars = spanOf('mars')
-  const exomoon = spanOf('exomoon')
 
   // The Moon hangs exactly one ring of open space beyond Earth's rim.
   if (!moon) v.push('no Moon')
@@ -112,9 +111,8 @@ export function validate(world) {
     if (moon && mars.min <= moon.max) v.push('Mars and the Moon overlap in radius')
   }
 
-  // The exoplanet has moons (one on the backside, one adjacent — the latter can sit
-  // within the exoplanet's radius span, so the old "strictly beyond" rule is dropped).
-  if (!exomoon) v.push('no exomoon')
+  // Exomoons are optional now (most exoplanets have none), so their mere existence
+  // isn't required — only their placement (band containment above) is checked.
 
   // No asteroid may appear before the Moon does, or hug a celestial body.
   if (moon) {
