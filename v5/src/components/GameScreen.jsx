@@ -62,11 +62,12 @@ function Game({ onExit, audio }) {
   const [seenWave, setSeenWave] = useState(0)
   const [waveOpen, setWaveOpen] = useState(false)
   const [takenOpen, setTakenOpen] = useState(false)
+  const [creativeOpen, setCreativeOpen] = useState(false)
   useEffect(() => { if (audio) audio.playTrack(trackForEra(g.era)) }, [g.era, audio])
   const showCombat = g.lastCombat && g.lastCombat.wave > seenWave
   return (
-    <div className="v5">
-      <TopBar g={g} onExit={onExit} onWave={() => setWaveOpen(true)} onTaken={() => setTakenOpen(true)} />
+    <div className={`v5 ${g.creative ? 'creative' : ''}`}>
+      <TopBar g={g} onExit={onExit} onWave={() => setWaveOpen(true)} onTaken={() => setTakenOpen(true)} onCreativeMenu={() => setCreativeOpen(true)} />
       <div className="v5-body">
         <HexMap g={g} />
         <Sidebar g={g} />
@@ -74,6 +75,7 @@ function Game({ onExit, audio }) {
       {g.selection && <SelectionBanner g={g} />}
       {waveOpen && <WaveOverlay g={g} onClose={() => setWaveOpen(false)} />}
       {takenOpen && <TakenOverlay g={g} onClose={() => setTakenOpen(false)} />}
+      {creativeOpen && <CreativeTechOverlay g={g} onClose={() => setCreativeOpen(false)} />}
       {showCombat && (
         <CombatOverlay title={`Wave ${g.lastCombat.wave} · ${g.lastCombat.enemy.archetypeName}`}
           player={g.lastCombat.player} enemy={g.lastCombat.enemy.scalars}
@@ -84,7 +86,7 @@ function Game({ onExit, audio }) {
   )
 }
 
-function TopBar({ g, onExit, onWave, onTaken }) {
+function TopBar({ g, onExit, onWave, onTaken, onCreativeMenu }) {
   const pt = g.perTurn()
   const dueIn = (META.waveInterval - (g.turn % META.waveInterval)) % META.waveInterval
   const pred = g.previewCombat()
@@ -109,17 +111,25 @@ function TopBar({ g, onExit, onWave, onTaken }) {
       </InfoTip>
       <div className="v5-stats">
         <InfoTip text={`Legitimacy — your life total. Reach 0 and the run ends. +${fmt(pt.income.legitimacy)}/turn.`}>
-          <div className="v5-stat legit"><RIco r="legitimacy" s={20} /><b>{fmt(g.legitimacy)}</b>{delta(pt.income.legitimacy)}</div>
+          <div className="v5-stat legit"><RIco r="legitimacy" s={20} /><b>{g.creative ? '∞' : fmt(g.legitimacy)}</b>{!g.creative && delta(pt.income.legitimacy)}</div>
         </InfoTip>
         {RES_KEYS.map((r) => (
           <InfoTip key={r} text={r === 'gold' ? goldTip : resTip[r]}>
-            <div className="v5-stat"><RIco r={r} s={17} /><b>{fmt(g.resources[r])}</b>{delta(pt.net[r])}</div>
+            <div className="v5-stat"><RIco r={r} s={17} /><b>{g.creative ? '∞' : fmt(g.resources[r])}</b>{!g.creative && delta(pt.net[r])}</div>
           </InfoTip>
         ))}
       </div>
       <InfoTip text="Technologies researched, by era.">
         <button className="v5-iconbtn" onClick={onTaken}>📜</button>
       </InfoTip>
+      <InfoTip text={g.creative ? 'Creative Mode ON — everything unlocked, infinite resources, no death. Click to turn off.' : 'Creative Mode — unlock all deployables, infinite resources, and research anything (for manual testing).'}>
+        <button className={`v5-iconbtn ${g.creative ? 'creative-on' : ''}`} onClick={() => g.setCreative(!g.creative)}>🛠</button>
+      </InfoTip>
+      {g.creative && (
+        <InfoTip text="Unlock any technology instantly.">
+          <button className="v5-iconbtn creative-on" onClick={onCreativeMenu}>⚗</button>
+        </InfoTip>
+      )}
       <InfoTip text={pending ? 'You still have research, builds, or expansions available this turn.' : 'Nothing left to do — end your turn.'}>
         <button className={`v5-endturn ${pending ? 'muted' : 'ready'}`} onClick={() => g.endTurn()}>End Turn ▸</button>
       </InfoTip>
@@ -157,6 +167,37 @@ function TakenOverlay({ g, onClose }) {
             ))}</div>
           </div>
         ))}
+        <button className="v5-cont" onClick={onClose}>Close</button>
+      </NineSlice>
+    </div>
+  )
+}
+
+function CreativeTechOverlay({ g, onClose }) {
+  const byEra = {}
+  for (const id in TECHS) { const t = TECHS[id]; (byEra[t.era] ||= []).push(t) }
+  const eras = ERAS.filter((e) => byEra[e])
+  return (
+    <div className="v5-modal-bg" onClick={onClose}>
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={24} className="v5-theater taken" onClick={(e) => e.stopPropagation()}>
+        <h2>Creative — Unlock Technologies</h2>
+        <p className="taken-empty">Click any technology to research it instantly.</p>
+        {eras.map((e) => {
+          const owned = byEra[e].filter((t) => g.taken.has(t.id)).length
+          return (
+            <div key={e} className="taken-era">
+              <div className="taken-eh">{e} <span>({owned}/{byEra[e].length})</span></div>
+              <div className="taken-list">{byEra[e].map((t) => {
+                const has = g.taken.has(t.id)
+                return (
+                  <InfoTip key={t.id} text={`${t.flavor} · ${t.desc}`}>
+                    <button className={`taken-chip cre ${has ? 'owned' : ''}`} disabled={has} onClick={() => g.unlockTechDirect(t.id)}>{has ? '✓ ' : ''}{t.name}</button>
+                  </InfoTip>
+                )
+              })}</div>
+            </div>
+          )
+        })}
         <button className="v5-cont" onClick={onClose}>Close</button>
       </NineSlice>
     </div>

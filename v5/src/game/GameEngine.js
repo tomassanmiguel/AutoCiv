@@ -13,6 +13,7 @@ import {
 } from './systems/combat.js'
 
 const RES = ['production', 'gold', 'food', 'progress']
+const CREATIVE_CAP = 999999 // resources/legitimacy pinned here in Creative Mode
 
 export class GameEngine {
   constructor(seed = 1) {
@@ -56,6 +57,7 @@ export class GameEngine {
     this.turn = 1
     this.waveCount = 0
     this.status = 'playing' // 'playing' | 'won' | 'lost'
+    this.creative = false // Creative Mode: all deployables unlocked, infinite resources, no death
     this.revealAll = true // TEMP: show the whole map (fog lifted for worldgen review)
     this.selection = null // { type:'build', deployableId } while placing
     this.log = []
@@ -84,7 +86,35 @@ export class GameEngine {
   // ---- React bridge (arrow fields: passed unbound) ----
   subscribe = (fn) => { this._subs.add(fn); return () => this._subs.delete(fn) }
   getVersion = () => this._version
-  _emit() { this._version++; for (const fn of this._subs) fn() }
+  _emit() { if (this.creative) this._topUpCreative(); this._version++; for (const fn of this._subs) fn() }
+  _topUpCreative() { for (const r of RES) this.resources[r] = CREATIVE_CAP; this.legitimacy = CREATIVE_CAP }
+
+  // ---- Creative Mode (manual testing) ----
+  setCreative(on) {
+    on = !!on
+    if (on === this.creative) return
+    if (on) { this._saved = { resources: { ...this.resources }, legitimacy: this.legitimacy } }
+    else if (this._saved) { this.resources = { ...this._saved.resources }; this.legitimacy = this._saved.legitimacy; this._saved = null }
+    this.creative = on
+    this._recomputeMods() // the unlocked/expansions sets depend on creative
+    this._previewWave()
+    this._emit()
+  }
+  /** Creative: unlock any technology directly (bypasses the offer and its cost). */
+  unlockTechDirect(id) {
+    if (!this.creative || !TECHS[id] || this.taken.has(id)) return false
+    this.taken.add(id)
+    this.unlocksThisEra++
+    this._recomputeMods()
+    if (this.mods.freeReroll) this.rerollTokens++
+    const lastEra = maxContentEra()
+    if (this.unlocksThisEra >= META.unlocksPerEra && this.era < lastEra) { this.era++; this.unlocksThisEra = 0 }
+    const slot = this.offer.findIndex((o) => o.id === id)
+    if (slot >= 0) this.offer.splice(slot, 1)
+    this._previewWave()
+    this._emit()
+    return true
+  }
 
   // ---- helpers ----
   tileAt(k) { return this.world.byKey.get(k) }
@@ -130,6 +160,7 @@ export class GameEngine {
         }
       }
     }
+    if (this.creative) { for (const id in DEPLOYABLES) unlocked.add(id); for (const t of Object.values(TERRAIN)) if (t.unlock) expansions.add(t.id) }
     this.mods = m
     this.unlocked = unlocked
     this.expansions = expansions
@@ -424,7 +455,7 @@ export class GameEngine {
     this.waveCount++
     this.lastCombat = { wave: n, enemy, player: P, result, bonus }
     this.log.unshift(`Wave ${n}: −${result.legitimacyLost} legitimacy, +${result.goldGained} gold`)
-    if (this.legitimacy <= 0) { this.legitimacy = 0; this.status = 'lost' }
+    if (this.legitimacy <= 0 && !this.creative) { this.legitimacy = 0; this.status = 'lost' }
   }
 
   // ---- turn loop ----

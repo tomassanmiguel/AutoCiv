@@ -92,6 +92,11 @@
 .taken-eh span { color: var(--ink-soft); font-family: Inter; font-size: 11px; }
 .taken-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .taken-chip { background: var(--parch-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 600; color: var(--ink); cursor: default; }
+.v5-iconbtn.creative-on { background: #5aa0d0; color: #fff; border-color: #3d7fa0; box-shadow: 0 0 0 2px rgba(90,160,208,.35); }
+.v5-iconbtn.creative-on:hover { background: #6fb0dd; }
+.taken-chip.cre { cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
+.taken-chip.cre:hover { background: #cfe4f2; border-color: #5aa0d0; }
+.taken-chip.cre.owned { background: #cfe0c4; border-color: #6faa4f; color: #3f5f34; cursor: default; opacity: .8; }
 .panel-h { font-family: Cinzel, serif; font-size: 15px; color: var(--brass-deep); margin-bottom: 11px; display: flex; justify-content: space-between; align-items: baseline; }
 .panel-h .sub { font-family: Inter; font-size: 11px; color: var(--ink-soft); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
 .hint { font-size: 11px; color: var(--ink-soft); margin-top: 11px; line-height: 1.5; }
