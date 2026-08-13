@@ -2078,6 +2078,70 @@
           "per_uncontrolled": 1
         }
       ]
+    },
+    {
+      "id": "monastery",
+      "name": "Monastery",
+      "type": "building",
+      "subtype": "legitimacy",
+      "era": "Medieval",
+      "production": 6,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land"
+      },
+      "desc": "5 progress and 5 legitimacy — halved if any building is adjacent.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 5
+        },
+        {
+          "name": "self_yield",
+          "resource": "legitimacy",
+          "amount": 5
+        },
+        {
+          "name": "self_output_mult_if_adjacent",
+          "factor": 0.5,
+          "filter": "building"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "trebuchet",
+      "name": "Trebuchet",
+      "type": "unit",
+      "subtype": "siege",
+      "era": "Medieval",
+      "production": 6,
+      "upkeep": 3,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "24 bombardment (+10 on a hill). A heavier siege engine than the catapult.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 24
+        },
+        {
+          "name": "combat_on_terrain",
+          "domain": "land",
+          "stat": "bomb",
+          "terrain": "hills",
+          "mode": "add",
+          "amount": 10
+        }
+      ]
     }
   ],
   "techs": [
@@ -3991,6 +4055,48 @@
         {
           "name": "enable_region",
           "region": "new_world"
+        }
+      ]
+    },
+    {
+      "id": "monastic_order",
+      "name": "Monastic Order",
+      "flavor": "Legitimacy",
+      "era": "Medieval",
+      "desc": "Unlocks the Monastery.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "monastery"
+        }
+      ]
+    },
+    {
+      "id": "counterweights",
+      "name": "Counterweights",
+      "flavor": "Ranged",
+      "era": "Medieval",
+      "desc": "Unlocks the Trebuchet.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "trebuchet"
+        }
+      ]
+    },
+    {
+      "id": "evangelism",
+      "name": "Evangelism",
+      "flavor": "Progress",
+      "era": "Exploration",
+      "desc": "Doubles the output of your temples in the New World.",
+      "effects": [
+        {
+          "name": "region_yield_mult",
+          "region": "new_world",
+          "deployable": "temple",
+          "resource": "all",
+          "factor": 2
         }
       ]
     }

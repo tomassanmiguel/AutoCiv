@@ -160,6 +160,7 @@ export class GameEngine {
       progressPerFlavor: {}, keepNaturalProduction: false, armyGrowth: [], palaceRandomGrowth: 0,
       yieldMult: [], subtypeConvert: [], armyFromSettlement: [],
       terrainAdjSettlement: [], tileYieldFactor: {}, isolatedMult: [], subtypeCombatFromOutput: [],
+      regionYieldMult: [],
       mercenaries: false, mercDefPerHire: 0,
       critPerRanged: 0, crossBombard: [],
       regions: new Set(),
@@ -210,6 +211,7 @@ export class GameEngine {
           case 'override_tile_yield_factor': m.tileYieldFactor[e.deployable] = e.factor; break
           case 'subtype_isolated_mult': m.isolatedMult.push({ subtype: e.subtype, deployable: e.deployable, factor: e.factor }); break
           case 'subtype_combat_from_output': m.subtypeCombatFromOutput.push({ subtype: e.subtype, deployable: e.deployable, from: e.from, domain: e.domain }); break
+          case 'region_yield_mult': m.regionYieldMult.push({ region: e.region, subtype: e.subtype, deployable: e.deployable, resource: e.resource, factor: e.factor }); break
           case 'enable_mercenaries': m.mercenaries = true; break
           case 'merc_def_per_hire': m.mercDefPerHire += e.amount; break
           case 'crit_per_ranged': m.critPerRanged += (e.percent || 0) / 100; break
@@ -335,12 +337,16 @@ export class GameEngine {
         const by = this.mods.buildingSubtypeYield[dep.subtype]
         if (by) for (const r in by) out[r] += by[r]
       }
+      // deployable-intrinsic conditional multiplier (Monastery: halved if any adjacent building)
+      for (const e of dep.econ || []) if (e.name === 'self_output_mult_if_adjacent' && this.adjCount(k, e.filter) > 0) for (const r in out) out[r] *= e.factor
       // tech conversions (Monotheism: temple gold = its progress) then multipliers (Tithing, Citizenship, Scientific Method)
       const hit = (m) => m.deployable ? dep.id === m.deployable : dep.subtype === m.subtype
       for (const cv of this.mods.subtypeConvert) if (hit(cv)) out[cv.to] += out[cv.from] || 0
       for (const mv of this.mods.yieldMult) if (hit(mv)) { if (mv.resource === 'all') { for (const r in out) out[r] *= mv.factor } else out[mv.resource] *= mv.factor }
       // Pilgrimage: shrine with no adjacent building multiplies its whole output.
       for (const im of this.mods.isolatedMult) if (hit(im) && this.adjCount(k, 'building') === 0) for (const r in out) out[r] *= im.factor
+      // Evangelism: multiply matching deployables' output on a given region (New World temples).
+      for (const rm of this.mods.regionYieldMult) if (hit(rm) && t.region === rm.region) { if (rm.resource === 'all') { for (const r in out) out[r] *= rm.factor } else out[rm.resource] *= rm.factor }
       for (const r in out) bucket[r] += out[r]
     }
     // palace flat bonuses + accrued Hereditary Rule growth, then the whole palace yield ×palaceMult
@@ -792,10 +798,12 @@ export class GameEngine {
       }
     }
     // mirror the tech conversions/multipliers computeEconomy applies, so cards match income
+    for (const e of dep.econ || []) if (e.name === 'self_output_mult_if_adjacent' && this.adjCount(k, e.filter) > 0) for (const r in out) out[r] *= e.factor
     const hit = (m) => m.deployable ? dep.id === m.deployable : dep.subtype === m.subtype
     for (const cv of this.mods.subtypeConvert) if (hit(cv)) add(cv.to, out[cv.from] || 0)
     for (const mv of this.mods.yieldMult) if (hit(mv)) { if (mv.resource === 'all') { for (const r in out) out[r] *= mv.factor } else if (out[mv.resource]) out[mv.resource] *= mv.factor }
     for (const im of this.mods.isolatedMult) if (hit(im) && this.adjCount(k, 'building') === 0) for (const r in out) out[r] *= im.factor
+    for (const rm of this.mods.regionYieldMult) if (hit(rm) && t.region === rm.region) { if (rm.resource === 'all') { for (const r in out) out[r] *= rm.factor } else if (out[rm.resource]) out[rm.resource] *= rm.factor }
     return out
   }
   /** Combat scalar contribution of the deployable on a tile. */

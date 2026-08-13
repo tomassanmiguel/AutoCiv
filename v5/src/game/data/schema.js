@@ -104,6 +104,9 @@ export const EFFECT_KINDS = [
   N('subtype_combat_from_output', 'Subtype/deployable +atk & +def = its output', { where: 'tech', params: [
     { key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'from', type: 'enum', options: RES_ALL }, { key: 'domain', type: 'enum', options: DOMAINS },
   ] }),
+  N('region_yield_mult', 'Multiply a subtype/deployable yield on a region', { where: 'tech', params: [
+    { key: 'region', type: 'string' }, { key: 'subtype', type: 'string' }, { key: 'deployable', type: 'deployable' }, { key: 'resource', type: 'enum', options: ['all', ...RES_ALL] }, { key: 'factor', type: 'number' },
+  ] }),
   N('enable_mercenaries', 'Enable hiring mercenaries in combat', { where: 'tech', params: [] }),
   N('merc_def_per_hire', 'Each mercenary hired also grants +def', { where: 'tech', params: [{ key: 'amount', type: 'number' }] }),
   N('crit_per_ranged', 'Crit chance (double damage) per ranged unit', { where: 'tech', params: [{ key: 'percent', type: 'number' }] }),
@@ -119,6 +122,9 @@ export const EFFECT_KINDS = [
   N('growth_per_turn', 'Output grows each turn', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
   N('count_scaling', '+resource per owned of this type', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
   N('double_tile_yield', 'Doubles the tile’s natural yield', { where: 'econ', params: [] }),
+  N('self_output_mult_if_adjacent', 'Multiply own output when adjacent to a filter', { where: 'econ', params: [
+    { key: 'factor', type: 'number' }, { key: 'filter', type: 'enum', options: ['building', 'settlement', 'military', 'any'] },
+  ] }),
 
   // -- deployable combat --
   N('combat_scalar', 'Combat scalar (base)', { where: 'combat', params: [
