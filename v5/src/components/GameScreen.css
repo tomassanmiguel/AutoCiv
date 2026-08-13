@@ -31,6 +31,9 @@
 .v5-stat.legit b { color: var(--brass-deep); font-size: 19px; }
 .v5-endturn { background: linear-gradient(#e6c877, #b9923f); color: #2a1c08; border: 1px solid var(--brass-deep); font-weight: 700; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; box-shadow: 0 2px 0 #7a5e28; }
 .v5-endturn:hover { filter: brightness(1.06); }
+.v5-endturn.muted { background: linear-gradient(#cabfa4, #a89a76); border-color: #8a7c58; color: #4a3f28; box-shadow: 0 2px 0 #7a6f50; }
+.v5-endturn.ready { animation: endready 1.1s ease-in-out infinite; }
+@keyframes endready { 0%, 100% { box-shadow: 0 2px 0 #7a5e28, 0 0 0 0 #e6c87700; } 50% { box-shadow: 0 2px 0 #7a5e28, 0 0 15px 3px #e6c877cc; filter: brightness(1.12); } }
 .v5-iconbtn { background: #d9c69a; color: #6b5a3c; border: 1px solid var(--brass); height: 32px; padding: 0 10px; border-radius: 8px; cursor: pointer; font-size: 15px; }
 .v5-iconbtn:hover { background: #e0cfa4; }
 .v5-exit { background: #d9c69a; color: #6b5a3c; border: 1px solid var(--brass); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; }

@@ -27,13 +27,17 @@ export class GameEngine {
 
     // Palace starts on a RANDOM interior plains tile with room to grow — not the map
     // centre — for variety. (Plains only occur on Earth land, so it is never on the edge.)
-    const landNeighbors = (t) => neighbors(t.q, t.r).reduce((n, nb) => {
-      const o = w.tiles.get(hkey(nb.q, nb.r)); const d = o && TERRAIN[o.terrain]
-      return n + (d && d.kind === 'land' ? 1 : 0)
-    }, 0)
+    const WATER = new Set(['ocean', 'coast', 'river'])
+    // Interior = all six neighbours are inland Earth land (never on the coast / planet edge).
+    const interior = (t) => neighbors(t.q, t.r).every((nb) => {
+      const o = w.tiles.get(hkey(nb.q, nb.r))
+      return o && o.band === 'earth' && !WATER.has(o.terrain)
+    })
     const rand = rng((this.seed ^ 0x50a1ace) >>> 0)
-    const plains = w.list.filter((t) => t.terrain === 'plains' && landNeighbors(t) >= 2)
-    const home = plains.length ? plains[Math.floor(rand() * plains.length)] : w.tiles.get(hkey(0, 0))
+    let cands = w.list.filter((t) => t.terrain === 'plains' && t.region === 'old_world' && interior(t))
+    if (!cands.length) cands = w.list.filter((t) => t.terrain === 'plains' && t.region === 'old_world')
+    if (!cands.length) cands = [w.tiles.get(hkey(0, 0))]
+    const home = cands[Math.floor(rand() * cands.length)]
     this.palaceKey = home.key
     this.world.palace = { q: home.q, r: home.r }
     this._subs = new Set()

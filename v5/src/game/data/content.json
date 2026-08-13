@@ -5,10 +5,10 @@
     "unlocksPerEra": 4,
     "wildcardOption": true,
     "startResources": {
-      "production": 1,
-      "gold": 10,
-      "food": 1,
-      "progress": 1
+      "production": 0,
+      "gold": 9,
+      "food": 0,
+      "progress": 0
     },
     "startDeployables": [
       "warrior"

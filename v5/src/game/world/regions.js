@@ -12,12 +12,12 @@ export const BANDS = {
   earth: { min: 0, max: 10 },       //  331 tiles — two continents + a wide ocean + islands
   space: { min: 11, max: 21 },      //  Moon (r1) and Mars (r2) discs live here
   deep: { min: 22, max: 38 },       //  the deep-space "ocean"; exoplanet (r5) + its moon
-  galactic: { min: 39, max: 41 },   //  outer deep space
+  galactic: { min: 39, max: 40 },   //  outer deep space (trimmed 1 ring)
 }
 
-// The world is generated 2 rings PAST the last revealable ring, so the derived
-// battlefield ring (see GameManager) always has real tiles to occupy.
-export const BATTLEFIELD_DEPTH = 2
+// v5 has no derived battlefield ring, so the map ends at the last revealable ring.
+// Combined with the galactic trim above this removes the outer 3 rings of space.
+export const BATTLEFIELD_DEPTH = 0
 export const MAX_REVEAL_RADIUS = BANDS.galactic.max
 export const MAX_RADIUS = MAX_REVEAL_RADIUS + BATTLEFIELD_DEPTH
 

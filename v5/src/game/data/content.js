@@ -5,7 +5,7 @@ import { eraIndex } from './schema.js'
 export const CONTENT = raw
 
 // Progress cost to unlock a tech, by era index (authored curve 1,2,4,6,9 … ~×1.44).
-export const PROGRESS_UNLOCK_COST = [1, 2, 4, 6, 9, 13, 19, 27, 39, 56, 81, 117, 168, 242, 349]
+export const PROGRESS_UNLOCK_COST = [1, 3, 6, 10, 15, 22, 33, 50, 76, 116, 178, 275, 425, 660, 1025]
 export const progressCost = (era) => PROGRESS_UNLOCK_COST[Math.min(era, PROGRESS_UNLOCK_COST.length - 1)]
 
 export const TERRAIN = Object.fromEntries(CONTENT.terrain.map((t) => [t.id, t]))

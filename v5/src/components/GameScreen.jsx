@@ -90,6 +90,8 @@ function TopBar({ g, onExit, onWave, onTaken }) {
   const pred = g.previewCombat()
   const dmg = pred ? pred.legitimacyLost : 0
   const fatal = dmg >= g.legitimacy
+  // "Anything left to do?" — a still-actionable research / build / expansion.
+  const pending = g.offerData().some((o) => o.affordable) || g.buildableList().some((b) => b.affordable) || g.expandTargets().some((e) => e.affordable)
   const goldTip = `Gold — pays upkeep, mercenaries and rerolls. Income :gold:${fmt(pt.income.gold)}, upkeep −${pt.upkeep} → net ${fmt(pt.net.gold)}/turn. Negative gold subtracts from every combat scalar.`
   const resTip = {
     production: `Production — build deployables. +${fmt(pt.net.production)}/turn from tiles & buildings.`,
@@ -118,8 +120,8 @@ function TopBar({ g, onExit, onWave, onTaken }) {
       <InfoTip text="Technologies researched, by era.">
         <button className="v5-iconbtn" onClick={onTaken}>📜</button>
       </InfoTip>
-      <InfoTip text="Advance to the next turn. Income is collected and, every 3rd turn, a wave resolves.">
-        <button className="v5-endturn" onClick={() => g.endTurn()}>End Turn ▸</button>
+      <InfoTip text={pending ? 'You still have research, builds, or expansions available this turn.' : 'Nothing left to do — end your turn.'}>
+        <button className={`v5-endturn ${pending ? 'muted' : 'ready'}`} onClick={() => g.endTurn()}>End Turn ▸</button>
       </InfoTip>
       <button className="v5-exit" onClick={onExit} title="Quit to title">✕</button>
     </header>
