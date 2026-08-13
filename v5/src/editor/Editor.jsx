@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 // AutoCiv v5 — content editor. Loads content.json via the dev /api/content
 // middleware, edits it in structured tables, and writes it back. Everything the
 // game runs comes from this file, so this is the authoring surface.

@@ -1,5 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { GameProvider, useGame } from '../game/react/GameProvider.jsx'
 import { GameEngine } from '../game/GameEngine.js'
 import { toPixel } from '../game/hex/coords.js'
@@ -22,7 +21,7 @@ const RES_ICON = { production: '⚒', gold: '⛃', food: '🌾', progress: '📜
 
 export default function GameScreen({ seed, onExit }) {
   const [engine] = useState(() => new GameEngine(seed))
-  if (import.meta.env.DEV) window.__g = engine
+  useEffect(() => { if (import.meta.env.DEV) window.__g = engine }, [engine])
   return (
     <GameProvider manager={engine}>
       <Game onExit={onExit} />
@@ -214,12 +213,9 @@ function BuildPanel({ g }) {
   )
 }
 
-function scalarTotal(s) { let a = 0, d = 0, b = 0; for (const dm of DOMAINS) { a += s[dm].atk; d += s[dm].def; b += s[dm].bomb } return { a, d, b } }
-
 function WavePanel({ g }) {
   const enemy = g.enemyCard
   const you = g.playerScalars()
-  const yt = scalarTotal(you)
   return (
     <div className="panel">
       <div className="panel-h">Incoming wave {enemy?.wave} <span className="sub">{enemy?.archetypeName}</span></div>
