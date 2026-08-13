@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { effectsFor, EFFECT_BY_NAME, RESOURCES, ERAS, validateContent } from '../game/data/schema.js'
 
-const TABS = ['Deployables', 'Techs', 'Terrain', 'Enemy']
+const TABS = ['Meta', 'Deployables', 'Techs', 'Terrain', 'Enemy']
 
 export default function Editor() {
   const [content, setContent] = useState(null)
@@ -62,6 +62,7 @@ export default function Editor() {
         </div>
       </header>
       <main className="ed-main">
+        {tab === 'Meta' && <MetaTab content={content} update={update} />}
         {tab === 'Deployables' && <DeployableTab content={content} update={update} ctx={ctx} />}
         {tab === 'Techs' && <TechTab content={content} update={update} ctx={ctx} />}
         {tab === 'Terrain' && <TerrainTab content={content} update={update} />}
@@ -214,6 +215,29 @@ function TerrainTab({ content, update }) {
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ---------- meta ----------
+function MetaTab({ content, update }) {
+  const m = content.meta
+  const set = (k, v) => update((c) => { c.meta[k] = v })
+  const setRes = (r, v) => update((c) => { c.meta.startResources[r] = v })
+  return (
+    <div className="ed-list ed-enemy">
+      <h2>Game setup</h2>
+      <p className="ed-note">Starting conditions and pacing. These drive a new game directly.</p>
+      <div className="ed-grid">
+        <Field label="start legitimacy"><Num value={m.startLegitimacy} onChange={(v) => set('startLegitimacy', v)} /></Field>
+        <Field label="wave interval (turns)"><Num value={m.waveInterval} onChange={(v) => set('waveInterval', v)} /></Field>
+        <Field label="unlocks per era"><Num value={m.unlocksPerEra} onChange={(v) => set('unlocksPerEra', v)} /></Field>
+        <Field label="wildcard option"><input type="checkbox" checked={!!m.wildcardOption} onChange={(e) => set('wildcardOption', e.target.checked)} /></Field>
+      </div>
+      <h4>Starting resources</h4>
+      <div className="ed-grid">
+        {RESOURCES.map((r) => <Field key={r} label={r}><Num value={m.startResources[r] || 0} onChange={(v) => setRes(r, v)} /></Field>)}
+      </div>
     </div>
   )
 }

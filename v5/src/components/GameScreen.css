@@ -38,7 +38,8 @@
 .seam { fill: none; stroke: #0b0e14; stroke-width: 1.6; opacity: .6; }
 .own-ring { fill: none; stroke: var(--brass); stroke-width: 2.6; opacity: .9; }
 .hi-ring { fill: #ffd36a26; stroke: #ffd36a; stroke-width: 2.8; animation: pulse 1.3s infinite; }
-.hi-ring.exp { fill: none; stroke: #6fc47a; stroke-width: 1.8; opacity: .55; animation: none; }
+.hi-ring.exp { fill: #6fc47a14; stroke: #7fd08a; stroke-width: 2; animation: expflash 1.6s ease-in-out infinite; }
+@keyframes expflash { 0%, 100% { opacity: .35; } 50% { opacity: .85; } }
 .v5-map image.sil { filter: invert(1) brightness(1.25); }
 .dname { text-anchor: middle; font-size: 9px; font-weight: 700; fill: #f4efe0; paint-order: stroke; stroke: #0b0e14; stroke-width: 2.4px; }
 .exp-badge { opacity: .9; }

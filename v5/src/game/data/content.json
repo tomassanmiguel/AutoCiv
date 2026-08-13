@@ -1,14 +1,14 @@
 {
   "meta": {
-    "startLegitimacy": 100,
+    "startLegitimacy": 50,
     "waveInterval": 3,
     "unlocksPerEra": 4,
     "wildcardOption": true,
     "startResources": {
-      "production": 2,
-      "gold": 6,
-      "food": 2,
-      "progress": 0
+      "production": 1,
+      "gold": 10,
+      "food": 1,
+      "progress": 1
     },
     "startDeployables": [
       "warrior"

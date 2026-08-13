@@ -123,47 +123,64 @@ function HexMap({ g }) {
   const placing = g.selection && g.selection.type === 'build' ? g.selection.deployableId : null
   const onTile = (t) => { if (placing) g.placeAt(t.key); else if (expand[t.key]?.affordable) g.expandAt(t.key) }
 
+  const infoFor = (t) => {
+    const seen = g.revealAll || vision.has(t.key)
+    const inst = g.deployed.get(t.key)
+    const canPlace = placing && g.placementValid(placing, t.key)
+    const exp = expand[t.key]
+    return { seen, controlled: g.controlled.has(t.key), inst, dep: inst && DEPLOYABLES[inst.id], canPlace, exp, expAff: exp && exp.affordable && !placing }
+  }
   return (
     <div className="v5-map">
       <svg viewBox={layout.vb} preserveAspectRatio="xMidYMid meet">
         <defs><clipPath id="hexclip"><polygon points={HEX_PTS} /></clipPath></defs>
-        {tiles.map((t) => {
-          const p = layout.pos[t.key]
-          const seen = g.revealAll || vision.has(t.key)
-          const controlled = g.controlled.has(t.key)
-          const inst = g.deployed.get(t.key)
-          const dep = inst && DEPLOYABLES[inst.id]
-          const canPlace = placing && g.placementValid(placing, t.key)
-          const exp = expand[t.key]
-          const expAff = exp && exp.affordable && !placing
-          const cls = ['hx']
-          if (!seen) cls.push('fog')
-          if (canPlace || expAff) cls.push('clickable')
-          return (
-            <g key={t.key} className={cls.join(' ')} transform={`translate(${p.x} ${p.y})`}
-              onClick={() => onTile(t)} onMouseEnter={() => seen && setHover(t.key)} onMouseLeave={() => setHover((h) => (h === t.key ? null : h))}>
-              {seen
-                ? <image href={`/sprites/tiles/${TERRAIN[t.terrain].sprite || t.terrain}.png`} x={-HEX} y={-HEX} width={HEX * 2} height={HEX * 2} clipPath="url(#hexclip)" preserveAspectRatio="xMidYMid slice" />
-                : <polygon points={HEX_PTS} fill="#0e1017" />}
-              <polygon points={HEX_PTS} className="seam" />
-              {controlled && <polygon points={HEX_PTS} className="own-ring" />}
-              {(canPlace || expAff) && <polygon points={HEX_PTS} className={`hi-ring ${expAff && !canPlace ? 'exp' : ''}`} />}
-              {dep && (
-                <g className="dbadge">
-                  <circle r="14" fill="#12151bee" stroke={catColor(dep)} strokeWidth="2.2" />
-                  <image className="sil" href={silFor(dep)} x={-10} y={-10} width={20} height={20} />
-                  <text className="dname" y={27}>{dep.name}</text>
-                </g>
-              )}
-              {expAff && !inst && (
-                <g className="exp-badge" transform="translate(0 -19)">
-                  <image href={RES_ICON.food} x={-12} y={-6} width={11} height={11} />
-                  <text className="cost" x={2} y={3}>{exp.cost}</text>
-                </g>
-              )}
-            </g>
-          )
-        })}
+        {/* terrain layer — interactive; drawn first so neighbouring tiles never paint over a border */}
+        <g>
+          {tiles.map((t) => {
+            const p = layout.pos[t.key]
+            const { seen, canPlace, expAff } = infoFor(t)
+            const cls = ['hx']
+            if (!seen) cls.push('fog')
+            if (canPlace || expAff) cls.push('clickable')
+            return (
+              <g key={t.key} className={cls.join(' ')} transform={`translate(${p.x} ${p.y})`}
+                onClick={() => onTile(t)} onMouseEnter={() => seen && setHover(t.key)} onMouseLeave={() => setHover((h) => (h === t.key ? null : h))}>
+                {seen
+                  ? <image href={`/sprites/tiles/${TERRAIN[t.terrain].sprite || t.terrain}.png`} x={-HEX} y={-HEX} width={HEX * 2} height={HEX * 2} clipPath="url(#hexclip)" preserveAspectRatio="xMidYMid slice" />
+                  : <polygon points={HEX_PTS} fill="#0e1017" />}
+                <polygon points={HEX_PTS} className="seam" />
+              </g>
+            )
+          })}
+        </g>
+        {/* overlay layer — borders, highlights, badges on top of ALL terrain */}
+        <g style={{ pointerEvents: 'none' }}>
+          {tiles.map((t) => {
+            const { controlled, inst, dep, canPlace, exp, expAff } = infoFor(t)
+            if (!controlled && !canPlace && !expAff && !inst) return null
+            const p = layout.pos[t.key]
+            const yields = expAff ? Object.keys(TERRAIN[t.terrain].yield || {}) : []
+            return (
+              <g key={t.key} transform={`translate(${p.x} ${p.y})`}>
+                {controlled && <polygon points={HEX_PTS} className="own-ring" />}
+                {(canPlace || expAff) && <polygon points={HEX_PTS} className={`hi-ring ${expAff && !canPlace ? 'exp' : ''}`} />}
+                {dep && (
+                  <g className="dbadge">
+                    <circle r="14" fill="#12151bee" stroke={catColor(dep)} strokeWidth="2.2" />
+                    <image className="sil" href={silFor(dep)} x={-10} y={-10} width={20} height={20} />
+                    <text className="dname" y={27}>{dep.name}</text>
+                  </g>
+                )}
+                {expAff && !inst && (
+                  <g className="exp-badge">
+                    <g transform="translate(0 -20)"><image href={RES_ICON.food} x={-13} y={-6} width={11} height={11} /><text className="cost" x={1} y={3}>{exp.cost}</text></g>
+                    <g transform="translate(0 -9)">{yields.map((r, idx) => { const step = 11, x0 = -(yields.length - 1) * step / 2; return <image key={r} href={RES_ICON[r]} x={x0 + idx * step - 4.5} y={-4.5} width={9} height={9} /> })}</g>
+                  </g>
+                )}
+              </g>
+            )
+          })}
+        </g>
       </svg>
       {hover && <MapHoverCard g={g} k={hover} />}
       <div className="v5-map-hint">{placing ? 'Click a highlighted tile to build.' : 'Click a tile marked with food to expand.'}</div>
