@@ -46,8 +46,8 @@ const INLAND_SEA_NEW = 0.80
 
 // Climate is LATITUDINAL: an arid equator, tundra at the two poles. The polar
 // axis is the world's vertical, so north/south read as up/down on the map.
-const TUNDRA_LAT = 0.62
-const TUNDRA_CLUSTER = 0.45 // tundra also needs a cluster field, so it forms patches
+const TUNDRA_LAT = 0.66      // base polar latitude; tundra fills everything POLEWARD of the wavy boundary
+const TUNDRA_TENDRIL = 0.16  // how far that boundary wobbles equatorward, so tundra forms blocs that tendril toward the equator
 const DESERT_LAT = 0.42
 
 const RIDGE_CUT = 0.96 // ridged-noise threshold for mountains — high, so ranges
@@ -153,18 +153,23 @@ function generateEarth(tiles, seed, rng) {
     const e = elevN(px * 10, py * 10)
     const m = moistN(px * 9 + 30, py * 9 + 30)
     const c = climN(px * 7 + 80, py * 7 + 80)
-    const pol = polarN(px * 6 + 120, py * 6 + 120)
     const ridge = 1 - Math.abs(2 * ridgeN(px * 14, py * 14) - 1)
     t.elev = e
 
-    const tundraCut = TUNDRA_LAT + 0.10 * (2 * c - 1)
+    // The polar boundary is a smooth latitude sampled HORIZONTALLY (fixed vertical
+    // coord), so it reads as one wavy line: everything POLEWARD of it is solid
+    // tundra, never a plains/forest/desert tile stranded nearer the pole than
+    // tundra. The low-frequency polar field gives larger blocs that tendril
+    // equatorward. Mountains are the only non-tundra land allowed past it.
+    const polarBoundary = TUNDRA_LAT + TUNDRA_TENDRIL * (2 * polarN(px * 3.0, 7.0) - 1)
     const dryCut = 0.42 + 0.10 * (2 * c - 1)
     // Compress the moisture extremes so a dry seed isn't all desert and a wet one isn't all forest.
     const mc = 0.5 + (m - 0.5) * 0.7
 
-    if (ridge > RIDGE_CUT && e > 0.42) t.terrain = 'mountain'
+    const isMountain = ridge > RIDGE_CUT && e > 0.42
+    if (isMountain) t.terrain = 'mountain'
+    else if (lat > polarBoundary) t.terrain = 'tundra'
     else if (e > HILL_CUT) t.terrain = 'hills'
-    else if (lat > tundraCut && pol > TUNDRA_CLUSTER) t.terrain = 'tundra'
     else if (lat < DESERT_LAT && mc < dryCut) t.terrain = 'desert'
     else if (mc > 0.56) t.terrain = 'forest'
     else t.terrain = 'plains'
@@ -258,6 +263,29 @@ function carveRivers(tiles, earth, rng) {
 /** Continent land (a continent's own ground) — what shallow Coast forms against. */
 const isContinentLand = (o) =>
   !!o && (o.region === 'old_world' || o.region === 'new_world') && isLand(o.terrain)
+
+/**
+ * Enforce the polar rule EXACTLY, after every land-creating step (continent
+ * shaping AND the connectOldWorldLand bridges, which drop plains that can land
+ * poleward of tundra): no non-tundra land tile may sit poleward of tundra, save
+ * for mountains. Flood tundra outward toward the poles — any land tile with a
+ * more-equatorward tundra neighbour joins it — to a fixpoint.
+ */
+function enforcePolarTundra(tiles) {
+  const earth = []
+  for (const t of tiles.values()) if (t.band === 'earth') earth.push(t)
+  let spreading = true
+  while (spreading) {
+    spreading = false
+    for (const t of earth) {
+      if (t.terrain === 'tundra' || t.terrain === 'mountain' || !isLand(t.terrain)) continue
+      for (const n of neighbors(t.q, t.r)) {
+        const o = tiles.get(key(n.q, n.r))
+        if (o && o.terrain === 'tundra' && Math.abs(o.y) < Math.abs(t.y)) { t.terrain = 'tundra'; spreading = true; break }
+      }
+    }
+  }
+}
 
 /**
  * Water adjacent to CONTINENT land becomes shallow Coast. Islands deliberately
@@ -578,7 +606,7 @@ function scatterMiniExoplanets(tiles, exoCenter, seed, rng) {
     const kept = new Set()
     for (const h of disc(c.q, c.r, rad)) {
       const dd = lengthOf(h.q - c.q, h.r - c.r) / rad
-      if (strange && dd > 0.45 && shapeN(h.q * 1.4, h.r * 1.4) < 0.45) continue // bite chunks out of the edge
+      if (strange && dd > 0.6 && shapeN(h.q * 1.4, h.r * 1.4) < 0.45) continue // gently nibble the outer edge only
       kept.add(key(h.q, h.r))
     }
     // Flood the exterior empties inward from the surrounding ring; any empty cell
@@ -597,22 +625,41 @@ function scatterMiniExoplanets(tiles, exoCenter, seed, rng) {
       const k = key(h.q, h.r)
       if (!exterior.has(k)) kept.add(k) // enclosed empties become land
     }
+    const centreKey = key(c.q, c.r)
+    const centreComponent = (set) => {
+      const comp = new Set([centreKey]); const st = [{ q: c.q, r: c.r }]
+      while (st.length) {
+        const cur = st.pop()
+        for (const nb of neighbors(cur.q, cur.r)) {
+          const nk = key(nb.q, nb.r)
+          if (comp.has(nk) || !set.has(nk)) continue
+          comp.add(nk); st.push(nb)
+        }
+      }
+      return comp
+    }
     // Keep only the component connected to the centre — a strange outline can bite
     // a fragment loose, and every exoplanet tile must be connected.
-    const connected = new Set([key(c.q, c.r)])
-    const cstack = [{ q: c.q, r: c.r }]
-    while (cstack.length) {
-      const cur = cstack.pop()
-      for (const nb of neighbors(cur.q, cur.r)) {
-        const nk = key(nb.q, nb.r)
-        if (connected.has(nk) || !kept.has(nk)) continue
-        connected.add(nk); cstack.push(nb)
+    let body = centreComponent(kept)
+    // Round the outline: no tile may keep more than 3 space (non-body) neighbours,
+    // or the planet reads as a spiky blob. Erode offenders (never the centre) and
+    // re-take the centre component, to a fixpoint.
+    for (let pass = 0; pass < 6; pass++) {
+      let eroded = false
+      for (const k of [...body]) {
+        if (k === centreKey) continue
+        const [q, r] = k.split(',').map(Number)
+        let space = 0
+        for (const nb of neighbors(q, r)) if (!body.has(key(nb.q, nb.r))) space++
+        if (space > 3) { body.delete(k); eroded = true }
       }
+      if (!eroded) break
+      body = centreComponent(body)
     }
 
     for (const h of disc(c.q, c.r, rad)) {
       const k = key(h.q, h.r)
-      if (!connected.has(k)) continue
+      if (!body.has(k)) continue
       const t = tiles.get(k); if (!t) continue
       const lq = h.q - c.q, lr = h.r - c.r
       const dd = lengthOf(lq, lr) / rad
@@ -1144,6 +1191,7 @@ export function buildWorld(seed) {
   repairStart(tiles, rng)
   connectOldWorldLand(tiles)
   finalizeEarthCoasts(tiles)
+  enforcePolarTundra(tiles) // AFTER the land bridges, so their plains obey the polar rule too
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt, galaxyReach)
 
