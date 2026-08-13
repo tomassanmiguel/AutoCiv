@@ -180,16 +180,20 @@ function generateEarth(tiles, seed, rng) {
  * not out in the rim sea, so crossing the divide has stepping stones.
  */
 function scatterIslands(tiles, earth, rng) {
+  // Islands live in DEEP ocean, never against the shore: no land (continent OR a
+  // fellow island) within two tiles, so they can't strip a continent's coast or
+  // read as an outcrop of it. (Coast forms later against continent land, so a
+  // range-2 land clearance keeps their surrounding water open ocean.)
+  const deepOpen = (t) =>
+    disc(t.q, t.r, 2).every((h) => {
+      const o = tiles.get(key(h.q, h.r))
+      return !o || !isLand(o.terrain)
+    })
   const open = earth.filter(
-    (t) => t.seaKind === 'channel' &&
-      t.d > LOCAL_RADIUS && // never visible from the opening view
-      neighbors(t.q, t.r).every((n) => {
-        const o = tiles.get(key(n.q, n.r))
-        return !o || !isLand(o.terrain)
-      }),
+    (t) => t.seaKind === 'channel' && t.d > LOCAL_RADIUS && deepOpen(t),
   )
   shuffle(open, rng)
-  const want = 5 + Math.floor(rng() * 3) // +2 more islands than before
+  const want = 4 + Math.floor(rng() * 6) // 4..9 — wider swing in how many islands appear
   const placed = []
   for (const t of open) {
     if (placed.length >= want) break
@@ -391,7 +395,7 @@ function scatterInto(candidates, bag, spacing, after) {
 function generateDeep(tiles, seed, rng) {
   for (const t of tiles.values()) {
     if (t.band !== 'deep') continue
-    t.terrain = 'outer_space' // the space between Earth and the exoplanet (distinct from deep space)
+    t.terrain = 'deep_space' // most of the deep band is deep space; the outer-space envelope is carved after the exoplanet
     t.region = 'deep_space'
   }
 
@@ -430,39 +434,95 @@ function generateDeep(tiles, seed, rng) {
 
   connectExoLand(tiles, cells)
 
-  // The exoplanet's moon always sits on its BACKSIDE — same bearing, further
-  // out — so you always meet the planet before its moon.
+  // The main exoplanet sits in OUTER SPACE — a one-tile halo hugging it plus a
+  // corridor reaching back to Earth's space band — so it reads as the solar
+  // system's void extended outward. Everything the envelope does not touch is
+  // deep space, and BOTH exomoons must nestle in that deep space, never brushing
+  // an outer-space tile.
+  stampOuterSpace(tiles, center)
+
+  const R = BODIES.exomoon.radius
   const bearing = Math.atan2(center.y, center.x)
-  const md = BODIES.exomoon.dist
-  const moonRing = ring(0, 0, md)
-  let best = moonRing[0]
-  let bestDa = Infinity
-  for (const h of moonRing) {
-    const t = tiles.get(key(h.q, h.r))
+
+  // First exomoon: on the exoplanet's BACKSIDE (further out along the same
+  // bearing, so you always meet the planet first), the tightest such spot that
+  // clears the outer-space halo.
+  const backCands = []
+  for (const t of tiles.values()) {
+    if (t.d <= center.d || !miniBodyFits(tiles, t, R)) continue // strictly beyond the exoplanet
     let da = Math.abs(Math.atan2(t.y, t.x) - bearing)
     if (da > Math.PI) da = 2 * Math.PI - da
-    if (da < bestDa) { bestDa = da; best = h }
+    backCands.push({ t, da })
   }
-  stampBody(tiles, best, BODIES.exomoon.radius, 'exomoon', 'exomoon')
+  backCands.sort((a, b) => a.da - b.da || a.t.d - b.t.d)
+  const first = backCands.length ? backCands[0].t : null
+  if (first) stampBody(tiles, first, R, 'exomoon', 'exomoon')
 
-  // A SECOND exomoon with exactly ONE ROW of separation from the exoplanet (one empty
-  // ring between them), and clear of the first moon and any other body.
-  const R = BODIES.exomoon.radius
+  // Second exomoon: elsewhere in the deep space hugging the exoplanet, clear of
+  // the first moon and, again, of the outer-space envelope.
   const exoStarts = []
   for (const t of tiles.values()) if (t.region === 'exoplanet') exoStarts.push({ q: t.q, r: t.r })
   const distField = bfs(exoStarts, (q, r) => tiles.has(key(q, r)))
   const gapCands = []
   for (const t of tiles.values()) {
-    if (t.band !== 'deep' || BODY_REGIONS.has(t.region)) continue
-    // Centre R+2 rings from the exoplanet ⇒ the moon's nearest tile is 2 hexes away (one empty ring between).
-    if ((distField.get(key(t.q, t.r)) ?? Infinity) !== R + 2) continue
-    if (disc(t.q, t.r, R).some((h) => BODY_REGIONS.has(tiles.get(key(h.q, h.r))?.region))) continue
-    if (lengthOf(t.q - best.q, t.r - best.r) < R + 3) continue // clear of the first moon
+    if (!miniBodyFits(tiles, t, R)) continue
+    const d = distField.get(key(t.q, t.r)) ?? Infinity
+    if (d > R + 9) continue // stay near the exoplanet so it reads as its second moon
+    if (first && lengthOf(t.q - first.q, t.r - first.r) < 2 * R + 3) continue // clear of the first moon
     gapCands.push(t)
   }
   if (gapCands.length) stampBody(tiles, gapCands[Math.floor(rng() * gapCands.length)], R, 'exomoon', 'exomoon')
 
   return center
+}
+
+const OUTER_CORRIDOR_HALF = EXO_CORRIDOR.approach
+
+/**
+ * Carve the OUTER-SPACE envelope around the main exoplanet: a one-tile halo that
+ * fully rings it, plus a corridor of the same void reaching back along the
+ * approach bearing to Earth's space band. Same sprite as deep space, distinct
+ * name — the solar system's void, extended out to the exoplanet. Every void tile
+ * it does not claim stays deep space.
+ */
+function stampOuterSpace(tiles, center) {
+  const exoAngle = Math.atan2(center.y, center.x)
+  const isVoid = (t) => !!t && (t.band === 'deep' || t.band === 'galactic') && t.terrain === 'deep_space'
+
+  // Corridor: the approach cone from Earth's space out to the exoplanet's ring.
+  for (const t of tiles.values()) {
+    if (!isVoid(t) || t.d > center.d || t.d <= BANDS.space.max) continue
+    let da = Math.abs(Math.atan2(t.y, t.x) - exoAngle)
+    if (da > Math.PI) da = 2 * Math.PI - da
+    if (da <= OUTER_CORRIDOR_HALF) t.terrain = 'outer_space'
+  }
+  // Halo: every void tile touching the exoplanet, so it is fully ringed.
+  for (const t of tiles.values()) {
+    if (t.region !== 'exoplanet') continue
+    for (const n of neighbors(t.q, t.r)) {
+      const o = tiles.get(key(n.q, n.r))
+      if (isVoid(o)) o.terrain = 'outer_space'
+    }
+  }
+}
+
+/**
+ * Whether a small body of `radius` fits centred at `t`: its whole disc exists and
+ * lies in deep/galactic space, it touches no other celestial body, and neither it
+ * nor its one-tile surroundings brush an OUTER-SPACE tile — so every secondary
+ * body ends up nestled in deep space, clear of the exoplanet's envelope.
+ */
+function miniBodyFits(tiles, center, radius) {
+  const body = disc(center.q, center.r, radius).map((h) => tiles.get(key(h.q, h.r)))
+  if (body.some((t) => !t || (t.band !== 'deep' && t.band !== 'galactic') || t.region === 'exoplanet' || BODY_REGIONS.has(t.region))) return false
+  for (const t of body) {
+    if (t.terrain === 'outer_space') return false
+    for (const n of neighbors(t.q, t.r)) {
+      const o = tiles.get(key(n.q, n.r))
+      if (o && (o.terrain === 'outer_space' || BODY_REGIONS.has(o.region))) return false
+    }
+  }
+  return true
 }
 
 /**
@@ -489,13 +549,10 @@ function scatterMiniExoplanets(tiles, exoCenter, seed, rng) {
     if (placed.length >= want) break
     const rad = 2 + Math.floor(rng() * 2) // 2..3 — bigger than before, still a fraction of the main (5)
     const strange = rng() < 0.5    // half get an irregular, non-disc outline
-    // The whole body (disc + a one-tile halo) must exist and sit in DEEP/GALACTIC
-    // space — never bleeding inward into the solar system (earth/space bands) or
-    // off the edge of the map, which would clip it into a partial shape.
-    const body = disc(c.q, c.r, rad).map((h) => tiles.get(key(h.q, h.r)))
-    if (body.some((t) => !t || (t.band !== 'deep' && t.band !== 'galactic'))) continue
-    const halo = disc(c.q, c.r, rad + 1)
-    if (halo.some((h) => { const o = tiles.get(key(h.q, h.r)); return o && (BODY_REGIONS.has(o.region) || o.region === 'exoplanet') })) continue
+    // The whole body must exist and sit in DEEP/GALACTIC space, clear of every
+    // other body AND of the exoplanet's outer-space envelope (mini exoplanets
+    // nestle in deep space) — never clipped off the map or bleeding inward.
+    if (!miniBodyFits(tiles, c, rad)) continue
     if (placed.some((p) => lengthOf(p.q - c.q, p.r - c.r) < rad + 8)) continue
 
     // Decide the outline first, then FILL any interior holes so a strange shape
@@ -631,11 +688,12 @@ function connectExoLand(tiles, cells) {
 function generateOuterSpecials(tiles, rng, inCorridor) {
   const open = []
   for (const t of tiles.values()) {
-    if (t.band === 'galactic' && t.region !== 'exoplanet' && t.region !== 'mini_exo') { t.region = 'galactic'; t.terrain = 'deep_space' }
+    if (t.band === 'galactic' && t.region !== 'exoplanet' && t.region !== 'mini_exo' && t.terrain !== 'outer_space') { t.region = 'galactic'; t.terrain = 'deep_space' }
     if (t.band !== 'deep' && t.band !== 'galactic') continue
     // Leave the outermost revealable ring featureless so the map edge reads clean.
     if (t.d > MAX_REVEAL_RADIUS - FEATURELESS_OUTER_RINGS) continue
     if (t.region === 'exoplanet' || t.region === 'mini_exo') continue
+    if (t.terrain === 'outer_space') continue // keep the exoplanet's envelope clear of specials
     if (inCorridor(t)) continue
     if (!clearOfBodies(tiles, t)) continue
     open.push(t)
