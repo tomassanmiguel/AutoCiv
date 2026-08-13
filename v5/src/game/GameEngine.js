@@ -17,7 +17,12 @@ const RES = ['production', 'gold', 'food', 'progress']
 export class GameEngine {
   constructor(seed = 1) {
     this.seed = (seed >>> 0) || 1
-    this.world = generateWorld(this.seed)
+    // v4 world generator returns { tiles:Map, list:[], palace, ... }. Normalize to
+    // the shape the engine/UI expect: tiles (array) + byKey (Map), each tile with
+    // key + dist. Tile objects are shared between list and Map (same refs).
+    const w = generateWorld(this.seed)
+    for (const t of w.list) { t.key = hkey(t.q, t.r); t.dist = t.d }
+    this.world = { tiles: w.list, byKey: w.tiles, radius: w.list.length, palace: w.palace, raw: w }
     this._version = 0
     this._subs = new Set()
 
@@ -105,7 +110,9 @@ export class GameEngine {
 
   // ---- economy ----
   terrainYield(t) {
-    const base = { ...(TERRAIN[t.terrain].yield || {}) }
+    const def = TERRAIN[t.terrain]
+    if (!def) return {} // terrain rendered on the map but not in the economy (space/ocean/…)
+    const base = { ...(def.yield || {}) }
     const bonus = this.mods.tileYield[t.terrain]
     if (bonus) for (const r in bonus) base[r] = (base[r] || 0) + bonus[r]
     return base
@@ -239,6 +246,7 @@ export class GameEngine {
     for (const k of this.expandFrontier()) {
       const t = this.world.byKey.get(k)
       const ter = TERRAIN[t.terrain]
+      if (!ter) continue // only content terrains are settleable (Earth land + coast)
       if (ter.unlock && !this.expansions.has(t.terrain)) continue
       const cost = ter.expandBase + Math.max(0, t.dist - 1)
       out.push({ key: k, terrain: t.terrain, cost, affordable: this.resources.food >= cost })
@@ -251,6 +259,7 @@ export class GameEngine {
     if (!t || this.controlled.has(k)) return false
     if (!this.neighborKeys(k).some((nk) => this.controlled.has(nk))) return false // must stay connected
     const ter = TERRAIN[t.terrain]
+    if (!ter) return false
     if (ter.unlock && !this.expansions.has(t.terrain)) return false
     const cost = ter.expandBase + Math.max(0, t.dist - 1)
     if (this.resources.food < cost) return false
@@ -274,8 +283,10 @@ export class GameEngine {
   placementValid(id, k) {
     const t = this.tileAt(k)
     if (!t || !this.controlled.has(k) || this.deployed.has(k)) return false
+    const ter = TERRAIN[t.terrain]
+    if (!ter) return false
     const p = DEPLOYABLES[id].placement || {}
-    const kind = TERRAIN[t.terrain].kind
+    const kind = ter.kind
     if (p.kind === 'land' && kind !== 'land') return false
     if (p.kind === 'water' && kind !== 'water') return false
     if (p.only && !p.only.includes(t.terrain)) return false

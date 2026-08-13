@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { GameProvider, useGame } from '../game/react/GameProvider.jsx'
 import { GameEngine } from '../game/GameEngine.js'
-import { toPixel } from '../game/hex/coords.js'
+import { fromPixel, SQRT3, key as hkey } from '../game/hex/coords.js'
+import { spriteUrl } from '../game/world/terrain.js'
 import { TERRAIN, DEPLOYABLES } from '../game/data/content.js'
 import { DOMAINS } from '../game/data/schema.js'
 import { resolveCombatTimeline, domainHasForce } from '../game/systems/combat.js'
@@ -11,7 +12,16 @@ import InfoTip from './common/InfoTip.jsx'
 import IconText from './common/IconText.jsx'
 import './GameScreen.css'
 
-const HEX = 34
+const HEX_SIZE = 54
+const HEX_W = HEX_SIZE * 2
+const HEX_H = HEX_SIZE * SQRT3
+const SEAM = 1.5
+const FIT_PAD = 0.94
+const MIN_ACROSS = 3
+const CULL = HEX_W * 1.5
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v))
+const hexPoints = (cx, cy, R) => Array.from({ length: 6 }, (_, i) => { const a = (-60 * i) * Math.PI / 180; return `${cx + R * Math.cos(a)},${cy + R * Math.sin(a)}` }).join(' ')
+const hexPath = (ctx, l, t, w, h) => { ctx.beginPath(); ctx.moveTo(l + 0.25 * w, t); ctx.lineTo(l + 0.75 * w, t); ctx.lineTo(l + w, t + 0.5 * h); ctx.lineTo(l + 0.75 * w, t + h); ctx.lineTo(l + 0.25 * w, t + h); ctx.lineTo(l, t + 0.5 * h); ctx.closePath() }
 const RES_KEYS = ['production', 'food', 'gold', 'progress']
 const ICON = (n) => `/sprites/icons/${n}.png`
 const RES_ICON = { production: ICON('production'), gold: ICON('gold'), food: ICON('food'), progress: ICON('progress'), legitimacy: ICON('legitimacy') }
@@ -106,84 +116,176 @@ function TopBar({ g, onExit }) {
 
 function HexMap({ g }) {
   const tiles = g.world.tiles
-  const [hover, setHover] = useState(null)
-  const layout = useMemo(() => {
-    let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9
-    const pos = {}
-    for (const t of tiles) {
-      const { x, y } = toPixel(t.q, t.r, HEX)
-      pos[t.key] = { x, y }
-      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y)
-    }
-    const pad = HEX * 1.5
-    return { pos, vb: `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}` }
-  }, [tiles])
-  const vision = useMemo(() => g.visionSet(), [g, g._version]) // eslint-disable-line
-  const expand = useMemo(() => { const m = {}; for (const e of g.expandTargets()) m[e.key] = e; return m }, [g, g._version]) // eslint-disable-line
+  const version = g.getVersion()
   const placing = g.selection && g.selection.type === 'build' ? g.selection.deployableId : null
-  const onTile = (t) => { if (placing) g.placeAt(t.key); else if (expand[t.key]?.affordable) g.expandAt(t.key) }
 
-  const infoFor = (t) => {
-    const seen = g.revealAll || vision.has(t.key)
-    const inst = g.deployed.get(t.key)
-    const canPlace = placing && g.placementValid(placing, t.key)
-    const exp = expand[t.key]
-    return { seen, controlled: g.controlled.has(t.key), inst, dep: inst && DEPLOYABLES[inst.id], canPlace, exp, expAff: exp && exp.affordable && !placing }
+  const viewportRef = useRef(null)
+  const contentRef = useRef(null)
+  const canvasRef = useRef(null)
+  const cameraRef = useRef({ scale: 1, tx: 0, ty: 0 })
+  const viewRef = useRef(null)
+  const spriteCache = useRef(new Map())
+  const dragRef = useRef(null)
+  const suppressClickRef = useRef(false)
+  const didMount = useRef(false)
+  const [view, setView] = useState(null)
+  const [hover, setHover] = useState(null)
+
+  const layout = useMemo(() => {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    for (const t of tiles) {
+      const x = t.x * HEX_SIZE, y = t.y * HEX_SIZE
+      minX = Math.min(minX, x - HEX_W / 2); maxX = Math.max(maxX, x + HEX_W / 2)
+      minY = Math.min(minY, y - HEX_H / 2); maxY = Math.max(maxY, y + HEX_H / 2)
+    }
+    return { minX, minY, w: maxX - minX, h: maxY - minY }
+  }, [tiles])
+  const centerOf = (q, r) => ({ x: 1.5 * q * HEX_SIZE - layout.minX, y: SQRT3 * (r + q / 2) * HEX_SIZE - layout.minY })
+
+  const expand = useMemo(() => { const m = {}; for (const e of g.expandTargets()) if (e.affordable) m[e.key] = e; return m }, [g, version]) // eslint-disable-line
+  const placeSet = useMemo(() => { if (!placing) return null; const s = new Set(); for (const t of tiles) if (g.placementValid(placing, t.key)) s.add(t.key); return s }, [g, placing, version]) // eslint-disable-line
+
+  const getSprite = (terr) => {
+    const url = spriteUrl(terr)
+    let img = spriteCache.current.get(url)
+    if (!img) { img = new Image(); img.src = url; img.onload = () => drawTerrain(); spriteCache.current.set(url, img) }
+    return img
   }
+  const drawTerrain = () => {
+    const cv = canvasRef.current, vp = viewportRef.current
+    if (!cv || !vp) return
+    const dpr = window.devicePixelRatio || 1
+    const W = vp.clientWidth, H = vp.clientHeight
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr) }
+    const ctx = cv.getContext('2d')
+    const { scale, tx, ty } = cameraRef.current
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height)
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, tx * dpr, ty * dpr)
+    const x0 = -tx / scale, y0 = -ty / scale, x1 = (W - tx) / scale, y1 = (H - ty) / scale
+    const cellW = HEX_W - SEAM, cellH = HEX_H - SEAM
+    const square = scale * HEX_W < 22 // zoomed out: skip the per-tile hex clip (corners invisible)
+    const { minX, minY } = layout
+    for (const t of tiles) {
+      const left = t.x * HEX_SIZE - minX - HEX_W / 2 + SEAM / 2
+      const top = t.y * HEX_SIZE - minY - HEX_H / 2 + SEAM / 2
+      if (left > x1 || left + cellW < x0 || top > y1 || top + cellH < y0) continue
+      const img = getSprite(t.terrain)
+      if (!(img.complete && img.naturalWidth > 0)) continue
+      if (square) { ctx.drawImage(img, left, top, cellW, cellH) }
+      else { ctx.save(); hexPath(ctx, left, top, cellW, cellH); ctx.clip(); ctx.drawImage(img, left, top, cellW, cellH); ctx.restore() }
+    }
+  }
+  const updateView = () => {
+    const vp = viewportRef.current; if (!vp) return
+    const { scale, tx, ty } = cameraRef.current
+    const next = { x0: -tx / scale - CULL, y0: -ty / scale - CULL, x1: (vp.clientWidth - tx) / scale + CULL, y1: (vp.clientHeight - ty) / scale + CULL }
+    const p = viewRef.current
+    if (p && Math.abs(p.x0 - next.x0) < HEX_W && Math.abs(p.x1 - next.x1) < HEX_W && Math.abs(p.y0 - next.y0) < HEX_H && Math.abs(p.y1 - next.y1) < HEX_H) return
+    viewRef.current = next; setView(next)
+  }
+  const applyTransform = () => {
+    const { scale, tx, ty } = cameraRef.current
+    if (contentRef.current) contentRef.current.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`
+    drawTerrain(); updateView()
+  }
+  const fitCamera = () => {
+    const vp = viewportRef.current; if (!vp || !layout.w || !layout.h) return null
+    const W = vp.clientWidth, H = vp.clientHeight
+    const scale = Math.min(W / layout.w, H / layout.h) * FIT_PAD
+    return { scale, tx: (W - layout.w * scale) / 2, ty: (H - layout.h * scale) / 2 }
+  }
+  const scaleBounds = () => {
+    const vp = viewportRef.current; const W = vp.clientWidth, H = vp.clientHeight
+    const min = Math.min(W / layout.w, H / layout.h) * FIT_PAD
+    return { min, max: Math.max(min, Math.min(W, H) / (MIN_ACROSS * HEX_W)) }
+  }
+  const clampPan = (cam) => {
+    const vp = viewportRef.current; const W = vp.clientWidth, H = vp.clientHeight
+    const cw = layout.w * cam.scale, ch = layout.h * cam.scale
+    return { scale: cam.scale, tx: cw <= W ? (W - cw) / 2 : clamp(cam.tx, W - cw, 0), ty: ch <= H ? (H - ch) / 2 : clamp(cam.ty, H - ch, 0) }
+  }
+
+  useLayoutEffect(() => { if (!didMount.current) { didMount.current = true; const t = fitCamera(); if (t) { cameraRef.current = t; applyTransform() } } })
+  useLayoutEffect(() => { drawTerrain() })
+  useEffect(() => {
+    const vp = viewportRef.current; if (!vp) return
+    const ro = new ResizeObserver(() => { const t = fitCamera(); if (t) { cameraRef.current = t; applyTransform() } }); ro.observe(vp)
+    const onWheel = (e) => {
+      e.preventDefault()
+      const rect = vp.getBoundingClientRect(); const cx = e.clientX - rect.left, cy = e.clientY - rect.top
+      const cam = cameraRef.current; const { min, max } = scaleBounds(); const f = e.deltaY < 0 ? 1.14 : 1 / 1.14
+      const ns = clamp(cam.scale * f, min, max); const wx = (cx - cam.tx) / cam.scale, wy = (cy - cam.ty) / cam.scale
+      cameraRef.current = clampPan({ scale: ns, tx: cx - wx * ns, ty: cy - wy * ns }); applyTransform()
+    }
+    vp.addEventListener('wheel', onWheel, { passive: false })
+    return () => { ro.disconnect(); vp.removeEventListener('wheel', onWheel) }
+  }, [layout]) // eslint-disable-line
+
+  const tileAt = (clientX, clientY) => {
+    const vp = viewportRef.current; if (!vp) return null
+    const rect = vp.getBoundingClientRect(); const { scale, tx, ty } = cameraRef.current
+    const cx = (clientX - rect.left - tx) / scale + layout.minX
+    const cy = (clientY - rect.top - ty) / scale + layout.minY
+    const { q, r } = fromPixel(cx, cy, HEX_SIZE)
+    return g.tileAt(hkey(q, r))
+  }
+  const onDown = (e) => {
+    if (e.button !== 0 && e.button !== 1) return
+    if (e.button === 1) e.preventDefault()
+    dragRef.current = { x: e.clientX, y: e.clientY, cam: { ...cameraRef.current }, moved: false }
+    const onMove = (ev) => { const d = dragRef.current; if (!d) return; if (Math.abs(ev.clientX - d.x) > 3 || Math.abs(ev.clientY - d.y) > 3) d.moved = true; cameraRef.current = clampPan({ scale: d.cam.scale, tx: d.cam.tx + (ev.clientX - d.x), ty: d.cam.ty + (ev.clientY - d.y) }); applyTransform() }
+    const onUp = () => { if (dragRef.current?.moved) suppressClickRef.current = true; dragRef.current = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp)
+  }
+  const onHover = (e) => { if (dragRef.current) return; const t = tileAt(e.clientX, e.clientY); setHover((h) => { const k = t ? t.key : null; return h === k ? h : k }) }
+  const onClick = (e) => { if (suppressClickRef.current) { suppressClickRef.current = false; return } const t = tileAt(e.clientX, e.clientY); if (!t) return; if (placing) g.placeAt(t.key); else if (expand[t.key]) g.expandAt(t.key) }
+
+  const shown = useMemo(() => {
+    if (!view) return []
+    const out = []
+    for (const t of tiles) { const x = t.x * HEX_SIZE - layout.minX, y = t.y * HEX_SIZE - layout.minY; if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) continue; out.push(t) }
+    return out
+  }, [tiles, layout, view])
+
+  const nameSize = HEX_W * 0.15
   return (
-    <div className="v5-map">
-      <svg viewBox={layout.vb} preserveAspectRatio="xMidYMid meet">
-        <defs><clipPath id="hexclip"><polygon points={HEX_PTS} /></clipPath></defs>
-        {/* terrain layer — interactive; drawn first so neighbouring tiles never paint over a border */}
-        <g>
-          {tiles.map((t) => {
-            const p = layout.pos[t.key]
-            const { seen, canPlace, expAff } = infoFor(t)
-            const cls = ['hx']
-            if (!seen) cls.push('fog')
-            if (canPlace || expAff) cls.push('clickable')
-            return (
-              <g key={t.key} className={cls.join(' ')} transform={`translate(${p.x} ${p.y})`}
-                onClick={() => onTile(t)} onMouseEnter={() => seen && setHover(t.key)} onMouseLeave={() => setHover((h) => (h === t.key ? null : h))}>
-                {seen
-                  ? <image href={`/sprites/tiles/${TERRAIN[t.terrain].sprite || t.terrain}.png`} x={-HEX} y={-HEX} width={HEX * 2} height={HEX * 2} clipPath="url(#hexclip)" preserveAspectRatio="xMidYMid slice" />
-                  : <polygon points={HEX_PTS} fill="#0e1017" />}
-                <polygon points={HEX_PTS} className="seam" />
-              </g>
-            )
+    <div className="v5-map" ref={viewportRef} onMouseDown={onDown} onMouseMove={onHover} onMouseLeave={() => setHover(null)} onClick={onClick}>
+      <canvas className="v5-canvas" ref={canvasRef} />
+      <div className="v5-content" ref={contentRef} style={{ width: layout.w, height: layout.h }}>
+        <svg className="v5-ov" width={layout.w} height={layout.h}>
+          {shown.map((t) => {
+            const controlled = g.controlled.has(t.key)
+            const canPlace = placeSet?.has(t.key)
+            const isExp = !!expand[t.key] && !placing && !g.deployed.has(t.key)
+            if (!controlled && !canPlace && !isExp) return null
+            const c = centerOf(t.q, t.r)
+            const cls = [controlled && 'ov-own', canPlace && 'ov-place', isExp && 'ov-exp'].filter(Boolean).join(' ')
+            return <polygon key={t.key} className={cls} points={hexPoints(c.x, c.y, HEX_SIZE - SEAM)} />
           })}
-        </g>
-        {/* overlay layer — borders, highlights, badges on top of ALL terrain */}
-        <g style={{ pointerEvents: 'none' }}>
-          {tiles.map((t) => {
-            const { controlled, inst, dep, canPlace, exp, expAff } = infoFor(t)
-            if (!controlled && !canPlace && !expAff && !inst) return null
-            const p = layout.pos[t.key]
-            const yields = expAff ? Object.keys(TERRAIN[t.terrain].yield || {}) : []
-            return (
-              <g key={t.key} transform={`translate(${p.x} ${p.y})`}>
-                {controlled && <polygon points={HEX_PTS} className="own-ring" />}
-                {(canPlace || expAff) && <polygon points={HEX_PTS} className={`hi-ring ${expAff && !canPlace ? 'exp' : ''}`} />}
-                {dep && (
-                  <g className="dbadge">
-                    <circle r="14" fill="#12151bee" stroke={catColor(dep)} strokeWidth="2.2" />
-                    <image className="sil" href={silFor(dep)} x={-10} y={-10} width={20} height={20} />
-                    <text className="dname" y={27}>{dep.name}</text>
-                  </g>
-                )}
-                {expAff && !inst && (
-                  <g className="exp-badge">
-                    <g transform="translate(0 -20)"><image href={RES_ICON.food} x={-13} y={-6} width={11} height={11} /><text className="cost" x={1} y={3}>{exp.cost}</text></g>
-                    <g transform="translate(0 -9)">{yields.map((r, idx) => { const step = 11, x0 = -(yields.length - 1) * step / 2; return <image key={r} href={RES_ICON[r]} x={x0 + idx * step - 4.5} y={-4.5} width={9} height={9} /> })}</g>
-                  </g>
-                )}
-              </g>
-            )
-          })}
-        </g>
-      </svg>
+        </svg>
+        {shown.map((t) => {
+          const inst = g.deployed.get(t.key); if (!inst) return null
+          const dep = DEPLOYABLES[inst.id]; const c = centerOf(t.q, t.r)
+          return (
+            <div key={t.key} className="v5-piece" style={{ left: c.x, top: c.y, width: HEX_W * 0.66, height: HEX_W * 0.66 }}>
+              <div className="v5-badge" style={{ borderColor: catColor(dep) }}><img src={silFor(dep)} alt="" /></div>
+              <div className="v5-pname" style={{ fontSize: nameSize }}>{dep.name}</div>
+            </div>
+          )
+        })}
+        {shown.map((t) => {
+          const e = expand[t.key]; if (!e || placing || g.deployed.has(t.key)) return null
+          const c = centerOf(t.q, t.r); const yl = Object.keys(TERRAIN[t.terrain]?.yield || {})
+          return (
+            <div key={t.key} className="v5-expm" style={{ left: c.x, top: c.y - HEX_H * 0.3, fontSize: nameSize }}>
+              <span className="v5-expcost"><img src={RES_ICON.food} alt="" />{e.cost}</span>
+              {yl.length > 0 && <span className="v5-expy">{yl.map((r) => <img key={r} src={RES_ICON[r]} alt="" />)}</span>}
+            </div>
+          )
+        })}
+      </div>
       {hover && <MapHoverCard g={g} k={hover} />}
-      <div className="v5-map-hint">{placing ? 'Click a highlighted tile to build.' : 'Click a tile marked with food to expand.'}</div>
+      <div className="v5-map-hint">{placing ? 'Click a highlighted tile to build.' : 'Scroll to zoom · drag to pan · click a food-marked tile to expand.'}</div>
     </div>
   )
 }
@@ -426,8 +528,3 @@ function EndOverlay({ g, onExit }) {
     </div>
   )
 }
-
-const HEX_PTS = Array.from({ length: 6 }, (_, i) => {
-  const a = (Math.PI / 180) * (60 * i)
-  return `${(HEX * Math.cos(a)).toFixed(2)},${(HEX * Math.sin(a)).toFixed(2)}`
-}).join(' ')

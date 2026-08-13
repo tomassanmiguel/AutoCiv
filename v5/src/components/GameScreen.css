@@ -27,23 +27,26 @@
 
 /* ---- body / map ---- */
 .v5-body { flex: 1; display: flex; min-height: 0; }
-.v5-map { flex: 1; position: relative; min-width: 0; }
-.v5-map svg { width: 100%; height: 100%; display: block; }
-.v5-map-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); font-size: 12px; color: #9aa6ba; background: #0c0f16cc; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); }
-
-.hx { cursor: default; }
-.hx.clickable { cursor: pointer; }
-.hx image { image-rendering: auto; }
-.hx.fog image, .hx.fog .dbadge { display: none; }
-.seam { fill: none; stroke: #0b0e14; stroke-width: 1.6; opacity: .6; }
-.own-ring { fill: none; stroke: var(--brass); stroke-width: 2.6; opacity: .9; }
-.hi-ring { fill: #ffd36a26; stroke: #ffd36a; stroke-width: 2.8; animation: pulse 1.3s infinite; }
-.hi-ring.exp { fill: #6fc47a14; stroke: #7fd08a; stroke-width: 2; animation: expflash 1.6s ease-in-out infinite; }
-@keyframes expflash { 0%, 100% { opacity: .35; } 50% { opacity: .85; } }
-.v5-map image.sil { filter: invert(1) brightness(1.25); }
-.dname { text-anchor: middle; font-size: 9px; font-weight: 700; fill: #f4efe0; paint-order: stroke; stroke: #0b0e14; stroke-width: 2.4px; }
-.exp-badge { opacity: .9; }
-.exp-badge .cost { text-anchor: start; font-size: 10px; font-weight: 700; fill: #eafbe6; paint-order: stroke; stroke: #0b0e14; stroke-width: 2px; }
+.v5-map { flex: 1; position: relative; min-width: 0; overflow: hidden; cursor: grab; background: #05070c; }
+.v5-map:active { cursor: grabbing; }
+.v5-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.v5-content { position: absolute; top: 0; left: 0; transform-origin: 0 0; pointer-events: none; }
+.v5-ov { position: absolute; top: 0; left: 0; overflow: visible; }
+.v5-ov polygon { fill: none; vector-effect: non-scaling-stroke; }
+.ov-own { stroke: var(--brass); stroke-width: 3; opacity: .95; }
+.ov-place { fill: #ffd36a22; stroke: #ffd36a; stroke-width: 3; animation: pulse 1.3s infinite; }
+.ov-exp { fill: #6fc47a16; stroke: #7fd08a; stroke-width: 3; animation: expflash 1.6s ease-in-out infinite; }
+@keyframes expflash { 0%, 100% { opacity: .4; } 50% { opacity: .95; } }
+.v5-piece { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; }
+.v5-badge { width: 66%; aspect-ratio: 1; border-radius: 50%; background: #12151bdd; border: 2.5px solid; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px #0009; }
+.v5-badge img { width: 62%; height: 62%; object-fit: contain; }
+.v5-pname { font-weight: 700; color: #f4efe0; text-shadow: 0 1px 3px #000, 0 0 4px #000; white-space: nowrap; margin-top: 2px; line-height: 1; }
+.v5-expm { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.v5-expcost { display: flex; align-items: center; gap: 2px; font-weight: 800; color: #eafbe6; text-shadow: 0 1px 3px #000, 0 0 3px #000; }
+.v5-expcost img { height: 1em; }
+.v5-expy { display: flex; gap: 2px; }
+.v5-expy img { height: .85em; }
+.v5-map-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); font-size: 12px; color: #9aa6ba; background: #0c0f16cc; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); pointer-events: none; }
 
 /* map hover card (bottom-left) */
 .v5-hover { position: absolute; left: 14px; bottom: 40px; width: 250px; pointer-events: none; z-index: 4; }
