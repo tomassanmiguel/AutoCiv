@@ -26,8 +26,8 @@ const FEATURE_TERRAIN = new Set(['planet', 'singularity', 'asteroid'])
 
 const START_RADIUS = 5
 // The main ocean is wide, so the New World is the smaller share by design.
-const MIN_OLD_WORLD = 65
-const MIN_NEW_WORLD = 28
+const MIN_OLD_WORLD = 45
+const MIN_NEW_WORLD = 14
 const MIN_ISLANDS = 2
 const MAX_TUNDRA_FRACTION = 0.22
 // Earth is only ~400 tiles, so its region-shaped stages are naturally small;
@@ -42,7 +42,7 @@ const MARS_OUTER_GAP = 1 // at least one layer of space beyond Mars before deep 
 // Earth must sustain a working economy, not merely have one tile of each near
 // the palace. v4 Earth yields only food + gold (progress is off-Earth, from city
 // pop), so the floor is on those two.
-const MIN_EARTH_YIELD = { food: 50, gold: 150 }
+const MIN_EARTH_YIELD = { food: 32, gold: 85 }
 
 // Mountains are gameplay obstacles, so they must exist but stay sparse.
 const MOUNTAIN_FRACTION = { min: 0.015, max: 0.15 }

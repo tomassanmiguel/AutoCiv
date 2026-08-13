@@ -38,7 +38,11 @@ const MAX_ATTEMPTS = 16
 const OW_EDGE = 0.06
 const NW_EDGE = 0.58      // wider ocean channel (a bit more sea, smaller New World)
 const SPLIT_WOBBLE = 0.40 // more boundary wobble so the sea reads as an irregular ocean, not a straight river
-const RIM_SEA = 0.94      // radius past which Earth TENDS to sea; lower = a rounder, larger ocean at the rim
+const RIM_SEA = 0.90      // radius past which Earth TENDS to sea; lower = a rounder, larger ocean at the rim
+// Inland seas carve oceans INTO the continents (less landmass); higher cut = less sea.
+// The Old World is the larger continent, so it gets the lower (more aggressive) cut.
+const INLAND_SEA_OLD = 0.64
+const INLAND_SEA_NEW = 0.80
 
 // Climate is LATITUDINAL: an arid equator, tundra at the two poles. The polar
 // axis is the world's vertical, so north/south read as up/down on the map.
@@ -105,6 +109,7 @@ function generateEarth(tiles, seed, rng) {
   // peaks along the field's mid-contour, so a high cut yields thin RIDGELINES
   // instead of the blobs a plain elevation threshold produces.
   const ridgeN = makeNoise2D(seed + 89, { scale: 2.1 })
+  const seaN = makeNoise2D(seed + 211, { scale: 3.4 }) // inland-sea field
 
   const earth = []
   for (const t of tiles.values()) if (t.band === 'earth') earth.push(t)
@@ -133,6 +138,17 @@ function generateEarth(tiles, seed, rng) {
     }
 
     t.region = s2 < OW_EDGE ? 'old_world' : 'new_world'
+
+    // Inland seas — irregular oceans that break up the continents (reduce landmass),
+    // kept out of the immediate start area so the opening view isn't drowned.
+    const seaField = seaN(px * 5 + 200, py * 5 + 200)
+    const seaCut = t.region === 'old_world' ? INLAND_SEA_OLD : INLAND_SEA_NEW
+    if (seaField > seaCut && t.d > LOCAL_RADIUS) {
+      t.region = 'sea'
+      t.terrain = 'ocean'
+      t.seaKind = 'rim'
+      continue
+    }
 
     const e = elevN(px * 10, py * 10)
     const m = moistN(px * 9 + 30, py * 9 + 30)
@@ -282,7 +298,7 @@ function generateSpace(tiles, rng) {
   return marsCenter
 }
 
-const BODY_REGIONS = new Set(['moon', 'mars', 'exoplanet', 'exomoon'])
+const BODY_REGIONS = new Set(['moon', 'mars', 'exoplanet', 'exomoon', 'mini_exo'])
 
 /** True when no neighbour of this tile belongs to a celestial body. */
 function clearOfBodies(tiles, t) {
@@ -406,7 +422,50 @@ function generateDeep(tiles, seed, rng) {
   }
   stampBody(tiles, best, BODIES.exomoon.radius, 'exomoon', 'exomoon')
 
+  // A SECOND exomoon on a different bearing, clear of the first and of other bodies.
+  let best2 = null; let best2Score = -Infinity
+  for (const h of moonRing) {
+    const t = tiles.get(key(h.q, h.r)); if (!t) continue
+    const away = lengthOf(h.q - best.q, h.r - best.r)
+    if (away < 6 || !clearOfBodies(tiles, t)) continue
+    if (away > best2Score) { best2Score = away; best2 = h }
+  }
+  if (best2) stampBody(tiles, best2, BODIES.exomoon.radius, 'exomoon', 'exomoon')
+
   return center
+}
+
+/**
+ * A few SMALL, moonless exoplanets scattered through deep space — a fraction the
+ * size of the main exoplanet, so there is more to reach out there.
+ */
+function scatterMiniExoplanets(tiles, exoCenter, seed, rng) {
+  const elevN = makeNoise2D(seed + 301, { scale: 1.8 })
+  const want = 3
+  const placed = []
+  const cands = []
+  for (const t of tiles.values()) {
+    if (t.band !== 'deep') continue
+    if (t.region === 'exoplanet' || t.region === 'exomoon') continue
+    if (lengthOf(t.q - exoCenter.q, t.r - exoCenter.r) < 12) continue // well clear of the main exoplanet
+    cands.push(t)
+  }
+  shuffle(cands, rng)
+  for (const c of cands) {
+    if (placed.length >= want) break
+    const rad = 1 + Math.floor(rng() * 2) // 1..2 — much smaller than the main (5)
+    const halo = disc(c.q, c.r, rad + 1)
+    if (halo.some((h) => { const o = tiles.get(key(h.q, h.r)); return o && (BODY_REGIONS.has(o.region) || o.region === 'exoplanet') })) continue
+    if (placed.some((p) => lengthOf(p.q - c.q, p.r - c.r) < 8)) continue
+    for (const h of disc(c.q, c.r, rad)) {
+      const t = tiles.get(key(h.q, h.r)); if (!t) continue
+      t.region = 'mini_exo' // own region so it doesn't break the main-exoplanet invariants
+      const e = elevN(h.q * 1.6, h.r * 1.6)
+      t.terrain = rad > 1 && e > 0.6 ? 'exohills' : e < 0.26 ? 'exosea' : 'exoplains'
+    }
+    placed.push(c)
+  }
+  return placed
 }
 
 /**
@@ -494,11 +553,11 @@ function connectExoLand(tiles, cells) {
 function generateOuterSpecials(tiles, rng, inCorridor) {
   const open = []
   for (const t of tiles.values()) {
-    if (t.band === 'galactic') { t.region = 'galactic'; t.terrain = 'deep_space' }
+    if (t.band === 'galactic' && t.region !== 'exoplanet' && t.region !== 'mini_exo') { t.region = 'galactic'; t.terrain = 'deep_space' }
     if (t.band !== 'deep' && t.band !== 'galactic') continue
     // Leave the outermost revealable ring featureless so the map edge reads clean.
     if (t.d > MAX_REVEAL_RADIUS - FEATURELESS_OUTER_RINGS) continue
-    if (t.region === 'exoplanet') continue
+    if (t.region === 'exoplanet' || t.region === 'mini_exo') continue
     if (inCorridor(t)) continue
     if (!clearOfBodies(tiles, t)) continue
     open.push(t)
@@ -888,6 +947,7 @@ export function buildWorld(seed) {
   generateEarth(tiles, seed, rng)
   const marsCenter = generateSpace(tiles, rng)
   const exoCenter = generateDeep(tiles, seed, rng)
+  scatterMiniExoplanets(tiles, exoCenter, seed, rng)
 
   // Cone test towards the exoplanet, shared by the reveal and the special-scatter.
   const exoAngle = Math.atan2(exoCenter.y, exoCenter.x)
