@@ -3050,6 +3050,10 @@
         {
           "name": "unlock_deployable",
           "deployable": "observatory"
+        },
+        {
+          "name": "enable_bridge",
+          "terrain": "ocean"
         }
       ]
     },
@@ -3871,6 +3875,10 @@
         {
           "name": "enable_expansion",
           "terrain": "near_space"
+        },
+        {
+          "name": "enable_bridge",
+          "terrain": "near_space"
         }
       ]
     },
@@ -3883,6 +3891,10 @@
       "effects": [
         {
           "name": "enable_expansion",
+          "terrain": "space"
+        },
+        {
+          "name": "enable_bridge",
           "terrain": "space"
         }
       ]
@@ -3990,6 +4002,10 @@
         {
           "name": "enable_expansion",
           "terrain": "exomoon"
+        },
+        {
+          "name": "enable_bridge",
+          "terrain": "exosea"
         }
       ]
     },
@@ -4002,6 +4018,10 @@
       "effects": [
         {
           "name": "enable_expansion",
+          "terrain": "deep_space"
+        },
+        {
+          "name": "enable_bridge",
           "terrain": "deep_space"
         }
       ]

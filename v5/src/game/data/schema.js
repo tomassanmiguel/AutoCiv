@@ -58,6 +58,7 @@ export const EFFECT_KINDS = [
   N('unlock_deployable', 'Unlocks deployable', { where: 'tech', params: [{ key: 'deployable', type: 'deployable' }] }),
   N('enable_expansion', 'Enables expanding to terrain', { where: 'tech', params: [{ key: 'terrain', type: 'terrain' }] }),
   N('enable_region', 'Enables settling tiles of a map region', { where: 'tech', params: [{ key: 'region', type: 'string' }] }),
+  N('enable_bridge', 'Water/space body becomes an adjacency bridge for settling', { where: 'tech', params: [{ key: 'terrain', type: 'terrain' }] }),
   N('army_combat_flat', 'All units +combat stat', { where: 'tech', params: [
     { key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'amount', type: 'number' },
   ] }),

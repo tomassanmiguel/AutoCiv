@@ -16,6 +16,9 @@ const RES = ['production', 'gold', 'food', 'progress']
 const CREATIVE_CAP = 999999 // resources/legitimacy pinned here in Creative Mode
 const MERC_COST = { land: 1, sea: 2, sky: 3, space: 4 } // gold per +1 temporary attack, by domain
 const GATED_REGIONS = new Set(['new_world']) // regions needing a tech to settle (Colonialism → New World)
+// Bodies that act as adjacency bridges once their tech is owned: every shore of one
+// connected body becomes mutually reachable (cross an ocean / space to any far coast).
+const BRIDGE_TERRAINS = ['ocean', 'exosea', 'near_space', 'space', 'deep_space']
 
 export class GameEngine {
   constructor(seed = 1) {
@@ -160,7 +163,7 @@ export class GameEngine {
       progressPerFlavor: {}, keepNaturalProduction: false, armyGrowth: [], palaceRandomGrowth: 0,
       yieldMult: [], subtypeConvert: [], armyFromSettlement: [],
       terrainAdjSettlement: [], tileYieldFactor: {}, isolatedMult: [], subtypeCombatFromOutput: [],
-      regionYieldMult: [],
+      regionYieldMult: [], bridges: new Set(),
       mercenaries: false, mercDefPerHire: 0,
       critPerRanged: 0, crossBombard: [],
       regions: new Set(),
@@ -175,6 +178,7 @@ export class GameEngine {
           case 'unlock_deployable': unlocked.add(e.deployable); break
           case 'enable_expansion': expansions.add(e.terrain); break
           case 'enable_region': m.regions.add(e.region); break
+          case 'enable_bridge': m.bridges.add(e.terrain); break
           case 'units_produce': m.unitsProduce[e.resource] = (m.unitsProduce[e.resource] || 0) + e.amount; break
           case 'palace_yield_flat': {
             const list = e.resource === 'all' ? RES : [e.resource]
@@ -222,7 +226,7 @@ export class GameEngine {
         }
       }
     }
-    if (this.creative) { for (const id in DEPLOYABLES) unlocked.add(id); for (const t of Object.values(TERRAIN)) if (t.unlock) expansions.add(t.id); for (const rg of GATED_REGIONS) m.regions.add(rg) }
+    if (this.creative) { for (const id in DEPLOYABLES) unlocked.add(id); for (const t of Object.values(TERRAIN)) if (t.unlock) expansions.add(t.id); for (const rg of GATED_REGIONS) m.regions.add(rg); for (const b of BRIDGE_TERRAINS) m.bridges.add(b) }
     this.mods = m
     this.unlocked = unlocked
     this.expansions = expansions
@@ -573,11 +577,41 @@ export class GameEngine {
     const dist = bfs(starts, (q, r) => this.world.byKey.has(hkey(q, r)), 1 + this.mods.vision)
     return new Set(dist.keys())
   }
+  /** Connected components of each bridge terrain, cached (terrain is static per game).
+   *  Each = { terrain, members:Set(body tiles), shore:Set(tiles touching the body) }. */
+  _bridgeComponents() {
+    if (this._bridgeCompCache) return this._bridgeCompCache
+    const comps = []
+    const seen = new Set()
+    for (const t of this.world.tiles) {
+      if (!BRIDGE_TERRAINS.includes(t.terrain) || seen.has(t.key)) continue
+      const members = new Set(); const shore = new Set(); const queue = [t.key]; seen.add(t.key)
+      while (queue.length) {
+        const ck = queue.pop(); members.add(ck)
+        for (const nk of this.neighborKeys(ck)) {
+          const nt = this.world.byKey.get(nk)
+          if (nt.terrain === t.terrain) { if (!seen.has(nk)) { seen.add(nk); queue.push(nk) } }
+          else shore.add(nk)
+        }
+      }
+      comps.push({ terrain: t.terrain, members, shore })
+    }
+    this._bridgeCompCache = comps
+    return comps
+  }
   /** The frontier you may settle: tiles ADJACENT to controlled (keeps the empire
-   *  connected). Independent of vision range — Surveying widens sight, not reach. */
+   *  connected), PLUS — once a body's bridge tech is owned — every shore of any
+   *  connected ocean/space body you already touch (Astronomy/Satelites/… let you cross). */
   expandFrontier() {
     const out = new Set()
     for (const k of this.controlled) for (const nk of this.neighborKeys(k)) if (!this.controlled.has(nk)) out.add(nk)
+    if (this.mods.bridges.size) {
+      for (const comp of this._bridgeComponents()) {
+        if (!this.mods.bridges.has(comp.terrain)) continue
+        if (![...comp.shore].some((s) => this.controlled.has(s))) continue // must already touch this body
+        for (const s of comp.shore) if (!this.controlled.has(s)) out.add(s)
+      }
+    }
     return out
   }
   ringFromPalace(t) { return lengthOf(t.q - this.world.palace.q, t.r - this.world.palace.r) }
@@ -603,7 +637,7 @@ export class GameEngine {
     if (this.status !== 'playing') return false
     const t = this.tileAt(k)
     if (!t || this.controlled.has(k)) return false
-    if (!this.neighborKeys(k).some((nk) => this.controlled.has(nk))) return false // must stay connected
+    if (!this.expandFrontier().has(k)) return false // must stay connected (direct or bridged)
     const ter = TERRAIN[t.terrain]
     if (!ter) return false
     if (ter.unlock && !this.expansions.has(t.terrain)) return false
