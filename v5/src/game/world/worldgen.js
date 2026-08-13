@@ -491,14 +491,46 @@ function scatterMiniExoplanets(tiles, exoCenter, seed, rng) {
     if (placed.length >= want) break
     const rad = 2 + Math.floor(rng() * 2) // 2..3 — bigger than before, still a fraction of the main (5)
     const strange = rng() < 0.5    // half get an irregular, non-disc outline
+    // The whole body (disc + a one-tile halo) must exist and sit in DEEP/GALACTIC
+    // space — never bleeding inward into the solar system (earth/space bands) or
+    // off the edge of the map, which would clip it into a partial shape.
+    const body = disc(c.q, c.r, rad).map((h) => tiles.get(key(h.q, h.r)))
+    if (body.some((t) => !t || (t.band !== 'deep' && t.band !== 'galactic'))) continue
     const halo = disc(c.q, c.r, rad + 1)
     if (halo.some((h) => { const o = tiles.get(key(h.q, h.r)); return o && (BODY_REGIONS.has(o.region) || o.region === 'exoplanet') })) continue
     if (placed.some((p) => lengthOf(p.q - c.q, p.r - c.r) < rad + 8)) continue
+
+    // Decide the outline first, then FILL any interior holes so a strange shape
+    // never leaves a gap of open space surrounded by land.
+    const kept = new Set()
     for (const h of disc(c.q, c.r, rad)) {
-      const t = tiles.get(key(h.q, h.r)); if (!t) continue
+      const dd = lengthOf(h.q - c.q, h.r - c.r) / rad
+      if (strange && dd > 0.45 && shapeN(h.q * 1.4, h.r * 1.4) < 0.45) continue // bite chunks out of the edge
+      kept.add(key(h.q, h.r))
+    }
+    // Flood the exterior empties inward from the surrounding ring; any empty cell
+    // the flood can't reach is enclosed → reclaim it as land (no holes).
+    const exterior = new Set()
+    const stack = ring(c.q, c.r, rad + 1).map((h) => key(h.q, h.r))
+    while (stack.length) {
+      const k = stack.pop()
+      if (exterior.has(k) || kept.has(k)) continue
+      exterior.add(k)
+      const [q, r] = k.split(',').map(Number)
+      if (lengthOf(q - c.q, r - c.r) > rad + 1) continue
+      for (const nb of neighbors(q, r)) stack.push(key(nb.q, nb.r))
+    }
+    for (const h of disc(c.q, c.r, rad)) {
+      const k = key(h.q, h.r)
+      if (!exterior.has(k)) kept.add(k) // enclosed empties become land
+    }
+
+    for (const h of disc(c.q, c.r, rad)) {
+      const k = key(h.q, h.r)
+      if (!kept.has(k)) continue
+      const t = tiles.get(k); if (!t) continue
       const lq = h.q - c.q, lr = h.r - c.r
       const dd = lengthOf(lq, lr) / rad
-      if (strange && dd > 0.45 && shapeN(h.q * 1.4, h.r * 1.4) < 0.45) continue // bite chunks out of the edge
       const e = elevN(lq * 1.6 + 10, lr * 1.6 + 10)
       const m = moistN(lq * 1.6 + 40, lr * 1.6 + 40)
       const w = seaN(lq * 1.7 + 70, lr * 1.7 + 70)
