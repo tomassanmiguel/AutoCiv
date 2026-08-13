@@ -133,7 +133,8 @@ export class GameEngine {
     const m = {
       tileYield: {}, tileYieldMult: {}, unitsProduce: {}, upkeepReduction: 0, prodCost: { all: 0, building: 0 },
       palaceYield: {}, palaceMult: 1, vision: 0, armyFlat: [], armyFromLegit: [], onCombat: [], perUnique: {},
-      settlementYield: {}, buildingSubtypeYield: {}, progressCostMult: 1, freeReroll: false,
+      settlementYield: {}, buildingSubtypeYield: {}, progressCostMult: 1,
+      subtypeCombatMult: {}, goldInterest: 0, freeReroll: false,
     }
     const unlocked = new Set(['palace', ...(META.startDeployables || [])])
     const expansions = new Set()
@@ -161,6 +162,8 @@ export class GameEngine {
           case 'tile_yield_mult': (m.tileYieldMult[e.terrain] ||= {})[e.resource] = (m.tileYieldMult[e.terrain][e.resource] || 1) * e.factor; break
           case 'progress_cost_mult': m.progressCostMult *= e.factor; break
           case 'army_from_legitimacy': m.armyFromLegit.push({ stat: e.stat, domain: e.domain, divisor: e.divisor }); break
+          case 'subtype_combat_mult': m.subtypeCombatMult[e.subtype] = (m.subtypeCombatMult[e.subtype] || 1) * e.factor; break
+          case 'gold_interest': m.goldInterest += e.amount ?? e.factor; break
           case 'free_reroll_on_progress': m.freeReroll = true; break
           default: break
         }
@@ -258,6 +261,7 @@ export class GameEngine {
     for (const r of RES) this.resources[r] += income[r]
     this.resources.gold -= upkeep
     this.legitimacy += income.legitimacy
+    if (this.mods.goldInterest && this.resources.gold > 0) this.resources.gold += Math.floor(this.resources.gold * this.mods.goldInterest)
   }
 
   // ---- combat scalar aggregation ----
@@ -276,10 +280,16 @@ export class GameEngine {
         let empty = 0
         for (const nk of this.neighborKeys(k)) { const nt = this.world.byKey.get(nk); if (nt.terrain === c.terrain && !this.deployed.has(nk)) empty++ }
         out[c.domain][c.stat] = out[c.domain][c.stat] * empty
+      } else if (c.name === 'combat_when_surrounded') {
+        const nks = this.neighborKeys(k)
+        if (nks.length && nks.every((nk) => this.deployed.has(nk))) out[c.domain][c.stat] += c.amount
       }
     }
     const db = TERRAIN[t.terrain].defBonus || 0
     if (db) out.land.def += db
+    // tech multipliers on a whole subtype (Flying Buttress, Shipbuilding…)
+    const smult = this.mods.subtypeCombatMult[dep.subtype]
+    if (smult) for (const d of DOMAINS) for (const st of ['atk', 'def', 'bomb']) out[d][st] *= smult
     return out
   }
   _adjCombat(k, inst, filter) {
@@ -397,6 +407,10 @@ export class GameEngine {
     if (this.resources.production < cost) return false
     this.resources.production -= cost
     this.deployed.set(k, { id, level: 1, age: 0 })
+    // one-shot on-build effects (Cathedral +legitimacy…)
+    for (const e of DEPLOYABLES[id].build || []) {
+      if (e.name === 'on_build') { if (e.resource === 'legitimacy') this.legitimacy += e.amount; else this.resources[e.resource] += e.amount }
+    }
     this.selection = null
     this._previewWave()
     this._emit()

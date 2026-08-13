@@ -79,6 +79,8 @@ export const EFFECT_KINDS = [
   N('army_from_legitimacy', 'Army +scalar from legitimacy', { where: 'tech', params: [
     { key: 'stat', type: 'enum', options: STATS }, { key: 'domain', type: 'enum', options: ['all', ...DOMAINS] }, { key: 'divisor', type: 'number' },
   ] }),
+  N('subtype_combat_mult', 'Multiply combat of a subtype', { where: 'tech', params: [{ key: 'subtype', type: 'string' }, { key: 'factor', type: 'number' }] }),
+  N('gold_interest', 'Interest on banked gold', { where: 'tech', params: [{ key: 'factor', type: 'number' }] }),
 
   // -- deployable econ (per turn) --
   N('self_yield', 'Produces (self)', { where: 'econ', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
@@ -108,6 +110,12 @@ export const EFFECT_KINDS = [
   N('combat_count_scaling', '+scalar per owned of this type', { where: 'combat', params: [
     { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
   ] }),
+  N('combat_when_surrounded', '+scalar when fully surrounded', { where: 'combat', params: [
+    { key: 'domain', type: 'enum', options: DOMAINS }, { key: 'stat', type: 'enum', options: STATS }, { key: 'amount', type: 'number' },
+  ] }),
+
+  // -- deployable one-shot on build --
+  N('on_build', 'One-time gain when built', { where: 'build', params: [{ key: 'resource', type: 'enum', options: RES_ALL }, { key: 'amount', type: 'number' }] }),
 ]
 export const EFFECT_BY_NAME = Object.fromEntries(EFFECT_KINDS.map((e) => [e.name, e]))
 export const effectsFor = (where) => EFFECT_KINDS.filter((e) => e.where === where)

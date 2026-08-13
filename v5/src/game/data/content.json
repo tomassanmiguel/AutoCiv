@@ -1531,6 +1531,140 @@
         }
       ],
       "combat": []
+    },
+    {
+      "id": "arquebusier",
+      "name": "Arquebusier",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Renaissance",
+      "production": 9,
+      "upkeep": 4,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "30 attack, 20 defense, 15 bombardment.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 30
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 20
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 15
+        }
+      ]
+    },
+    {
+      "id": "star_fort",
+      "name": "Star Fort",
+      "type": "building",
+      "subtype": "defense",
+      "era": "Renaissance",
+      "production": 11,
+      "upkeep": 5,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "60 defense, +60 more if every surrounding tile is occupied.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 60
+        },
+        {
+          "name": "combat_when_surrounded",
+          "domain": "land",
+          "stat": "def",
+          "amount": 60
+        }
+      ]
+    },
+    {
+      "id": "cathedral",
+      "name": "Cathedral",
+      "type": "building",
+      "subtype": "legitimacy",
+      "era": "Renaissance",
+      "production": 9,
+      "upkeep": 4,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "When built, gain 100 legitimacy.",
+      "econ": [],
+      "combat": [],
+      "build": [
+        {
+          "name": "on_build",
+          "resource": "legitimacy",
+          "amount": 100
+        }
+      ]
+    },
+    {
+      "id": "cog",
+      "name": "Cog",
+      "type": "unit",
+      "subtype": "naval",
+      "era": "Renaissance",
+      "production": 9,
+      "upkeep": 4,
+      "placement": {
+        "kind": "water",
+        "only": [
+          "coast",
+          "ocean",
+          "river"
+        ]
+      },
+      "desc": "30 attack, 30 defense; +30 bombardment when adjacent to an island.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "atk",
+          "amount": 30
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "def",
+          "amount": 30
+        },
+        {
+          "name": "combat_on_terrain",
+          "domain": "sea",
+          "stat": "bomb",
+          "terrain": "island",
+          "mode": "add",
+          "amount": 30
+        }
+      ]
     }
   ],
   "techs": [
@@ -2467,6 +2601,112 @@
           "stat": "atk",
           "domain": "land",
           "divisor": 2
+        }
+      ]
+    },
+    {
+      "id": "absolute_monarchy",
+      "name": "Absolute Monarchy",
+      "flavor": "Palace",
+      "era": "Renaissance",
+      "desc": "Doubles the yield of the palace.",
+      "effects": [
+        {
+          "name": "palace_yield_mult",
+          "factor": 2
+        }
+      ]
+    },
+    {
+      "id": "flying_butress",
+      "name": "Flying Buttress",
+      "flavor": "Defense",
+      "era": "Renaissance",
+      "desc": "Doubles the defense of all defense buildings.",
+      "effects": [
+        {
+          "name": "subtype_combat_mult",
+          "subtype": "defense",
+          "factor": 2
+        }
+      ]
+    },
+    {
+      "id": "banking",
+      "name": "Banking",
+      "flavor": "Gold",
+      "era": "Renaissance",
+      "desc": "Gain 5% interest on banked gold at the end of each turn.",
+      "effects": [
+        {
+          "name": "gold_interest",
+          "amount": 0.05
+        }
+      ]
+    },
+    {
+      "id": "gunpowder",
+      "name": "Gunpowder",
+      "flavor": "Melee",
+      "era": "Renaissance",
+      "desc": "Unlocks the Arquebusier.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "arquebusier"
+        }
+      ]
+    },
+    {
+      "id": "star_forts",
+      "name": "Star Forts",
+      "flavor": "Defense",
+      "era": "Exploration",
+      "desc": "Unlocks the Star Fort.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "star_fort"
+        }
+      ]
+    },
+    {
+      "id": "stained_glass",
+      "name": "Stained Glass",
+      "flavor": "Legitimacy",
+      "era": "Renaissance",
+      "desc": "Unlocks the Cathedral.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "cathedral"
+        }
+      ]
+    },
+    {
+      "id": "compass",
+      "name": "Compass",
+      "flavor": "Naval",
+      "era": "Renaissance",
+      "desc": "Unlocks the Cog.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "cog"
+        }
+      ]
+    },
+    {
+      "id": "shipbuilding",
+      "name": "Shipbuilding",
+      "flavor": "Naval",
+      "era": "Exploration",
+      "desc": "Increase the stats of all naval units by 50%.",
+      "effects": [
+        {
+          "name": "subtype_combat_mult",
+          "subtype": "naval",
+          "factor": 1.5
         }
       ]
     }
