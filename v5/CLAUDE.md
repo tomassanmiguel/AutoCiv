@@ -27,5 +27,45 @@ npm run build      # both entries
 npm run lint
 ```
 
-## Status
-Under active construction. This file will be filled in as systems land. See the task list.
+## Status — PLAYABLE PROTOTYPE (Stone · Bronze · Iron)
+
+The whole loop runs end to end: expand territory with :food:, build deployables with
+:production:, draft techs with :progress: (3 + wildcard, spend to unlock, 4 → next era), face a
+wave every 3 turns resolved by abstract combat, lose on :legitimacy: 0. Verified via a 12-turn
+greedy playthrough (eras advance, 25 tiles controlled, 13 deployables, 4 waves resolved, no errors).
+Content is Stone/Bronze/Iron only and **everything seeded is wired** — the editor and engine share
+`content.json`.
+
+## Layout
+```
+v5/src/
+├── App.jsx                     # loading → title → game router
+├── game/                       # framework-free model (no React)
+│   ├── GameEngine.js           # state + turn loop + subscribe/getVersion bridge; economy,
+│   │                           #   territory, tech draft, combat orchestration
+│   ├── systems/combat.js       # 12-scalar resolver + era-independent enemy formula (pure)
+│   ├── world/worldgen.js       # deterministic hex-disc terrain
+│   ├── hex/coords.js           # hex geometry (reused from v3)
+│   ├── data/schema.js          # ERAS, effect registry (EFFECT_KINDS), cost formulas, validate
+│   ├── data/content.json       # THE CONTENT LAYER (editor-owned)
+│   └── data/content.js         # indexed view + draft helpers
+├── components/GameScreen.jsx   # whole in-game UI (map, panels, combat modal, end states)
+└── editor/Editor.jsx           # /editor.html — content editor over content.json (/api/content)
+```
+
+## How content → mechanics works
+A tech/deployable carries `effects` — small structured objects (`{name, ...params}`) drawn from
+`schema.js` `EFFECT_KINDS`. The engine interprets them: tech effects fold into `mods`
+(`_recomputeMods`); deployable `econ` effects run in `computeEconomy` each turn; deployable
+`combat` effects aggregate in `playerScalars`. **An effect kind exists only once the engine runs
+it** — add to the registry alongside the code that consumes it. The editor renders inputs from each
+kind's `params`, so new content is authored without touching code.
+
+## Notes
+- Combat does NOT reference the map — it's an empire-wide 12-scalar aggregate. The map drives the
+  economy and placement only (a deployable replaces its tile's natural yield).
+- Dev-only: `window.__g` is the live engine (for console poking). `localStorage['autociv.mute']='1'`
+  silences audio.
+- Preview: `autociv-v5-dev` (port 5176) in the repo-root `.claude/launch.json`.
+- **Not yet built:** eras past Iron, mercenaries, repair/upgrade gold sinks, Sky/Space domains in
+  play, the win tech (Ascendancy). Balance is untuned (early waves are gentle).

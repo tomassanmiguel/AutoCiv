@@ -4,140 +4,1578 @@
     "waveInterval": 3,
     "unlocksPerEra": 4,
     "wildcardOption": true,
-    "startResources": { "production": 2, "gold": 6, "food": 2, "progress": 0 },
-    "startDeployables": ["warrior"]
+    "startResources": {
+      "production": 2,
+      "gold": 6,
+      "food": 2,
+      "progress": 0
+    },
+    "startDeployables": [
+      "warrior"
+    ]
   },
   "terrain": [
-    { "id": "plains", "name": "Plains", "kind": "land", "yield": { "food": 1 }, "expandBase": 1, "defBonus": 0, "unlock": null, "sprite": "plains" },
-    { "id": "forest", "name": "Forest", "kind": "land", "yield": { "progress": 1 }, "expandBase": 1, "defBonus": 0, "unlock": null, "sprite": "forest" },
-    { "id": "hills", "name": "Hills", "kind": "land", "yield": { "production": 1 }, "expandBase": 1, "defBonus": 0, "unlock": null, "sprite": "hills" },
-    { "id": "coast", "name": "Coast", "kind": "water", "yield": { "gold": 1, "food": 1 }, "expandBase": 1, "defBonus": 0, "unlock": "fishing", "sprite": "coast" },
-    { "id": "mountain", "name": "Mountains", "kind": "land", "yield": { "production": 1 }, "expandBase": 2, "defBonus": 5, "unlock": "mountaineering", "sprite": "mountain" },
-    { "id": "desert", "name": "Desert", "kind": "land", "yield": { "gold": 2 }, "expandBase": 3, "defBonus": 0, "unlock": "yakchals", "sprite": "desert" },
-    { "id": "tundra", "name": "Tundra", "kind": "land", "yield": { "progress": 2 }, "expandBase": 3, "defBonus": 0, "unlock": "furs", "sprite": "tundra" }
+    {
+      "id": "plains",
+      "name": "Plains",
+      "kind": "land",
+      "yield": {
+        "food": 1
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": null,
+      "sprite": "plains"
+    },
+    {
+      "id": "forest",
+      "name": "Forest",
+      "kind": "land",
+      "yield": {
+        "progress": 1
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": null,
+      "sprite": "forest"
+    },
+    {
+      "id": "hills",
+      "name": "Hills",
+      "kind": "land",
+      "yield": {
+        "production": 1
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": null,
+      "sprite": "hills"
+    },
+    {
+      "id": "coast",
+      "name": "Coast",
+      "kind": "water",
+      "yield": {
+        "gold": 1,
+        "food": 1
+      },
+      "expandBase": 1,
+      "defBonus": 0,
+      "unlock": "fishing",
+      "sprite": "coast"
+    },
+    {
+      "id": "mountain",
+      "name": "Mountains",
+      "kind": "land",
+      "yield": {
+        "production": 1
+      },
+      "expandBase": 2,
+      "defBonus": 5,
+      "unlock": "mountaineering",
+      "sprite": "mountain"
+    },
+    {
+      "id": "desert",
+      "name": "Desert",
+      "kind": "land",
+      "yield": {
+        "gold": 2
+      },
+      "expandBase": 3,
+      "defBonus": 0,
+      "unlock": "yakchals",
+      "sprite": "desert"
+    },
+    {
+      "id": "tundra",
+      "name": "Tundra",
+      "kind": "land",
+      "yield": {
+        "progress": 2
+      },
+      "expandBase": 3,
+      "defBonus": 0,
+      "unlock": "furs",
+      "sprite": "tundra"
+    }
   ],
   "deployables": [
-    { "id": "palace", "name": "Palace", "type": "building", "subtype": "settlement", "era": "Stone", "production": 0, "upkeep": 0, "unique": true, "placement": { "kind": "land" },
+    {
+      "id": "palace",
+      "name": "Palace",
+      "type": "building",
+      "subtype": "settlement",
+      "era": "Stone",
+      "production": 0,
+      "upkeep": 0,
+      "unique": true,
+      "placement": {
+        "kind": "land"
+      },
       "desc": "Your seat of power. Produces a bit of everything.",
-      "econ": [ { "name": "self_yield", "resource": "production", "amount": 1 }, { "name": "self_yield", "resource": "progress", "amount": 1 }, { "name": "self_yield", "resource": "food", "amount": 1 }, { "name": "self_yield", "resource": "gold", "amount": 1 } ],
-      "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "def", "amount": 5 } ] },
-
-    { "id": "warrior", "name": "Warrior", "type": "unit", "subtype": "melee", "era": "Stone", "production": 1, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "production",
+          "amount": 1
+        },
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 1
+        },
+        {
+          "name": "self_yield",
+          "resource": "food",
+          "amount": 1
+        },
+        {
+          "name": "self_yield",
+          "resource": "gold",
+          "amount": 1
+        }
+      ],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "id": "warrior",
+      "name": "Warrior",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Stone",
+      "production": 1,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
       "desc": "4 Land Attack, 4 Land Defense.",
-      "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "atk", "amount": 4 }, { "name": "combat_scalar", "domain": "land", "stat": "def", "amount": 4 } ] },
-    { "id": "slinger", "name": "Slinger", "type": "unit", "subtype": "ranged", "era": "Stone", "production": 1, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "5 Land Bombardment.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "bomb", "amount": 5 } ] },
-    { "id": "wolf", "name": "Wolf", "type": "unit", "subtype": "cavalry", "era": "Stone", "production": 1, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain", "desert"] },
-      "desc": "8 Land Attack, doubled on tundra.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "atk", "amount": 8 }, { "name": "combat_on_terrain", "domain": "land", "stat": "atk", "terrain": "tundra", "mode": "double" } ] },
-    { "id": "mud_brick_wall", "name": "Mud-Brick Wall", "type": "building", "subtype": "defense", "era": "Stone", "production": 1, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "10 Land Defense.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "def", "amount": 10 } ] },
-    { "id": "shrine", "name": "Shrine", "type": "building", "subtype": "legitimacy", "era": "Stone", "production": 1, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 4
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 4
+        }
+      ]
+    },
+    {
+      "id": "slinger",
+      "name": "Slinger",
+      "type": "unit",
+      "subtype": "ranged",
+      "era": "Stone",
+      "production": 1,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "5 Land Bombardment.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 5
+        }
+      ]
+    },
+    {
+      "id": "wolf",
+      "name": "Wolf",
+      "type": "unit",
+      "subtype": "cavalry",
+      "era": "Stone",
+      "production": 1,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain",
+          "desert"
+        ]
+      },
+      "desc": "8 Land Attack, doubled on tundra.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 8
+        },
+        {
+          "name": "combat_on_terrain",
+          "domain": "land",
+          "stat": "atk",
+          "terrain": "tundra",
+          "mode": "double"
+        }
+      ]
+    },
+    {
+      "id": "mud_brick_wall",
+      "name": "Mud-Brick Wall",
+      "type": "building",
+      "subtype": "defense",
+      "era": "Stone",
+      "production": 1,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "10 Land Defense.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 10
+        }
+      ]
+    },
+    {
+      "id": "shrine",
+      "name": "Shrine",
+      "type": "building",
+      "subtype": "legitimacy",
+      "era": "Stone",
+      "production": 1,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
       "desc": "+1 legitimacy/turn, +1 per adjacent forest or mountain.",
-      "econ": [ { "name": "self_yield", "resource": "legitimacy", "amount": 1 }, { "name": "per_adjacent", "resource": "legitimacy", "amount": 1, "filter": "forest_or_mountain" } ], "combat": [] },
-    { "id": "village", "name": "Village", "type": "building", "subtype": "settlement", "era": "Stone", "production": 1, "upkeep": 1, "placement": { "kind": "land", "only": ["plains", "hills", "forest"] },
-      "desc": "+1 progress. Counts as a settlement.", "econ": [ { "name": "self_yield", "resource": "progress", "amount": 1 } ], "combat": [] },
-    { "id": "tavern", "name": "Tavern", "type": "building", "subtype": "gold", "era": "Stone", "production": 1, "upkeep": 0, "placement": { "kind": "land" },
-      "desc": "+3 gold, +1 per adjacent military unit.", "econ": [ { "name": "self_yield", "resource": "gold", "amount": 3 }, { "name": "per_adjacent", "resource": "gold", "amount": 1, "filter": "military" } ], "combat": [] },
-
-    { "id": "chariot", "name": "Chariot", "type": "unit", "subtype": "cavalry", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "only": ["plains"] },
-      "desc": "5 Attack × adjacent empty plains.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "atk", "amount": 5 }, { "name": "combat_mult_empty_adjacent", "domain": "land", "stat": "atk", "terrain": "plains" } ] },
-    { "id": "ranch", "name": "Ranch", "type": "building", "subtype": "food", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "only": ["plains", "hills"] },
-      "desc": "+1 food, growing +1 every turn.", "econ": [ { "name": "self_yield", "resource": "food", "amount": 1 }, { "name": "growth_per_turn", "resource": "food", "amount": 1 } ], "combat": [] },
-    { "id": "kiln", "name": "Kiln", "type": "building", "subtype": "production", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "+1 production per adjacent building.", "econ": [ { "name": "self_yield", "resource": "production", "amount": 1 }, { "name": "per_adjacent", "resource": "production", "amount": 1, "filter": "building" } ], "combat": [] },
-    { "id": "library", "name": "Library", "type": "building", "subtype": "progress", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "+1 progress, +1 per adjacent settlement.", "econ": [ { "name": "self_yield", "resource": "progress", "amount": 1 }, { "name": "per_adjacent", "resource": "progress", "amount": 1, "filter": "settlement" } ], "combat": [] },
-    { "id": "archer", "name": "Archer", "type": "unit", "subtype": "ranged", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "3 Attack, 5 Bombardment; +2 bomb per adjacent fortification.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "atk", "amount": 3 }, { "name": "combat_scalar", "domain": "land", "stat": "bomb", "amount": 5 }, { "name": "combat_per_adjacent", "domain": "land", "stat": "bomb", "amount": 2, "filter": "fortification" } ] },
-    { "id": "spearman", "name": "Spearman", "type": "unit", "subtype": "melee", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "6 Attack, 6 Defense; +3 attack per adjacent cavalry.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "atk", "amount": 6 }, { "name": "combat_scalar", "domain": "land", "stat": "def", "amount": 6 }, { "name": "combat_per_adjacent", "domain": "land", "stat": "atk", "amount": 3, "filter": "cavalry" } ] },
-    { "id": "galley", "name": "Galley", "type": "unit", "subtype": "naval", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "water" },
-      "desc": "5 Sea Attack, 1 Sea Bombardment.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "sea", "stat": "atk", "amount": 5 }, { "name": "combat_scalar", "domain": "sea", "stat": "bomb", "amount": 1 } ] },
-    { "id": "farm", "name": "Farm", "type": "building", "subtype": "food", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "only": ["plains"] },
-      "desc": "Doubles the tile’s food yield.", "econ": [ { "name": "double_tile_yield" } ], "combat": [] },
-    { "id": "wall", "name": "Wall", "type": "building", "subtype": "defense", "era": "Bronze", "production": 2, "upkeep": 1, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "16 Land Defense.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "def", "amount": 16 } ] },
-
-    { "id": "swordsman", "name": "Swordsman", "type": "unit", "subtype": "melee", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "12 Attack, 12 Defense.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "atk", "amount": 12 }, { "name": "combat_scalar", "domain": "land", "stat": "def", "amount": 12 } ] },
-    { "id": "horseman", "name": "Horseman", "type": "unit", "subtype": "cavalry", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "land", "not": ["mountain", "hills"] },
-      "desc": "18 Land Attack.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "atk", "amount": 18 } ] },
-    { "id": "mint", "name": "Mint", "type": "building", "subtype": "gold", "era": "Iron", "production": 3, "upkeep": 0, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "+10 gold.", "econ": [ { "name": "self_yield", "resource": "gold", "amount": 10 } ], "combat": [] },
-    { "id": "temple", "name": "Temple", "type": "building", "subtype": "progress", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "+1 progress, +1 more per temple you own.", "econ": [ { "name": "self_yield", "resource": "progress", "amount": 1 }, { "name": "count_scaling", "resource": "progress", "amount": 1 } ], "combat": [] },
-    { "id": "catapult", "name": "Catapult", "type": "unit", "subtype": "siege", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "12 Land Bombardment; +50% on hills.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "land", "stat": "bomb", "amount": 12 }, { "name": "combat_on_terrain", "domain": "land", "stat": "bomb", "terrain": "hills", "mode": "add", "amount": 6 } ] },
-    { "id": "academy", "name": "Academy", "type": "building", "subtype": "progress", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "+3 progress.", "econ": [ { "name": "self_yield", "resource": "progress", "amount": 3 } ], "combat": [] },
-    { "id": "courthouse", "name": "Courthouse", "type": "building", "subtype": "production", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "land", "not": ["mountain"] },
-      "desc": "+1 production, +2 per adjacent settlement.", "econ": [ { "name": "self_yield", "resource": "production", "amount": 1 }, { "name": "per_adjacent", "resource": "production", "amount": 2, "filter": "settlement" } ], "combat": [] },
-    { "id": "lighthouse", "name": "Lighthouse", "type": "building", "subtype": "gold", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "water" },
-      "desc": "+5 gold.", "econ": [ { "name": "self_yield", "resource": "gold", "amount": 5 } ], "combat": [] },
-    { "id": "triereme", "name": "Trireme", "type": "unit", "subtype": "naval", "era": "Iron", "production": 3, "upkeep": 2, "placement": { "kind": "water" },
-      "desc": "3 Sea Attack, 5 Sea Bombardment.", "econ": [], "combat": [ { "name": "combat_scalar", "domain": "sea", "stat": "atk", "amount": 3 }, { "name": "combat_scalar", "domain": "sea", "stat": "bomb", "amount": 5 } ] }
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "legitimacy",
+          "amount": 1
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "legitimacy",
+          "amount": 1,
+          "filter": "forest_or_mountain"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "village",
+      "name": "Village",
+      "type": "building",
+      "subtype": "settlement",
+      "era": "Stone",
+      "production": 1,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "only": [
+          "plains",
+          "hills",
+          "forest"
+        ]
+      },
+      "desc": "+1 progress. Counts as a settlement.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 1
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "tavern",
+      "name": "Tavern",
+      "type": "building",
+      "subtype": "gold",
+      "era": "Stone",
+      "production": 1,
+      "upkeep": 0,
+      "placement": {
+        "kind": "land"
+      },
+      "desc": "+3 gold, +1 per adjacent military unit.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "gold",
+          "amount": 3
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "gold",
+          "amount": 1,
+          "filter": "military"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "chariot",
+      "name": "Chariot",
+      "type": "unit",
+      "subtype": "cavalry",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "only": [
+          "plains"
+        ]
+      },
+      "desc": "5 Attack × adjacent empty plains.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 5
+        },
+        {
+          "name": "combat_mult_empty_adjacent",
+          "domain": "land",
+          "stat": "atk",
+          "terrain": "plains"
+        }
+      ]
+    },
+    {
+      "id": "ranch",
+      "name": "Ranch",
+      "type": "building",
+      "subtype": "food",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "only": [
+          "plains",
+          "hills"
+        ]
+      },
+      "desc": "+1 food, growing +1 every turn.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "food",
+          "amount": 1
+        },
+        {
+          "name": "growth_per_turn",
+          "resource": "food",
+          "amount": 1
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "kiln",
+      "name": "Kiln",
+      "type": "building",
+      "subtype": "production",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+1 production per adjacent building.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "production",
+          "amount": 1
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "production",
+          "amount": 1,
+          "filter": "building"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "library",
+      "name": "Library",
+      "type": "building",
+      "subtype": "progress",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+1 progress, +1 per adjacent settlement.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 1
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "progress",
+          "amount": 1,
+          "filter": "settlement"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "archer",
+      "name": "Archer",
+      "type": "unit",
+      "subtype": "ranged",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "3 Attack, 5 Bombardment; +2 bomb per adjacent fortification.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 3
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 5
+        },
+        {
+          "name": "combat_per_adjacent",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 2,
+          "filter": "fortification"
+        }
+      ]
+    },
+    {
+      "id": "spearman",
+      "name": "Spearman",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "6 Attack, 6 Defense; +3 attack per adjacent cavalry.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 6
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 6
+        },
+        {
+          "name": "combat_per_adjacent",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 3,
+          "filter": "cavalry"
+        }
+      ]
+    },
+    {
+      "id": "galley",
+      "name": "Galley",
+      "type": "unit",
+      "subtype": "naval",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "water"
+      },
+      "desc": "5 Sea Attack, 1 Sea Bombardment.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "atk",
+          "amount": 5
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "bomb",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "farm",
+      "name": "Farm",
+      "type": "building",
+      "subtype": "food",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "only": [
+          "plains"
+        ]
+      },
+      "desc": "Doubles the tile’s food yield.",
+      "econ": [
+        {
+          "name": "double_tile_yield"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "wall",
+      "name": "Wall",
+      "type": "building",
+      "subtype": "defense",
+      "era": "Bronze",
+      "production": 2,
+      "upkeep": 1,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "16 Land Defense.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 16
+        }
+      ]
+    },
+    {
+      "id": "swordsman",
+      "name": "Swordsman",
+      "type": "unit",
+      "subtype": "melee",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "12 Attack, 12 Defense.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 12
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "def",
+          "amount": 12
+        }
+      ]
+    },
+    {
+      "id": "horseman",
+      "name": "Horseman",
+      "type": "unit",
+      "subtype": "cavalry",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain",
+          "hills"
+        ]
+      },
+      "desc": "18 Land Attack.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "atk",
+          "amount": 18
+        }
+      ]
+    },
+    {
+      "id": "mint",
+      "name": "Mint",
+      "type": "building",
+      "subtype": "gold",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 0,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+10 gold.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "gold",
+          "amount": 10
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "temple",
+      "name": "Temple",
+      "type": "building",
+      "subtype": "progress",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+1 progress, +1 more per temple you own.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 1
+        },
+        {
+          "name": "count_scaling",
+          "resource": "progress",
+          "amount": 1
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "catapult",
+      "name": "Catapult",
+      "type": "unit",
+      "subtype": "siege",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "12 Land Bombardment; +50% on hills.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "land",
+          "stat": "bomb",
+          "amount": 12
+        },
+        {
+          "name": "combat_on_terrain",
+          "domain": "land",
+          "stat": "bomb",
+          "terrain": "hills",
+          "mode": "add",
+          "amount": 6
+        }
+      ]
+    },
+    {
+      "id": "academy",
+      "name": "Academy",
+      "type": "building",
+      "subtype": "progress",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+3 progress.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "progress",
+          "amount": 3
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "courthouse",
+      "name": "Courthouse",
+      "type": "building",
+      "subtype": "production",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "land",
+        "not": [
+          "mountain"
+        ]
+      },
+      "desc": "+1 production, +2 per adjacent settlement.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "production",
+          "amount": 1
+        },
+        {
+          "name": "per_adjacent",
+          "resource": "production",
+          "amount": 2,
+          "filter": "settlement"
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "lighthouse",
+      "name": "Lighthouse",
+      "type": "building",
+      "subtype": "gold",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "water"
+      },
+      "desc": "+5 gold.",
+      "econ": [
+        {
+          "name": "self_yield",
+          "resource": "gold",
+          "amount": 5
+        }
+      ],
+      "combat": []
+    },
+    {
+      "id": "triereme",
+      "name": "Trireme",
+      "type": "unit",
+      "subtype": "naval",
+      "era": "Iron",
+      "production": 3,
+      "upkeep": 2,
+      "placement": {
+        "kind": "water"
+      },
+      "desc": "3 Sea Attack, 5 Sea Bombardment.",
+      "econ": [],
+      "combat": [
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "atk",
+          "amount": 3
+        },
+        {
+          "name": "combat_scalar",
+          "domain": "sea",
+          "stat": "bomb",
+          "amount": 5
+        }
+      ]
+    }
   ],
   "techs": [
-    { "id": "agriculture", "name": "Agriculture", "flavor": "Food", "era": "Stone", "desc": "Plains yield +1 food.", "effects": [ { "name": "tile_yield", "terrain": "plains", "resource": "food", "amount": 1 } ] },
-    { "id": "woodwork", "name": "Woodwork", "flavor": "Production", "era": "Stone", "desc": "Forest yields +1 production.", "effects": [ { "name": "tile_yield", "terrain": "forest", "resource": "production", "amount": 1 } ] },
-    { "id": "foraging", "name": "Foraging", "flavor": "Food", "era": "Stone", "desc": "Forest yields +1 food.", "effects": [ { "name": "tile_yield", "terrain": "forest", "resource": "food", "amount": 1 } ] },
-    { "id": "cave_painting", "name": "Cave Painting", "flavor": "Progress", "era": "Stone", "desc": "Hills yield +1 progress.", "effects": [ { "name": "tile_yield", "terrain": "hills", "resource": "progress", "amount": 1 } ] },
-    { "id": "language", "name": "Language", "flavor": "Progress", "era": "Stone", "desc": "All units also produce +1 progress.", "effects": [ { "name": "units_produce", "resource": "progress", "amount": 1 } ] },
-    { "id": "hunting", "name": "Hunting", "flavor": "Food", "era": "Stone", "desc": "All units also produce +1 food.", "effects": [ { "name": "units_produce", "resource": "food", "amount": 1 } ] },
-    { "id": "tools", "name": "Tools", "flavor": "Production", "era": "Stone", "desc": "Buildings cost 1 less production.", "effects": [ { "name": "production_cost_reduction", "amount": 1, "scope": "building" } ] },
-    { "id": "mysticism", "name": "Mysticism", "flavor": "Legitimacy", "era": "Stone", "desc": "Unlocks the Shrine.", "effects": [ { "name": "unlock_deployable", "deployable": "shrine" } ] },
-    { "id": "mud_brick", "name": "Mud Brick", "flavor": "Defense", "era": "Stone", "desc": "Unlocks the Mud-Brick Wall.", "effects": [ { "name": "unlock_deployable", "deployable": "mud_brick_wall" } ] },
-    { "id": "the_sling", "name": "The Sling", "flavor": "Ranged", "era": "Stone", "desc": "Unlocks the Slinger.", "effects": [ { "name": "unlock_deployable", "deployable": "slinger" } ] },
-    { "id": "pack_bonding", "name": "Pack Bonding", "flavor": "Cavalry", "era": "Stone", "desc": "Unlocks the Wolf.", "effects": [ { "name": "unlock_deployable", "deployable": "wolf" } ] },
-    { "id": "community", "name": "Community", "flavor": "Settlement", "era": "Stone", "desc": "Unlocks the Village.", "effects": [ { "name": "unlock_deployable", "deployable": "village" } ] },
-    { "id": "fermentation", "name": "Fermentation", "flavor": "Gold", "era": "Stone", "desc": "Unlocks the Tavern.", "effects": [ { "name": "unlock_deployable", "deployable": "tavern" } ] },
-    { "id": "fishing", "name": "Fishing", "flavor": "Expansion", "era": "Stone", "desc": "Enables expanding to Coast.", "effects": [ { "name": "enable_expansion", "terrain": "coast" } ] },
-    { "id": "furs", "name": "Furs", "flavor": "Expansion", "era": "Stone", "desc": "Enables expanding to Tundra.", "effects": [ { "name": "enable_expansion", "terrain": "tundra" } ] },
-    { "id": "leatherwork", "name": "Leatherwork", "flavor": "Defense", "era": "Stone", "desc": "All units gain +2 land defense.", "effects": [ { "name": "army_combat_flat", "stat": "def", "domain": "land", "amount": 2 } ] },
-    { "id": "ownership", "name": "Ownership", "flavor": "Gold", "era": "Stone", "desc": "All upkeep reduced by 1.", "effects": [ { "name": "upkeep_reduction", "amount": 1 } ] },
-    { "id": "burial_rites", "name": "Burial Rites", "flavor": "Progress", "era": "Stone", "desc": "When you lose a domain in combat, gain 4 progress.", "effects": [ { "name": "on_combat_result", "when": "lose", "per": "domain", "resource": "progress", "amount": 4 } ] },
-
-    { "id": "mining", "name": "Mining", "flavor": "Gold", "era": "Bronze", "desc": "Hills & mountains yield +1 gold.", "effects": [ { "name": "tile_yield", "terrain": "hills", "resource": "gold", "amount": 1 }, { "name": "tile_yield", "terrain": "mountain", "resource": "gold", "amount": 1 } ] },
-    { "id": "the_wheel", "name": "The Wheel", "flavor": "Cavalry", "era": "Bronze", "desc": "Unlocks the Chariot.", "effects": [ { "name": "unlock_deployable", "deployable": "chariot" } ] },
-    { "id": "domestication", "name": "Domestication", "flavor": "Food", "era": "Bronze", "desc": "Unlocks the Ranch.", "effects": [ { "name": "unlock_deployable", "deployable": "ranch" } ] },
-    { "id": "pottery", "name": "Pottery", "flavor": "Production", "era": "Bronze", "desc": "Unlocks the Kiln.", "effects": [ { "name": "unlock_deployable", "deployable": "kiln" } ] },
-    { "id": "writing", "name": "Writing", "flavor": "Progress", "era": "Bronze", "desc": "Unlocks the Library.", "effects": [ { "name": "unlock_deployable", "deployable": "library" } ] },
-    { "id": "archery", "name": "Archery", "flavor": "Ranged", "era": "Bronze", "desc": "Unlocks the Archer.", "effects": [ { "name": "unlock_deployable", "deployable": "archer" } ] },
-    { "id": "sailing", "name": "Sailing", "flavor": "Naval", "era": "Bronze", "desc": "Unlocks the Galley.", "effects": [ { "name": "unlock_deployable", "deployable": "galley" } ] },
-    { "id": "the_plough", "name": "The Plough", "flavor": "Food", "era": "Bronze", "desc": "Unlocks the Farm.", "effects": [ { "name": "unlock_deployable", "deployable": "farm" } ] },
-    { "id": "alloying", "name": "Alloying", "flavor": "Melee", "era": "Bronze", "desc": "Unlocks the Spearman.", "effects": [ { "name": "unlock_deployable", "deployable": "spearman" } ] },
-    { "id": "masonry", "name": "Masonry", "flavor": "Defense", "era": "Bronze", "desc": "Unlocks the Wall.", "effects": [ { "name": "unlock_deployable", "deployable": "wall" } ] },
-    { "id": "despotism", "name": "Despotism", "flavor": "Palace", "era": "Bronze", "desc": "Palace base yields +1 each.", "effects": [ { "name": "palace_yield_flat", "resource": "all", "amount": 1 } ] },
-    { "id": "yakchals", "name": "Yakchals", "flavor": "Expansion", "era": "Bronze", "desc": "Enables expanding to Desert.", "effects": [ { "name": "enable_expansion", "terrain": "desert" } ] },
-    { "id": "caste_system", "name": "Caste System", "flavor": "Production", "era": "Bronze", "desc": "+1 production per unique-era deployable you own.", "effects": [ { "name": "per_unique_era_deployable", "resource": "production", "amount": 1 } ] },
-    { "id": "astrology", "name": "Astrology", "flavor": "Progress", "era": "Bronze", "desc": "Gain a free reroll each time you unlock a tech.", "effects": [ { "name": "free_reroll_on_progress" } ] },
-
-    { "id": "steel", "name": "Steel", "flavor": "Melee", "era": "Iron", "desc": "Unlocks the Swordsman.", "effects": [ { "name": "unlock_deployable", "deployable": "swordsman" } ] },
-    { "id": "coinage", "name": "Coinage", "flavor": "Gold", "era": "Iron", "desc": "Unlocks the Mint.", "effects": [ { "name": "unlock_deployable", "deployable": "mint" } ] },
-    { "id": "horseback_riding", "name": "Horseback Riding", "flavor": "Cavalry", "era": "Iron", "desc": "Unlocks the Horseman.", "effects": [ { "name": "unlock_deployable", "deployable": "horseman" } ] },
-    { "id": "organized_religion", "name": "Organized Religion", "flavor": "Progress", "era": "Iron", "desc": "Unlocks the Temple.", "effects": [ { "name": "unlock_deployable", "deployable": "temple" } ] },
-    { "id": "mathematics", "name": "Mathematics", "flavor": "Progress", "era": "Iron", "desc": "Unlocks the Academy.", "effects": [ { "name": "unlock_deployable", "deployable": "academy" } ] },
-    { "id": "code_of_laws", "name": "Code of Laws", "flavor": "Production", "era": "Iron", "desc": "Unlocks the Courthouse.", "effects": [ { "name": "unlock_deployable", "deployable": "courthouse" } ] },
-    { "id": "celestial_navigation", "name": "Celestial Navigation", "flavor": "Gold", "era": "Iron", "desc": "Unlocks the Lighthouse.", "effects": [ { "name": "unlock_deployable", "deployable": "lighthouse" } ] },
-    { "id": "siege", "name": "Siege", "flavor": "Siege", "era": "Iron", "desc": "Unlocks the Catapult.", "effects": [ { "name": "unlock_deployable", "deployable": "catapult" } ] },
-    { "id": "rudders", "name": "Rudders", "flavor": "Naval", "era": "Iron", "desc": "Unlocks the Trireme.", "effects": [ { "name": "unlock_deployable", "deployable": "triereme" } ] },
-    { "id": "mountaineering", "name": "Mountaineering", "flavor": "Expansion", "era": "Iron", "desc": "Enables expanding to Mountains.", "effects": [ { "name": "enable_expansion", "terrain": "mountain" } ] },
-    { "id": "weights_and_measures", "name": "Weights and Measures", "flavor": "Gold", "era": "Iron", "desc": "All upkeep reduced by 1.", "effects": [ { "name": "upkeep_reduction", "amount": 1 } ] },
-    { "id": "terracing", "name": "Terracing", "flavor": "Food", "era": "Iron", "desc": "Hills yield +1 food.", "effects": [ { "name": "tile_yield", "terrain": "hills", "resource": "food", "amount": 1 } ] },
-    { "id": "irrigation", "name": "Irrigation", "flavor": "Food", "era": "Iron", "desc": "Plains yield +1 food.", "effects": [ { "name": "tile_yield", "terrain": "plains", "resource": "food", "amount": 1 } ] },
-    { "id": "surveying", "name": "Surveying", "flavor": "Economy", "era": "Iron", "desc": "+1 vision range; mountains yield +1 gold.", "effects": [ { "name": "vision_bonus", "amount": 1 }, { "name": "tile_yield", "terrain": "mountain", "resource": "gold", "amount": 1 } ] },
-    { "id": "festivals", "name": "Festivals", "flavor": "Economy", "era": "Iron", "desc": "When you win a domain in combat, gain 4 food and 4 production.", "effects": [ { "name": "on_combat_result", "when": "win", "per": "once", "resource": "food", "amount": 4 }, { "name": "on_combat_result", "when": "win", "per": "once", "resource": "production", "amount": 4 } ] }
+    {
+      "id": "agriculture",
+      "name": "Agriculture",
+      "flavor": "Food",
+      "era": "Stone",
+      "desc": "Plains yield +1 food.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "plains",
+          "resource": "food",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "woodwork",
+      "name": "Woodwork",
+      "flavor": "Production",
+      "era": "Stone",
+      "desc": "Forest yields +1 production.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "forest",
+          "resource": "production",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "foraging",
+      "name": "Foraging",
+      "flavor": "Food",
+      "era": "Stone",
+      "desc": "Forest yields +1 food.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "forest",
+          "resource": "food",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "cave_painting",
+      "name": "Cave Painting",
+      "flavor": "Progress",
+      "era": "Stone",
+      "desc": "Hills yield +1 progress.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "hills",
+          "resource": "progress",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "language",
+      "name": "Language",
+      "flavor": "Progress",
+      "era": "Stone",
+      "desc": "All units also produce +1 progress.",
+      "effects": [
+        {
+          "name": "units_produce",
+          "resource": "progress",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "hunting",
+      "name": "Hunting",
+      "flavor": "Food",
+      "era": "Stone",
+      "desc": "All units also produce +1 food.",
+      "effects": [
+        {
+          "name": "units_produce",
+          "resource": "food",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "name": "Tools",
+      "flavor": "Production",
+      "era": "Stone",
+      "desc": "Buildings cost 1 less production.",
+      "effects": [
+        {
+          "name": "production_cost_reduction",
+          "amount": 1,
+          "scope": "building"
+        }
+      ]
+    },
+    {
+      "id": "mysticism",
+      "name": "Mysticism",
+      "flavor": "Legitimacy",
+      "era": "Stone",
+      "desc": "Unlocks the Shrine.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "shrine"
+        }
+      ]
+    },
+    {
+      "id": "mud_brick",
+      "name": "Mud Brick",
+      "flavor": "Defense",
+      "era": "Stone",
+      "desc": "Unlocks the Mud-Brick Wall.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "mud_brick_wall"
+        }
+      ]
+    },
+    {
+      "id": "the_sling",
+      "name": "The Sling",
+      "flavor": "Ranged",
+      "era": "Stone",
+      "desc": "Unlocks the Slinger.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "slinger"
+        }
+      ]
+    },
+    {
+      "id": "pack_bonding",
+      "name": "Pack Bonding",
+      "flavor": "Cavalry",
+      "era": "Stone",
+      "desc": "Unlocks the Wolf.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "wolf"
+        }
+      ]
+    },
+    {
+      "id": "community",
+      "name": "Community",
+      "flavor": "Settlement",
+      "era": "Stone",
+      "desc": "Unlocks the Village.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "village"
+        }
+      ]
+    },
+    {
+      "id": "fermentation",
+      "name": "Fermentation",
+      "flavor": "Gold",
+      "era": "Stone",
+      "desc": "Unlocks the Tavern.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "tavern"
+        }
+      ]
+    },
+    {
+      "id": "fishing",
+      "name": "Fishing",
+      "flavor": "Expansion",
+      "era": "Stone",
+      "desc": "Enables expanding to Coast.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "coast"
+        }
+      ]
+    },
+    {
+      "id": "furs",
+      "name": "Furs",
+      "flavor": "Expansion",
+      "era": "Stone",
+      "desc": "Enables expanding to Tundra.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "tundra"
+        }
+      ]
+    },
+    {
+      "id": "leatherwork",
+      "name": "Leatherwork",
+      "flavor": "Defense",
+      "era": "Stone",
+      "desc": "All units gain +2 land defense.",
+      "effects": [
+        {
+          "name": "army_combat_flat",
+          "stat": "def",
+          "domain": "land",
+          "amount": 2
+        }
+      ]
+    },
+    {
+      "id": "ownership",
+      "name": "Ownership",
+      "flavor": "Gold",
+      "era": "Stone",
+      "desc": "All upkeep reduced by 1.",
+      "effects": [
+        {
+          "name": "upkeep_reduction",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "burial_rites",
+      "name": "Burial Rites",
+      "flavor": "Progress",
+      "era": "Stone",
+      "desc": "When you lose a domain in combat, gain 4 progress.",
+      "effects": [
+        {
+          "name": "on_combat_result",
+          "when": "lose",
+          "per": "domain",
+          "resource": "progress",
+          "amount": 4
+        }
+      ]
+    },
+    {
+      "id": "mining",
+      "name": "Mining",
+      "flavor": "Gold",
+      "era": "Bronze",
+      "desc": "Hills & mountains yield +1 gold.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "hills",
+          "resource": "gold",
+          "amount": 1
+        },
+        {
+          "name": "tile_yield",
+          "terrain": "mountain",
+          "resource": "gold",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "the_wheel",
+      "name": "The Wheel",
+      "flavor": "Cavalry",
+      "era": "Bronze",
+      "desc": "Unlocks the Chariot.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "chariot"
+        }
+      ]
+    },
+    {
+      "id": "domestication",
+      "name": "Domestication",
+      "flavor": "Food",
+      "era": "Bronze",
+      "desc": "Unlocks the Ranch.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "ranch"
+        }
+      ]
+    },
+    {
+      "id": "pottery",
+      "name": "Pottery",
+      "flavor": "Production",
+      "era": "Bronze",
+      "desc": "Unlocks the Kiln.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "kiln"
+        }
+      ]
+    },
+    {
+      "id": "writing",
+      "name": "Writing",
+      "flavor": "Progress",
+      "era": "Bronze",
+      "desc": "Unlocks the Library.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "library"
+        }
+      ]
+    },
+    {
+      "id": "archery",
+      "name": "Archery",
+      "flavor": "Ranged",
+      "era": "Bronze",
+      "desc": "Unlocks the Archer.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "archer"
+        }
+      ]
+    },
+    {
+      "id": "sailing",
+      "name": "Sailing",
+      "flavor": "Naval",
+      "era": "Bronze",
+      "desc": "Unlocks the Galley.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "galley"
+        }
+      ]
+    },
+    {
+      "id": "the_plough",
+      "name": "The Plough",
+      "flavor": "Food",
+      "era": "Bronze",
+      "desc": "Unlocks the Farm.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "farm"
+        }
+      ]
+    },
+    {
+      "id": "alloying",
+      "name": "Alloying",
+      "flavor": "Melee",
+      "era": "Bronze",
+      "desc": "Unlocks the Spearman.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "spearman"
+        }
+      ]
+    },
+    {
+      "id": "masonry",
+      "name": "Masonry",
+      "flavor": "Defense",
+      "era": "Bronze",
+      "desc": "Unlocks the Wall.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "wall"
+        }
+      ]
+    },
+    {
+      "id": "despotism",
+      "name": "Despotism",
+      "flavor": "Palace",
+      "era": "Bronze",
+      "desc": "Palace base yields +1 each.",
+      "effects": [
+        {
+          "name": "palace_yield_flat",
+          "resource": "all",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "yakchals",
+      "name": "Yakchals",
+      "flavor": "Expansion",
+      "era": "Bronze",
+      "desc": "Enables expanding to Desert.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "desert"
+        }
+      ]
+    },
+    {
+      "id": "caste_system",
+      "name": "Caste System",
+      "flavor": "Production",
+      "era": "Bronze",
+      "desc": "+1 production per unique-era deployable you own.",
+      "effects": [
+        {
+          "name": "per_unique_era_deployable",
+          "resource": "production",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "astrology",
+      "name": "Astrology",
+      "flavor": "Progress",
+      "era": "Bronze",
+      "desc": "Gain a free reroll each time you unlock a tech.",
+      "effects": [
+        {
+          "name": "free_reroll_on_progress"
+        }
+      ]
+    },
+    {
+      "id": "steel",
+      "name": "Steel",
+      "flavor": "Melee",
+      "era": "Iron",
+      "desc": "Unlocks the Swordsman.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "swordsman"
+        }
+      ]
+    },
+    {
+      "id": "coinage",
+      "name": "Coinage",
+      "flavor": "Gold",
+      "era": "Iron",
+      "desc": "Unlocks the Mint.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "mint"
+        }
+      ]
+    },
+    {
+      "id": "horseback_riding",
+      "name": "Horseback Riding",
+      "flavor": "Cavalry",
+      "era": "Iron",
+      "desc": "Unlocks the Horseman.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "horseman"
+        }
+      ]
+    },
+    {
+      "id": "organized_religion",
+      "name": "Organized Religion",
+      "flavor": "Progress",
+      "era": "Iron",
+      "desc": "Unlocks the Temple.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "temple"
+        }
+      ]
+    },
+    {
+      "id": "mathematics",
+      "name": "Mathematics",
+      "flavor": "Progress",
+      "era": "Iron",
+      "desc": "Unlocks the Academy.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "academy"
+        }
+      ]
+    },
+    {
+      "id": "code_of_laws",
+      "name": "Code of Laws",
+      "flavor": "Production",
+      "era": "Iron",
+      "desc": "Unlocks the Courthouse.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "courthouse"
+        }
+      ]
+    },
+    {
+      "id": "celestial_navigation",
+      "name": "Celestial Navigation",
+      "flavor": "Gold",
+      "era": "Iron",
+      "desc": "Unlocks the Lighthouse.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "lighthouse"
+        }
+      ]
+    },
+    {
+      "id": "siege",
+      "name": "Siege",
+      "flavor": "Siege",
+      "era": "Iron",
+      "desc": "Unlocks the Catapult.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "catapult"
+        }
+      ]
+    },
+    {
+      "id": "rudders",
+      "name": "Rudders",
+      "flavor": "Naval",
+      "era": "Iron",
+      "desc": "Unlocks the Trireme.",
+      "effects": [
+        {
+          "name": "unlock_deployable",
+          "deployable": "triereme"
+        }
+      ]
+    },
+    {
+      "id": "mountaineering",
+      "name": "Mountaineering",
+      "flavor": "Expansion",
+      "era": "Iron",
+      "desc": "Enables expanding to Mountains.",
+      "effects": [
+        {
+          "name": "enable_expansion",
+          "terrain": "mountain"
+        }
+      ]
+    },
+    {
+      "id": "weights_and_measures",
+      "name": "Weights and Measures",
+      "flavor": "Gold",
+      "era": "Iron",
+      "desc": "All upkeep reduced by 1.",
+      "effects": [
+        {
+          "name": "upkeep_reduction",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "terracing",
+      "name": "Terracing",
+      "flavor": "Food",
+      "era": "Iron",
+      "desc": "Hills yield +1 food.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "hills",
+          "resource": "food",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "irrigation",
+      "name": "Irrigation",
+      "flavor": "Food",
+      "era": "Iron",
+      "desc": "Plains yield +1 food.",
+      "effects": [
+        {
+          "name": "tile_yield",
+          "terrain": "plains",
+          "resource": "food",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "surveying",
+      "name": "Surveying",
+      "flavor": "Economy",
+      "era": "Iron",
+      "desc": "+1 vision range; mountains yield +1 gold.",
+      "effects": [
+        {
+          "name": "vision_bonus",
+          "amount": 1
+        },
+        {
+          "name": "tile_yield",
+          "terrain": "mountain",
+          "resource": "gold",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "festivals",
+      "name": "Festivals",
+      "flavor": "Economy",
+      "era": "Iron",
+      "desc": "When you win a domain in combat, gain 4 food and 4 production.",
+      "effects": [
+        {
+          "name": "on_combat_result",
+          "when": "win",
+          "per": "once",
+          "resource": "food",
+          "amount": 4
+        },
+        {
+          "name": "on_combat_result",
+          "when": "win",
+          "per": "once",
+          "resource": "production",
+          "amount": 4
+        }
+      ]
+    }
   ],
   "enemy": {
-    "pressureBase": 0.85, "pressureSlope": 1.06, "floorBase": 12, "floorSlope": 1.35,
-    "variance": 0.15, "domainJitter": 0.25,
-    "domainUnlockWave": { "land": 1, "sea": 4, "sky": 12, "space": 20 },
-    "domainWeight": { "land": 1, "sea": 0.5, "sky": 0.7, "space": 1 },
+    "pressureBase": 0.85,
+    "pressureSlope": 1.06,
+    "floorBase": 12,
+    "floorSlope": 1.35,
+    "variance": 0.15,
+    "domainJitter": 0.25,
+    "domainUnlockWave": {
+      "land": 1,
+      "sea": 4,
+      "sky": 12,
+      "space": 20
+    },
+    "domainWeight": {
+      "land": 1,
+      "sea": 0.5,
+      "sky": 0.7,
+      "space": 1
+    },
     "archetypes": [
-      { "id": "rush", "name": "Rush", "split": { "atk": 0.7, "def": 0.15, "bomb": 0.15 } },
-      { "id": "line", "name": "Line", "split": { "atk": 0.45, "def": 0.35, "bomb": 0.2 } },
-      { "id": "siege", "name": "Siege", "split": { "atk": 0.3, "def": 0.25, "bomb": 0.45 } },
-      { "id": "turtle", "name": "Turtle", "split": { "atk": 0.2, "def": 0.55, "bomb": 0.25 } }
+      {
+        "id": "rush",
+        "name": "Rush",
+        "split": {
+          "atk": 0.7,
+          "def": 0.15,
+          "bomb": 0.15
+        }
+      },
+      {
+        "id": "line",
+        "name": "Line",
+        "split": {
+          "atk": 0.45,
+          "def": 0.35,
+          "bomb": 0.2
+        }
+      },
+      {
+        "id": "siege",
+        "name": "Siege",
+        "split": {
+          "atk": 0.3,
+          "def": 0.25,
+          "bomb": 0.45
+        }
+      },
+      {
+        "id": "turtle",
+        "name": "Turtle",
+        "split": {
+          "atk": 0.2,
+          "def": 0.55,
+          "bomb": 0.25
+        }
+      }
     ]
   }
 }
