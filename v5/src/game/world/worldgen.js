@@ -223,6 +223,71 @@ function scatterIslands(tiles, earth, rng) {
   }
 }
 
+const ISLE_TERRAIN = ['plains', 'plains', 'forest', 'forest', 'hills', 'hills', 'mountain']
+
+/**
+ * Two big offshore ISLANDS (their own `isle` region so the island-speck invariants
+ * ignore them): a 5–9 tile one hugging the Old World whose coast joins the Old
+ * World's, and a 4–8 tile one off the New World. Both are proper little landmasses
+ * ringed by coast, one water tile off their continent so the shallows connect.
+ */
+function placeLargeIslands(tiles, rng) {
+  placeLargeIsland(tiles, rng, 'old_world', 5, 9)
+  placeLargeIsland(tiles, rng, 'new_world', 4, 8)
+}
+
+function placeLargeIsland(tiles, rng, nearRegion, minN, maxN) {
+  const size = minN + Math.floor(rng() * (maxN - minN + 1))
+  const openSea = (t) => !!t && t.band === 'earth' && t.region === 'sea'
+  const touchesContinent = (t) => neighbors(t.q, t.r).some((n) => {
+    const o = tiles.get(key(n.q, n.r))
+    return o && o.region === nearRegion && isLand(o.terrain)
+  })
+  // A blob tile must stay open sea and NOT hug any landmass — so exactly one water
+  // tile (the shared coast) always separates the isle from its continent, islands, or a fellow isle.
+  const blobbable = (t, inBlob) => openSea(t) && !inBlob.has(key(t.q, t.r)) &&
+    !neighbors(t.q, t.r).some((n) => {
+      const o = tiles.get(key(n.q, n.r))
+      return o && (o.region === 'old_world' || o.region === 'new_world' || o.region === 'island' || o.region === 'isle')
+    })
+  // Seeds: open sea one tile out from a coast tile that touches this continent — so
+  // the isle sits just offshore and shares that coast tile with the continent. If
+  // that shoreline is too crowded, fall back to the nearest open sea to the
+  // continent (still ringed by coast, just not sharing the continent's shallows).
+  const offshore = [...tiles.values()].filter((t) => blobbable(t, new Set()) &&
+    neighbors(t.q, t.r).some((n) => { const o = tiles.get(key(n.q, n.r)); return openSea(o) && touchesContinent(o) }))
+  shuffle(offshore, rng)
+  const landOf = [...tiles.values()].filter((t) => t.region === nearRegion && isLand(t.terrain))
+  const distToContinent = (t) => Math.min(...landOf.map((l) => lengthOf(l.q - t.q, l.r - t.r)))
+  const fallback = landOf.length
+    ? [...tiles.values()].filter((t) => blobbable(t, new Set())).sort((a, b) => distToContinent(a) - distToContinent(b))
+    : []
+  for (const seed of [...offshore, ...fallback]) {
+    const inBlob = new Set([key(seed.q, seed.r)])
+    const blob = [seed]
+    // Grow a compact blob outward from the seed.
+    while (blob.length < size) {
+      let added = false
+      const frontier = shuffle([...blob], rng)
+      for (const b of frontier) {
+        const nbs = shuffle(neighbors(b.q, b.r).map((n) => tiles.get(key(n.q, n.r))), rng)
+        const cand = nbs.find((o) => o && blobbable(o, inBlob))
+        if (cand) { inBlob.add(key(cand.q, cand.r)); blob.push(cand); added = true; break }
+      }
+      if (!added) break
+    }
+    if (blob.length < minN) continue
+    // Stamp the landmass with varied terrain, then ring it with coast.
+    for (const t of blob) { t.region = 'isle'; t.seaKind = null; t.terrain = ISLE_TERRAIN[Math.floor(rng() * ISLE_TERRAIN.length)] }
+    for (const t of blob) for (const n of neighbors(t.q, t.r)) {
+      const o = tiles.get(key(n.q, n.r))
+      if (o && o.region === 'sea' && o.terrain === 'ocean') o.terrain = 'coast'
+    }
+    return blob
+  }
+  return null
+}
+
 /**
  * Inland rivers: start on high ground and walk downhill, stamping water. Rivers
  * keep their continent `region` (they are part of the landmass, not the sea) so
@@ -1172,7 +1237,7 @@ function assignReveal(tiles, inCorridorAt, galaxyReach) {
           : t.d <= DISTANT_RADIUS ? STAGE.distant
             : STAGE.old_world
       }
-      else if (t.region === 'island') t.revealStage = STAGE.islands
+      else if (t.region === 'island' || t.region === 'isle') t.revealStage = STAGE.islands
       else if (t.region === 'sea' && !touches(t, (o) => o.region === 'new_world')) t.revealStage = STAGE.islands
       // Making landfall: the coastal stage shows the waters AND the shore, so
       // "New World Coastline" actually shows you the new continent.
@@ -1361,6 +1426,7 @@ export function buildWorld(seed) {
     enforcePolarTundra(tiles)
   }
   guaranteeBothPoles(tiles)
+  placeLargeIslands(tiles, rng) // two big offshore islands, ringed by coast
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt, galaxyReach)
 
