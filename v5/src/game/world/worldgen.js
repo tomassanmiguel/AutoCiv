@@ -36,7 +36,7 @@ const MAX_ATTEMPTS = 9 // cap worst-case worldgen time; relaxed invariants pass 
 // NW_EDGE out is therefore the only way to widen the ocean, which is why the
 // main sea grows at the New World's expense rather than the Old World's.
 const OW_EDGE = 0.06
-const NW_EDGE = 0.58      // wider ocean channel (a bit more sea, smaller New World)
+const NW_EDGE = 0.66      // wide ocean channel — plenty of open sea between the continents, room for the New World island
 const SPLIT_WOBBLE = 0.40 // more boundary wobble so the sea reads as an irregular ocean, not a straight river
 const RIM_SEA = 0.90      // radius past which Earth TENDS to sea; lower = a rounder, larger ocean at the rim
 // Inland seas carve oceans INTO the continents (less landmass); higher cut = less sea.
@@ -232,11 +232,56 @@ const ISLE_TERRAIN = ['plains', 'plains', 'forest', 'forest', 'hills', 'hills', 
  * ringed by coast, one water tile off their continent so the shallows connect.
  */
 function placeLargeIslands(tiles, rng) {
-  placeLargeIsland(tiles, rng, 'old_world', 5, 9)
-  placeLargeIsland(tiles, rng, 'new_world', 4, 8)
+  // Distance from the Old World, so the New World island can be kept clear of it
+  // (it must not bridge the open-ocean strip that divides the continents).
+  const src = []
+  for (const t of tiles.values()) if (t.region === 'old_world' && isLand(t.terrain)) src.push({ q: t.q, r: t.r })
+  const oldDist = bfs(src, (q, r) => { const t = tiles.get(key(q, r)); return !!t && t.band === 'earth' })
+  placeLargeIsland(tiles, rng, 'old_world', 5, 9, oldDist)
+  // Prefer a natural offshore island; if a narrow channel leaves no room, pinch a
+  // chunk off the New World's far edge instead so one always appears.
+  if (!placeLargeIsland(tiles, rng, 'new_world', 4, 8, oldDist)) carveNewWorldIsland(tiles, rng, oldDist, 4, 8)
 }
 
-function placeLargeIsland(tiles, rng, nearRegion, minN, maxN) {
+/**
+ * Fallback New World island: sever a small cluster of the New World's FAR edge
+ * (well clear of the Old World) from the mainland with a one-tile moat, leaving a
+ * coast-ringed New World island. Guarantees a New World island even when the
+ * channel is too tight for a free-floating one, without touching the ocean strip.
+ */
+function carveNewWorldIsland(tiles, rng, oldDist, minN, maxN) {
+  const size = minN + Math.floor(rng() * (maxN - minN + 1))
+  const dof = (t) => oldDist.get(key(t.q, t.r)) ?? Infinity
+  const nwLand = [...tiles.values()].filter((t) => t.region === 'new_world' && isLand(t.terrain))
+  const seeds = nwLand.filter((t) => dof(t) >= 6).sort((a, b) => dof(b) - dof(a))
+  for (const seed of seeds) {
+    const cluster = [seed]; const inC = new Set([key(seed.q, seed.r)])
+    while (cluster.length < size) {
+      let added = false
+      for (const b of cluster) {
+        const cand = neighbors(b.q, b.r).map((n) => tiles.get(key(n.q, n.r)))
+          .find((o) => o && o.region === 'new_world' && isLand(o.terrain) && !inC.has(key(o.q, o.r)) && dof(o) >= 5)
+        if (cand) { inC.add(key(cand.q, cand.r)); cluster.push(cand); added = true; break }
+      }
+      if (!added) break
+    }
+    if (cluster.length < minN) continue
+    // Moat: every mainland tile touching the cluster becomes water, isolating it.
+    for (const t of cluster) for (const n of neighbors(t.q, t.r)) {
+      const o = tiles.get(key(n.q, n.r))
+      if (o && !inC.has(key(o.q, o.r)) && o.region === 'new_world' && isLand(o.terrain)) { o.region = 'sea'; o.seaKind = 'channel'; o.terrain = 'ocean' }
+    }
+    // Ring the island with coast (the moat and any open water around it).
+    for (const t of cluster) for (const n of neighbors(t.q, t.r)) {
+      const o = tiles.get(key(n.q, n.r))
+      if (o && o.region === 'sea' && o.terrain === 'ocean') o.terrain = 'coast'
+    }
+    return cluster
+  }
+  return null
+}
+
+function placeLargeIsland(tiles, rng, nearRegion, minN, maxN, oldDist) {
   const size = minN + Math.floor(rng() * (maxN - minN + 1))
   const openSea = (t) => !!t && t.band === 'earth' && t.region === 'sea'
   const touchesContinent = (t) => neighbors(t.q, t.r).some((n) => {
@@ -244,8 +289,11 @@ function placeLargeIsland(tiles, rng, nearRegion, minN, maxN) {
     return o && o.region === nearRegion && isLand(o.terrain)
   })
   // A blob tile must stay open sea and NOT hug any landmass — so exactly one water
-  // tile (the shared coast) always separates the isle from its continent, islands, or a fellow isle.
+  // tile (the shared coast) always separates the isle from its continent, islands,
+  // or a fellow isle. The New World island must also stay ≥4 tiles off the Old
+  // World, so it never bridges the dividing ocean strip.
   const blobbable = (t, inBlob) => openSea(t) && !inBlob.has(key(t.q, t.r)) &&
+    (nearRegion !== 'new_world' || (oldDist.get(key(t.q, t.r)) ?? Infinity) > 3) &&
     !neighbors(t.q, t.r).some((n) => {
       const o = tiles.get(key(n.q, n.r))
       return o && (o.region === 'old_world' || o.region === 'new_world' || o.region === 'island' || o.region === 'isle')
@@ -277,8 +325,12 @@ function placeLargeIsland(tiles, rng, nearRegion, minN, maxN) {
       if (!added) break
     }
     if (blob.length < minN) continue
-    // Stamp the landmass with varied terrain, then ring it with coast.
-    for (const t of blob) { t.region = 'isle'; t.seaKind = null; t.terrain = ISLE_TERRAIN[Math.floor(rng() * ISLE_TERRAIN.length)] }
+    // Stamp the landmass with varied terrain, then ring it with coast. The New
+    // World island IS New World (so it earns the New World ×2 tag/yield); the Old
+    // World island stays its own `isle` region — it can't be Old World, since every
+    // Old World tile must be reachable from the palace by land and this is offshore.
+    const isleRegion = nearRegion === 'new_world' ? 'new_world' : 'isle'
+    for (const t of blob) { t.region = isleRegion; t.seaKind = null; t.terrain = ISLE_TERRAIN[Math.floor(rng() * ISLE_TERRAIN.length)] }
     for (const t of blob) for (const n of neighbors(t.q, t.r)) {
       const o = tiles.get(key(n.q, n.r))
       if (o && o.region === 'sea' && o.terrain === 'ocean') o.terrain = 'coast'
@@ -483,6 +535,24 @@ function balanceExoplanets(tiles) {
   for (const region of ['exoplanet', 'mini_exo']) {
     const land = [...tiles.values()].filter((t) => t.region === region && isLand(t.terrain))
     if (land.length) enforceTerrainMins(tiles, land, EXO_MINS, scoreExo, new Set(), null)
+  }
+}
+
+/**
+ * Guarantee a strip of OPEN OCEAN fully separates the two continents: erode any
+ * New World land within 3 tiles of the Old World back into ocean, so the nearest
+ * New World land is ≥4 tiles away and an ocean tile (adjacent to neither
+ * continent) always sits in the gap — no thin coast-only pinch bridging them.
+ */
+function separateContinents(tiles) {
+  const src = []
+  for (const t of tiles.values()) if (t.region === 'old_world' && isLand(t.terrain)) src.push({ q: t.q, r: t.r })
+  if (!src.length) return
+  const dist = bfs(src, (q, r) => { const t = tiles.get(key(q, r)); return !!t && t.band === 'earth' })
+  for (const t of tiles.values()) {
+    if (t.region === 'new_world' && isLand(t.terrain) && (dist.get(key(t.q, t.r)) ?? Infinity) <= 3) {
+      t.region = 'sea'; t.seaKind = 'channel'; t.terrain = 'ocean'
+    }
   }
 }
 
@@ -768,7 +838,9 @@ function bodyFitsDeep(tiles, center, radius) {
   for (const t of body) {
     for (const n of neighbors(t.q, t.r)) {
       const o = tiles.get(key(n.q, n.r))
-      if (o && (o.region === 'exoplanet' || BODY_REGIONS.has(o.region))) return false // never hug another body
+      if (!o) continue
+      if (o.region === 'exoplanet' || BODY_REGIONS.has(o.region)) return false // never hug another body
+      if (o.band === 'space') return false // never border regular earth space (the Moon/Mars/asteroid band)
     }
   }
   return true
@@ -1417,16 +1489,18 @@ export function buildWorld(seed) {
   connectOldWorldLand(tiles)
   finalizeEarthCoasts(tiles)
   enforcePolarTundra(tiles) // AFTER the land bridges, so their plains obey the polar rule too
-  // Balance terrain to the per-continent minimums, reopen any passes the new mountain
-  // ranges close, and re-tundra bridge-stranded tiles — iterated so each pass tops up
-  // the ±1 tile the previous connectivity/flood step trimmed.
+  separateContinents(tiles) // carve the dividing open-ocean strip
+  finalizeEarthCoasts(tiles) // re-coast the continents after eroding the pinch tiles
+  placeLargeIslands(tiles, rng) // two big offshore islands, ringed by coast (new-world one kept clear of the old world)
+  // Balance terrain to the per-continent minimums AFTER the ocean strip and islands
+  // exist, so it sees the final continents (incl. the New World island, which is New
+  // World). Iterated so each pass tops up the ±1 tile the connectivity/flood trimmed.
   for (let i = 0; i < 2; i++) {
     balanceEarthTerrain(tiles) // per-continent minimums + mountain ranges (leaves the opening view alone)
     connectOldWorldLand(tiles)
     enforcePolarTundra(tiles)
   }
   guaranteeBothPoles(tiles)
-  placeLargeIslands(tiles, rng) // two big offshore islands, ringed by coast
   const encampments = placeEncampments(tiles, rng, marsCenter)
   assignReveal(tiles, inCorridorAt, galaxyReach)
 

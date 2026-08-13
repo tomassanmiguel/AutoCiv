@@ -211,6 +211,13 @@ export function validate(world) {
   )
   if (bridged) v.push('New World touches the Old World (no ocean channel)')
 
+  // A strip of OPEN OCEAN must fully separate the continents — no shallow pinch
+  // where a single water tile touches both, leaving no open sea between them.
+  const pinch = world.list.some((t) => t.band === 'earth' && isWater(t.terrain) &&
+    neighbors(t.q, t.r).some((n) => { const o = at(n.q, n.r); return o && o.region === 'old_world' && isLand(o.terrain) }) &&
+    neighbors(t.q, t.r).some((n) => { const o = at(n.q, n.r); return o && o.region === 'new_world' && isLand(o.terrain) }))
+  if (pinch) v.push('a shallow pinch bridges the continents (no open ocean between)')
+
   // Climate is latitudinal: an arid equator, tundra confined to the two poles.
   const PR = Math.sqrt(3) * earthR
   const latOf = (t) => Math.abs(t.y) / PR
