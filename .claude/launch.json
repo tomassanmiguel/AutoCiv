@@ -18,6 +18,12 @@
       "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": ["node_modules/vite/bin/vite.js", "v4", "--port", "5175"],
       "port": 5175
+    },
+    {
+      "name": "autociv-v5-dev",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["v5/node_modules/vite/bin/vite.js", "v5", "--port", "5176"],
+      "port": 5176
     }
   ]
 }
