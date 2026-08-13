@@ -64,7 +64,7 @@ export class GameEngine {
     this.waveDelay = 0 // Calendar: pending one-turn delays that skip the next wave turn
     this.status = 'playing' // 'playing' | 'won' | 'lost'
     this.creative = false // Creative Mode: all deployables unlocked, infinite resources, no death
-    this.revealAll = true // TEMP: show the whole map (fog lifted for worldgen review)
+    this.explored = new Set() // fog-of-war: tiles ever seen (only these render / are settleable)
     this.selection = null // { type:'build', deployableId } while placing
     this.log = []
     this.lastCombat = null
@@ -91,6 +91,7 @@ export class GameEngine {
     this.deployed.set(this.palaceKey, { id: 'palace', level: 1, age: 0 })
 
     this._recomputeMods()
+    this._revealVision()  // seed fog-of-war around the palace
     this._buildOffer()
     this._applyIncome()   // turn 1 income
     this._previewWave()
@@ -577,6 +578,12 @@ export class GameEngine {
     const dist = bfs(starts, (q, r) => this.world.byKey.has(hkey(q, r)), 1 + this.mods.vision)
     return new Set(dist.keys())
   }
+  /** Fog-of-war: bank everything currently in sight into the permanent explored set. */
+  _revealVision() { for (const k of this.visionSet()) this.explored.add(k) }
+  /** Reveal specific tiles (explorer probes/caravels). */
+  revealTiles(keys) { let n = 0; for (const k of keys) if (this.world.byKey.has(k) && !this.explored.has(k)) { this.explored.add(k); n++ } return n }
+  /** A tile counts as known if explored, or in Creative Mode (whole map visible). */
+  isExplored(k) { return this.creative || this.explored.has(k) }
   /** Connected components of each bridge terrain, cached (terrain is static per game).
    *  Each = { terrain, members:Set(body tiles), shore:Set(tiles touching the body) }. */
   _bridgeComponents() {
@@ -626,6 +633,7 @@ export class GameEngine {
       const t = this.world.byKey.get(k)
       const ter = TERRAIN[t.terrain]
       if (!ter) continue // only content terrains are settleable (Earth land + coast)
+      if (!this.isExplored(k)) continue // must scout a tile before settling it
       if (ter.unlock && !this.expansions.has(t.terrain)) continue
       if (GATED_REGIONS.has(t.region) && !this.mods.regions.has(t.region)) continue // Colonialism gates the New World
       const cost = this.expandCost(t)
@@ -640,12 +648,14 @@ export class GameEngine {
     if (!this.expandFrontier().has(k)) return false // must stay connected (direct or bridged)
     const ter = TERRAIN[t.terrain]
     if (!ter) return false
+    if (!this.isExplored(k)) return false
     if (ter.unlock && !this.expansions.has(t.terrain)) return false
     if (GATED_REGIONS.has(t.region) && !this.mods.regions.has(t.region)) return false
     const cost = this.expandCost(t)
     if (this.resources.food < cost) return false
     this.resources.food -= cost
     this.controlled.add(k)
+    this._revealVision()
     this._previewWave()
     this._emit()
     return true
@@ -799,6 +809,7 @@ export class GameEngine {
     this.turn++
     this._accrueGrowth()
     this._applyIncome()
+    this._revealVision()
     this._buildOffer()
     this._previewWave()
     this._emit()

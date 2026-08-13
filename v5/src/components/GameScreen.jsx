@@ -259,6 +259,13 @@ function HexMap({ g }) {
       const left = t.x * HEX_SIZE - minX - HEX_W / 2 + SEAM / 2
       const top = t.y * HEX_SIZE - minY - HEX_H / 2 + SEAM / 2
       if (left > x1 || left + cellW < x0 || top > y1 || top + cellH < y0) continue
+      // fog-of-war: unexplored tiles render as dark fog (Creative Mode lifts it).
+      if (!g.isExplored(t.key)) {
+        ctx.fillStyle = '#0a0d18'
+        if (square) { ctx.fillRect(left, top, cellW, cellH) }
+        else { ctx.save(); hexPath(ctx, left, top, cellW, cellH); ctx.clip(); ctx.fillRect(left, top, cellW, cellH); ctx.restore() }
+        continue
+      }
       const img = getSprite(t.terrain)
       if (!(img.complete && img.naturalWidth > 0)) continue
       if (square) { ctx.drawImage(img, left, top, cellW, cellH) }
@@ -391,6 +398,13 @@ function HexMap({ g }) {
 function MapHoverCard({ g, k }) {
   const t = g.tileAt(k)
   if (!t) return null
+  if (!g.isExplored(k)) return (
+    <div className="v5-hover">
+      <NineSlice src="/sprites/ui/box.png" slice={205} width={18} className="frame">
+        <div className="hv-h"><b>Unexplored</b><span className="hv-sub">send an explorer to reveal</span></div>
+      </NineSlice>
+    </div>
+  )
   const inst = g.deployed.get(k)
   const dep = inst && DEPLOYABLES[inst.id]
   const out = inst && g.tileOutput(k)
