@@ -66,7 +66,7 @@ export class GameEngine {
 
     this.turn = 1
     this.waveCount = 0
-    this.waveDelay = 0 // Calendar: pending one-turn delays that skip the next wave turn
+    this.nextWaveTurn = META.waveInterval // the turn the next wave lands (Calendar pushes it back)
     this.status = 'playing' // 'playing' | 'won' | 'lost'
     this.creative = false // Creative Mode: all deployables unlocked, infinite resources, no death
     this.explored = new Set() // fog-of-war: tiles ever seen (only these render / are settleable)
@@ -146,14 +146,10 @@ export class GameEngine {
   eraUnlocksNeeded() { return Math.min(META.unlocksPerEra, this.eraTechCount(ERAS[this.era])) }
   /** One-shot effects that fire once when a tech is unlocked (Calendar's wave delay). */
   _applyTechOneShots(id) {
-    for (const e of TECHS[id].effects || []) if (e.name === 'delay_next_wave') this.waveDelay += (e.amount || 1)
+    for (const e of TECHS[id].effects || []) if (e.name === 'delay_next_wave') this.nextWaveTurn += (e.amount || 1)
   }
   /** Turns until the next enemy wave actually fires (accounts for Calendar delays). */
-  turnsUntilWave() {
-    let base = (META.waveInterval - (this.turn % META.waveInterval)) % META.waveInterval
-    if (this.waveDelay > 0) base += META.waveInterval // the upcoming wave turn will be skipped
-    return base
-  }
+  turnsUntilWave() { return Math.max(0, this.nextWaveTurn - this.turn) }
   uniqueOwned() { const s = new Set(); for (const v of this.deployed.values()) if (v.id !== 'palace') s.add(v.id); return s.size }
   militaryCount() { let n = 0; for (const v of this.deployed.values()) if (DEPLOYABLES[v.id].type === 'unit') n++; return n }
 
@@ -451,6 +447,40 @@ export class GameEngine {
     for (const r of RES_ALL) rows[r] = [...perRes[r].values()].filter((x) => x.amount !== 0)
       .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
     return { rows, income, upkeep }
+  }
+  /** Per-domain military-scalar breakdown by source: { domains:{land:[{label,group,atk,def,bomb,count}]}, totals }. */
+  militaryBreakdown() {
+    const dom = { land: {}, sea: {}, sky: {}, space: {} }
+    const rec = (d, group, label, atk, def, bomb) => {
+      if (!atk && !def && !bomb) return
+      const m = dom[d]; const key = `${group}|${label}`
+      const c = m[key] || { label, group, atk: 0, def: 0, bomb: 0, count: 0 }
+      c.atk += atk; c.def += def; c.bomb += bomb; c.count += 1; m[key] = c
+    }
+    const stat = (f, amount) => [f.stat === 'atk' ? amount : 0, f.stat === 'def' ? amount : 0, f.stat === 'bomb' ? amount : 0]
+    // each deployed unit/building's own scalars
+    for (const [k, inst] of this.deployed) {
+      const cs = this._instScalars(k, inst); const dep = DEPLOYABLES[inst.id]
+      const grp = dep.type === 'unit' ? 'unit' : 'building'
+      for (const d of DOMAINS) rec(d, grp, dep.name, cs[d].atk, cs[d].def, cs[d].bomb)
+    }
+    // empire-wide bonuses (mirror playerScalars)
+    const mil = this.militaryCount()
+    for (const f of this.mods.armyFlat) { const ds = f.domain === 'all' ? DOMAINS : [f.domain]; for (const d of ds) rec(d, 'bonus', 'Unit training', ...stat(f, f.amount * mil)) }
+    for (const f of this.mods.armyFromLegit) { const add = Math.floor(this.legitimacy / f.divisor); const ds = f.domain === 'all' ? DOMAINS : [f.domain]; for (const d of ds) rec(d, 'bonus', 'Legitimacy', ...stat(f, add)) }
+    if (this.mods.emptyTileCombat.length) { let e = 0; for (const k of this.controlled) if (!this.deployed.has(k)) e++; for (const f of this.mods.emptyTileCombat) rec(f.domain, 'bonus', 'Empty tiles', ...stat(f, f.amount * e)) }
+    for (const d of DOMAINS) rec(d, 'bonus', 'Accrued', this.armyAccum[d].atk, this.armyAccum[d].def, this.armyAccum[d].bomb)
+    if (this.mods.armyFromSettlement.length) { const so = this._settlementOutputTotal(); for (const f of this.mods.armyFromSettlement) { const ds = f.domain === 'all' ? DOMAINS : [f.domain]; for (const d of ds) rec(d, 'bonus', 'Settlements', ...stat(f, so)) } }
+    // mercenaries (temporary this wave)
+    for (const d of DOMAINS) rec(d, 'merc', 'Mercenaries', this.mercAtk[d], this.mercDef[d], 0)
+    const emb = this._embassyMercAttack(); if (emb.atk) for (const d of DOMAINS) rec(d, 'merc', 'Embassy', emb.atk, emb.def, 0)
+    const domains = {}; const totals = {}
+    for (const d of DOMAINS) {
+      domains[d] = Object.values(dom[d]).sort((a, b) => (Math.abs(b.atk) + Math.abs(b.def) + Math.abs(b.bomb)) - (Math.abs(a.atk) + Math.abs(a.def) + Math.abs(a.bomb)))
+      totals[d] = { atk: 0, def: 0, bomb: 0 }
+      for (const r of domains[d]) { totals[d].atk += r.atk; totals[d].def += r.def; totals[d].bomb += r.bomb }
+    }
+    return { domains, totals }
   }
   /** Per-turn accruals: Oral Tradition (army +atk) and Hereditary Rule (palace +random). */
   _accrueGrowth() {
@@ -923,9 +953,9 @@ export class GameEngine {
     const pv = armyValue(this.playerScalars())
     this.enemyCard = generateEnemyCard(pv, n, ENEMY, this._waveRng(n))
     this.enemyCard.wave = n
-    this.waveDueIn = (META.waveInterval - (this.turn % META.waveInterval)) % META.waveInterval || 0
+    this.waveDueIn = this.turnsUntilWave()
   }
-  isWaveTurn() { return this.turn % META.waveInterval === 0 }
+  isWaveTurn() { return this.turn === this.nextWaveTurn }
   _resolveWave() {
     const n = this.waveCount + 1
     const P = this.playerScalars()       // board army — the enemy card scales to THIS
@@ -954,10 +984,7 @@ export class GameEngine {
   endTurn() {
     if (this.status !== 'playing') return
     this.selection = null
-    if (this.isWaveTurn()) {
-      if (this.waveDelay > 0) { this.waveDelay--; this.log.unshift(`Turn ${this.turn}: enemy attack delayed (Calendar).`) }
-      else this._resolveWave()
-    }
+    if (this.isWaveTurn()) { this._resolveWave(); this.nextWaveTurn += META.waveInterval }
     if (this.status !== 'playing') { this._emit(); return }
     this.turn++
     this._accrueGrowth()
