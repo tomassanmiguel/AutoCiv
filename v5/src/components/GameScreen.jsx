@@ -8,6 +8,7 @@ import { DOMAINS, ERAS } from '../game/data/schema.js'
 import { resolveCombatTimeline, domainHasForce } from '../game/systems/combat.js'
 import { trackForEra } from '../game/audio/tracks.js'
 import NineSlice from './common/NineSlice.jsx'
+import CombatSprite, { LaneBackdrop } from './combat/CombatSprite.jsx'
 import InfoTip from './common/InfoTip.jsx'
 import IconText from './common/IconText.jsx'
 import './GameScreen.css'
@@ -692,11 +693,6 @@ function MercPanel({ g }) {
 // otherwise-empty domain to preview e.g. a land+sea fight).
 const domAdd = (s, add) => { const o = {}; for (const d of DOMAINS) { const a = add[d] || 0; o[d] = { atk: s[d].atk + a, def: s[d].def + a, bomb: s[d].bomb + a } } return o }
 const NO_ADD = { land: 0, sea: 0, sky: 0, space: 0 }
-// Per (side, domain, stat) sprite. Player = disciplined army; foe = barbarian horde.
-const FIG = {
-  you: { land: { atk: '⚔️', def: '🛡️', bomb: '🏹' }, sea: { atk: '🚣', def: '⛵', bomb: '⚓' }, sky: { atk: '✈️', def: '🎈', bomb: '💣' }, space: { atk: '🚀', def: '🛰️', bomb: '☄️' } },
-  foe: { land: { atk: '🪓', def: '🛡', bomb: '🔥' }, sea: { atk: '🚩', def: '⛴️', bomb: '💥' }, sky: { atk: '🦅', def: '☁️', bomb: '🌩️' }, space: { atk: '👾', def: '🛸', bomb: '☄️' } },
-}
 const STAT_ORDER = ['def', 'atk', 'bomb']
 const DOM_ICON = { land: '🌲', sea: '🌊', sky: '☁️', space: '🌌' }
 
@@ -781,6 +777,7 @@ function CombatLane({ d, P, E, pPrev, ePrev, start, active, phase }) {
   const fires = (st) => active && ((phase === 'attack' && st === 'atk') || (phase === 'bombard' && st === 'bomb'))
   return (
     <div className={`cbt-lane dom-${d} ${active ? 'active' : ''}`}>
+      <LaneBackdrop domain={d} />
       <div className="lane-side you">
         <div className="lane-name">Your Empire</div>
         <div className="companies">{STAT_ORDER.map((st) => <Company key={st} side="you" d={d} st={st} val={P[st]} prev={pPrev[st]} startMax={startMax} firing={fires(st)} />)}</div>
@@ -799,11 +796,10 @@ function Company({ side, d, st, val, prev, startMax, firing }) {
   const hit = val < prev
   const dead = val <= 0 && prev > 0
   const gone = val <= 0
-  const sprite = FIG[side][d][st]
   return (
     <div className={`company st-${st} ${firing ? 'firing' : ''} ${hit ? 'hit' : ''} ${gone ? 'gone' : ''}`}>
       <div className="co-figs">
-        {Array.from({ length: figs }, (_, k) => <span key={k} className="fig" style={{ animationDelay: `${k * 45}ms` }}>{sprite}</span>)}
+        {Array.from({ length: figs }, (_, k) => <span key={k} className="fig" style={{ animationDelay: `${k * 45}ms` }}><CombatSprite side={side} domain={d} stat={st} /></span>)}
         {dead && <span className="fig ghost">💀</span>}
       </div>
       <div className="co-meta"><img className="co-ico" src={STAT_ICON[st]} alt={st} /><span className="co-val">{val}</span></div>
