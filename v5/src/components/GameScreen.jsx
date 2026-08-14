@@ -187,44 +187,77 @@ function IncomeOverlay({ g, onClose }) {
   const RESES = ['production', 'gold', 'food', 'progress', 'legitimacy']
   const [tab, setTab] = useState('production')
   const { rows } = g.incomeBreakdown()
-  const list = rows[tab] || []
-  const total = list.reduce((s, x) => s + x.amount, 0)
   const num = (v) => { const r = Math.round(v * 10) / 10; return Number.isInteger(r) ? `${r}` : r.toFixed(1) }
   const sign = (v) => `${v > 0 ? '+' : ''}${num(v)}`
   const SECTIONS = [
     { key: 'tile', title: 'Tiles' }, { key: 'building', title: 'Buildings' }, { key: 'unit', title: 'Units' },
     { key: 'palace', title: 'Palace' }, { key: 'bonus', title: 'Bonuses' }, { key: 'upkeep', title: 'Upkeep' },
+    { key: 'merc', title: 'Mercenaries' },
   ]
+  const isMil = tab === 'military'
+  const list = isMil ? [] : (rows[tab] || [])
+  const total = list.reduce((s, x) => s + x.amount, 0)
+  const mil = isMil ? g.militaryBreakdown() : null
+  const hasForce = (t) => t && (t.atk || t.def || t.bomb)
+  const StatCells = ({ s, cls = '' }) => (
+    <span className={`mil-stats ${cls}`}>
+      <span className={s.atk ? '' : 'z'}><SIco st="atk" s={12} />{s.atk || 0}</span>
+      <span className={s.def ? '' : 'z'}><SIco st="def" s={12} />{s.def || 0}</span>
+      <span className={s.bomb ? '' : 'z'}><SIco st="bomb" s={12} />{s.bomb || 0}</span>
+    </span>
+  )
   return (
     <div className="v5-modal-bg" onClick={onClose}>
       <NineSlice src="/sprites/ui/box.png" slice={205} width={24} className="v5-theater income" onClick={(e) => e.stopPropagation()}>
-        <h2>Income Breakdown</h2>
+        <h2>{isMil ? 'Military Breakdown' : 'Income Breakdown'}</h2>
         <div className="inc-tabs">
           {RESES.map((r) => (
             <button key={r} className={`inc-tab ${tab === r ? 'on' : ''}`} onClick={() => setTab(r)}>
               <RIco r={r} s={18} /><span className={`inc-tt ${(rows[r] || []).reduce((s, x) => s + x.amount, 0) < 0 ? 'neg' : 'pos'}`}>{sign((rows[r] || []).reduce((s, x) => s + x.amount, 0))}</span>
             </button>
           ))}
+          <button className={`inc-tab ${isMil ? 'on' : ''}`} onClick={() => setTab('military')} title="Military">
+            <SIco st="atk" s={18} /><span className="inc-tt mil-lbl">⚔</span>
+          </button>
         </div>
-        <div className="inc-total"><span>Net / turn</span><b className={total < 0 ? 'neg' : 'pos'}><RIco r={tab} s={16} /> {sign(total)}</b></div>
-        <div className="inc-body">
-          {SECTIONS.map((sec) => {
-            const items = list.filter((x) => x.group === sec.key)
-            if (!items.length) return null
-            return (
-              <div key={sec.key} className="inc-sec">
-                <div className="inc-sec-h">{sec.title}</div>
-                {items.map((it) => (
+        {isMil ? (
+          <div className="inc-body">
+            {DOMAINS.filter((d) => hasForce(mil.totals[d])).map((d) => (
+              <div key={d} className="inc-sec">
+                <div className="inc-sec-h mil-h">{cap(d)}<StatCells s={mil.totals[d]} cls="tot" /></div>
+                {mil.domains[d].map((it) => (
                   <div key={`${it.group}-${it.label}`} className="inc-row">
-                    <span className="inc-name">{it.label}{it.count > 1 && (sec.key === 'tile' || sec.key === 'building' || sec.key === 'unit' || sec.key === 'upkeep') ? <span className="inc-cnt">×{it.count}</span> : null}</span>
-                    <span className={`inc-amt ${it.amount < 0 ? 'neg' : 'pos'}`}>{sign(it.amount)}</span>
+                    <span className="inc-name">{it.label}{it.count > 1 && (it.group === 'unit' || it.group === 'building') ? <span className="inc-cnt">×{it.count}</span> : null}</span>
+                    <StatCells s={it} />
                   </div>
                 ))}
               </div>
-            )
-          })}
-          {list.length === 0 && <div className="inc-empty">No {tab} income yet.</div>}
-        </div>
+            ))}
+            {DOMAINS.every((d) => !hasForce(mil.totals[d])) && <div className="inc-empty">No military yet — build some units.</div>}
+          </div>
+        ) : (
+          <>
+            <div className="inc-total"><span>Net / turn</span><b className={total < 0 ? 'neg' : 'pos'}><RIco r={tab} s={16} /> {sign(total)}</b></div>
+            <div className="inc-body">
+              {SECTIONS.map((sec) => {
+                const items = list.filter((x) => x.group === sec.key)
+                if (!items.length) return null
+                return (
+                  <div key={sec.key} className="inc-sec">
+                    <div className="inc-sec-h">{sec.title}</div>
+                    {items.map((it) => (
+                      <div key={`${it.group}-${it.label}`} className="inc-row">
+                        <span className="inc-name">{it.label}{it.count > 1 && (sec.key === 'tile' || sec.key === 'building' || sec.key === 'unit' || sec.key === 'upkeep') ? <span className="inc-cnt">×{it.count}</span> : null}</span>
+                        <span className={`inc-amt ${it.amount < 0 ? 'neg' : 'pos'}`}>{sign(it.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+              {list.length === 0 && <div className="inc-empty">No {tab} income yet.</div>}
+            </div>
+          </>
+        )}
         <button className="v5-cont" onClick={onClose}>Close</button>
       </NineSlice>
     </div>

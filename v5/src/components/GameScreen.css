@@ -165,6 +165,13 @@
 .inc-cnt { color: var(--ink-soft); font-size: 10px; margin-left: 5px; }
 .inc-amt { font-variant-numeric: tabular-nums; font-weight: 700; }
 .inc-empty { text-align: center; color: var(--ink-soft); font-style: italic; padding: 18px; font-size: 12px; }
+.mil-stats { display: inline-flex; gap: 8px; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); }
+.mil-stats span { display: inline-flex; align-items: center; gap: 2px; min-width: 30px; justify-content: flex-end; }
+.mil-stats .ric { height: 12px; opacity: .85; }
+.mil-stats span.z { color: #b3a488; font-weight: 500; }
+.mil-stats.tot { color: var(--brass-deep); }
+.inc-sec-h.mil-h { display: flex; justify-content: space-between; align-items: center; text-transform: capitalize; }
+.inc-tab .inc-tt.mil-lbl { color: var(--ink-soft); font-weight: 700; }
 
 /* mercenary hiring */
 .merc { background: var(--parch-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin-top: 10px; }
