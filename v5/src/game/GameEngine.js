@@ -897,7 +897,8 @@ export class GameEngine {
     }
     this.offer = offer
   }
-  progressCostOf(era) { return Math.floor(progressCost(eraIndex(era)) * (this.mods.progressCostMult || 1)) }
+  // Era base cost (×Algebra discount) PLUS a flat +1 for every tech already researched this game.
+  progressCostOf(era) { return Math.floor(progressCost(eraIndex(era)) * (this.mods.progressCostMult || 1)) + this.taken.size }
   offerData() {
     return this.offer.map((o) => {
       const t = TECHS[o.id]

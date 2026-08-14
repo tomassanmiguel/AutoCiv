@@ -44,7 +44,6 @@ const RIco = ({ r, s = 14 }) => <img className="ric" src={RES_ICON[r]} alt={r} s
 const SIco = ({ st, s = 14 }) => <img className="ric" src={STAT_ICON[st]} alt={st} style={{ height: s }} />
 const fmt = (n) => Math.floor(n)
 const cap = (s) => s[0].toUpperCase() + s.slice(1)
-const total = (p) => p.atk + p.def + p.bomb
 const delta = (n) => { const v = Math.floor(n); return v === 0 ? null : <span className={`dlt ${v > 0 ? 'up' : 'dn'}`}>{v > 0 ? '+' : ''}{v}</span> }
 
 export default function GameScreen({ seed, onExit, audio }) {
@@ -80,7 +79,7 @@ function Game({ onExit, audio }) {
       {creativeOpen && <CreativeTechOverlay g={g} onClose={() => setCreativeOpen(false)} />}
       {showCombat && (
         <CombatOverlay title={`Wave ${g.lastCombat.wave} · ${g.lastCombat.enemy.archetypeName}`}
-          player={g.lastCombat.player} enemy={g.lastCombat.enemy.scalars}
+          player={g.lastCombat.player} enemy={g.lastCombat.enemy.scalars} creative={g.creative}
           dismissLabel="Continue" onDismiss={() => setSeenWave(g.lastCombat.wave)} />
       )}
       {g.status !== 'playing' && <EndOverlay g={g} onExit={onExit} />}
@@ -640,7 +639,7 @@ function WavePanel({ g }) {
       <MercPanel g={g} />
       <div className="hint">Combat is an empire-wide aggregate of these 12 scalars. Bombardment fires first and spills downward.</div>
       {sim && enemy && (
-        <CombatOverlay title={`Wave ${enemy.wave} — simulation (no effect)`} player={you} enemy={enemy.scalars}
+        <CombatOverlay title={`Wave ${enemy.wave} — simulation`} player={you} enemy={enemy.scalars} creative={g.creative}
           dismissLabel="Close" onDismiss={() => setSim(false)} />
       )}
     </div>
@@ -689,74 +688,116 @@ function MercPanel({ g }) {
 }
 
 // ---- combat theater ----
-function CombatOverlay({ title, player, enemy, dismissLabel, onDismiss }) {
+const scaleScalars = (s, m) => { const o = {}; for (const d of DOMAINS) o[d] = { atk: Math.round(s[d].atk * m), def: Math.round(s[d].def * m), bomb: Math.round(s[d].bomb * m) }; return o }
+// Per (side, domain, stat) sprite. Player = disciplined army; foe = barbarian horde.
+const FIG = {
+  you: { land: { atk: '⚔️', def: '🛡️', bomb: '🏹' }, sea: { atk: '🚣', def: '⛵', bomb: '⚓' }, sky: { atk: '✈️', def: '🎈', bomb: '💣' }, space: { atk: '🚀', def: '🛰️', bomb: '☄️' } },
+  foe: { land: { atk: '🪓', def: '🛡', bomb: '🔥' }, sea: { atk: '🚩', def: '⛴️', bomb: '💥' }, sky: { atk: '🦅', def: '☁️', bomb: '🌩️' }, space: { atk: '👾', def: '🛸', bomb: '☄️' } },
+}
+const STAT_ORDER = ['def', 'atk', 'bomb']
+const DOM_ICON = { land: '🌲', sea: '🌊', sky: '☁️', space: '🌌' }
+
+function CombatOverlay({ title, player, enemy, dismissLabel, onDismiss, creative }) {
   return (
-    <div className="v5-modal-bg" onClick={onDismiss}>
-      <NineSlice src="/sprites/ui/box.png" slice={205} width={24} className="v5-theater" onClick={(e) => e.stopPropagation()}>
-        <h2>{title}</h2>
-        <CombatTheater player={player} enemy={enemy} />
-        <button className="v5-cont" onClick={onDismiss}>{dismissLabel}</button>
-      </NineSlice>
+    <div className="cbt-bg" onClick={onDismiss}>
+      <div className="cbt" onClick={(e) => e.stopPropagation()}>
+        <CombatTheater title={title} player={player} enemy={enemy} onDismiss={onDismiss} dismissLabel={dismissLabel} creative={creative} />
+      </div>
     </div>
   )
 }
-function CombatTheater({ player, enemy }) {
-  const { frames, result } = useMemo(() => resolveCombatTimeline(player, enemy), [player, enemy])
+function CombatTheater({ title, player, enemy, onDismiss, dismissLabel, creative }) {
+  const [pMul, setPMul] = useState(1)
+  const [eMul, setEMul] = useState(1)
+  const P0 = useMemo(() => scaleScalars(player, pMul), [player, pMul])
+  const E0 = useMemo(() => scaleScalars(enemy, eMul), [enemy, eMul])
+  const { frames, result } = useMemo(() => resolveCombatTimeline(P0, E0), [P0, E0])
   const last = frames.length - 1
   const [i, setI] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
+  const restart = () => { setI(0); setPlaying(true) }
+  const setMul = (setter) => (e) => { setter(+e.target.value); restart() } // re-sim from the top when a dial moves
   useEffect(() => {
     if (!playing || i >= last) return
-    const id = setTimeout(() => setI((x) => Math.min(last, x + 1)), 640 / speed)
+    const id = setTimeout(() => setI((x) => Math.min(last, x + 1)), 760 / speed)
     return () => clearTimeout(id)
   }, [playing, i, speed, last])
   const cur = frames[i]
+  const prev = frames[Math.max(0, i - 1)]
   const start = frames[0]
   const done = i >= last
   const shown = DOMAINS.filter((d) => domainHasForce(start.P[d]) || domainHasForce(start.E[d]))
-  const scale = {}
-  for (const d of shown) scale[d] = Math.max(1, total(start.P[d]), total(start.E[d]))
-  const phaseLabel = cur.phase === 'start' ? 'Battle begins' : cur.phase === 'end' ? 'Resolved' : `${cap(cur.domain)} — ${cur.phase === 'bombard' ? 'Bombardment' : 'Attack'}`
+  const phaseLabel = cur.phase === 'start' ? 'Battle Begins' : cur.phase === 'end' ? 'Battle Resolved' : `${cap(cur.domain)} — ${cur.phase === 'bombard' ? 'Bombardment' : 'Assault'}`
   const toggle = () => { if (done) { setI(0); setPlaying(true) } else setPlaying((p) => !p) }
   return (
-    <div className="ct">
-      <div className="ct-phase">{phaseLabel}</div>
-      <div className="ct-board" style={{ gridTemplateColumns: `repeat(${shown.length}, 1fr)` }}>
+    <>
+      <div className="cbt-head">
+        <div className="cbt-title">{title}</div>
+        <div key={`${cur.phase}-${cur.domain}-${i === 0}`} className={`cbt-phase ph-${cur.phase}`}>{phaseLabel}</div>
+      </div>
+      <div className="cbt-lanes" style={{ '--lanes': shown.length || 1 }}>
         {shown.map((d) => (
-          <div key={d} className={`ct-dom ${cur.domain === d && cur.phase !== 'end' ? 'active' : ''}`}>
-            <div className="ct-dh">{d}</div>
-            <Army side="you" pool={cur.P[d]} scale={scale[d]} />
-            <div className="ct-mid">vs</div>
-            <Army side="foe" pool={cur.E[d]} scale={scale[d]} />
-          </div>
+          <CombatLane key={d} d={d} P={cur.P[d]} E={cur.E[d]} pPrev={prev.P[d]} ePrev={prev.E[d]}
+            start={{ P: start.P[d], E: start.E[d] }} active={cur.domain === d && cur.phase !== 'end' && cur.phase !== 'start'} phase={cur.phase} />
         ))}
+        {shown.length === 0 && <div className="cbt-empty">No forces engaged.</div>}
       </div>
-      <div className={`ct-score ${done ? 'show' : ''}`}>
-        <span className="gold"><RIco r="gold" s={18} /> +{result.goldGained}</span>
-        <span className="loss"><RIco r="legitimacy" s={18} /> −{result.legitimacyLost}</span>
+      <div className={`cbt-score ${done ? 'show' : ''}`}>
+        <span className="s-gold"><RIco r="gold" s={20} /> +{result.goldGained}</span>
+        <span className="s-loss"><RIco r="legitimacy" s={20} /> −{result.legitimacyLost}</span>
+        {(result.won.length > 0 || result.lost.length > 0) && (
+          <span className="s-verdict">{result.won.length ? `▲ ${result.won.map(cap).join(', ')}` : ''}{result.won.length && result.lost.length ? '  ' : ''}{result.lost.length ? `▼ ${result.lost.map(cap).join(', ')}` : ''}</span>
+        )}
       </div>
-      <div className="ct-controls">
-        <button onClick={() => setI(0)} title="Restart">⟲</button>
+      <div className="cbt-controls">
+        <button onClick={() => { setI(0); setPlaying(true) }} title="Replay">⟲</button>
         <button onClick={toggle} title="Play / pause">{playing && !done ? '❚❚' : '▶'}</button>
         <button onClick={() => { setPlaying(false); setI((x) => Math.min(last, x + 1)) }} title="Step">⏭</button>
-        <button onClick={() => setI(last)} title="Skip to end">Skip</button>
-        <span className="ct-spd">{[1, 2, 4].map((s) => <button key={s} className={speed === s ? 'on' : ''} onClick={() => setSpeed(s)}>{s}×</button>)}</span>
+        <button onClick={() => { setPlaying(false); setI(last) }} title="Skip to end">⏩</button>
+        <span className="cbt-spd">{[1, 2, 4].map((s) => <button key={s} className={speed === s ? 'on' : ''} onClick={() => setSpeed(s)}>{s}×</button>)}</span>
+        <button className="cbt-done" onClick={onDismiss}>{dismissLabel}</button>
+      </div>
+      {creative && (
+        <div className="cbt-dials">
+          <label>Your power <b>×{pMul}</b><input type="range" min="1" max="25" step="1" value={pMul} onChange={setMul(setPMul)} /></label>
+          <label>Enemy power <b>×{eMul}</b><input type="range" min="1" max="25" step="1" value={eMul} onChange={setMul(setEMul)} /></label>
+        </div>
+      )}
+    </>
+  )
+}
+function CombatLane({ d, P, E, pPrev, ePrev, start, active, phase }) {
+  const startMax = Math.max(1, start.P.atk, start.P.def, start.P.bomb, start.E.atk, start.E.def, start.E.bomb)
+  const fires = (st) => active && ((phase === 'attack' && st === 'atk') || (phase === 'bombard' && st === 'bomb'))
+  return (
+    <div className={`cbt-lane dom-${d} ${active ? 'active' : ''}`}>
+      <div className="lane-side you">
+        <div className="lane-name">Your Empire</div>
+        <div className="companies">{STAT_ORDER.map((st) => <Company key={st} side="you" d={d} st={st} val={P[st]} prev={pPrev[st]} startMax={startMax} firing={fires(st)} />)}</div>
+      </div>
+      <div className="lane-vs"><span className="lane-dom">{DOM_ICON[d]} {cap(d)}</span><span className="lane-x">⚔</span></div>
+      <div className="lane-side foe">
+        <div className="lane-name">👹 The Horde</div>
+        <div className="companies">{STAT_ORDER.map((st) => <Company key={st} side="foe" d={d} st={st} val={E[st]} prev={ePrev[st]} startMax={startMax} firing={fires(st)} />)}</div>
       </div>
     </div>
   )
 }
-function Army({ side, pool, scale }) {
+function Company({ side, d, st, val, prev, startMax, firing }) {
+  const MAX = 6
+  const figs = val <= 0 ? 0 : Math.max(1, Math.round((val / startMax) * MAX))
+  const hit = val < prev
+  const dead = val <= 0 && prev > 0
+  const gone = val <= 0
+  const sprite = FIG[side][d][st]
   return (
-    <div className={`ct-army ${side}`}>
-      <div className="ct-side">{side === 'you' ? 'You' : 'Foe'}</div>
-      {['def', 'atk', 'bomb'].map((st) => (
-        <div key={st} className="ct-bar-row">
-          <img className="ric" src={STAT_ICON[st]} alt={st} />
-          <div className="ct-bar"><div className={`ct-fill ${st}`} style={{ width: `${Math.min(100, (pool[st] / scale) * 100)}%` }} /></div>
-          <span className="ct-bv">{pool[st]}</span>
-        </div>
-      ))}
+    <div className={`company st-${st} ${firing ? 'firing' : ''} ${hit ? 'hit' : ''} ${gone ? 'gone' : ''}`}>
+      <div className="co-figs">
+        {Array.from({ length: figs }, (_, k) => <span key={k} className="fig" style={{ animationDelay: `${k * 45}ms` }}>{sprite}</span>)}
+        {dead && <span className="fig ghost">💀</span>}
+      </div>
+      <div className="co-meta"><img className="co-ico" src={STAT_ICON[st]} alt={st} /><span className="co-val">{val}</span></div>
     </div>
   )
 }
