@@ -125,11 +125,11 @@ export class GameEngine {
     if (!this.creative || !TECHS[id] || this.taken.has(id)) return false
     this.taken.add(id)
     this._applyTechOneShots(id)
-    this.unlocksThisEra++
+    if (eraIndex(TECHS[id].era) === this.era) this.unlocksThisEra++ // only current-era techs advance the era
     this._recomputeMods()
     if (this.mods.freeReroll) this.rerollTokens++
     const lastEra = maxContentEra()
-    if (this.unlocksThisEra >= META.unlocksPerEra && this.era < lastEra) { this.era++; this.unlocksThisEra = 0 }
+    if (this.unlocksThisEra >= this.eraUnlocksNeeded() && this.era < lastEra) { this.era++; this.unlocksThisEra = 0 }
     const slot = this.offer.findIndex((o) => o.id === id)
     if (slot >= 0) this.offer.splice(slot, 1)
     this._previewWave()
@@ -141,6 +141,9 @@ export class GameEngine {
   tileAt(k) { return this.world.byKey.get(k) }
   instAt(k) { return this.deployed.get(k) || null }
   ownedCount(id) { let n = 0; for (const v of this.deployed.values()) if (v.id === id) n++; return n }
+  eraTechCount(eraName) { let n = 0; for (const id in TECHS) if (TECHS[id].era === eraName) n++; return n }
+  /** Current-era techs needed to advance (capped at what the era actually has). */
+  eraUnlocksNeeded() { return Math.min(META.unlocksPerEra, this.eraTechCount(ERAS[this.era])) }
   /** One-shot effects that fire once when a tech is unlocked (Calendar's wave delay). */
   _applyTechOneShots(id) {
     for (const e of TECHS[id].effects || []) if (e.name === 'delay_next_wave') this.waveDelay += (e.amount || 1)
@@ -351,8 +354,10 @@ export class GameEngine {
       if (!dep.unique) { const u = Math.max(0, dep.upkeep - this.mods.upkeepReduction); upkeep += u; if (rec) rec('upkeep', dep.name, 'gold', -u) }
       const bucket = k === this.palaceKey ? palaceInc : income
       const out = { production: 0, gold: 0, food: 0, progress: 0, legitimacy: 0 }
-      // Ecology: a deployable no longer removes the tile's natural production.
-      if (this.mods.keepNaturalProduction && k !== this.palaceKey) { const y = this.terrainYield(t); if (y.production) out.production += y.production }
+      // Units don't remove a tile's natural yield; only buildings do (Ecology still keeps
+      // production under buildings). The palace is a building, so it replaces its tile.
+      if (dep.type === 'unit' && k !== this.palaceKey) { const y = this.terrainYield(t); for (const r in y) out[r] += y[r] }
+      else if (this.mods.keepNaturalProduction && k !== this.palaceKey) { const y = this.terrainYield(t); if (y.production) out.production += y.production }
       for (const e of dep.econ || []) {
         switch (e.name) {
           case 'self_yield': out[e.resource] += e.amount; break
@@ -879,12 +884,12 @@ export class GameEngine {
     this.resources.progress -= cost
     this.taken.add(id)
     this._applyTechOneShots(id)
-    this.unlocksThisEra++
+    if (eraIndex(TECHS[id].era) === this.era) this.unlocksThisEra++ // only current-era techs advance the era
     this._recomputeMods()
     if (this.mods.freeReroll) this.rerollTokens++
     // advance era after enough unlocks (only while a later era still has content)
     const lastEra = maxContentEra()
-    if (this.unlocksThisEra >= META.unlocksPerEra && this.era < lastEra) { this.era++; this.unlocksThisEra = 0 }
+    if (this.unlocksThisEra >= this.eraUnlocksNeeded() && this.era < lastEra) { this.era++; this.unlocksThisEra = 0 }
     // The offer does NOT refill on unlock — consume the slot. A fresh 3 (+wildcard)
     // are drawn at the start of the next turn.
     this.offer.splice(slot, 1)
@@ -980,6 +985,8 @@ export class GameEngine {
     const t = this.world.byKey.get(k)
     const out = {}
     const add = (r, v) => { if (v) out[r] = (out[r] || 0) + v }
+    // Units keep the tile's natural yield (buildings replace it).
+    if (dep.type === 'unit' && k !== this.palaceKey) { const y = this.terrainYield(t); for (const r in y) add(r, y[r]) }
     for (const e of dep.econ || []) {
       switch (e.name) {
         case 'self_yield': add(e.resource, e.amount); break
