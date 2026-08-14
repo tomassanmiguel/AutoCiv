@@ -688,7 +688,10 @@ function MercPanel({ g }) {
 }
 
 // ---- combat theater ----
-const scaleScalars = (s, m) => { const o = {}; for (const d of DOMAINS) o[d] = { atk: Math.round(s[d].atk * m), def: Math.round(s[d].def * m), bomb: Math.round(s[d].bomb * m) }; return o }
+// Creative dials ADD a flat power block per domain (so you can inject force into an
+// otherwise-empty domain to preview e.g. a land+sea fight).
+const domAdd = (s, add) => { const o = {}; for (const d of DOMAINS) { const a = add[d] || 0; o[d] = { atk: s[d].atk + a, def: s[d].def + a, bomb: s[d].bomb + a } } return o }
+const NO_ADD = { land: 0, sea: 0, sky: 0, space: 0 }
 // Per (side, domain, stat) sprite. Player = disciplined army; foe = barbarian horde.
 const FIG = {
   you: { land: { atk: '⚔️', def: '🛡️', bomb: '🏹' }, sea: { atk: '🚣', def: '⛵', bomb: '⚓' }, sky: { atk: '✈️', def: '🎈', bomb: '💣' }, space: { atk: '🚀', def: '🛰️', bomb: '☄️' } },
@@ -707,17 +710,17 @@ function CombatOverlay({ title, player, enemy, dismissLabel, onDismiss, creative
   )
 }
 function CombatTheater({ title, player, enemy, onDismiss, dismissLabel, creative }) {
-  const [pMul, setPMul] = useState(1)
-  const [eMul, setEMul] = useState(1)
-  const P0 = useMemo(() => scaleScalars(player, pMul), [player, pMul])
-  const E0 = useMemo(() => scaleScalars(enemy, eMul), [enemy, eMul])
+  const [pAdd, setPAdd] = useState(NO_ADD)
+  const [eAdd, setEAdd] = useState(NO_ADD)
+  const P0 = useMemo(() => domAdd(player, pAdd), [player, pAdd])
+  const E0 = useMemo(() => domAdd(enemy, eAdd), [enemy, eAdd])
   const { frames, result } = useMemo(() => resolveCombatTimeline(P0, E0), [P0, E0])
   const last = frames.length - 1
   const [i, setI] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
   const restart = () => { setI(0); setPlaying(true) }
-  const setMul = (setter) => (e) => { setter(+e.target.value); restart() } // re-sim from the top when a dial moves
+  const setDom = (setter, d) => (e) => { const val = +e.target.value; setter((p) => ({ ...p, [d]: val })); restart() }
   useEffect(() => {
     if (!playing || i >= last) return
     const id = setTimeout(() => setI((x) => Math.min(last, x + 1)), 760 / speed)
@@ -760,8 +763,14 @@ function CombatTheater({ title, player, enemy, onDismiss, dismissLabel, creative
       </div>
       {creative && (
         <div className="cbt-dials">
-          <label>Your power <b>×{pMul}</b><input type="range" min="1" max="25" step="1" value={pMul} onChange={setMul(setPMul)} /></label>
-          <label>Enemy power <b>×{eMul}</b><input type="range" min="1" max="25" step="1" value={eMul} onChange={setMul(setEMul)} /></label>
+          <div className="dial-hd"><span className="dh-lab">Creative — power per domain</span><span className="dh-you">You</span><span className="dh-foe">Enemy</span></div>
+          {DOMAINS.map((d) => (
+            <div key={d} className="dial-row">
+              <span className="dial-dom">{DOM_ICON[d]} {cap(d)}</span>
+              <span className="dial-cell"><input type="range" min="0" max="60" step="4" value={pAdd[d]} onChange={setDom(setPAdd, d)} /><b className="you">+{pAdd[d]}</b></span>
+              <span className="dial-cell"><input type="range" min="0" max="60" step="4" value={eAdd[d]} onChange={setDom(setEAdd, d)} /><b className="foe">+{eAdd[d]}</b></span>
+            </div>
+          ))}
         </div>
       )}
     </>

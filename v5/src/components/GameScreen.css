@@ -294,8 +294,19 @@
 .cbt-done { margin-left: 10px; background: linear-gradient(#c9a24a, #a67c2e) !important; color: #241606 !important; font-weight: 700; border-color: #f0d99a !important; }
 .cbt-empty { text-align: center; color: #cfc3e6; opacity: .7; margin: auto; }
 
-.cbt-dials { display: flex; gap: 22px; justify-content: center; flex-wrap: wrap; padding: 8px 10px; margin-top: 2px;
-  background: #00000033; border: 1px solid #ffffff14; border-radius: 10px; }
-.cbt-dials label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e7dcc4; }
-.cbt-dials label b { color: #ffd86a; min-width: 34px; }
-.cbt-dials input[type=range] { accent-color: #c9a24a; width: clamp(120px, 18vw, 260px); }
+.cbt-dials { display: grid; grid-template-columns: auto 1fr 1fr; gap: 3px 16px; align-items: center; padding: 8px 14px; margin-top: 2px;
+  background: #00000038; border: 1px solid #ffffff14; border-radius: 10px; }
+.dial-hd { display: contents; }
+.dial-hd .dh-lab { font-size: 11px; color: #cfc3e6; font-weight: 700; }
+.dial-hd .dh-you { text-align: center; font-size: 11px; color: #7fd0ff; font-weight: 700; }
+.dial-hd .dh-foe { text-align: center; font-size: 11px; color: #ff8f7a; font-weight: 700; }
+.dial-row { display: contents; }
+.dial-dom { font-size: 12px; color: #e7dcc4; font-weight: 600; white-space: nowrap; }
+.dial-cell { display: flex; align-items: center; gap: 8px; }
+.dial-cell input[type=range] { flex: 1; min-width: 90px; }
+.dial-cell input[type=range].foe, .dial-cell b.foe { }
+.dial-cell b { min-width: 30px; font-variant-numeric: tabular-nums; font-size: 12px; }
+.dial-cell b.you { color: #7fd0ff; }
+.dial-cell b.foe { color: #ff8f7a; }
+.dial-row .dial-cell:nth-child(2) input { accent-color: #4aa3d9; }
+.dial-row .dial-cell:nth-child(3) input { accent-color: #d9584a; }

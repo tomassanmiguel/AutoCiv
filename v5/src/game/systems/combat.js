@@ -100,7 +100,21 @@ export function resolveCombatTimeline(playerScalars, enemyScalars) {
   runRounds(P, E, push)
   const result = scoreOutcome(P, E)
   push('end', null)
-  return { frames, result, start: { P: cloneScalars(playerScalars), E: cloneScalars(enemyScalars) } }
+  return { frames: dedupeFrames(frames), result, start: { P: cloneScalars(playerScalars), E: cloneScalars(enemyScalars) } }
+}
+// Drop no-op sub-steps: an assault on a decided domain or a bombardment with no
+// target changes nothing, so its frame equals the previous one — skip it. Always
+// keep the opening (start) and closing (end/score) frames.
+function sameState(a, b) {
+  for (const d of DOMAINS) for (const st of STATS) if (a.P[d][st] !== b.P[d][st] || a.E[d][st] !== b.E[d][st]) return false
+  return true
+}
+function dedupeFrames(frames) {
+  if (frames.length <= 2) return frames
+  const out = [frames[0]]
+  for (let i = 1; i < frames.length - 1; i++) if (!sameState(frames[i], out[out.length - 1])) out.push(frames[i])
+  out.push(frames[frames.length - 1])
+  return out
 }
 
 /**
