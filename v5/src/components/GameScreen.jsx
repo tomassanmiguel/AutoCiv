@@ -693,7 +693,9 @@ function MercPanel({ g }) {
 // otherwise-empty domain to preview e.g. a land+sea fight).
 const domAdd = (s, add) => { const o = {}; for (const d of DOMAINS) { const a = add[d] || 0; o[d] = { atk: s[d].atk + a, def: s[d].def + a, bomb: s[d].bomb + a } } return o }
 const NO_ADD = { land: 0, sea: 0, sky: 0, space: 0 }
-const STAT_ORDER = ['def', 'atk', 'bomb']
+// Formation order back → front. The foe side is row-reversed in CSS, so both armies
+// end up shields (def) at the front line, swords (atk) in the middle, bombards (bomb) at the rear.
+const STAT_ORDER = ['bomb', 'atk', 'def']
 const DOM_ICON = { land: '🌲', sea: '🌊', sky: '☁️', space: '🌌' }
 
 function CombatOverlay({ title, player, enemy, dismissLabel, onDismiss, creative }) {
@@ -726,7 +728,8 @@ function CombatTheater({ title, player, enemy, onDismiss, dismissLabel, creative
   const prev = frames[Math.max(0, i - 1)]
   const start = frames[0]
   const done = i >= last
-  const shown = DOMAINS.filter((d) => domainHasForce(start.P[d]) || domainHasForce(start.E[d]))
+  // stack top→bottom as space, sky, sea, land (combat resolves top-down anyway)
+  const shown = [...DOMAINS].reverse().filter((d) => domainHasForce(start.P[d]) || domainHasForce(start.E[d]))
   const phaseLabel = cur.phase === 'start' ? 'Battle Begins' : cur.phase === 'end' ? 'Battle Resolved' : `${cap(cur.domain)} — ${cur.phase === 'bombard' ? 'Bombardment' : 'Assault'}`
   const toggle = () => { if (done) { setI(0); setPlaying(true) } else setPlaying((p) => !p) }
   return (
