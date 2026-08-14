@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoCiv — Isometric Hex Look Demo</title>
+<!--
+  Perspective / style target for AutoCiv's map. One uniform flat-top hex grid:
+  SPACE = flat zero-height tiles forming a star-flecked floor; the island (with a
+  sunken sea), moon, and asteroids are RAISED tiles sitting on it. Sun loops through
+  daytime only (morning <-> afternoon), no night. Tiles fall & stack on reveal.
+  Locked geometry: flat-top hex, tilt/squish 0.75, land height ~0.48 x radius.
+  Placeholder flat colors — the real pixel-art tiles paint onto these same prism shapes.
+  Open in any browser. Rebuilt in-engine later via the same elevation/lift model.
+-->
+<style>
+  html,body{margin:0;background:#06070c;color:#c7d2e2;font-family:ui-sans-serif,system-ui,sans-serif;}
+  .page{max-width:900px;margin:0 auto;padding:20px 16px;}
+  h1{font-size:18px;font-weight:700;color:#e6d3a3;margin:0 0 4px;}
+  .sub{font-size:12.5px;color:#6f7d95;margin:0 0 14px;line-height:1.5;}
+  .sp-wrap{background:#06070c;border:1px solid #1a2233;border-radius:12px;padding:12px;}
+  .sp-wrap canvas{width:100%;display:block;border-radius:8px;background:#06070c;}
+  .sp-ctrls{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:center;margin-top:10px;font-size:12.5px;}
+  .sp-ctrls label{display:flex;align-items:center;gap:7px;white-space:nowrap;}
+  .sp-ctrls input[type=range]{accent-color:#e2a44a;width:120px;}
+  .sp-btn{background:#e2a44a;color:#20160a;border:none;border-radius:7px;padding:7px 13px;font-weight:700;cursor:pointer;font-size:12.5px;}
+  .sp-btn:hover{background:#f0b45c;}
+  .sp-chk{accent-color:#e2a44a;}
+  .sp-cap{margin-top:8px;font-size:11.5px;color:#6f7d95;line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>AutoCiv — Isometric Hex Look Demo</h1>
+  <p class="sub">Perspective &amp; motion target. Flat-top hex prisms · tilt 0.75 · land height ~0.48× · space floor + elevation · fall-in reveal · looping daytime sun.</p>
+  <div class="sp-wrap">
+    <canvas id="spc"></canvas>
+    <div class="sp-ctrls">
+      <button class="sp-btn" id="sp-replay">Replay drop</button>
+      <label><input type="checkbox" class="sp-chk" id="sp-auto" checked> loop sun</label>
+      <label>time <input type="range" id="sp-sun" min="0" max="100" value="50"></label>
+    </div>
+    <div class="sp-cap">One uniform grid, every tile the same size. <b>Space = flat zero-height tiles</b> forming a star-flecked floor; the island (sunken sea), moon, and asteroids are <b>raised</b> tiles on it. Placeholder colors on the real prism geometry.</div>
+  </div>
+</div>
+<script>
+(function(){
+  const cv=document.getElementById('spc'),ctx=cv.getContext('2d');
+  const SQ=0.75,SIZE=29,R=5; let t0=performance.now(),auto=true,manP=0.5;
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+  const shade=(c,f)=>`rgb(${clamp(c[0]*f|0,0,255)},${clamp(c[1]*f|0,0,255)},${clamp(c[2]*f|0,0,255)})`;
+  const eBack=x=>{const c1=1.70158,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2);};
+  const rnd=(q,r,k)=>{let x=Math.sin(q*127.1+r*311.7+k*74.7)*43758.5;return x-Math.floor(x);};
+  const hexd=(q,r,q2,r2)=>(Math.abs(q-q2)+Math.abs(r-r2)+Math.abs((-q-r)-(-q2-r2)))/2;
+  const TER={
+    space:{top:[22,24,34],side:[16,18,26],lift:0,H:0},
+    water:{top:[58,100,134],side:[40,68,92],lift:5,H:7},
+    sand:{top:[205,188,146],side:[150,120,80],lift:17,H:19},
+    plains:{top:[104,138,84],side:[100,78,54],lift:17,H:19},
+    forest:{top:[72,102,64],side:[90,70,48],lift:17,H:19},
+    hills:{top:[132,150,90],side:[106,82,56],lift:17,H:19},
+    mountain:{top:[138,142,152],side:[86,84,92],lift:17,H:21},
+    moon:{top:[150,150,158],side:[92,92,100],lift:12,H:15},
+    asteroid:{top:[126,114,102],side:[80,70,60],lift:8,H:11},
+  };
+  const Ic=[-2,2], Mc=[3,-3];
+  function classify(q,r){
+    const di=hexd(q,r,Ic[0],Ic[1]);
+    if(di===0)return 'mountain';
+    if(di===1){const h=rnd(q,r,1);return h<0.28?'sand':(h<0.66?'plains':'forest');}
+    if(di===2)return 'water';
+    if(hexd(q,r,Mc[0],Mc[1])<=1)return 'moon';
+    if(rnd(q,r,4)>0.90)return 'asteroid';
+    return 'space';
+  }
+  let tiles=[],order=[],cw=0,ch=0,dpr=1;
+  function build(){
+    const ox=cw/2, oy=ch/2; tiles=[];
+    for(let q=-R;q<=R;q++)for(let r=-R;r<=R;r++){
+      if(hexd(q,r,0,0)>R)continue;
+      const x=ox+SIZE*1.5*q, y=oy+SIZE*Math.sqrt(3)*(r+q/2)*SQ;
+      tiles.push({q,r,x,y,t:classify(q,r),order:hexd(q,r,0,0)+rnd(q,r,3)*0.4});
+    }
+    order=tiles.slice().sort((a,b)=>a.y-b.y);
+  }
+  function verts(cx,cy){const v=[];for(let i=0;i<6;i++){const a=Math.PI/180*60*i;v.push([cx+SIZE*Math.cos(a),cy+SIZE*Math.sin(a)*SQ]);}return v;}
+  function light(p){
+    const a=(200+140*p)*Math.PI/180, from=[Math.cos(a),Math.sin(a)], elev=clamp(-from[1],0,1);
+    const mid=1-Math.abs(p-0.5)*2, gold=[255,168,86], white=[255,246,232];
+    const tint=[gold[0]+(white[0]-gold[0])*mid,gold[1]+(white[1]-gold[1])*mid,gold[2]+(white[2]-gold[2])*mid,0.15-0.07*mid];
+    return {from,elev,amb:0.82+0.18*elev,tint,sdir:[-from[0],-from[1]],slen:8+(1-elev)*36};
+  }
+  function drawTile(T,S,now){
+    const local=now-t0-(T.order*80); if(local<-5)return;
+    const p=clamp(local/650,0,1),yo=(1-eBack(p))*-560,al=clamp(local/200,0,1);
+    const C=TER[T.t],cx=T.x,cy=T.y-C.lift+yo,V=verts(cx,cy); ctx.globalAlpha=al;
+    if(p>0.5 && C.H>0){ctx.globalAlpha=al*0.32*(0.5+0.5*S.elev);ctx.fillStyle='#020306';ctx.beginPath();ctx.ellipse(cx+S.sdir[0]*S.slen,cy+C.lift+C.H+S.sdir[1]*S.slen*0.5,SIZE*0.9,SIZE*0.5*SQ+2,0,0,7);ctx.fill();ctx.globalAlpha=al;}
+    if(C.H>0){const chain=[3,2,1,0];for(let i=0;i<3;i++){const a=V[chain[i]],b=V[chain[i+1]],mx=(a[0]+b[0])/2-cx,my=(a[1]+b[1])/2-cy,ml=Math.hypot(mx,my)||1;const nl=clamp((mx/ml*S.from[0]+my/ml*S.from[1])*0.5+0.62,0.4,1.15);ctx.fillStyle=shade(C.side,nl*S.amb);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineTo(b[0],b[1]+C.H);ctx.lineTo(a[0],a[1]+C.H);ctx.closePath();ctx.fill();}}
+    const tl=T.t==='space'?(0.85+0.35*S.elev):(0.92+0.12*S.elev);
+    ctx.fillStyle=shade(C.top,tl*S.amb);ctx.beginPath();V.forEach((v,i)=>i?ctx.lineTo(v[0],v[1]):ctx.moveTo(v[0],v[1]));ctx.closePath();ctx.fill();
+    ctx.strokeStyle=T.t==='space'?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.20)';ctx.lineWidth=1;ctx.stroke();
+    deco(T,cx,cy,S.amb,now); ctx.globalAlpha=1;
+  }
+  function deco(T,cx,cy,f,now){const z=SIZE/42;
+    if(T.t==='forest'){for(let i=0;i<5;i++){const ox=(rnd(T.q,i,2)-0.5)*SIZE*1.1,oy=(rnd(i,T.r,2)-0.5)*SIZE*0.6*SQ;ctx.fillStyle=shade([54,84,52],f);ctx.beginPath();ctx.moveTo(cx+ox,cy+oy-13*z);ctx.lineTo(cx+ox-5*z,cy+oy+2*z);ctx.lineTo(cx+ox+5*z,cy+oy+2*z);ctx.closePath();ctx.fill();}}
+    else if(T.t==='mountain'){const ph=SIZE*1.05;ctx.fillStyle=shade([120,124,134],f);ctx.beginPath();ctx.moveTo(cx,cy-ph);ctx.lineTo(cx-SIZE*0.6,cy+SIZE*0.28*SQ);ctx.lineTo(cx+SIZE*0.6,cy+SIZE*0.28*SQ);ctx.closePath();ctx.fill();ctx.fillStyle=shade([236,241,246],f);ctx.beginPath();ctx.moveTo(cx,cy-ph);ctx.lineTo(cx-SIZE*0.22,cy-ph*0.42);ctx.lineTo(cx+SIZE*0.22,cy-ph*0.42);ctx.closePath();ctx.fill();}
+    else if(T.t==='hills'){ctx.strokeStyle=shade([150,166,104],f);ctx.lineWidth=3*z;ctx.beginPath();ctx.arc(cx-8*z,cy+2,10*z,Math.PI,0);ctx.arc(cx+9*z,cy-1,8*z,Math.PI,0);ctx.stroke();}
+    else if(T.t==='sand'){ctx.strokeStyle=shade([176,158,120],f);ctx.lineWidth=2.5*z;ctx.beginPath();ctx.moveTo(cx-15*z,cy+3);ctx.quadraticCurveTo(cx,cy-5,cx+15*z,cy+3);ctx.stroke();}
+    else if(T.t==='water'){ctx.strokeStyle=shade([116,164,192],f);ctx.lineWidth=1.6;for(let i=-1;i<2;i++){ctx.beginPath();ctx.moveTo(cx-11,cy+i*5);ctx.quadraticCurveTo(cx-3,cy+i*5-3,cx+3,cy+i*5);ctx.quadraticCurveTo(cx+9,cy+i*5+3,cx+13,cy+i*5);ctx.stroke();}}
+    else if(T.t==='plains'){ctx.strokeStyle=shade([88,120,70],f);ctx.lineWidth=2;for(let i=0;i<4;i++){const ox=(rnd(T.q,i*3,2)-0.5)*SIZE;ctx.beginPath();ctx.moveTo(cx+ox,cy+4);ctx.lineTo(cx+ox,cy-4);ctx.stroke();}}
+    else if(T.t==='moon'||T.t==='asteroid'){const n=T.t==='moon'?3:1;for(let i=0;i<n;i++){const ox=(rnd(T.q,i,5)-0.5)*SIZE*0.9,oy=(rnd(i,T.r,5)-0.5)*SIZE*0.5*SQ,rr=(2.2+rnd(i,i,7)*3.5)*z;ctx.fillStyle=shade([104,100,98],f);ctx.beginPath();ctx.ellipse(cx+ox,cy+oy,rr,rr*SQ,0,0,7);ctx.fill();ctx.strokeStyle=shade([176,172,172],f);ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(cx+ox,cy+oy-1,rr,rr*SQ,0,Math.PI,0);ctx.stroke();}}
+    else if(T.t==='space'){const s=rnd(T.q,T.r,8); if(s>0.55){const sx=cx+(rnd(T.q,T.r,9)-0.5)*SIZE,sy=cy+(rnd(T.r,T.q,9)-0.5)*SIZE*0.5*SQ,tw=0.4+0.6*Math.abs(Math.sin(now/700+s*9));ctx.fillStyle=`rgba(255,255,255,${0.5*tw})`;ctx.beginPath();ctx.arc(sx,sy,s>0.9?1.3:0.8,0,7);ctx.fill();}}
+  }
+  function frame(now){
+    let p=manP; if(auto){const tt=(now/1000*0.16)%2;p=tt<1?tt:2-tt;document.getElementById('sp-sun').value=p*100;}
+    const S=light(p);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle='#06070c';ctx.fillRect(0,0,cw,ch);
+    order.forEach(T=>drawTile(T,S,now));
+    ctx.fillStyle=`rgba(${S.tint[0]|0},${S.tint[1]|0},${S.tint[2]|0},${S.tint[3]})`;ctx.fillRect(0,0,cw,ch);
+    requestAnimationFrame(frame);
+  }
+  function resize(){const w=cv.clientWidth||640;dpr=Math.min(2,window.devicePixelRatio||1);cw=w;ch=Math.round(w*0.64);cv.width=cw*dpr;cv.height=ch*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);build();}
+  document.getElementById('sp-replay').onclick=()=>{t0=performance.now();};
+  document.getElementById('sp-auto').onchange=e=>auto=e.target.checked;
+  document.getElementById('sp-sun').oninput=e=>{manP=e.target.value/100;auto=false;document.getElementById('sp-auto').checked=false;};
+  window.addEventListener('resize',resize);
+  resize();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
