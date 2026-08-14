@@ -511,40 +511,51 @@ function MapHoverCard({ g, k }) {
 }
 
 function Sidebar({ g }) {
-  // Collapse a menu when there is nothing you can act on right now.
-  const canResearch = g.offerData().some((o) => o.affordable)
-  const canBuild = g.buildableList().some((b) => b.affordable)
   return (
     <aside className="v5-side">
       <NineSlice src="/sprites/ui/box.png" slice={205} width={20} className="v5-sidebody">
-        {canResearch && <ResearchPanel g={g} />}
-        {canResearch && canBuild && <div className="v5-sep" />}
-        {canBuild && <BuildPanel g={g} />}
-        {!canResearch && !canBuild && (
-          <div className="v5-nada"><IconText>Nothing affordable yet — end your turn to gather more :production: and :progress:.</IconText></div>
-        )}
+        <ResearchPanel g={g} />
+        <div className="v5-sep" />
+        <BuildPanel g={g} />
       </NineSlice>
     </aside>
   )
 }
 
+function techUnlockTip(tech) {
+  // Techs that unlock a deployable should surface that deployable's own rules on hover.
+  const eff = (tech.effects || []).find((e) => e.name === 'unlock_deployable')
+  const dep = eff && DEPLOYABLES[eff.deployable]
+  if (!dep) return null
+  const t = dep.type === 'unit' ? 'Unit' : 'Building'
+  return `Unlocks ${dep.name} — ${t}${dep.subtype ? ` · ${dep.subtype}` : ''}\n${dep.desc}\n\nCost ${dep.production} :production: · Upkeep ${dep.upkeep} :gold:`
+}
 function ResearchPanel({ g }) {
   const offer = g.offerData()
+  const rerollCost = 5 + 5 * g.rerollsUsed
+  const canReroll = g.rerollTokens > 0 || g.resources.gold >= rerollCost
   return (
     <div className="panel">
-      <div className="panel-h">Research <span className="sub">{g.eraName()} · {g.unlocksThisEra}/3 to next era</span></div>
-      {offer.map((o, i) => (
-        <div key={o.id} className={`tech ${o.wildcard ? 'wild' : ''}`}>
-          <div className="tech-top"><b>{o.tech.name}</b><span className="flav">{o.tech.flavor}{o.wildcard ? ' · wildcard' : ''}</span></div>
-          <div className="tech-desc"><IconText>{o.tech.desc}</IconText></div>
-          <div className="tech-act">
-            <button disabled={!o.affordable} onClick={() => g.unlockTech(o.id)}>Unlock · {o.cost} <RIco r="progress" s={13} /></button>
-            <InfoTip text={g.rerollTokens > 0 ? 'Reroll this option — free (from Astrology).' : `Reroll for ${5 + 5 * g.rerollsUsed} gold. Cost rises each reroll.`}>
-              <button className="reroll" onClick={() => g.reroll(i)}>⟳ {g.rerollTokens > 0 ? 'free' : <>{5 + 5 * g.rerollsUsed}<RIco r="gold" s={12} /></>}</button>
+      <div className="panel-h">Research <span className="sub">{g.eraName()} · {g.unlocksThisEra}/{g.eraUnlocksNeeded()} to next era</span></div>
+      {offer.map((o, i) => {
+        const depTip = techUnlockTip(o.tech)
+        return (
+          <div key={o.id} className={`tech ${o.wildcard ? 'wild' : ''}`}>
+            <InfoTip text={depTip || `${o.tech.flavor} · ${o.tech.desc}`}>
+              <div className="tech-info">
+                <div className="tech-top"><b>{o.tech.name}</b><span className="flav">{o.tech.flavor}{o.wildcard ? ' · wildcard' : ''}</span></div>
+                <div className="tech-desc"><IconText>{o.tech.desc}</IconText></div>
+              </div>
             </InfoTip>
+            <div className="tech-act">
+              <button disabled={!o.affordable} onClick={() => g.unlockTech(o.id)}>Unlock · {o.cost} <RIco r="progress" s={13} /></button>
+              <InfoTip text={g.rerollTokens > 0 ? 'Reroll this option — free (from Astrology).' : canReroll ? `Reroll for ${rerollCost} gold. Cost rises each reroll.` : `Reroll costs ${rerollCost} gold — not enough gold.`}>
+                <button className="reroll" disabled={!canReroll} onClick={() => g.reroll(i)}>⟳ {g.rerollTokens > 0 ? 'free' : <>{rerollCost}<RIco r="gold" s={12} /></>}</button>
+              </InfoTip>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
       {offer.length === 0 && <div className="empty">All options taken — new research arrives next turn.</div>}
     </div>
   )

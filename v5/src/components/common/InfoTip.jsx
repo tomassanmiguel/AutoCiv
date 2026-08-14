@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, useEffect } from 'react'
+import { createContext, useContext, useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import IconText from './IconText.jsx'
 import './InfoTip.css'
@@ -93,6 +93,19 @@ export default function InfoTip({ title, text, className = '', tipClassName = ''
     timerRef.current = setTimeout(hideNow, CLOSE_DELAY)
   }
 
+  // Keep the (vertically-centered) tooltip inside the viewport — top-bar anchors
+  // sit near y=0, so an un-clamped tooltip would spill above the screen.
+  const tipRef = useRef(null)
+  useLayoutEffect(() => {
+    if (!pos || !tipRef.current) return
+    const half = tipRef.current.offsetHeight / 2
+    const M = 8
+    let y = pos.y
+    if (y - half < M) y = M + half
+    else if (y + half > window.innerHeight - M) y = window.innerHeight - M - half
+    tipRef.current.style.top = `${y}px`
+  }, [pos])
+
   return (
     <div
       ref={anchorRef}
@@ -106,6 +119,7 @@ export default function InfoTip({ title, text, className = '', tipClassName = ''
       {pos && createPortal(
         <TipDepth.Provider value={depth + 1}>
           <div
+            ref={tipRef}
             className={`infotip ${pos.right ? 'open-right' : 'open-left'}${interactive ? ' interactive' : ''}${tipClassName ? ' ' + tipClassName : ''}`}
             style={{ left: pos.x, top: pos.y }}
             onMouseEnter={interactive ? cancelClose : undefined}
